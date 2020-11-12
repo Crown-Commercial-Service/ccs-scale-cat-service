@@ -1,0 +1,20 @@
+language: java
+script: mvn package
+cache:
+  directories:
+  - "$HOME/.m2"
+branches:
+  only:
+  - feature/SINF-185_cat_skeleton_api
+deploy:
+  edge: true
+  provider: cloudfoundry
+  api: https://api.london.cloud.service.gov.uk
+  organization: ccs-scale-cat
+  space: sandbox
+  on:
+    branch: feature/SINF-185_cat_skeleton_api
+env:
+  global:
+  - secure: poNVLArdr5SAgHyBKuWLU2WQlYKWTWVXILoBasIrtJOmAeehIRxJPIJpYNGJoUhAg+ffNa7UK8ALAtWMoFV3x66ldCv/+sCxTJnIWg/kXZkqd6AFM3Ax5N/0Kh9kt6/Z95/5AafRDQZ5noIZaOftBmT5plm5pkPkK4d3ldQDCJZuPVqj2m4X4rFiwDo5TGOIu2kww0ozi4w9a7H8woOnaG730ogDVIqyADR5zrGF7QtoQJuyl04QSAE2TwmOJRPjDoFfGtyPB98jx1b1gcMD6Uw2QMZ5PPbRFwOyCSoBKmHpjXiDFUo5ec4XuMv1bfENAuoLLE0TrkWdAH+kAsABMLxw6oBFevI/ZGfSOdL3/HFfLe9LwKZhf2CWAh0a08Gv3C1PQ5fFeHvyw22b1aWt0UVSl6im5Icmhp1xYEvSkSS3buvUcp6IeFkJd8lcg0eA3gX4iCd68YahSg7Lv25UwR+0GtmJaUqwl2ghwN//NF8csMm+D6VNsgb2QUwS514KAx62lfDUGXktoVXfzlWg1SXIWRHAiuF+QtlcE0O49G19B7LC6dJsdv64qlOwrwgwCnn89yQI1clFkWLfxLxvB/3TPZQUjRsO5r5p7lBImrXefobg/a+pz8Ppnnrw7q4r2NFf9lG7zJ0JN+WOhqi2X3m9FvAHzA0kSDaoISIwqEU=
+  - secure: A1DcYhy2t2psivkTbZ7yl5SRKzdp5QGf32j2cO//rv7NY7NnV3Af327GBdbXiab3zROUnEePXn1KXR5lfAZb8LNEYIplMtu+fnZfFPX/rPud+QuphfGiXVUALvFJfsFu6AJejkRTGZqvYA235DtkH1/9x2/kKp8ie6N6AMJ40HznG0MyNzlaJRexP1RftUjYDkDg28pDfqMWq1Jd9ON5CAPoEZvNdf5YuaAclwlGuOio0neN7Nnd5VLm1pbeMlw+duML5IYL9QxJhJblzRRJH0RpNraSyLmhkf4k01G2mo095nvqPHRUb40LkpOM6+7d0RhRyxPw/Qm1aDQ+kmqI4UfbO9MXkwzoFrgCocez1x09avVuCQuAms7jIZ//3JUNzo2Ro+Si5rg9qFLdbFrbiXbC3d8ao4aEcJstoDtdr9K8JYtrWbtci0olu49+2/T9lRRTYpfatgzE5mgC3ct7GWs/aN2Xv5G1gcsNJajAuiZMvPPyYz9vS2/JUSvrLFNeo/cjf9kMeQ7WwQACzDPe6PR1v+Qy/TIx/tFFSyv4Kfn5fvgsjR052Mrp1ziQ8TkcAb36z305f+jPA01I6JFJdVdPXqLqP+mK4CgYoeKeNiYui90JO4TTh3cznknrmofumik857AQoNkXsmtZWfckPwS93CNvrrrqKPN3pMJpwfE=

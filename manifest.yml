@@ -1,0 +1,9 @@
+---
+applications:
+- name: ccs-scale-cat-service
+  memory: 1024M
+  buildpacks: 
+    - https://github.com/cloudfoundry/java-buildpack#v4.33
+  path: target/ccs-scale-cat-service-0.0.1-SNAPSHOT.jar
+#  services:
+#  - tom-postgres
