@@ -1,6 +1,8 @@
 ---
 applications:
 - name: ccs-scale-cat-service
+  routes:
+  - route: ccs-scale-cat-service.apps.internal
   memory: 1024M
   buildpacks: 
     - https://github.com/cloudfoundry/java-buildpack#v4.33
