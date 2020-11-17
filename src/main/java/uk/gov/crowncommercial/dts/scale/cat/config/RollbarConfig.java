@@ -21,7 +21,8 @@ public class RollbarConfig {
    * environment variable <code>rollbar.access-token</code>
    */
   @Bean
-  public Rollbar rollbar(@Value("${rollbar.access-token}") final String rollbarAccessToken) {
+  public Rollbar rollbar(
+      @Value("${rollbar.access-token:override-via-env}") final String rollbarAccessToken) {
     return new Rollbar(getRollbarConfigs(rollbarAccessToken));
   }
 
