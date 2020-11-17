@@ -5,24 +5,27 @@ cache:
   - "$HOME/.m2"
 branches:
   only:
-  - feature/SINF-185_cat_skeleton_api
+  - feature/SINF-196_multi_env_config
   - develop
+  
+after_success: 
+- mkdir $HOME/cf-cli
+- curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx -C $HOME/cf-cli
+- export PATH=$PATH:$HOME/cf-cli
+  
 deploy:
-  - provider: cloudfoundry
-    edge: true
-    api: https://api.london.cloud.service.gov.uk
-    organization: ccs-scale-cat    
-    space: sandbox
+  - provider: script
+    skip_cleanup: true
+    script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_MEMORY=1024M bash ./deploy.sh
     on:
-      branch: feature/SINF-185_cat_skeleton_api
-
-  - provider: cloudfoundry
-    edge: true
-    api: https://api.london.cloud.service.gov.uk
-    organization: ccs-scale-cat  
-    space: development
+      branch: feature/SINF-196_multi_env_config
+      
+  - provider: script
+    skip_cleanup: true
+    script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_MEMORY=1024M bash ./deploy.sh
     on:
       branch: develop
+      
 env:
   global:
   - secure: h/XLGdkQXNgSpkKkuDBMhf0sMKc6I/gMKfKoILpTlCFSUDmp+9qW3ltrbPi8Q8JZP5VBPsYSPjGFs9l0hEIXN+Bw6Fyaxdj0Opr3eGd55j2FsoPiDRnHImk4Ec9nX7aE4g3xz6tZkr8oPY3H0jtjKxVUS7tM0GQHzivH+z76duMaJ/8IrA60p/RnmEfXGe7LMaXU1Mz7vMjZZO90HkZnhoVIuvLZNaVnIUNFG3Pmcuq6mTEcRDgEzKllfdLbOM0RsHWe76rcMPp7s0TxfEZGTDX3xDgEHHQiHi8v2tK4I4ce4704LgPvOahCn1rj5qtO3X2B6HJkV7WrEMFLvI6RZ8so1tq1zE3MhRhxmIKcxUhe7iec1YifBwn5/sLMn5pA8bbSoXXRRhkY+eXAgfl3LJ+3qRAiiYgn6AKqCICLif7EW02kTyw1MMocwGWbLky5pN+aEvZI5XxuejZWuja/X392brH4qBJtIfPh2pjfp9IZyzrTp6WG02g0YxvUa4MtoOnEDmDm4d3bQwKN4oMHjS8Vblw5W6Z0Mi1XHaO5pF0c/XN3yWNxHFTOzbaohONBC1wIzRybX/HI0ELHixpoAiFi3xIQptDtY5C0SzWReR2VWbIzzL2DdfpYGAs/JAq1VAe3IhHLDAIaEN7yFkWrlDp3QMnhGkGJY5d6JahY99o=
