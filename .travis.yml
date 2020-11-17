@@ -10,7 +10,10 @@ branches:
   
 after_success: 
 #- curl -L "https://cli.run.pivotal.io/stable?release=linux64binary&source=github" | tar -zx
-- curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx
+- mkdir $HOME/cf-cli
+- curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx -C $HOME/cf-cli
+- export PATH=$PATH:$HOME/cf-cli
+- chmod +x ./deploy.sh
   
 deploy:
 #  - provider: cloudfoundry
