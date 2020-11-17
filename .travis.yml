@@ -13,7 +13,7 @@ after_success:
 - mkdir $HOME/cf-cli
 - curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx -C $HOME/cf-cli
 - export PATH=$PATH:$HOME/cf-cli
-- chmod +x ./deploy.sh
+#- chmod +x ./deploy.sh
   
 deploy:
 #  - provider: cloudfoundry
@@ -33,12 +33,12 @@ deploy:
 #      branch: develop
       
   - provider: script
-    script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_RAM=1024M ./deploy.sh
+    script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_RAM=1024M bash ./deploy.sh
     on:
       branch: feature/SINF-196_multi_env_config
       
   - provider: script
-    script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_RAM=1024M ./deploy.sh
+    script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_RAM=1024M bash ./deploy.sh
     on:
       branch: develop
       
