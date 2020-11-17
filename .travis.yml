@@ -16,13 +16,13 @@ after_success:
 deploy:
   - provider: script
     skip_cleanup: true
-    script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_RAM=1024M bash ./deploy.sh
+    script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_MEMORY=1024M bash ./deploy.sh
     on:
       branch: feature/SINF-196_multi_env_config
       
   - provider: script
     skip_cleanup: true
-    script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_RAM=1024M bash ./deploy.sh
+    script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_MEMORY=1024M bash ./deploy.sh
     on:
       branch: develop
       
