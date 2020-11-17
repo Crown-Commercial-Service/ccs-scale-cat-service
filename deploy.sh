@@ -1,5 +1,5 @@
 #!/bin/bash
-set -meo pipefail
+# set -meo pipefail
 
 pwd
 ls -altr
