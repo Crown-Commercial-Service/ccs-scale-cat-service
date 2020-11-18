@@ -14,8 +14,9 @@ public class AgreementsService {
 
   private final RestTemplate restTemplate;
 
-  public AgreementsService(@Value("${AGREEMENTS_SERVICE_URL}") final String agreementsSvcUrl,
-      @Value("${AGREEMENTS_SERVICE_API_KEY}") final String agreementsSvcApiKey,
+  public AgreementsService(
+      @Value("${AGREEMENTS_SERVICE_URL:http://localhost:9010}") final String agreementsSvcUrl,
+      @Value("${AGREEMENTS_SERVICE_API_KEY:abc123}") final String agreementsSvcApiKey,
       final RestTemplateBuilder restTemplateBuilder) {
 
     restTemplate = restTemplateBuilder.rootUri(agreementsSvcUrl)
