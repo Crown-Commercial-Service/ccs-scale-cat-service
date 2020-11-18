@@ -1,6 +1,6 @@
 ---
 applications:
-- name: ccs-scale-cat-service
+- name: ((route-prefix))ccs-scale-cat-service
   routes:
   - route: ((route-prefix))ccs-scale-cat-service.apps.internal
   memory: ((memory))
