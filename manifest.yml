@@ -10,3 +10,4 @@ applications:
   env:
     AGREEMENTS_SERVICE_URL: ((agreements-svc-url))
     AGREEMENTS_SERVICE_API_KEY: ((agreements-svc-api-key))
+    ROLLBAR_ACCESS_TOKEN: ((ROLLBAR_ACCESS_TOKEN))
