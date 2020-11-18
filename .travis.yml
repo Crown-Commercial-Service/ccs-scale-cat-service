@@ -5,7 +5,7 @@ cache:
   - "$HOME/.m2"
 branches:
   only:
-  - feature/SINF-196_multi_env_config
+  - feature/SINF-198_rollbar_integration
   - develop
   
 after_success: 
@@ -18,7 +18,7 @@ deploy:
     skip_cleanup: true
     script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_MEMORY=1024M bash ./deploy.sh
     on:
-      branch: feature/SINF-196_multi_env_config
+      branch: feature/SINF-198_rollbar_integration
       
   - provider: script
     skip_cleanup: true
