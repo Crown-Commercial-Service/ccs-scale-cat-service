@@ -15,7 +15,7 @@ after_success:
 deploy:
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_MEMORY=1024M bash ./deploy.sh
+  script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_MEMORY=1024M AGREEMENTS_SERVICE_URL=$AGREEMENTS_SERVICE_URL_TST bash ./deploy.sh
   on:
     all_branches: true
     condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/SINF-[0-9]+.*$"
