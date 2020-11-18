@@ -15,7 +15,7 @@ public class Application {
 
   private final Rollbar rollbar;
 
-  @Value("${AGREEMENTS_SERVICE_URL}")
+  @Value("${AGREEMENTS_SERVICE_URL:http://localhost:9010}")
   private String agrementsServiceUrl;
 
   public static void main(final String[] args) {
