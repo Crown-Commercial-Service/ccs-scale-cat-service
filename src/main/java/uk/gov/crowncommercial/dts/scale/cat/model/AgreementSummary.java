@@ -1,11 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Agreement Summary.
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AgreementSummary {
 
   /**
