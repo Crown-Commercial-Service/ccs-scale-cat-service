@@ -1,9 +1,14 @@
 ---
 applications:
-- name: ((route-prefix))ccs-scale-cat-service
+- name: ((CF_ROUTE_PREFIX))ccs-scale-cat-service
   routes:
-  - route: ((route-prefix))ccs-scale-cat-service.apps.internal
-  memory: ((memory))
+  - route: ((CF_ROUTE_PREFIX))ccs-scale-cat-service.apps.internal
+  memory: ((CF_MEMORY))
   buildpacks: 
     - https://github.com/cloudfoundry/java-buildpack#v4.33
   path: target/ccs-scale-cat-service-0.0.1-SNAPSHOT.jar
+  env:
+    AGREEMENTS_SERVICE_URL: ((AGREEMENTS_SERVICE_URL))
+    AGREEMENTS_SERVICE_API_KEY: ((AGREEMENTS_SERVICE_API_KEY))
+    ROLLBAR_ACCESS_TOKEN: ((ROLLBAR_ACCESS_TOKEN))
+    ROLLBAR_ENV: ((ROLLBAR_ENV))
