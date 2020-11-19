@@ -1,23 +1,26 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.model.AgreementSummary;
+import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 
 /**
  *
  */
 @RestController
+@RequiredArgsConstructor
 public class AgreementsController {
+
+  private final AgreementsService agreementsService;
 
   @GetMapping("/agreement-summaries")
   public Set<AgreementSummary> getAgreementSummaries() {
-    AgreementSummary tp2 = new AgreementSummary();
-    tp2.setName("Technology Products 2");
-    tp2.setNumber("RM1045");
-    return Collections.singleton(tp2);
+    return new HashSet<>(Arrays.asList(agreementsService.findAll()));
   }
 
 }

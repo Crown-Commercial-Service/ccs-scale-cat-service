@@ -22,15 +22,15 @@ public class RollbarConfig {
    */
   @Bean
   public Rollbar rollbar(
-      @Value("${rollbar.access-token:override-via-env}") final String rollbarAccessToken) {
-    return new Rollbar(getRollbarConfigs(rollbarAccessToken));
+      @Value("${ROLLBAR_ACCESS_TOKEN:override-via-env}") final String rollbarAccessToken,
+      @Value("${ROLLBAR_ENV:local}") final String rollbarEnv) {
+    return new Rollbar(getRollbarConfigs(rollbarAccessToken, rollbarEnv));
   }
 
-  private Config getRollbarConfigs(final String accessToken) {
+  private Config getRollbarConfigs(final String accessToken, final String rollbarEnv) {
 
     // Reference ConfigBuilder.java for all the properties you can set for Rollbar
-    return RollbarSpringConfigBuilder.withAccessToken(accessToken).environment("development")
-        .build();
+    return RollbarSpringConfigBuilder.withAccessToken(accessToken).environment(rollbarEnv).build();
   }
 
 }
