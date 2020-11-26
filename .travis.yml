@@ -7,10 +7,10 @@ branches:
   only:
   - "/^(feature|bugfix)\\/SINF-[0-9]+.*$/"
   - develop
+  - main
 after_success:
 - mkdir $HOME/cf-cli
-- curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github"
-  | tar -zx -C $HOME/cf-cli
+- curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx -C $HOME/cf-cli
 - export PATH=$PATH:$HOME/cf-cli
 deploy:
 - provider: script
@@ -24,6 +24,11 @@ deploy:
   script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_MEMORY=1024M AGREEMENTS_SERVICE_URL=$AGREEMENTS_SERVICE_URL_TST AGREEMENTS_SERVICE_API_KEY=$AGREEMENTS_SERVICE_API_KEY_TST ROLLBAR_ENV=development bash ./deploy.sh
   on:
     branch: develop
+- provider: script
+  skip_cleanup: true
+  script: CF_ROUTE_PREFIX=int- CF_SPACE=INT CF_MEMORY=1024M AGREEMENTS_SERVICE_URL=$AGREEMENTS_SERVICE_URL_TST AGREEMENTS_SERVICE_API_KEY=$AGREEMENTS_SERVICE_API_KEY_TST ROLLBAR_ENV=integration bash ./deploy.sh
+  on:
+    branch: main
     
 # WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments
 env:
