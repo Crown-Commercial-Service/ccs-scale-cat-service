@@ -23,11 +23,11 @@ import uk.gov.crowncommercial.dts.scale.cat.model.AgreementSummary;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {AgreementsServiceConfig.class, AgreementsService.class})
-public class AgreementsServiceTest {
+@SpringBootTest(classes = {AgreementsServiceConfig.class, ProjectService.class})
+public class ProjectServiceTest {
 
   @Autowired
-  private AgreementsService agreementService;
+  private ProjectService agreementService;
 
   @Autowired
   private RestTemplate restTemplate;

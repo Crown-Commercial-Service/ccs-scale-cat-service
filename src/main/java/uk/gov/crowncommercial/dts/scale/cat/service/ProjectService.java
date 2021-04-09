@@ -10,7 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.AgreementSummary;
  */
 @Service
 @RequiredArgsConstructor
-public class AgreementsService {
+public class ProjectService {
 
   private final RestTemplate restTemplate;
 
