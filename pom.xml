@@ -34,9 +34,20 @@
 			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.rollbar</groupId>
 			<artifactId>rollbar-spring-boot-webmvc</artifactId>
 			<version>${rollbar.version}</version>
+		</dependency>
+		<dependency>
+			<!-- <groupId>io.swagger.core.v3</groupId> <artifactId>swagger-annotations</artifactId> 
+				<version>2.1.7</version> -->
+			<groupId>io.swagger</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>1.6.2</version>
 		</dependency>
 
 		<dependency>
@@ -73,6 +84,34 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.openapitools</groupId>
+				<artifactId>openapi-generator-maven-plugin</artifactId>
+				<version>5.1.0</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/CaT-service.yaml</inputSpec>
+							<generatorName>spring</generatorName>
+							<generateModels>true</generateModels>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateApis>false</generateApis>
+							<generateModelTests>false</generateModelTests>
+							<packageName>uk.gov.crowncommercial.dts.scale.cat.generated</packageName>
+							<skipValidateSpec>true</skipValidateSpec>
+							<languageSpecificPrimitives>OneOfstringinteger</languageSpecificPrimitives>
+							<typeMappings>OneOfstringinteger=String,FileFormat=Object</typeMappings>
+							<additionalProperties>useBeanValidation=false,hideGenerationTimestamp=true,openApiNullable=false</additionalProperties>
+							<configOptions>
+								<sourceFolder>src/gen/java/main</sourceFolder>
+							</configOptions>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
