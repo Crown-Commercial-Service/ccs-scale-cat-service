@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -20,23 +21,15 @@ public class OAuth2SecurityConfig extends WebSecurityConfigurerAdapter {
   @Override
   protected void configure(HttpSecurity http) throws Exception {
 
-    // @formatter:off
     http.authorizeRequests(authz -> {
-        try {
-          authz
-              //.mvcMatchers(HttpMethod.POST, "/tenders/projects/agreements").hasAuthority("ORG_ADMINISTRATOR")
-              //.antMatchers("/**").hasAnyRole("ORG_ADMINISTRATOR")
-              .antMatchers("/tenders/projects/agreements").hasAuthority("ORG_USER_SUPPORT")
-              //.anyRequest().authenticated().and().csrf().disable();
-              .anyRequest().denyAll();
-        } catch (Exception e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
-        }
-    })
-        .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
-
-    // @formatter:on
+      authz
+      // @formatter:off
+        // .antMatchers(HttpMethod.POST,
+        // "/tenders/projects/agreements").hasAnyAuthority("ORG_ADMINISTRATOR")
+        .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").authenticated()
+        .anyRequest().denyAll();
+      // @formatter:on
+    }).oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
   }
 
   // @Bean
