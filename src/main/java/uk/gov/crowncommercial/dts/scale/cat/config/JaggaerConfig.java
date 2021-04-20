@@ -1,10 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.InMemoryReactiveOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  *
@@ -12,46 +14,22 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class JaggaerConfig {
 
-  private final RestTemplate restTemplate;
+  @Bean("jaggaerWebClient")
+  WebClient webClient(ReactiveClientRegistrationRepository clientRegistrations) {
 
-  public JaggaerConfig(@Value("${JAGGAER_URL:http://localhost:9010}") final String jaggaerUrl,
-      @Value("${JAGGAER_CLIENT_ID:abc123}") final String jaggaerClientId) {
+    InMemoryReactiveOAuth2AuthorizedClientService clientService =
+        new InMemoryReactiveOAuth2AuthorizedClientService(clientRegistrations);
 
-    restTemplate = new RestTemplateBuilder().rootUri(jaggaerUrl)
-        .defaultHeader("x-api-key", jaggaerClientId).build();
-  }
+    AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager authorizedClientManager =
+        new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(clientRegistrations,
+            clientService);
 
-  // @Bean
-  // protected OAuth2ProtectedResourceDetails oauth2Resource() {
-  // ClientCredentialsResourceDetails clientCredentialsResourceDetails =
-  // new ClientCredentialsResourceDetails();
-  // clientCredentialsResourceDetails.setAccessTokenUri(tokenUrl);
-  // clientCredentialsResourceDetails.setClientId(clientId);
-  // clientCredentialsResourceDetails.setClientSecret(clientSecret);
-  // clientCredentialsResourceDetails.setGrantType("client_credentials"); // this depends on your
-  // // specific OAuth2 server
-  // clientCredentialsResourceDetails.setAuthenticationScheme(AuthenticationScheme.header); // this
-  // // again
-  // // depends
-  // // on the
-  // // OAuth2
-  // // server
-  // // specifications
-  // return clientCredentialsResourceDetails;
-  // }
-  //
-  // @Bean
-  // public OAuth2RestTemplate oauth2RestTemplate() {
-  // AccessTokenRequest atr = new DefaultAccessTokenRequest();
-  // OAuth2RestTemplate oauth2RestTemplate =
-  // new OAuth2RestTemplate(oauth2Resource(), new DefaultOAuth2ClientContext(atr));
-  // oauth2RestTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
-  // return oauth2RestTemplate;
-  // }
+    ServerOAuth2AuthorizedClientExchangeFilterFunction oauth =
+        new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+    oauth.setDefaultClientRegistrationId("myprovider");
+    oauth.setDefaultClientRegistrationId("jaggaer");
 
-  @Bean("jaggaerRestTemplate")
-  public RestTemplate jaggaerRestTemplate() {
-    return restTemplate;
+    return WebClient.builder().filter(oauth).build();
   }
 
 }

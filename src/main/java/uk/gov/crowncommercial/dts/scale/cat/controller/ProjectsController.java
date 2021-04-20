@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.rollbar.notifier.Rollbar;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerUserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProjectService;
 
 /**
@@ -20,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProjectService;
 public class ProjectsController {
 
   private final Rollbar rollbar;
+  private final JaggaerUserProfileService jaggaerUserProfileService;
   private final ProjectService projectService;
 
   // @PreAuthorize("hasAuthority('ORG_ADMINISTRATOR')")
@@ -28,10 +30,12 @@ public class ProjectsController {
       @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
     rollbar.debug("POST createProcurementProject invoked");
 
-    log.info("createProcuremenProject invoked on bahelf of user: {}",
-        authentication.getTokenAttributes().get("sub").toString());
+    String principal = authentication.getTokenAttributes().get("sub").toString();
+    String jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
+    log.info("createProcuremenProject invoked on bahelf of principal: {}, jaggaerUserId: {}",
+        principal, jaggaerUserId);
 
-    return projectService.createProjectFromAgreement(agreementDetails);
+    return projectService.createProjectFromAgreement(agreementDetails, jaggaerUserId);
   }
 
 }

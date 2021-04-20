@@ -4,9 +4,34 @@
 #      resourceserver:
 #        jwt:
 #          jwk-set-uri: "SET IN ENV"
+
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          jaggaer:
+            token-uri: https://crowncommercialservice-ws02-prep.bravosolution.co.uk/esop/jint/api/public/v1/tokens 
+        registration:
+          jaggaer:
+            authorization-grant-type: client_credentials
+            # clientId: SET IN ENV
+            # clientSecret: SET IN ENV
           
 logging:
   level:
     org:
       springframework:
-        security: DEBUG          
+        security: TRACE
+        
+# JAGGAER CONFIG
+config:
+  external:
+    jaggaer:
+      createProject:
+        endpoint: /esop/jint/api/public/ja/v1/projects
+        templateId: project_609
+      createEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/
+        templateId: itt_543 
+         

@@ -4,8 +4,9 @@ import org.openapitools.model.AgreementDetails;
 import org.openapitools.model.DefaultName;
 import org.openapitools.model.DraftProcurementProject;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
 /**
  * Simple service example to fetch data from the Scale shared Agreements Service
@@ -14,9 +15,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ProjectService {
 
-  private final RestTemplate jaggaerRestTemplate;
+  private final WebClient jaggaerWebClient;
 
-  public DraftProcurementProject createProjectFromAgreement(AgreementDetails agreementDetails) {
+  public DraftProcurementProject createProjectFromAgreement(AgreementDetails agreementDetails,
+      String jaggaerUserId) {
+
     DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
     DefaultName defaultName = new DefaultName();
     defaultName.setName("CA123-Lot123-Org123");
@@ -31,7 +34,15 @@ public class ProjectService {
      * - Query the Tenders DB for Jaggaer project template based on the incoming CA and Lot
      *
      * - Construct and call Jaggaer create project endpoint (with/without sourceTemplateCode)
-     *
+     */
+
+    CreateUpdateProject createUpdateProject =
+        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
+            new Project(
+                Tender.builder().title("CA-LOT-TODO").buyerCompany(new BuyerCompany("52423"))
+                    .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
+
+    /*
      * - Persist the templateReferenceCode as procurement ID to the Tenders DB against CA/Lot
      *
      * - Invoke EventService.createEvent()
