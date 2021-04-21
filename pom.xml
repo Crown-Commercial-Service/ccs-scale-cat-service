@@ -53,12 +53,12 @@
 			<artifactId>swagger-annotations</artifactId>
 			<version>2.1.8</version>
 		</dependency>
-<!-- https://mvnrepository.com/artifact/io.swagger/swagger-annotations -->
-<dependency>
-    <groupId>io.swagger</groupId>
-    <artifactId>swagger-annotations</artifactId>
-    <version>1.6.2</version>
-</dependency>
+		<!-- https://mvnrepository.com/artifact/io.swagger/swagger-annotations -->
+		<dependency>
+			<groupId>io.swagger</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>1.6.2</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -101,11 +101,12 @@
 				<version>3.0.25</version>
 				<executions>
 					<execution>
+						<id>exec-swag-1</id>
 						<goals>
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>${project.basedir}/src/main/resources/OCDS_Vanilla.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-api-definitions-common/main/OCDS/OCDS_Vanilla.yaml</inputSpec>
 							<language>java</language>
 							<packageName>${client.base.package.name}</packageName>
 							<modelPackage>${client.base.package.name}.model</modelPackage>
@@ -114,7 +115,37 @@
 							<generateApis>false</generateApis>
 							<generateModelTests>false</generateModelTests>
 							<generateModelDocumentation>false</generateModelDocumentation>
-							<verbose>true</verbose>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<verbose>false</verbose>
+							<configOptions>
+								<groupId>${project.groupId}</groupId>
+								<artifactId>${project.artifactId}</artifactId>
+								<artifactVersion>${project.version}</artifactVersion>
+								<library>resttemplate</library>
+								<java8>true</java8>
+								<dateLibrary>java8</dateLibrary>
+								<licenseName>Apache 2.0</licenseName>
+								<licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+							</configOptions>
+						</configuration>
+					</execution>
+					<execution>
+						<id>exec-swag-2</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec>
+							<language>java</language>
+							<packageName>${client.base.package.name}</packageName>
+							<modelPackage>${client.base.package.name}.model</modelPackage>
+							<apiPackage>${client.base.package.name}.api</apiPackage>
+							<invokerPackage>${client.base.package.name}.invoker</invokerPackage>
+							<generateApis>false</generateApis>
+							<generateModelTests>false</generateModelTests>
+							<generateModelDocumentation>false</generateModelDocumentation>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<verbose>false</verbose>
 							
 							<configOptions>
 								<groupId>${project.groupId}</groupId>
@@ -123,25 +154,50 @@
 								<library>resttemplate</library>
 								<java8>true</java8>
 								<dateLibrary>java8</dateLibrary>
-								<licenseName>Apache
-									2.0</licenseName>
+								<licenseName>Apache 2.0</licenseName>
 								<licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
 							</configOptions>
 						</configuration>
 					</execution>
 				</executions>
-			</plugin> -->
+			</plugin>
+ -->
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>5.1.0</version>
 				<executions>
 					<execution>
+						<id>exec1</id>
 						<goals>
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<!-- <inputSpec>${project.basedir}/src/main/resources/OCDS_Vanilla.json</inputSpec> -->
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-api-definitions-common/main/OCDS/OCDS_Vanilla.yaml</inputSpec>
+							<generatorName>spring</generatorName>
+							<generateModels>true</generateModels>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateApis>false</generateApis>
+							<generateModelTests>false</generateModelTests>
+							<packageName>uk.gov.crowncommercial.dts.scale.cat.generated</packageName>
+							<skipValidateSpec>true</skipValidateSpec>
+							<strictSpec>false</strictSpec>
+							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerarrayobject,OneOfLinkedReleaseEmbeddedRelease</languageSpecificPrimitives>
+							<typeMappings>OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerarrayobject=String,OneOfLinkedReleaseEmbeddedRelease=Object</typeMappings>
+							<verbose>false</verbose>
+							<additionalProperties>useBeanValidation=false,hideGenerationTimestamp=true,openApiNullable=false</additionalProperties>
+
+							<configOptions>
+								<sourceFolder>src/gen/java/main</sourceFolder>
+							</configOptions>
+						</configuration>
+					</execution>
+					<execution>
+						<id>exec2</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
 							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
@@ -155,7 +211,6 @@
 							<typeMappings>OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerarrayobject=String,OneOfLinkedReleaseEmbeddedRelease=Object</typeMappings>
 							<verbose>false</verbose>
 							<additionalProperties>useBeanValidation=false,hideGenerationTimestamp=true,openApiNullable=false</additionalProperties>
-							
 							<configOptions>
 								<sourceFolder>src/gen/java/main</sourceFolder>
 							</configOptions>
