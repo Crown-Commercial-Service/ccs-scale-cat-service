@@ -47,13 +47,18 @@
 			<artifactId>rollbar-spring-boot-webmvc</artifactId>
 			<version>${rollbar.version}</version>
 		</dependency>
-		<dependency>
-			<!-- <groupId>io.swagger.core.v3</groupId> <artifactId>swagger-annotations</artifactId> 
-				<version>2.1.7</version> -->
-			<groupId>io.swagger</groupId>
+		<!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-annotations -->
+<!-- 		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
 			<artifactId>swagger-annotations</artifactId>
-			<version>1.6.2</version>
-		</dependency>
+			<version>2.1.8</version>
+		</dependency> -->
+<!-- https://mvnrepository.com/artifact/io.swagger/swagger-annotations -->
+<dependency>
+    <groupId>io.swagger</groupId>
+    <artifactId>swagger-annotations</artifactId>
+    <version>1.6.2</version>
+</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -90,20 +95,43 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- <plugin> This 2019 version is required for OpenAPI 3 <groupId>io.swagger.codegen.v3</groupId> 
-				<artifactId>swagger-codegen-maven-plugin</artifactId> <version>3.0.25</version> 
-				<executions> <execution> <goals> <goal>generate</goal> </goals> <configuration> 
-				<inputSpec>${project.basedir}/src/main/resources/CaT-service.yaml</inputSpec> 
-				<language>java</language> <packageName>${client.base.package.name}</packageName> 
-				<modelPackage>${client.base.package.name}.model</modelPackage> <apiPackage>${client.base.package.name}.api</apiPackage> 
-				<invokerPackage>${client.base.package.name}.invoker</invokerPackage> <generateApis>false</generateApis> 
-				<generateModelTests>false</generateModelTests> <generateModelDocumentation>false</generateModelDocumentation> 
-				<configOptions> <groupId>${project.groupId}</groupId> <artifactId>${project.artifactId}</artifactId> 
-				<artifactVersion>${project.version}</artifactVersion> <library>resttemplate</library> 
-				<java8>true</java8> <dateLibrary>java8</dateLibrary> <licenseName>Apache 
-				2.0</licenseName> <licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl> 
-				</configOptions> </configuration> </execution> </executions> </plugin> -->
 			<plugin>
+				<groupId>io.swagger.codegen.v3</groupId>
+				<artifactId>swagger-codegen-maven-plugin</artifactId>
+				<version>3.0.25</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>${project.basedir}/src/main/resources/CaT-service.yaml</inputSpec>
+							<language>java</language>
+							<packageName>${client.base.package.name}</packageName>
+							<modelPackage>${client.base.package.name}.model</modelPackage>
+							<apiPackage>${client.base.package.name}.api</apiPackage>
+							<invokerPackage>${client.base.package.name}.invoker</invokerPackage>
+							<generateApis>false</generateApis>
+							<generateModelTests>false</generateModelTests>
+							<generateModelDocumentation>false</generateModelDocumentation>
+							<verbose>true</verbose>
+							
+							<configOptions>
+								<groupId>${project.groupId}</groupId>
+								<artifactId>${project.artifactId}</artifactId>
+								<artifactVersion>${project.version}</artifactVersion>
+								<library>resttemplate</library>
+								<java8>true</java8>
+								<dateLibrary>java8</dateLibrary>
+								<licenseName>Apache
+									2.0</licenseName>
+								<licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+							</configOptions>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+<!-- 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>5.1.0</version>
@@ -121,8 +149,10 @@
 							<generateModelTests>false</generateModelTests>
 							<packageName>uk.gov.crowncommercial.dts.scale.cat.generated</packageName>
 							<skipValidateSpec>true</skipValidateSpec>
+							<strictSpec>false</strictSpec>
 							<languageSpecificPrimitives>OneOfstringinteger</languageSpecificPrimitives>
 							<typeMappings>OneOfstringinteger=String,FileFormat=Object</typeMappings>
+							<verbose>false</verbose>
 							<additionalProperties>useBeanValidation=false,hideGenerationTimestamp=true,openApiNullable=false</additionalProperties>
 							<configOptions>
 								<sourceFolder>src/gen/java/main</sourceFolder>
@@ -130,7 +160,7 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>
+			</plugin> -->
 		</plugins>
 	</build>
 

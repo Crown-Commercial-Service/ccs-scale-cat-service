@@ -15,8 +15,8 @@ spring:
         registration:
           jaggaer:
             authorization-grant-type: client_credentials
-            # clientId: SET IN ENV
-            # clientSecret: SET IN ENV
+            client-id: "SET IN ENV"
+            client-secret: "SET IN ENV"
           
 logging:
   level:
