@@ -48,11 +48,11 @@
 			<version>${rollbar.version}</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-annotations -->
-<!-- 		<dependency>
+		<dependency>
 			<groupId>io.swagger.core.v3</groupId>
 			<artifactId>swagger-annotations</artifactId>
 			<version>2.1.8</version>
-		</dependency> -->
+		</dependency>
 <!-- https://mvnrepository.com/artifact/io.swagger/swagger-annotations -->
 <dependency>
     <groupId>io.swagger</groupId>
@@ -95,7 +95,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<plugin>
+<!-- 			<plugin>
 				<groupId>io.swagger.codegen.v3</groupId>
 				<artifactId>swagger-codegen-maven-plugin</artifactId>
 				<version>3.0.25</version>
@@ -105,7 +105,7 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>${project.basedir}/src/main/resources/CaT-service.yaml</inputSpec>
+							<inputSpec>${project.basedir}/src/main/resources/OCDS_Vanilla.yaml</inputSpec>
 							<language>java</language>
 							<packageName>${client.base.package.name}</packageName>
 							<modelPackage>${client.base.package.name}.model</modelPackage>
@@ -130,8 +130,8 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>
-<!-- 			<plugin>
+			</plugin> -->
+			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>5.1.0</version>
@@ -141,7 +141,8 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>${project.basedir}/src/main/resources/CaT-service.yaml</inputSpec>
+							<!-- <inputSpec>${project.basedir}/src/main/resources/OCDS_Vanilla.json</inputSpec> -->
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
@@ -150,17 +151,18 @@
 							<packageName>uk.gov.crowncommercial.dts.scale.cat.generated</packageName>
 							<skipValidateSpec>true</skipValidateSpec>
 							<strictSpec>false</strictSpec>
-							<languageSpecificPrimitives>OneOfstringinteger</languageSpecificPrimitives>
-							<typeMappings>OneOfstringinteger=String,FileFormat=Object</typeMappings>
+							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerarrayobject,OneOfLinkedReleaseEmbeddedRelease</languageSpecificPrimitives>
+							<typeMappings>OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerarrayobject=String,OneOfLinkedReleaseEmbeddedRelease=Object</typeMappings>
 							<verbose>false</verbose>
 							<additionalProperties>useBeanValidation=false,hideGenerationTimestamp=true,openApiNullable=false</additionalProperties>
+							
 							<configOptions>
 								<sourceFolder>src/gen/java/main</sourceFolder>
 							</configOptions>
 						</configuration>
 					</execution>
 				</executions>
-			</plugin> -->
+			</plugin>
 		</plugins>
 	</build>
 
