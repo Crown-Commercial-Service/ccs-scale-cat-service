@@ -1,11 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.util.Map;
 import org.openapitools.model.AgreementDetails;
 import org.openapitools.model.DefaultName;
 import org.openapitools.model.DraftProcurementProject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
 /**
@@ -13,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProjectService {
 
   private final WebClient jaggaerWebClient;
@@ -48,6 +51,12 @@ public class ProjectService {
      * - Invoke EventService.createEvent()
      *
      */
+
+    Map<String, Object> result = jaggaerWebClient.get()
+        .uri("/esop/jint/api/public/ja/v1/projects/{projectId}", "tender_42433").retrieve()
+        .bodyToMono(Map.class).block();
+
+    log.info("PROJECT: " + result);
 
     return draftProcurementProject;
   }
