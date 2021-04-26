@@ -31,6 +31,8 @@ config:
     jaggaer:
       base-url: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
       createProject:
+        # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
+        defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
         templateId: project_609
       createEvent:

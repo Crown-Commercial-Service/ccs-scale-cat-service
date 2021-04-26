@@ -7,12 +7,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerOAuth2Config;
 
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {JaggaerConfig.class, ProjectService.class})
+@SpringBootTest(classes = {JaggaerOAuth2Config.class, ProjectService.class})
 public class ProjectServiceTest {
 
   @Autowired

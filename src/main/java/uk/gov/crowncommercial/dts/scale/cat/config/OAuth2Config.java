@@ -16,20 +16,21 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 @Configuration
 // @EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity
-public class OAuth2SecurityConfig extends WebSecurityConfigurerAdapter {
+public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
   @Override
   protected void configure(HttpSecurity http) throws Exception {
 
+    // @formatter:off
     http.authorizeRequests(authz -> {
       authz
-      // @formatter:off
         // .antMatchers(HttpMethod.POST,
         // "/tenders/projects/agreements").hasAnyAuthority("ORG_ADMINISTRATOR")
         .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").authenticated()
         .anyRequest().denyAll();
-      // @formatter:on
+
     }).oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+    // @formatter:on
   }
 
   // @Bean
@@ -48,4 +49,5 @@ public class OAuth2SecurityConfig extends WebSecurityConfigurerAdapter {
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
     return jwtAuthenticationConverter;
   }
+
 }

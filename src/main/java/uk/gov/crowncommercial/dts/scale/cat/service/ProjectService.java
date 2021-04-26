@@ -1,13 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Map;
-import org.openapitools.model.AgreementDetails;
-import org.openapitools.model.DefaultName;
-import org.openapitools.model.DraftProcurementProject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
 /**
@@ -59,6 +59,10 @@ public class ProjectService {
     log.info("PROJECT: " + result);
 
     return draftProcurementProject;
+  }
+
+  String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
+    return "TODO";
   }
 
 }
