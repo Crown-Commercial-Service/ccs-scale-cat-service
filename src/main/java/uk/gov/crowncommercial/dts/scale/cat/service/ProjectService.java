@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
@@ -18,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 @Slf4j
 public class ProjectService {
 
+  private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
 
   public DraftProcurementProject createProjectFromAgreement(AgreementDetails agreementDetails,
@@ -25,7 +27,7 @@ public class ProjectService {
 
     DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
     DefaultName defaultName = new DefaultName();
-    defaultName.setName("CA123-Lot123-Org123");
+    defaultName.setName(getDefaultProjectTitle(agreementDetails, "CCS"));
     draftProcurementProject.setDefaultName(defaultName);
 
     /*
@@ -41,9 +43,9 @@ public class ProjectService {
 
     CreateUpdateProject createUpdateProject =
         new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-            new Project(
-                Tender.builder().title("CA-LOT-TODO").buyerCompany(new BuyerCompany("52423"))
-                    .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
+            new Project(Tender.builder().title(getDefaultProjectTitle(agreementDetails, "CCS"))
+                .buyerCompany(new BuyerCompany("52423"))
+                .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
 
     /*
      * - Persist the templateReferenceCode as procurement ID to the Tenders DB against CA/Lot
@@ -52,17 +54,18 @@ public class ProjectService {
      *
      */
 
-    Map<String, Object> result = jaggaerWebClient.get()
-        .uri("/esop/jint/api/public/ja/v1/projects/{projectId}", "tender_42433").retrieve()
-        .bodyToMono(Map.class).block();
+    Map<String, Object> createProjectResult =
+        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+            .bodyValue(createUpdateProject).retrieve().bodyToMono(Map.class).block();
 
-    log.info("PROJECT: " + result);
+    log.info("Created project: " + createProjectResult);
 
     return draftProcurementProject;
   }
 
   String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
-    return "TODO";
+    return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
+        agreementDetails.getAgreementID(), agreementDetails.getLotID(), organisation);
   }
 
 }
