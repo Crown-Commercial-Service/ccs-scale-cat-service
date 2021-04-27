@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultNameComponents;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
@@ -25,10 +25,7 @@ public class ProjectService {
   public DraftProcurementProject createProjectFromAgreement(AgreementDetails agreementDetails,
       String jaggaerUserId) {
 
-    DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
-    DefaultName defaultName = new DefaultName();
-    defaultName.setName(getDefaultProjectTitle(agreementDetails, "CCS"));
-    draftProcurementProject.setDefaultName(defaultName);
+    String projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
     /*
      * TODO:
@@ -41,11 +38,9 @@ public class ProjectService {
      * - Construct and call Jaggaer create project endpoint (with/without sourceTemplateCode)
      */
 
-    CreateUpdateProject createUpdateProject =
-        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-            new Project(Tender.builder().title(getDefaultProjectTitle(agreementDetails, "CCS"))
-                .buyerCompany(new BuyerCompany("52423"))
-                .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
+    CreateUpdateProject createUpdateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("52423"))
+            .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
 
     /*
      * - Persist the templateReferenceCode as procurement ID to the Tenders DB against CA/Lot
@@ -54,11 +49,24 @@ public class ProjectService {
      *
      */
 
-    Map<String, Object> createProjectResult =
-        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
-            .bodyValue(createUpdateProject).retrieve().bodyToMono(Map.class).block();
+    CreateUpdateProjectResponse createProjectResponse = jaggaerWebClient.post()
+        .uri(jaggaerAPIConfig.getCreateProject().get("endpoint")).bodyValue(createUpdateProject)
+        .retrieve().bodyToMono(CreateUpdateProjectResponse.class).block();
 
-    log.info("Created project: " + createProjectResult);
+    if (createProjectResponse.getReturnCode() != 0
+        || !createProjectResponse.getReturnMessage().equals("OK")) {
+      log.error(createProjectResponse.toString());
+      throw new RuntimeException("TODO: Error creating project");
+    }
+    log.info("Created project: {}", createProjectResponse);
+
+    DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
+    DefaultName defaultName = new DefaultName();
+    defaultName.setName(projectTitle);
+    DefaultNameComponents defaultNameComps = new DefaultNameComponents();
+    defaultNameComps.setAgreement(agreementDetails.getAgreementID());
+    defaultNameComps.setOrg("CCS");
+    draftProcurementProject.setDefaultName(defaultName);
 
     return draftProcurementProject;
   }

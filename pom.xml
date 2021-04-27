@@ -18,7 +18,7 @@
 	<properties>
 		<java.version>11</java.version>
 		<rollbar.version>1.7.6</rollbar.version>
-		<client.base.package.name>uk.gov.crowncommercial.dts.scale.cat</client.base.package.name>
+		<swagger-parser.version>2.0.25</swagger-parser.version>
 	</properties>
 
 	<dependencies>
@@ -43,21 +43,20 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
 			<groupId>com.rollbar</groupId>
 			<artifactId>rollbar-spring-boot-webmvc</artifactId>
 			<version>${rollbar.version}</version>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-annotations -->
+
 		<dependency>
-			<groupId>io.swagger.core.v3</groupId>
-			<artifactId>swagger-annotations</artifactId>
-			<version>2.1.8</version>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/io.swagger/swagger-annotations -->
-		<dependency>
-			<groupId>io.swagger</groupId>
-			<artifactId>swagger-annotations</artifactId>
-			<version>1.6.2</version>
+			<groupId>io.swagger.parser.v3</groupId>
+			<artifactId>swagger-parser</artifactId>
+			<version>${swagger-parser.version}</version>
 		</dependency>
 
 		<dependency>
@@ -87,6 +86,7 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -95,13 +95,12 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-<!-- 			<plugin>
+			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>5.1.0</version>
 				<executions>
 					<execution>
-						<id>exec3</id>
 						<goals>
 							<goal>generate</goal>
 						</goals>
@@ -112,11 +111,12 @@
 							<generateSupportingFiles>false</generateSupportingFiles>
 							<generateApis>false</generateApis>
 							<generateModelTests>false</generateModelTests>
-							<packageName>uk.gov.crowncommercial.dts.scale.cat.generated</packageName>
-							<skipValidateSpec>false</skipValidateSpec>
+							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.generated</modelPackage>
+							<skipValidateSpec>true</skipValidateSpec>
 							<strictSpec>false</strictSpec>
 							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1</languageSpecificPrimitives>
-							<typeMappings>OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1</typeMappings>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1</typeMappings>
+							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>
 								<sourceFolder>src/gen/java/main</sourceFolder>
@@ -130,7 +130,7 @@
 					</execution>
 				</executions>
 			</plugin>
- -->		</plugins>
+		</plugins>
 	</build>
 
 </project>
