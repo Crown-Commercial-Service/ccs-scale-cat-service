@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultNameComponents;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
@@ -61,12 +60,12 @@ public class ProjectService {
     log.info("Created project: {}", createProjectResponse);
 
     DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
+    // draftProcurementProject.setPocurementID(createProjectResponse.getTenderCode());
     DefaultName defaultName = new DefaultName();
     defaultName.setName(projectTitle);
-    DefaultNameComponents defaultNameComps = new DefaultNameComponents();
-    defaultNameComps.setAgreement(agreementDetails.getAgreementID());
-    defaultNameComps.setOrg("CCS");
+    defaultName.setComponents(agreementDetails);
     draftProcurementProject.setDefaultName(defaultName);
+    // TODO: Where has org gone in model?
 
     return draftProcurementProject;
   }
