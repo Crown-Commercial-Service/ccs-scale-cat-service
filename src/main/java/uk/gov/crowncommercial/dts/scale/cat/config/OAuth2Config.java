@@ -25,7 +25,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     http.authorizeRequests(authz -> {
       authz
         // .antMatchers(HttpMethod.POST,
-        // "/tenders/projects/agreements").hasAnyAuthority("ORG_ADMINISTRATOR")
+        // "/tenders/projects/agreements").hasAnyAuthority("CAT_USER")
         .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").authenticated()
         .anyRequest().denyAll();
 

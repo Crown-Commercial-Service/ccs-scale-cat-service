@@ -38,7 +38,7 @@ public class ProjectService {
      */
 
     CreateUpdateProject createUpdateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
-        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("52423"))
+        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
             .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
 
     /*

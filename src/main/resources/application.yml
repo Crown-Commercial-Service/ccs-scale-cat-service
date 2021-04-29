@@ -12,8 +12,15 @@ logging:
       springframework:
         security: TRACE
         
-# JAGGAER CONFIG
 spring:
+  jpa:
+    open-in-view: false
+    database: postgresql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+      
+  # JAGGAER CONFIG
   security:
     oauth2:
       client:
@@ -38,4 +45,17 @@ config:
       createEvent:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
         templateId: itt_543 
-         
+        
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource: 
+    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
+    
+  jpa:
+    database: h2
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
