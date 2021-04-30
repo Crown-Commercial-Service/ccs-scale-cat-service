@@ -20,7 +20,7 @@ public class ProcurementEvent {
 
   @Id
   @Column(columnDefinition = "uuid", name = "event_id")
-  String id;
+  String ocid;
 
   @Column(name = "jaggaer_event_id")
   String jaggaerEventId;

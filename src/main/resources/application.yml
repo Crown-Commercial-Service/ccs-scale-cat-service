@@ -34,6 +34,14 @@ spring:
 #            client-secret: "SET IN ENV"
 
 config:
+  ocds:
+    events:
+      ocid:
+        format: "%s-%s-%s"
+        components:
+          - ocds
+          - b5fd17
+          - "RANDOM#ALPHA-6"
   external:
     jaggaer:
       base-url: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
