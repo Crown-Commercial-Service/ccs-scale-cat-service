@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import java.util.Set;
-import java.util.UUID;
 import javax.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -18,8 +17,9 @@ import lombok.experimental.FieldDefaults;
 public class ProcurementProject {
 
   @Id
-  @Column(columnDefinition = "uuid", name = "project_id")
-  UUID id;
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "project_id")
+  Integer id;
 
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "project_id")

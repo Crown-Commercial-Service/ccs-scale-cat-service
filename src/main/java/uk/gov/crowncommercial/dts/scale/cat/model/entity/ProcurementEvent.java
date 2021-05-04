@@ -19,7 +19,7 @@ import lombok.experimental.FieldDefaults;
 public class ProcurementEvent {
 
   @Id
-  @Column(columnDefinition = "uuid", name = "event_id")
+  @Column(name = "event_id")
   String ocid;
 
   @Column(name = "jaggaer_event_id")

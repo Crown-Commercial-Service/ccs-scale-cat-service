@@ -12,7 +12,7 @@ public class JaggaerUserProfileService {
     /*
      * TODO: Query the Jaggaer ProfileManagement API using the principal from the token subject
      */
-    return "102463";
+    return "102990";
   }
 
 }

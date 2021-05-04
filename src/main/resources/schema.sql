@@ -1,4 +1,4 @@
-CREATE TABLE procurement_projects (project_id                  UUID PRIMARY KEY,
+CREATE TABLE procurement_projects (project_id                  SERIAL PRIMARY KEY,
                                    commercial_agreement_number VARCHAR(20)   NOT NULL,
                                    lot_number                  VARCHAR(20)   NOT NULL,
                                    jaggaer_project_id          VARCHAR(2000) NOT NULL,

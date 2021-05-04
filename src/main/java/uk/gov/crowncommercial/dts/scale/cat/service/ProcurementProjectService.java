@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.time.Instant;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -21,33 +20,24 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ProjectService {
+public class ProcurementProjectService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final JaggaerUserProfileService jaggaerUserProfileService;
   private final ProcurementProjectRepo procurementProjectRepo;
 
-  public DraftProcurementProject createProjectFromAgreement(AgreementDetails agreementDetails,
+  public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {
 
+    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
     String jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
     String projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
-    /*
-     * TODO:
-     *
-     * - Get user's Jaggaer ID and organisation from Jaggaer profile based on OIDC login id (from
-     * validated JWT via Spring Sec)
-     *
-     * - Query the Tenders DB for Jaggaer project template based on the incoming CA and Lot
-     *
-     * - Construct and call Jaggaer create project endpoint (with/without sourceTemplateCode)
-     */
-
-    CreateUpdateProject createUpdateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
-        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
-            .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
+    CreateUpdateProject createUpdateProject =
+        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
+            new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+                .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
 
     CreateUpdateProjectResponse createProjectResponse = jaggaerWebClient.post()
         .uri(jaggaerAPIConfig.getCreateProject().get("endpoint")).bodyValue(createUpdateProject)
@@ -63,9 +53,7 @@ public class ProjectService {
     /*
      * Create ProcurementEvent
      */
-    final UUID procurementProjectUUID = UUID.randomUUID();
     ProcurementProject procurementProject = new ProcurementProject();
-    procurementProject.setId(procurementProjectUUID);
     procurementProject.setCaNumber(agreementDetails.getAgreementID());
     procurementProject.setLotNumber(agreementDetails.getLotID());
     procurementProject.setJaggaerProjectId(createProjectResponse.getTenderReferenceCode());
@@ -77,7 +65,7 @@ public class ProjectService {
      */
 
     DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
-    // draftProcurementProject.setPocurementID(procurementProjectUUID);
+    draftProcurementProject.setPocurementID(procurementProject.getId());
     // draftProcurementProject.setEventID(TODO);
 
     DefaultNameComponents defaultNameComponents = new DefaultNameComponents();

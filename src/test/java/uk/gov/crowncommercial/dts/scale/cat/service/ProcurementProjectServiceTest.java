@@ -14,15 +14,15 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProjectService.class, JaggaerAPIConfig.class},
+@SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class},
     webEnvironment = WebEnvironment.NONE)
-class ProjectServiceTest {
+class ProcurementProjectServiceTest {
 
   @MockBean
   private WebClient jaggaerWebClient;
 
   @Autowired
-  private ProjectService projectService;
+  private ProcurementProjectService procurementProjectService;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 

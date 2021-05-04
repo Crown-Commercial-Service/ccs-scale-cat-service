@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.service.ProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 /**
  *
@@ -20,7 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProjectService;
 public class ProjectsController {
 
   private final Rollbar rollbar;
-  private final ProjectService projectService;
+  private final ProcurementProjectService procurementProjectService;
 
   // @PreAuthorize("hasAuthority('ORG_ADMINISTRATOR')")
   @PostMapping("/tenders/projects/agreements")
@@ -31,7 +31,7 @@ public class ProjectsController {
     String principal = authentication.getTokenAttributes().get("sub").toString();
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
 
-    return projectService.createProjectFromAgreement(agreementDetails, principal);
+    return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
   }
 
 }
