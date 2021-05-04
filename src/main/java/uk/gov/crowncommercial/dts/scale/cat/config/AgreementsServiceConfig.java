@@ -22,7 +22,7 @@ public class AgreementsServiceConfig {
         .defaultHeader("x-api-key", agreementsSvcApiKey).build();
   }
 
-  @Bean
+  @Bean("agreementsServiceRestTemplate")
   public RestTemplate restTemplate() {
     return restTemplate;
   }
