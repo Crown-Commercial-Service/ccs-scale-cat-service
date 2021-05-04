@@ -26,6 +26,7 @@ public class ProcurementProjectService {
   private final WebClient jaggaerWebClient;
   private final JaggaerUserProfileService jaggaerUserProfileService;
   private final ProcurementProjectRepo procurementProjectRepo;
+  private final ProcurementEventService procurementEventService;
 
   public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {
@@ -37,7 +38,9 @@ public class ProcurementProjectService {
     CreateUpdateProject createUpdateProject =
         new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
             new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
-                .projectOwner(new ProjectOwner(jaggaerUserId)).build()));
+                .projectOwner(new ProjectOwner(jaggaerUserId))
+                .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
+                .build()));
 
     CreateUpdateProjectResponse createProjectResponse = jaggaerWebClient.post()
         .uri(jaggaerAPIConfig.getCreateProject().get("endpoint")).bodyValue(createUpdateProject)
@@ -51,7 +54,7 @@ public class ProcurementProjectService {
     log.info("Created project: {}", createProjectResponse);
 
     /*
-     * Create ProcurementEvent
+     * Create ProcurementProject DB entity (minus event)
      */
     ProcurementProject procurementProject = new ProcurementProject();
     procurementProject.setCaNumber(agreementDetails.getAgreementID());
@@ -59,10 +62,16 @@ public class ProcurementProjectService {
     procurementProject.setJaggaerProjectId(createProjectResponse.getTenderReferenceCode());
     procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
     procurementProject.setCreatedAt(Instant.now());
+    procurementProject.setUpdatedBy(principal); // Or Jaggaer user ID?
+    procurementProject.setUpdatedAt(Instant.now());
 
     /*
      * Invoke EventService.createEvent()
      */
+    String jaggaerEventID = procurementEventService.createFromAgreementDetails(agreementDetails);
+
+    // Persist procurement project and event to database
+    procurementProject = procurementProjectRepo.save(procurementProject);
 
     DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setPocurementID(procurementProject.getId());
@@ -77,9 +86,6 @@ public class ProcurementProjectService {
     defaultName.setName(projectTitle);
     defaultName.setComponents(defaultNameComponents);
     draftProcurementProject.setDefaultName(defaultName);
-
-    // Persist procurement project and event to database
-    procurementProjectRepo.save(procurementProject);
 
     return draftProcurementProject;
   }

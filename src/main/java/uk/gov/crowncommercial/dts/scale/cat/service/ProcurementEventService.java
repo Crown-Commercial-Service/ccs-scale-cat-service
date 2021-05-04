@@ -5,6 +5,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 
 /**
  *
@@ -17,7 +18,7 @@ public class ProcurementEventService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
 
-  public String createEventFromProject() {
+  public String createFromAgreementDetails(AgreementDetails agreementDetails) {
     return "TODO";
   }
 

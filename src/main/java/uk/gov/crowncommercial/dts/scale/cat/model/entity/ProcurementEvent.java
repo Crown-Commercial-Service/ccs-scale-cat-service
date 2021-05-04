@@ -1,10 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -19,8 +16,15 @@ import lombok.experimental.FieldDefaults;
 public class ProcurementEvent {
 
   @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "event_id")
-  String ocid;
+  Integer id;
+
+  @Column(name = "ocds_authority_name")
+  String ocdsAuthorityName;
+
+  @Column(name = "ocid_prefix")
+  String ocidprefix;
 
   @Column(name = "jaggaer_event_id")
   String jaggaerEventId;

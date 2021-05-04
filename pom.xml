@@ -105,14 +105,15 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec>
+							<!-- <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec> -->
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/feature/SCC-440_dpp_proc_id_type/cat/CaT-service.yaml</inputSpec>							
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
-							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateSupportingFiles>false</generateSupportingFiles>	
 							<generateApis>false</generateApis>
 							<generateModelTests>false</generateModelTests>
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.generated</modelPackage>
-							<skipValidateSpec>true</skipValidateSpec>
+							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>false</strictSpec>
 							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1</languageSpecificPrimitives>
 							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1</typeMappings>
