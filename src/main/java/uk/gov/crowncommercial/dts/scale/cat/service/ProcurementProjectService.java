@@ -68,7 +68,8 @@ public class ProcurementProjectService {
     /*
      * Invoke EventService.createEvent()
      */
-    String jaggaerEventID = procurementEventService.createFromAgreementDetails(agreementDetails);
+    String jaggaerEventID = procurementEventService.createFromAgreementDetails(agreementDetails,
+        jaggaerUserId, createProjectResponse.getTenderReferenceCode());
 
     // Persist procurement project and event to database
     procurementProject = procurementProjectRepo.save(procurementProject);

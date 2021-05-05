@@ -10,6 +10,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 
 /**
  * Service layer tests
@@ -20,6 +21,15 @@ class ProcurementProjectServiceTest {
 
   @MockBean
   private WebClient jaggaerWebClient;
+
+  @MockBean
+  private ProcurementProjectRepo procurementProjectRepo;
+
+  @MockBean
+  private ProcurementEventService procurementEventService;
+
+  @MockBean
+  private JaggaerUserProfileService jaggaerUserProfileService;
 
   @Autowired
   private ProcurementProjectService procurementProjectService;

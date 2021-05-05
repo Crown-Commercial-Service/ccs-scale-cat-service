@@ -18,7 +18,8 @@ public class ProcurementEventService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
 
-  public String createFromAgreementDetails(AgreementDetails agreementDetails) {
+  public String createFromAgreementDetails(AgreementDetails agreementDetails, String jaggaerUserId,
+      String projectTenderReferenceCode) {
     return "TODO";
   }
 
