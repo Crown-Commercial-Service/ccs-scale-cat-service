@@ -35,6 +35,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/projects
         templateId: project_609
       createEvent:
+        # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
+        defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
         templateId: itt_543
       getBuyerCompanyProfile:

@@ -1,7 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -20,6 +25,9 @@ public class ProcurementEvent {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "event_id")
   Integer id;
+
+  @Column(name = "project_id")
+  Integer projectId;
 
   @Column(name = "ocds_authority_name")
   String ocdsAuthorityName;
@@ -45,4 +53,29 @@ public class ProcurementEvent {
   @Column(name = "updated_at")
   Instant updatedAt;
 
+  /**
+   * Builds an instance from basic details
+   *
+   * @param jaggaerEventId The rfx reference code
+   * @param principal
+   * @return a procurement event
+   */
+  public static ProcurementEvent of(Integer projectId, String eventName, String jaggaerEventId,
+      String ocdsAuthority, String ocidPrefix, String principal) {
+    var procurementEvent = new ProcurementEvent();
+    procurementEvent.setProjectId(projectId);
+    procurementEvent.setEventName(eventName);
+    procurementEvent.setOcdsAuthorityName(ocdsAuthority);
+    procurementEvent.setOcidprefix(ocidPrefix);
+    procurementEvent.setJaggaerEventId(jaggaerEventId);
+    procurementEvent.setCreatedBy(principal); // Or Jaggaer user ID?
+    procurementEvent.setCreatedAt(Instant.now());
+    procurementEvent.setUpdatedBy(principal); // Or Jaggaer user ID?
+    procurementEvent.setUpdatedAt(Instant.now());
+    return procurementEvent;
+  }
+
+  public String getEventID() {
+    return ocidprefix + "-" + ocdsAuthorityName + "-" + id;
+  }
 }
