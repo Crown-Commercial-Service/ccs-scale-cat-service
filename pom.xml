@@ -47,6 +47,12 @@
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
 		</dependency>
+		
+		<dependency>	
+		    <groupId>org.eclipse.jetty</groupId>
+		    <artifactId>jetty-reactive-httpclient</artifactId>
+		</dependency>
+		
 		<dependency>
 			<groupId>com.rollbar</groupId>
 			<artifactId>rollbar-spring-boot-webmvc</artifactId>
@@ -105,8 +111,7 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<!-- <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec> -->
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/feature/SCC-440_dpp_proc_id_type/cat/CaT-service.yaml</inputSpec>							
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>	

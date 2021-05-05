@@ -8,9 +8,10 @@
           
 logging:
   level:
-    org:
-      springframework:
-        security: TRACE
+    org.springframework.security: TRACE
+    org.springframework.web.client.RestTemplate: DEBUG
+    reactor.netty.http.client: TRACE
+    org.apache.http: DEBUG
         
 spring:
   jpa:

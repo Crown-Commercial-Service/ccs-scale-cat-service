@@ -1,8 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import java.util.Arrays;
+import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
@@ -74,8 +78,13 @@ public class JaggaerOAuth2Config {
     ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Client =
         new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
-    return WebClient.builder().baseUrl(jaggaerAPIConfig.getBaseUrl())
-        .apply(oauth2Client.oauth2Configuration()).build();
+
+    // TODO: Refactor out / investigate why default netty library causes 30 second delay
+    HttpClient client = new HttpClient(new SslContextFactory.Client(true));
+    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
+
+    return WebClient.builder().clientConnector(jettyHttpClientConnector)
+        .baseUrl(jaggaerAPIConfig.getBaseUrl()).apply(oauth2Client.oauth2Configuration()).build();
   }
 
 }
