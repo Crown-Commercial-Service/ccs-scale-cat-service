@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import java.time.Instant;
+import java.time.Duration;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -9,11 +9,10 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultNameComponents;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Simple service example to fetch data from the Scale shared Agreements Service
@@ -28,7 +27,26 @@ public class ProcurementProjectService {
   private final JaggaerUserProfileService jaggaerUserProfileService;
   private final ProcurementProjectRepo procurementProjectRepo;
   private final ProcurementEventService procurementEventService;
+  private final TendersAPIModelUtils tendersAPIModelUtils;
 
+  /**
+   * SCC-440/441
+   * <p>
+   * Create a default project and event in Jaggaer from CA and Lot number.
+   * <p>
+   * Specifically, for the current user principal, performs the following general steps:
+   * <ol>
+   * <li>Resolve the user principal to a Jaggaer user ID
+   * <li>Invoke the Jaggaer API create project endpoint (specifying a template)
+   * <li>Handle any application error returned from Jaggaer
+   * <li>
+   * </ol>
+   *
+   *
+   * @param agreementDetails
+   * @param principal
+   * @return
+   */
   public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {
 
@@ -36,60 +54,32 @@ public class ProcurementProjectService {
     String jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
     String projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
-    CreateUpdateProject createUpdateProject =
-        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-            new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
-                .projectOwner(new ProjectOwner(jaggaerUserId))
-                .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
-                .build()));
+    var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
+        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+            .projectOwner(new ProjectOwner(jaggaerUserId))
+            .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
+            .build()));
 
-    CreateUpdateProjectResponse createProjectResponse = jaggaerWebClient.post()
-        .uri(jaggaerAPIConfig.getCreateProject().get("endpoint")).bodyValue(createUpdateProject)
-        .retrieve().bodyToMono(CreateUpdateProjectResponse.class).block();
+    CreateUpdateProjectResponse createProjectResponse =
+        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+            .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
 
     if (createProjectResponse.getReturnCode() != 0
-        || !createProjectResponse.getReturnMessage().equals("OK")) {
+        || !"OK".equals(createProjectResponse.getReturnMessage())) {
       throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
           createProjectResponse.getReturnMessage());
     }
     log.info("Created project: {}", createProjectResponse);
 
-    /*
-     * Create ProcurementProject DB entity (minus event)
-     */
-    ProcurementProject procurementProject = new ProcurementProject();
-    procurementProject.setCaNumber(agreementDetails.getAgreementID());
-    procurementProject.setLotNumber(agreementDetails.getLotID());
-    procurementProject.setJaggaerProjectId(createProjectResponse.getTenderReferenceCode());
-    procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
-    procurementProject.setCreatedAt(Instant.now());
-    procurementProject.setUpdatedBy(principal); // Or Jaggaer user ID?
-    procurementProject.setUpdatedAt(Instant.now());
+    var procurementProject = procurementProjectRepo.save(ProcurementProject.of(agreementDetails,
+        createProjectResponse.getTenderReferenceCode(), principal));
 
-    /*
-     * Invoke EventService.createEvent()
-     */
-    String jaggaerEventID = procurementEventService.createFromAgreementDetails(agreementDetails,
-        jaggaerUserId, createProjectResponse.getTenderReferenceCode());
+    var eventSummary =
+        procurementEventService.createFromAgreementDetails(procurementProject.getId(), principal);
 
-    // Persist procurement project and event to database
-    procurementProject = procurementProjectRepo.save(procurementProject);
-
-    DraftProcurementProject draftProcurementProject = new DraftProcurementProject();
-    draftProcurementProject.setPocurementID(procurementProject.getId());
-    // draftProcurementProject.setEventID(TODO);
-
-    DefaultNameComponents defaultNameComponents = new DefaultNameComponents();
-    defaultNameComponents.setAgreementID(agreementDetails.getAgreementID());
-    defaultNameComponents.setLotID(agreementDetails.getLotID());
-    defaultNameComponents.setOrg("CCS");
-
-    DefaultName defaultName = new DefaultName();
-    defaultName.setName(projectTitle);
-    defaultName.setComponents(defaultNameComponents);
-    draftProcurementProject.setDefaultName(defaultName);
-
-    return draftProcurementProject;
+    return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
+        procurementProject.getId(), eventSummary.getEventID(), projectTitle);
   }
 
   String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {

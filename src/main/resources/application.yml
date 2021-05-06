@@ -41,7 +41,8 @@ config:
         
   external:
     jaggaer:
-      base-url: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
+      baseUrl: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
+      timeoutDuration: 5 
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"

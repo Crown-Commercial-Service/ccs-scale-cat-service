@@ -6,6 +6,7 @@ import javax.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 
 /**
  *
@@ -48,5 +49,26 @@ public class ProcurementProject {
 
   @Column(name = "updated_at")
   Instant updatedAt;
+
+  /**
+   * Builds an instance from basic details
+   *
+   * @param agreementDetails
+   * @param jaggaerProjectId The tender reference code
+   * @param principal
+   * @return a procurement project
+   */
+  public static ProcurementProject of(AgreementDetails agreementDetails, String jaggaerProjectId,
+      String principal) {
+    var procurementProject = new ProcurementProject();
+    procurementProject.setCaNumber(agreementDetails.getAgreementID());
+    procurementProject.setLotNumber(agreementDetails.getLotID());
+    procurementProject.setJaggaerProjectId(jaggaerProjectId);
+    procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
+    procurementProject.setCreatedAt(Instant.now());
+    procurementProject.setUpdatedBy(principal); // Or Jaggaer user ID?
+    procurementProject.setUpdatedAt(Instant.now());
+    return procurementProject;
+  }
 
 }
