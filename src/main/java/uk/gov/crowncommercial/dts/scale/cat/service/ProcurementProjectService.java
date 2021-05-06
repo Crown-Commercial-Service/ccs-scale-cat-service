@@ -6,6 +6,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
@@ -48,8 +49,8 @@ public class ProcurementProjectService {
 
     if (createProjectResponse.getReturnCode() != 0
         || !createProjectResponse.getReturnMessage().equals("OK")) {
-      log.error(createProjectResponse.toString());
-      throw new RuntimeException("TODO: Error creating project");
+      throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
+          createProjectResponse.getReturnMessage());
     }
     log.info("Created project: {}", createProjectResponse);
 

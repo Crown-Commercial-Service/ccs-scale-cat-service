@@ -14,6 +14,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
@@ -77,6 +78,16 @@ public class GlobalErrorHandler implements ErrorController {
 
     var apiError =
         new ApiError(HttpStatus.NOT_FOUND.toString(), ERR_MSG_VALIDATION, exception.getMessage());
+    return buildErrors(Arrays.asList(apiError));
+  }
+
+  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  @ExceptionHandler(JaggaerApplicationException.class)
+  public Errors handleJaggaerApplicationException(final JaggaerApplicationException exception) {
+
+    log.error("Jaggaer application error", exception);
+
+    var apiError = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
     return buildErrors(Arrays.asList(apiError));
   }
 
