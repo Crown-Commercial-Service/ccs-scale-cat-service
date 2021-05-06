@@ -8,7 +8,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
  *
  */
 @Repository
-public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, String> {
+public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, Integer> {
 
   /* No additional methods */
 

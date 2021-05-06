@@ -39,13 +39,16 @@ public class ProcurementProjectService {
    * <li>Resolve the user principal to a Jaggaer user ID
    * <li>Invoke the Jaggaer API create project endpoint (specifying a template)
    * <li>Handle any application error returned from Jaggaer
-   * <li>
+   * <li>Persist details of the procurement project to the database
+   * <li>Invoke {@link ProcurementEventService#createFromAgreementDetails(Integer, String)}} to
+   * create the corresponding default event
+   * <li>Return the details
    * </ol>
    *
    *
    * @param agreementDetails
    * @param principal
-   * @return
+   * @return draft procurement project
    */
   public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {

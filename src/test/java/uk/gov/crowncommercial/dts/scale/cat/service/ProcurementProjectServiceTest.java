@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import javax.annotation.PostConstruct;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -11,11 +12,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class},
+@SpringBootTest(
+    classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class},
     webEnvironment = WebEnvironment.NONE)
 class ProcurementProjectServiceTest {
 
@@ -23,13 +26,13 @@ class ProcurementProjectServiceTest {
   private WebClient jaggaerWebClient;
 
   @MockBean
+  private JaggaerUserProfileService jaggaerUserProfileService;
+
+  @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
 
   @MockBean
   private ProcurementEventService procurementEventService;
-
-  @MockBean
-  private JaggaerUserProfileService jaggaerUserProfileService;
 
   @Autowired
   private ProcurementProjectService procurementProjectService;
@@ -44,7 +47,11 @@ class ProcurementProjectServiceTest {
   }
 
   @Test
-  void testFindAll() throws Exception {
+  void testCreateFromAgreementDetails() throws Exception {
+
+    Mockito.when(jaggaerUserProfileService.resolveJaggaerUserId("")).thenReturn("jaggaerUser");
+
+    // TODO etc
 
     // final AgreementSummary[] svcAgreementSummaries =
     // {new AgreementSummary("RM3733", "Technology Products 2"),
