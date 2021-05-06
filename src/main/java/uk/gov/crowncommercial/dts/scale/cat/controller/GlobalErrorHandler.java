@@ -2,17 +2,17 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.ValidationException;
 import org.springframework.boot.web.servlet.error.ErrorController;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException.NotFound;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
@@ -32,7 +32,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
 @Slf4j
 public class GlobalErrorHandler implements ErrorController {
 
-  private static final String ERR_MSG_DEFAULT = "An error occured processing the request";
+  private static final String ERR_MSG_DEFAULT = "An error occurred processing the request";
+  private static final String ERR_MSG_UPSTREAM = "An error occurred invoking an upstream service";
   private static final String ERR_MSG_VALIDATION = "Validation error processing the request";
   private static final String ERR_MSG_RESOURCE_NOT_FOUND = "Resource not found";
 
@@ -42,26 +43,30 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.trace("Request validation exception", exception);
 
-    ApiError apiError = new ApiError(HttpStatus.BAD_REQUEST.toString(), ERR_MSG_RESOURCE_NOT_FOUND,
+    var apiError = new ApiError(HttpStatus.BAD_REQUEST.toString(), ERR_MSG_RESOURCE_NOT_FOUND,
         exception.getMessage());
     return buildErrors(Arrays.asList(apiError));
   }
 
-  /**
-   * TODO: Remove / replace with exceptions thrown by {@link WebClient}
-   */
-  @ExceptionHandler({RestClientException.class})
-  public ResponseEntity<Errors> handleRestClientException(final RestClientException exception) {
+  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  @ExceptionHandler({WebClientResponseException.class})
+  public Errors handleWebClientResponseException(final WebClientResponseException exception) {
 
-    log.error("Upstream (Decision Tree Service) error", exception);
+    Optional<HttpRequest> request = Optional.ofNullable(exception.getRequest());
 
-    if (exception instanceof NotFound) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND)
-          .body(buildErrors(Arrays.asList(new ApiError(HttpStatus.NOT_FOUND.toString(),
-              ERR_MSG_RESOURCE_NOT_FOUND, "Upstream resource not found"))));
+    var invokedService = "unknown";
+    if (request.isPresent()) {
+      invokedService = request.get().getMethod() + " " + request.get().getURI();
     }
-    return ResponseEntity.badRequest().body(buildErrors(Arrays
-        .asList(new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
+
+    var logErrorMsg =
+        String.format("Error invoking upstream service [%s], received status: [%d], body: [%s]",
+            invokedService, exception.getRawStatusCode(), exception.getResponseBodyAsString());
+
+    log.error(logErrorMsg, exception);
+
+    return buildErrors(Arrays
+        .asList(new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "")));
   }
 
   @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -70,7 +75,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.info("Requested resource not found", exception);
 
-    ApiError apiError =
+    var apiError =
         new ApiError(HttpStatus.NOT_FOUND.toString(), ERR_MSG_VALIDATION, exception.getMessage());
     return buildErrors(Arrays.asList(apiError));
   }
@@ -81,8 +86,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Unknown application exception", exception);
 
-    ApiError apiError =
-        new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, "");
+    var apiError = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, "");
     return buildErrors(Arrays.asList(apiError));
   }
 
@@ -104,7 +108,7 @@ public class GlobalErrorHandler implements ErrorController {
   }
 
   private Errors buildErrors(List<ApiError> apiErrors) {
-    Errors errors = new Errors();
+    var errors = new Errors();
     errors.setErrors(apiErrors);
     return errors;
   }
