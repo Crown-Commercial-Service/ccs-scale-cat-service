@@ -1,7 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.hamcrest.Matchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ class ProcurementProjectServiceTest {
   private static final String TENDER_REF_CODE = "project_0001";
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
+  private static final Integer PROC_PROJECT_ID = 1;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -68,21 +70,22 @@ class ProcurementProjectServiceTest {
     createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
     var procurementProject = ProcurementProject.of(agreementDetails, TENDER_REF_CODE, PRINCIPAL);
-
     var eventSummary = new EventSummary();
 
     // Mock behaviours
     when(jaggaerUserProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
-        .bodyToMono(CreateUpdateProjectResponse.class)
+        .bodyToMono(eq(CreateUpdateProjectResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .thenReturn(createUpdateProjectResponse);
-    when(procurementProjectRepo.save(procurementProject)).then(mock -> {
-      procurementProject.setId(1);
+
+    when(procurementProjectRepo.save(any(ProcurementProject.class))).then(mock -> {
+      procurementProject.setId(PROC_PROJECT_ID);
       return procurementProject;
     });
-    when(procurementEventService.createFromAgreementDetails(procurementProject.getId(), PRINCIPAL))
+
+    when(procurementEventService.createFromAgreementDetails(PROC_PROJECT_ID, PRINCIPAL))
         .thenReturn(eventSummary);
 
     // Invoke

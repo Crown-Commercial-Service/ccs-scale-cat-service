@@ -104,7 +104,7 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/bugfix/enum_allOfs/cat/CaT-service.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
@@ -114,7 +114,7 @@
 							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>false</strictSpec>
 							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1</languageSpecificPrimitives>
-							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1</typeMappings>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus</typeMappings>
 							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>
