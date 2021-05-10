@@ -13,7 +13,7 @@
 	<artifactId>ccs-scale-cat-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>ccs-scale-cat-service</name>
-	<description>SCALE Guided Match service</description>
+	<description>SCALE CaT (Tenders) API</description>
 
 	<properties>
 		<java.version>11</java.version>
@@ -46,10 +46,10 @@
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
 		</dependency>
-		
-		<dependency>	
-		    <groupId>org.eclipse.jetty</groupId>
-		    <artifactId>jetty-reactive-httpclient</artifactId>
+
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-reactive-httpclient</artifactId>
 		</dependency>
 
 		<dependency>
@@ -104,10 +104,10 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/bugfix/enum_allOfs/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
-							<generateSupportingFiles>false</generateSupportingFiles>	
+							<generateSupportingFiles>false</generateSupportingFiles>
 							<generateApis>false</generateApis>
 							<generateModelTests>false</generateModelTests>
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.generated</modelPackage>

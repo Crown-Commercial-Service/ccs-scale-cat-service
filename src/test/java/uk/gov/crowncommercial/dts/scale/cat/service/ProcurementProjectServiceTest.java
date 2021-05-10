@@ -1,16 +1,23 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import javax.annotation.PostConstruct;
+import static org.hamcrest.Matchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -20,9 +27,16 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @SpringBootTest(
     classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class},
     webEnvironment = WebEnvironment.NONE)
+@EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
 
-  @MockBean
+  private static final String PRINCIPAL = "jsmith@ccs.org.uk";
+  private static final String JAGGAER_USER_ID = "12345";
+  private static final String TENDER_REF_CODE = "project_0001";
+  private static final String CA_NUMBER = "RM1234";
+  private static final String LOT_NUMBER = "Lot1a";
+
+  @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
 
   @MockBean
@@ -35,37 +49,49 @@ class ProcurementProjectServiceTest {
   private ProcurementEventService procurementEventService;
 
   @Autowired
+  private JaggaerAPIConfig jaggaerAPIConfig;
+
+  @Autowired
   private ProcurementProjectService procurementProjectService;
-
-  private final ObjectMapper objectMapper = new ObjectMapper();
-
-  private MockRestServiceServer mockServer;
-
-  @PostConstruct
-  public void init() {
-    // mockServer = MockRestServiceServer.createServer(restTemplate);
-  }
 
   @Test
   void testCreateFromAgreementDetails() throws Exception {
 
-    Mockito.when(jaggaerUserProfileService.resolveJaggaerUserId("")).thenReturn("jaggaerUser");
+    // Stub some objects
+    var agreementDetails = new AgreementDetails();
+    agreementDetails.setAgreementID(CA_NUMBER);
+    agreementDetails.setLotID(LOT_NUMBER);
 
-    // TODO etc
+    var createUpdateProjectResponse = new CreateUpdateProjectResponse();
+    createUpdateProjectResponse.setReturnCode(0);
+    createUpdateProjectResponse.setReturnMessage("OK");
+    createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
-    // final AgreementSummary[] svcAgreementSummaries =
-    // {new AgreementSummary("RM3733", "Technology Products 2"),
-    // new AgreementSummary("RM6068", "Technology Products & Associated Services")};
-    //
-    // mockServer.expect(ExpectedCount.once(), requestTo(new
-    // URI("http://localhost:9010/agreements")))
-    // .andExpect(method(HttpMethod.GET)).andExpect(header("x-api-key", "abc123"))
-    // .andRespond(withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON)
-    // .body(objectMapper.writeValueAsString(svcAgreementSummaries)));
-    //
-    // final AgreementSummary[] agreementSummaries = agreementService.findAll();
-    // mockServer.verify();
-    // assertArrayEquals(svcAgreementSummaries, agreementSummaries);
+    var procurementProject = ProcurementProject.of(agreementDetails, TENDER_REF_CODE, PRINCIPAL);
+
+    var eventSummary = new EventSummary();
+
+    // Mock behaviours
+    when(jaggaerUserProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+        .bodyValue(any(CreateUpdateProject.class)).retrieve()
+        .bodyToMono(CreateUpdateProjectResponse.class)
+        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .thenReturn(createUpdateProjectResponse);
+    when(procurementProjectRepo.save(procurementProject)).then(mock -> {
+      procurementProject.setId(1);
+      return procurementProject;
+    });
+    when(procurementEventService.createFromAgreementDetails(procurementProject.getId(), PRINCIPAL))
+        .thenReturn(eventSummary);
+
+    // Invoke
+    var draftProcurementProject =
+        procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL);
+
+    // Verify & assert
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS",
+        draftProcurementProject.getDefaultName().getName());
   }
 
 }
