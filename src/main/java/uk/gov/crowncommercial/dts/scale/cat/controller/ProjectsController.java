@@ -20,7 +20,7 @@ public class ProjectsController {
 
   private final ProcurementProjectService procurementProjectService;
 
-  // @PreAuthorize("hasAuthority('ORG_ADMINISTRATOR')")
+  // @PreAuthorize("isAuthenticated()")
   @PostMapping("/tenders/projects/agreements")
   public DraftProcurementProject createProcurementProject(
       @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
