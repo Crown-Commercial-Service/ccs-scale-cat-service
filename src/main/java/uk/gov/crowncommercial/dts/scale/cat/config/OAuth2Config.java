@@ -5,7 +5,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -26,32 +25,30 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     // @formatter:off
     http.authorizeRequests(authz -> {
       authz
-        // .antMatchers(HttpMethod.POST,
-        // "/tenders/projects/agreements").hasAnyAuthority("CAT_USER")
-        .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").authenticated()
+        .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").hasAuthority("[\"CAT_ADMINISTRATOR\",\"CAT_USER\"]")
+        //.antMatchers(HttpMethod.POST, "/tenders/projects/agreements").authenticated()
 
         .anyRequest().denyAll();
 
     })
     // TODO: CSRF protection - Yes/No?
     // .csrf(CsrfConfigurer::disable)
-    .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+    .oauth2ResourceServer().jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
     // @formatter:on
   }
 
-  // @Bean
-  // public GrantedAuthorityDefaults grantedAuthorityDefaults() {
-  // return new GrantedAuthorityDefaults("");
-  // }
-
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
+    log.info("Configuring custom JwtAuthenticationConverter to read CAT roles..");
+
     var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
     grantedAuthoritiesConverter.setAuthorityPrefix("");
 
     var jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+
     return jwtAuthenticationConverter;
   }
 

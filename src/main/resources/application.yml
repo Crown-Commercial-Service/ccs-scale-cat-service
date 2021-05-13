@@ -8,9 +8,8 @@
           
 logging:
   level:
-    org.springframework.security: DEBUG
+    org.springframework.security: TRACE
     org.springframework.web.client.RestTemplate: DEBUG
-    reactor.netty.http.client: TRACE
     org.apache.http: DEBUG
         
 spring:
@@ -37,7 +36,10 @@ config:
         templateId: project_609
       createEvent:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_543 
+        templateId: itt_543
+      getBuyerCompanyProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=userEmail=={{PRINCIPAL}}
+        principalPlaceholder: "{{PRINCIPAL}}"
         
 ---
 spring:

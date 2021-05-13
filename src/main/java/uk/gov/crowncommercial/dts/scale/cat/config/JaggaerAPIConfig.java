@@ -17,5 +17,6 @@ public class JaggaerAPIConfig {
   private Integer timeoutDuration;
   private Map<String, String> createProject;
   private Map<String, String> createEvent;
+  private Map<String, String> getBuyerCompanyProfile;
 
 }

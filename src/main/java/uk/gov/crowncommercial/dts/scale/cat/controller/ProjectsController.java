@@ -25,7 +25,7 @@ public class ProjectsController {
   public DraftProcurementProject createProcurementProject(
       @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
 
-    String principal = authentication.getTokenAttributes().get("sub").toString();
+    var principal = authentication.getTokenAttributes().get("sub").toString();
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);

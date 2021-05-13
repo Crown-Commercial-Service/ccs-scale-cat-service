@@ -6,14 +6,14 @@ package uk.gov.crowncommercial.dts.scale.cat.exception;
  */
 public class JaggaerApplicationException extends RuntimeException {
 
-  static final String ERR_MSG_TEMPLATE = "Jaggaer application exception, Code: [%d], Message: [%s]";
+  static final String ERR_MSG_TEMPLATE = "Jaggaer application exception, Code: [%s], Message: [%s]";
 
   /**
    *
    */
   private static final long serialVersionUID = 1L;
 
-  public JaggaerApplicationException(int code, String message) {
+  public JaggaerApplicationException(Object code, String message) {
     super(String.format(ERR_MSG_TEMPLATE, code, message));
   }
 
