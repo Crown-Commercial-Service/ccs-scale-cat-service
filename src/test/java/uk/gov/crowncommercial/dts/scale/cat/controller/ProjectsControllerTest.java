@@ -29,7 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
- *
+ * Web (mock MVC) Project controller tests. Security aware.
  */
 @WebMvcTest(ProjectsController.class)
 @ActiveProfiles("test")

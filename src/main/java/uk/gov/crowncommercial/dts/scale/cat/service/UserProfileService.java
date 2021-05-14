@@ -9,12 +9,12 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 
 /**
- *
+ * User profile service layer.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class JaggaerUserProfileService {
+public class UserProfileService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;

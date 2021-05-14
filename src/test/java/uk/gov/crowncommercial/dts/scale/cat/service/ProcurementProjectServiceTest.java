@@ -50,7 +50,7 @@ class ProcurementProjectServiceTest {
   private WebClient jaggaerWebClient;
 
   @MockBean
-  private JaggaerUserProfileService jaggaerUserProfileService;
+  private UserProfileService userProfileService;
 
   @MockBean()
   private ProcurementProjectRepo procurementProjectRepo;
@@ -86,7 +86,7 @@ class ProcurementProjectServiceTest {
     eventSummary.setEventID(EVENT_OCID);
 
     // Mock behaviours
-    when(jaggaerUserProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
         .bodyToMono(eq(CreateUpdateProjectResponse.class))
@@ -111,7 +111,7 @@ class ProcurementProjectServiceTest {
     assertEquals(ORG, draftProcurementProject.getDefaultName().getComponents().getOrg());
 
     // Verify
-    verify(jaggaerUserProfileService).resolveJaggaerUserId(PRINCIPAL);
+    verify(userProfileService).resolveJaggaerUserId(PRINCIPAL);
     verify(procurementProjectRepo).save(any(ProcurementProject.class));
     // verify(jaggaerWebClient.post().uri(anyString()).bodyValue(any(CreateUpdateProject.class))
     // .retrieve().bodyToMono(eq(CreateUpdateProjectResponse.class))).block(any());
@@ -126,7 +126,7 @@ class ProcurementProjectServiceTest {
     jaggaerErrorResponse.setReturnMessage("NOT OK");
 
     // Mock behaviours
-    when(jaggaerUserProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
         .bodyToMono(eq(CreateUpdateProjectResponse.class))

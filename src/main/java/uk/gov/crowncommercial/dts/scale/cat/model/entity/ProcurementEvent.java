@@ -7,7 +7,8 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 /**
- *
+ * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
+ * and Jaggaer internal event code
  */
 @Entity
 @Table(name = "procurement_events")

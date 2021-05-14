@@ -15,7 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
- * Simple service example to fetch data from the Scale shared Agreements Service
+ * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
  */
 @Service
 @RequiredArgsConstructor
@@ -24,7 +24,7 @@ public class ProcurementProjectService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
-  private final JaggaerUserProfileService jaggaerUserProfileService;
+  private final UserProfileService userProfileService;
   private final ProcurementProjectRepo procurementProjectRepo;
   private final ProcurementEventService procurementEventService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
@@ -54,7 +54,7 @@ public class ProcurementProjectService {
       String principal) {
 
     // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
+    var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
     var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,

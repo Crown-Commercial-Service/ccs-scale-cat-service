@@ -9,7 +9,8 @@ import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 
 /**
- *
+ * JPA entity representing a mapping between an internal ID, CA/Lot and Jaggaer internal project
+ * code
  */
 @Entity
 @Table(name = "procurement_projects")

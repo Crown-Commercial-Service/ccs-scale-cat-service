@@ -8,9 +8,9 @@
           
 logging:
   level:
-    org.springframework.security: TRACE
-    org.springframework.web.client.RestTemplate: DEBUG
-    org.apache.http: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web.client.RestTemplate: WARN
+    org.apache.http: WARN
         
 spring:
   jpa:
