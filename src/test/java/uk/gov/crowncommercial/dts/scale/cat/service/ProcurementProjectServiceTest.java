@@ -95,7 +95,7 @@ class ProcurementProjectServiceTest {
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .thenReturn(createUpdateProjectResponse);
     when(procurementProjectRepo.save(any(ProcurementProject.class))).thenReturn(procurementProject);
-    when(procurementEventService.createFromAgreementDetails(PROC_PROJECT_ID, PRINCIPAL))
+    when(procurementEventService.createFromProject(PROC_PROJECT_ID, PRINCIPAL))
         .thenReturn(eventSummary);
 
     // Invoke
@@ -117,7 +117,7 @@ class ProcurementProjectServiceTest {
     verify(procurementProjectRepo).save(any(ProcurementProject.class));
     // verify(jaggaerWebClient.post().uri(anyString()).bodyValue(any(CreateUpdateProject.class))
     // .retrieve().bodyToMono(eq(CreateUpdateProjectResponse.class))).block(any());
-    verify(procurementEventService).createFromAgreementDetails(PROC_PROJECT_ID, PRINCIPAL);
+    verify(procurementEventService).createFromProject(PROC_PROJECT_ID, PRINCIPAL);
   }
 
   @Test

@@ -10,15 +10,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rollbar.notifier.Rollbar;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
@@ -33,6 +35,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @ActiveProfiles("test")
 class EventsControllerTest {
 
+  private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String EVENT_ID = "1";
   private static final String EVENT_NAME = "NAME";
@@ -53,15 +56,22 @@ class EventsControllerTest {
   private ProcurementEventService procurementEventService;
 
   @MockBean
-  private Rollbar rollbar;
-
-  @MockBean
   private Principal principal;
 
   @MockBean
   private EventSummary eventSummary;
 
   private final TendersAPIModelUtils tendersAPIModelUtils = new TendersAPIModelUtils();
+  private JwtRequestPostProcessor validJwtReqPostProcessor;
+
+  @BeforeEach
+  void beforeEach() {
+    // TODO: Update to the correct roles value once Auth service fixed (should be proper list or
+    // space-separated string)
+    validJwtReqPostProcessor =
+        jwt().authorities(new SimpleGrantedAuthority("[\"CAT_ADMINISTRATOR\",\"CAT_USER\"]"))
+            .jwt(jwt -> jwt.subject(PRINCIPAL));
+  }
 
   @Test
   void createProcurementEvent_200_OK() throws Exception {
@@ -73,8 +83,8 @@ class EventsControllerTest {
         .thenReturn(eventSummary);
 
     mockMvc
-        .perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/events").with(jwt())
-            .contentType(MediaType.APPLICATION_JSON)
+        .perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/events")
+            .with(validJwtReqPostProcessor).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(tender)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventID").value(EVENT_ID))
         .andExpect(jsonPath("$.name").value(EVENT_NAME))

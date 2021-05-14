@@ -61,7 +61,7 @@ public class ProcurementEventService {
   private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
   private static final String EVENT_STAGE = "Tender";
 
-  private final JaggaerUserProfileService jaggaerUserProfileService;
+  private final UserProfileService userProfileService;
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final OcdsConfig ocdsConfig;
   private final WebClient jaggaerWebClient;
@@ -139,7 +139,7 @@ public class ProcurementEventService {
       final String principal) {
 
     // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
-    String jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
+    String jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
 
     var eventName = getDefaultEventTitle(project.getProjectName(), TEMP_EVENT_TYPE.getValue());
     var buyerCompany = new BuyerCompany(TEMP_BUYER_ID);

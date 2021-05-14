@@ -52,7 +52,7 @@ class ProcurementEventServiceTest {
   private WebClient jaggaerWebClient;
 
   @MockBean
-  private JaggaerUserProfileService jaggaerUserProfileService;
+  private UserProfileService userProfileService;
 
   @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
@@ -83,7 +83,7 @@ class ProcurementEventServiceTest {
     var procurementEvent = ProcurementEvent.of(PROC_PROJECT_ID, "", "", "", "", "");
 
     // Mock behaviours
-    when(jaggaerUserProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
