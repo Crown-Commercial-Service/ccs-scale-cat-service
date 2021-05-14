@@ -79,7 +79,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setReturnMessage("OK");
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(agreementDetails, "", "");
+    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "");
     var procurementEvent = ProcurementEvent.of(PROC_PROJECT_ID, "", "", "", "", "");
 
     // Mock behaviours
