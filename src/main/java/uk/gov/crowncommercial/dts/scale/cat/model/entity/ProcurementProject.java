@@ -56,15 +56,17 @@ public class ProcurementProject {
    *
    * @param agreementDetails
    * @param jaggaerProjectId The tender reference code
+   * @param projectName aka project title
    * @param principal
    * @return a procurement project
    */
   public static ProcurementProject of(AgreementDetails agreementDetails, String jaggaerProjectId,
-      String principal) {
+      String projectName, String principal) {
     var procurementProject = new ProcurementProject();
     procurementProject.setCaNumber(agreementDetails.getAgreementID());
     procurementProject.setLotNumber(agreementDetails.getLotID());
     procurementProject.setJaggaerProjectId(jaggaerProjectId);
+    procurementProject.setProjectName(projectName);
     procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
     procurementProject.setCreatedAt(Instant.now());
     procurementProject.setUpdatedBy(principal); // Or Jaggaer user ID?
