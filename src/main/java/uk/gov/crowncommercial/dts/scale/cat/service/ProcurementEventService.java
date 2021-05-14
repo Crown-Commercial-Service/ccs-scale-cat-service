@@ -109,7 +109,7 @@ public class ProcurementEventService {
     String ocidPrefix = ocdsConfig.getOcidPrefix();
     String eventName = createUpdateRfx.getRfx().getRfxSetting().getShortDescription();
 
-    var procurementEvent = procurementEventRepo.save(ProcurementEvent.of(project.getId(), eventName,
+    var procurementEvent = procurementEventRepo.save(ProcurementEvent.of(project, eventName,
         createRfxResponse.getRfxReferenceCode(), ocdsAuthority, ocidPrefix, principal));
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,

@@ -80,7 +80,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
     var procurementProject = ProcurementProject.of(agreementDetails, "", "", "");
-    var procurementEvent = ProcurementEvent.of(PROC_PROJECT_ID, "", "", "", "", "");
+    var procurementEvent = ProcurementEvent.of(null, "", "", "", "", "");
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
@@ -113,13 +113,13 @@ class ProcurementEventServiceTest {
     assertEquals(OCID_PREFIX, captor.getValue().getOcidprefix());
     assertEquals(OCDS_AUTH_NAME, captor.getValue().getOcdsAuthorityName());
     assertEquals(RFX_REF_CODE, captor.getValue().getJaggaerEventId());
-    assertEquals(PROC_PROJECT_ID, captor.getValue().getProjectId());
+    assertEquals(PROC_PROJECT_ID, captor.getValue().getProject().getId());
     assertEquals(PRINCIPAL, captor.getValue().getCreatedBy());
     assertNotNull(captor.getValue().getCreatedAt());
     assertNotNull(captor.getValue().getUpdatedAt());
 
     // Verify that event ID is generated correctly by entity
-    assertEquals(OCID_PREFIX + "-" + OCDS_AUTH_NAME + "-1", procurementEvent.getEventID());
+    assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventSummary.getName());

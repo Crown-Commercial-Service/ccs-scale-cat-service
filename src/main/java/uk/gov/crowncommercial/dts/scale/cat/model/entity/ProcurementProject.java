@@ -2,7 +2,14 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import java.util.Set;
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -23,8 +30,7 @@ public class ProcurementProject {
   @Column(name = "project_id")
   Integer id;
 
-  @OneToMany(fetch = FetchType.EAGER)
-  @JoinColumn(name = "project_id")
+  @OneToMany(fetch = FetchType.EAGER, mappedBy = "project")
   Set<ProcurementEvent> procurementEvents;
 
   @Column(name = "commercial_agreement_number")

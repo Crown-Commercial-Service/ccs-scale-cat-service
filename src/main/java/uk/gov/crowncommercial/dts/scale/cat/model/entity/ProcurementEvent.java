@@ -3,9 +3,12 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 import java.time.Instant;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -26,8 +29,9 @@ public class ProcurementEvent {
   @Column(name = "event_id")
   Integer id;
 
-  @Column(name = "project_id")
-  Integer projectId;
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "project_id")
+  ProcurementProject project;
 
   @Column(name = "ocds_authority_name")
   String ocdsAuthorityName;
@@ -60,10 +64,10 @@ public class ProcurementEvent {
    * @param principal
    * @return a procurement event
    */
-  public static ProcurementEvent of(Integer projectId, String eventName, String jaggaerEventId,
-      String ocdsAuthority, String ocidPrefix, String principal) {
+  public static ProcurementEvent of(ProcurementProject project, String eventName,
+      String jaggaerEventId, String ocdsAuthority, String ocidPrefix, String principal) {
     var procurementEvent = new ProcurementEvent();
-    procurementEvent.setProjectId(projectId);
+    procurementEvent.setProject(project);
     procurementEvent.setEventName(eventName);
     procurementEvent.setOcdsAuthorityName(ocdsAuthority);
     procurementEvent.setOcidprefix(ocidPrefix);
@@ -76,6 +80,6 @@ public class ProcurementEvent {
   }
 
   public String getEventID() {
-    return ocidprefix + "-" + ocdsAuthorityName + "-" + id;
+    return ocdsAuthorityName + "-" + ocidprefix + "-" + id;
   }
 }
