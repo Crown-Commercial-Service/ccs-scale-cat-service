@@ -76,7 +76,7 @@ public class ProcurementProjectService {
     log.info("Created project: {}", createProjectResponse);
 
     var procurementProject = procurementProjectRepo.save(ProcurementProject.of(agreementDetails,
-        createProjectResponse.getTenderReferenceCode(), principal));
+        createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =
         procurementEventService.createFromAgreementDetails(procurementProject.getId(), principal);
