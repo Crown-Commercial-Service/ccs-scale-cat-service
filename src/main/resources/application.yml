@@ -8,12 +8,48 @@
           
 logging:
   level:
-    org:
-      springframework:
-        security: TRACE
+    org.springframework.security: DEBUG
+    org.springframework.web.client.RestTemplate: WARN
+    org.apache.http: WARN
         
-# JAGGAER CONFIG
 spring:
+  jpa:
+    open-in-view: false
+    database: postgresql
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+      
+config:
+  ocds:
+    authority: ocds
+    ocid-prefix: b5fd17
+        
+  external:
+    jaggaer:
+      baseUrl: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
+      timeoutDuration: 5 
+      createProject:
+        # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
+        defaultTitleFormat: "%s-%s-%s"
+        endpoint: /esop/jint/api/public/ja/v1/projects
+        templateId: project_609
+      createEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/
+        templateId: itt_543
+      getBuyerCompanyProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=userEmail=={{PRINCIPAL}}
+        principalPlaceholder: "{{PRINCIPAL}}"
+        
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource: 
+    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
+
+  # JAGGAER CONFIG
   security:
     oauth2:
       client:
@@ -25,17 +61,9 @@ spring:
             authorization-grant-type: client_credentials
 #            client-id: "SET IN ENV"
 #            client-secret: "SET IN ENV"
-
-config:
-  external:
-    jaggaer:
-      base-url: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
-      createProject:
-        # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
-        defaultTitleFormat: "%s-%s-%s"
-        endpoint: /esop/jint/api/public/ja/v1/projects
-        templateId: project_609
-      createEvent:
-        endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_543 
-         
+    
+  jpa:
+    database: h2
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
