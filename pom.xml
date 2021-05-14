@@ -13,11 +13,10 @@
 	<artifactId>ccs-scale-cat-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>ccs-scale-cat-service</name>
-	<description>SCALE Guided Match service</description>
+	<description>SCALE CaT (Tenders) API</description>
 
 	<properties>
 		<java.version>11</java.version>
-		<rollbar.version>1.7.6</rollbar.version>
 		<swagger-parser.version>2.0.25</swagger-parser.version>
 	</properties>
 
@@ -47,10 +46,10 @@
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
 		</dependency>
+
 		<dependency>
-			<groupId>com.rollbar</groupId>
-			<artifactId>rollbar-spring-boot-webmvc</artifactId>
-			<version>${rollbar.version}</version>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-reactive-httpclient</artifactId>
 		</dependency>
 
 		<dependency>
@@ -86,6 +85,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 
 	</dependencies>
 
@@ -105,17 +109,17 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/CAT_initial/cat/CaT-service.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
 							<generateApis>false</generateApis>
 							<generateModelTests>false</generateModelTests>
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.generated</modelPackage>
-							<skipValidateSpec>true</skipValidateSpec>
+							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>false</strictSpec>
 							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1</languageSpecificPrimitives>
-							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1</typeMappings>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus</typeMappings>
 							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>
