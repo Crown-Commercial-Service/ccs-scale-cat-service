@@ -54,8 +54,8 @@ public class ProcurementProjectService {
       String principal) {
 
     // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
-    String jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
-    String projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
+    var jaggaerUserId = jaggaerUserProfileService.resolveJaggaerUserId(principal);
+    var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
     var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
         new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))

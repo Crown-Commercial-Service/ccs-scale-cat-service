@@ -39,14 +39,12 @@ public class JaggaerOAuth2Config {
   @Bean
   public OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> accessTokenResponseClient() {
 
-    DefaultClientCredentialsTokenResponseClient accessTokenResponseClient =
-        new DefaultClientCredentialsTokenResponseClient();
+    var accessTokenResponseClient = new DefaultClientCredentialsTokenResponseClient();
 
-    OAuth2AccessTokenResponseHttpMessageConverter tokenResponseHttpMessageConverter =
-        new OAuth2AccessTokenResponseHttpMessageConverter();
+    var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
     tokenResponseHttpMessageConverter.setTokenResponseConverter(jaggaerTokenResponseConverter);
 
-    RestTemplate restTemplate = new RestTemplate(
+    var restTemplate = new RestTemplate(
         Arrays.asList(new FormHttpMessageConverter(), tokenResponseHttpMessageConverter));
     restTemplate.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
 
@@ -65,9 +63,8 @@ public class JaggaerOAuth2Config {
                 configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
             .build();
 
-    DefaultOAuth2AuthorizedClientManager authorizedClientManager =
-        new DefaultOAuth2AuthorizedClientManager(clientRegistrationRepository,
-            authorizedClientRepository);
+    var authorizedClientManager = new DefaultOAuth2AuthorizedClientManager(
+        clientRegistrationRepository, authorizedClientRepository);
     authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
     return authorizedClientManager;
@@ -75,12 +72,12 @@ public class JaggaerOAuth2Config {
 
   @Bean("jaggaerWebClient")
   public WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
-    ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Client =
+    var oauth2Client =
         new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
     // TODO: Refactor out / investigate why default netty library causes 30 second delay
-    HttpClient client = new HttpClient(new SslContextFactory.Client(true));
+    var client = new HttpClient(new SslContextFactory.Client(true));
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)

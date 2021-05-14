@@ -5,6 +5,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -23,16 +24,13 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     log.info("Configuring resource server...");
 
     // @formatter:off
-    http.authorizeRequests(authz -> {
+    http.authorizeRequests(authz ->
       authz
+        // TODO: Update to correct roles when fixed in Auth server
         .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").hasAuthority("[\"CAT_ADMINISTRATOR\",\"CAT_USER\"]")
-        //.antMatchers(HttpMethod.POST, "/tenders/projects/agreements").authenticated()
-
-        .anyRequest().denyAll();
-
-    })
-    // TODO: CSRF protection - Yes/No?
-    // .csrf(CsrfConfigurer::disable)
+        .anyRequest().denyAll()
+    )
+    .csrf(CsrfConfigurer::disable)
     .oauth2ResourceServer().jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
     // @formatter:on
   }
