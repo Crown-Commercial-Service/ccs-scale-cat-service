@@ -12,6 +12,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
 
 /**
@@ -22,6 +23,7 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "procurement_events")
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "project")
 public class ProcurementEvent {
 
   @Id
