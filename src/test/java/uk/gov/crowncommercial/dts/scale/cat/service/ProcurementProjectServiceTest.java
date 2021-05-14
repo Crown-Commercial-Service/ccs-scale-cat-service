@@ -41,6 +41,7 @@ class ProcurementProjectServiceTest {
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
   private static final String ORG = "CCS";
+  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG;
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
 
@@ -79,7 +80,8 @@ class ProcurementProjectServiceTest {
     createUpdateProjectResponse.setReturnMessage("OK");
     createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(agreementDetails, TENDER_REF_CODE, PRINCIPAL);
+    var procurementProject =
+        ProcurementProject.of(agreementDetails, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventSummary = new EventSummary();
