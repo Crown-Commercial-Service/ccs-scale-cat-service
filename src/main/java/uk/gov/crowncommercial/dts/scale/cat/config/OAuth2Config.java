@@ -27,7 +27,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     http.authorizeRequests(authz ->
       authz
         // TODO: Update to correct roles when fixed in Auth server
-        .antMatchers(HttpMethod.POST, "/tenders/projects/agreements").hasAuthority("[\"CAT_ADMINISTRATOR\",\"CAT_USER\"]")
+        .antMatchers(HttpMethod.POST, "/tenders/**").hasAuthority("[\"CAT_ADMINISTRATOR\",\"CAT_USER\"]")
         .anyRequest().denyAll()
     )
     .csrf(CsrfConfigurer::disable)

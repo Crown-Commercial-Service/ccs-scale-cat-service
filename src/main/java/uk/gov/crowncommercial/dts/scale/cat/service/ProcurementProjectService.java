@@ -10,7 +10,13 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectOwner;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -79,7 +85,7 @@ public class ProcurementProjectService {
         createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =
-        procurementEventService.createFromAgreementDetails(procurementProject.getId(), principal);
+        procurementEventService.createFromProject(procurementProject.getId(), principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
         procurementProject.getId(), eventSummary.getEventID(), projectTitle);
