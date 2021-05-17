@@ -1,9 +1,18 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
 
 /**
@@ -14,12 +23,17 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "procurement_events")
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "project")
 public class ProcurementEvent {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "event_id")
   Integer id;
+
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "project_id")
+  ProcurementProject project;
 
   @Column(name = "ocds_authority_name")
   String ocdsAuthorityName;
@@ -45,4 +59,29 @@ public class ProcurementEvent {
   @Column(name = "updated_at")
   Instant updatedAt;
 
+  /**
+   * Builds an instance from basic details
+   *
+   * @param jaggaerEventId The rfx reference code
+   * @param principal
+   * @return a procurement event
+   */
+  public static ProcurementEvent of(ProcurementProject project, String eventName,
+      String jaggaerEventId, String ocdsAuthority, String ocidPrefix, String principal) {
+    var procurementEvent = new ProcurementEvent();
+    procurementEvent.setProject(project);
+    procurementEvent.setEventName(eventName);
+    procurementEvent.setOcdsAuthorityName(ocdsAuthority);
+    procurementEvent.setOcidprefix(ocidPrefix);
+    procurementEvent.setJaggaerEventId(jaggaerEventId);
+    procurementEvent.setCreatedBy(principal); // Or Jaggaer user ID?
+    procurementEvent.setCreatedAt(Instant.now());
+    procurementEvent.setUpdatedBy(principal); // Or Jaggaer user ID?
+    procurementEvent.setUpdatedAt(Instant.now());
+    return procurementEvent;
+  }
+
+  public String getEventID() {
+    return ocdsAuthorityName + "-" + ocidprefix + "-" + id;
+  }
 }
