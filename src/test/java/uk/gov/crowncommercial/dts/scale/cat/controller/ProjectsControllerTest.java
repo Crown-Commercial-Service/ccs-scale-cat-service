@@ -61,11 +61,8 @@ class ProjectsControllerTest {
     agreementDetails.setAgreementID(CA_NUMBER);
     agreementDetails.setLotID(LOT_NUMBER);
 
-    // TODO: Update to the correct roles value once Auth service fixed (should be proper list or
-    // space-separated string)
-    validJwtReqPostProcessor =
-        jwt().authorities(new SimpleGrantedAuthority("[\"CAT_ADMINISTRATOR\",\"CAT_USER\"]"))
-            .jwt(jwt -> jwt.subject(PRINCIPAL));
+    validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.subject(PRINCIPAL));
   }
 
   @Test
