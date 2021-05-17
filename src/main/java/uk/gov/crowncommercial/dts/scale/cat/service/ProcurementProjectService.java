@@ -13,7 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -27,7 +27,7 @@ public class ProcurementProjectService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final UserProfileService userProfileService;
-  private final ProcurementProjectRepo procurementProjectRepo;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
 
@@ -79,7 +79,7 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
-    var procurementProject = procurementProjectRepo.save(ProcurementProject.of(agreementDetails,
+    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.of(agreementDetails,
         createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =

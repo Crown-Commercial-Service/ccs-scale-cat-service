@@ -53,7 +53,7 @@ class ProcurementProjectServiceTest {
   @MockBean
   private UserProfileService userProfileService;
 
-  @MockBean()
+  @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
 
   @MockBean
