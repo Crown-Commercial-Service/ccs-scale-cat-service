@@ -5,6 +5,7 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionException;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -23,20 +24,20 @@ public class RetryableTendersDBDelegate {
   private final ProcurementProjectRepo procurementProjectRepo;
   private final ProcurementEventRepo procurementEventRepo;
 
-  @Retryable(include = TransientDataAccessException.class, maxAttempts = MAX_ATTEMPTS,
-      backoff = @Backoff(delay = DELAY, maxDelay = MAX_DELAY))
+  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
+      maxAttempts = MAX_ATTEMPTS, backoff = @Backoff(delay = DELAY, maxDelay = MAX_DELAY))
   public ProcurementProject save(ProcurementProject procurementProject) {
     return procurementProjectRepo.save(procurementProject);
   }
 
-  @Retryable(include = TransientDataAccessException.class, maxAttempts = MAX_ATTEMPTS,
-      backoff = @Backoff(delay = DELAY, maxDelay = MAX_DELAY))
+  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
+      maxAttempts = MAX_ATTEMPTS, backoff = @Backoff(delay = DELAY, maxDelay = MAX_DELAY))
   public ProcurementEvent save(ProcurementEvent procurementevent) {
     return procurementEventRepo.save(procurementevent);
   }
 
-  @Retryable(include = TransientDataAccessException.class, maxAttempts = MAX_ATTEMPTS,
-      backoff = @Backoff(delay = DELAY, maxDelay = MAX_DELAY))
+  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
+      maxAttempts = MAX_ATTEMPTS, backoff = @Backoff(delay = DELAY, maxDelay = MAX_DELAY))
   public Optional<ProcurementProject> findProcurementProjectById(Integer id) {
     return procurementProjectRepo.findById(id);
   }

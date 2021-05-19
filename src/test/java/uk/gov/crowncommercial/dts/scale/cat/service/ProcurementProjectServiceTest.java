@@ -23,14 +23,16 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
+import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Service layer tests
  */
-@SpringBootTest(
-    classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class},
+@SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class,
+    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
@@ -55,6 +57,9 @@ class ProcurementProjectServiceTest {
 
   @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
+
+  @MockBean
+  private ProcurementEventRepo procurementEventRepo;
 
   @MockBean
   private ProcurementEventService procurementEventService;

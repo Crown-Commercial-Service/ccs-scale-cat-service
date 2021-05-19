@@ -19,6 +19,9 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+  datasource:
+    hikari:
+      connectionTimeout: 10000
       
 config:
   ocds:
@@ -42,14 +45,16 @@ config:
       getBuyerCompanyProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=userEmail=={{PRINCIPAL}}
         principalPlaceholder: "{{PRINCIPAL}}"
-        
+
+    
 ---
 spring:
   config:
     activate:
-      on-profile: local
-  datasource: 
-    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
+      on-profile:
+        - dev
+        - local
+        - local-pg
 
   # JAGGAER CONFIG
   security:
@@ -64,8 +69,30 @@ spring:
 #            client-id: "SET IN ENV"
 #            client-secret: "SET IN ENV"
     
+---
+spring:
+  config:
+    activate:
+      on-profile:
+        - local
+  datasource: 
+    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
   jpa:
     database: h2
     show-sql: true
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
+      
+---
+spring:
+  config:
+    activate:
+      on-profile:
+        - local-pg
+  datasource: 
+    url: jdbc:postgresql://127.0.0.1:5432/cat
+  jpa:
+    database: postgresql
+    show-sql: true
+    hibernate:
+      ddl-auto: validate      

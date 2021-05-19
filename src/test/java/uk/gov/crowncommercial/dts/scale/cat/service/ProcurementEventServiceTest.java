@@ -28,13 +28,16 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfx;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-    TendersAPIModelUtils.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
 
