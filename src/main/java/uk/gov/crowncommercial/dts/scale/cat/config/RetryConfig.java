@@ -9,7 +9,7 @@ import org.springframework.retry.listener.RetryListenerSupport;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Simple retry listener that logs details of each attempt
+ * Spring Retry config, including a listener that logs details of each attempt
  */
 @Configuration
 @EnableRetry
