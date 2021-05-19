@@ -144,7 +144,6 @@ class ProcurementProjectServiceTest {
     JaggaerApplicationException jagEx = assertThrows(JaggaerApplicationException.class,
         () -> procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
-
   }
 
 }

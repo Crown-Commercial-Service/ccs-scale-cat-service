@@ -27,6 +27,10 @@ config:
   ocds:
     authority: ocds
     ocid-prefix: b5fd17
+  retry:
+    maxAttempts: 5
+    multiplier: 2
+    delay: 1000
         
   external:
     jaggaer:
