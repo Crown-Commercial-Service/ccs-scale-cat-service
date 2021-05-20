@@ -1,5 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -10,14 +12,8 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectOwner;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -31,7 +27,7 @@ public class ProcurementProjectService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final UserProfileService userProfileService;
-  private final ProcurementProjectRepo procurementProjectRepo;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
 
@@ -69,10 +65,12 @@ public class ProcurementProjectService {
             .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
             .build()));
 
-    CreateUpdateProjectResponse createProjectResponse =
-        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+    var createProjectResponse =
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error creating project"));
 
     if (createProjectResponse.getReturnCode() != 0
         || !"OK".equals(createProjectResponse.getReturnMessage())) {
@@ -81,7 +79,7 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
-    var procurementProject = procurementProjectRepo.save(ProcurementProject.of(agreementDetails,
+    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.of(agreementDetails,
         createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =

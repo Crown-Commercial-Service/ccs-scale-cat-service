@@ -19,22 +19,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.AdditionalInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.AdditionalInfoValue;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.AdditionalInfoValues;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfx;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OwnerUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxAdditionalInfoList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -65,15 +51,14 @@ public class ProcurementEventService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final OcdsConfig ocdsConfig;
   private final WebClient jaggaerWebClient;
-  private final ProcurementProjectRepo procurementProjectRepo;
-  private final ProcurementEventRepo procurementEventRepo;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
 
   /**
    * This will create a Jaggaer Rfx (CCS 'Event' equivalent) based on agreement details. Designed to
    * be called directly from the {@link ProcurementProjectService} during the Jaggaer project
    * creation process.
-   * 
+   *
    * @param projectId CCS project id
    * @param principal
    * @return
@@ -81,7 +66,7 @@ public class ProcurementEventService {
   public EventSummary createFromProject(Integer projectId, String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
-    ProcurementProject project = procurementProjectRepo.findById(projectId)
+    ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     var createUpdateRfx = createUpdateRfxRequest(project, principal);
@@ -109,7 +94,7 @@ public class ProcurementEventService {
     String ocidPrefix = ocdsConfig.getOcidPrefix();
     String eventName = createUpdateRfx.getRfx().getRfxSetting().getShortDescription();
 
-    var procurementEvent = procurementEventRepo.save(ProcurementEvent.of(project, eventName,
+    var procurementEvent = retryableTendersDBDelegate.save(ProcurementEvent.of(project, eventName,
         createRfxResponse.getRfxReferenceCode(), ocdsAuthority, ocidPrefix, principal));
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
@@ -117,10 +102,9 @@ public class ProcurementEventService {
         EVENT_STAGE);
   }
 
-
   /**
    * This endpoint will create a Jaggaer Rfx (CCS 'Event' equivalent) on an existing project.
-   * 
+   *
    * @param projectId CCS project id
    * @param tender CCS tender object (only relevant values need to be populated)
    * @param principal

@@ -11,6 +11,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.extern.slf4j.Slf4j;
@@ -86,6 +87,16 @@ public class GlobalErrorHandler implements ErrorController {
   public Errors handleJaggaerApplicationException(final JaggaerApplicationException exception) {
 
     log.error("Jaggaer application error", exception);
+
+    var apiError = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
+    return buildErrors(Arrays.asList(apiError));
+  }
+
+  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  @ExceptionHandler(ExhaustedRetryException.class)
+  public Errors handleExhaustedRetryException(final ExhaustedRetryException exception) {
+
+    log.error("Exhausted retries", exception);
 
     var apiError = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
     return buildErrors(Arrays.asList(apiError));
