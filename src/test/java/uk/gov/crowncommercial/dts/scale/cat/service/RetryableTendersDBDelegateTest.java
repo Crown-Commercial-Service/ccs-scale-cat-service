@@ -58,7 +58,7 @@ class RetryableTendersDBDelegateTest {
     var queryTimeoutException = new QueryTimeoutException("Another DB problem");
     var procurementProject = new ProcurementProject();
 
-    // Should retry 5 times, succeeding on final attempt
+    // Should fail 5 times
     when(procurementProjectRepo.save(procurementProject)).thenThrow(transactionException,
         queryTimeoutException, transactionException, queryTimeoutException, transactionException);
 
