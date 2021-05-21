@@ -17,7 +17,7 @@ deploy:
 # SBX - modify CF_APP_PREFIX as required
 - provider: script
   skip_cleanup: true
-  script: CF_APP_PREFIX=sandbox-2 CF_SPACE=sandbox-2 CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
+  script: CF_APP_PREFIX=sbx2 CF_SPACE=sandbox-2 CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     all_branches: true
     condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/SCC-[0-9]+.*$"
