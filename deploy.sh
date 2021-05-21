@@ -13,7 +13,7 @@ cf login -u $CLOUDFOUNDRY_USERNAME -p $CLOUDFOUNDRY_PASSWORD -o ccs-scale-cat -s
 
 APP_NAME="${CF_APP_PREFIX}-ccs-scale-cat-service"
 SERVICE_NAME_PG="${CF_APP_PREFIX}-ccs-scale-cat-db"
-UPS_NAME="${CF_APP_PREFIX}-ccs-scale-cat-ups-service"
+export UPS_NAME="${CF_APP_PREFIX}-ccs-scale-cat-ups-service"
 
 # TODO: Grab disk, mem and instance count vars from travis / UPS?
 cf push -k $CF_DISK -m $CF_MEMORY -i $CF_INSTANCES --no-start --var CF_APP_PREFIX=$CF_APP_PREFIX
