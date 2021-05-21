@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Login to GPaaS London Cloud Foundry ccs-scale-cat org with space determined by environment variable CF_SPACE.
-# Push local app based on manifest, setting vars `CF_ROUTE_PREFIX` from env var `CF_ROUTE_PREFIX` and `CF_MEMORY` from `CF_MEMORY` 
+# Push local app based on manifest, setting vars `CF_APP_PREFIX` from env var `CF_APP_PREFIX` and `CF_MEMORY` from `CF_MEMORY` 
 #
 
 set -meo pipefail
@@ -11,12 +11,12 @@ cf api https://api.london.cloud.service.gov.uk
 
 cf login -u $CLOUDFOUNDRY_USERNAME -p $CLOUDFOUNDRY_PASSWORD -o ccs-scale-cat -s $CF_SPACE
 
-APP_NAME="${CF_ROUTE_PREFIX}-ccs-scale-cat-service"
-SERVICE_NAME_PG="${CF_ROUTE_PREFIX}-ccs-scale-cat-db"
-UPS_NAME="${CF_ROUTE_PREFIX}-ccs-scale-cat-ups-service"
+APP_NAME="${CF_APP_PREFIX}-ccs-scale-cat-service"
+SERVICE_NAME_PG="${CF_APP_PREFIX}-ccs-scale-cat-db"
+UPS_NAME="${CF_APP_PREFIX}-ccs-scale-cat-ups-service"
 
 # TODO: Grab disk, mem and instance count vars from travis / UPS?
-cf push -k $CF_DISK -m $CF_MEMORY -i $CF_INSTANCES --no-start --var CF_ROUTE_PREFIX=$CF_ROUTE_PREFIX
+cf push -k $CF_DISK -m $CF_MEMORY -i $CF_INSTANCES --no-start --var CF_APP_PREFIX=$CF_APP_PREFIX
 
 # Map an internal route to CaT API backend for UI
 # cf map-route $APP_NAME apps.internal --hostname $APP_NAME

@@ -14,10 +14,10 @@ after_success:
 - export PATH=$PATH:$HOME/cf-cli
 deploy:
 
-# SBX - modify CF_ROUTE_PREFIX as required
+# SBX - modify CF_APP_PREFIX as required
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=sandbox-2- CF_SPACE=sandbox CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
+  script: CF_APP_PREFIX=sandbox-2 CF_SPACE=sandbox-2 CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     all_branches: true
     condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/SCC-[0-9]+.*$"
@@ -25,14 +25,14 @@ deploy:
 # DEVELOP    
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
+  script: CF_APP_PREFIX=dev CF_SPACE=development CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     branch: develop
     
 # INT (SIT)    
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=int- CF_SPACE=INT CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
+  script: CF_APP_PREFIX=int CF_SPACE=INT CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     branch: main
     
