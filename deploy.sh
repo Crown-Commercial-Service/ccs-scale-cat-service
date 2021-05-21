@@ -35,7 +35,9 @@ cf bind-service $APP_NAME $UPS_NAME
 
 # TODO: Improve the sed command to remove need to prefix with additional '{' char
 VCAP_SERVICES="{$(cf env $APP_NAME | sed -n '/^VCAP_SERVICES:/,/^$/{//!p;}')"
-
+jq --version
+TEST=$(echo $VCAP_SERVICES | jq -r '."user-provided"[] | select(.name == env.UPS_NAME).credentials."auth-server-jwk-set-uri"')
+echo "TEST: ${TEST}"
 echo "${VCAP_SERVICES}"
 
 # CaT API
