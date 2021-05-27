@@ -5,7 +5,7 @@ cache:
   - "$HOME/.m2"
 branches:
   only:
-  - "/^(feature|bugfix)\\/SINF-[0-9]+.*$/"
+  - "/^(feature|bugfix)\\/SCC-[0-9]+.*$/"
   - develop
   - main
 after_success:
@@ -13,20 +13,26 @@ after_success:
 - curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx -C $HOME/cf-cli
 - export PATH=$PATH:$HOME/cf-cli
 deploy:
+
+# SBX - modify CF_APP_PREFIX as required
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=sbx- CF_SPACE=sandbox CF_MEMORY=1024M AGREEMENTS_SERVICE_URL=$AGREEMENTS_SERVICE_URL_TST AGREEMENTS_SERVICE_API_KEY=$AGREEMENTS_SERVICE_API_KEY_TST ROLLBAR_ENV=sandbox bash ./deploy.sh
+  script: CF_APP_PREFIX=sbx2 CF_SPACE=sandbox-2 CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     all_branches: true
-    condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/SINF-[0-9]+.*$"
+    condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/SCC-[0-9]+.*$"
+
+# DEVELOP    
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=dev- CF_SPACE=development CF_MEMORY=1024M AGREEMENTS_SERVICE_URL=$AGREEMENTS_SERVICE_URL_TST AGREEMENTS_SERVICE_API_KEY=$AGREEMENTS_SERVICE_API_KEY_TST ROLLBAR_ENV=development bash ./deploy.sh
+  script: CF_APP_PREFIX=dev CF_SPACE=development CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     branch: develop
+    
+# INT (SIT)    
 - provider: script
   skip_cleanup: true
-  script: CF_ROUTE_PREFIX=int- CF_SPACE=INT CF_MEMORY=1024M AGREEMENTS_SERVICE_URL=$AGREEMENTS_SERVICE_URL_TST AGREEMENTS_SERVICE_API_KEY=$AGREEMENTS_SERVICE_API_KEY_TST ROLLBAR_ENV=integration bash ./deploy.sh
+  script: CF_APP_PREFIX=int CF_SPACE=INT CF_MEMORY=2G CF_DISK=2G CF_INSTANCES=1 bash ./deploy.sh
   on:
     branch: main
     
@@ -36,8 +42,4 @@ env:
   # CF creds
   - secure: h/XLGdkQXNgSpkKkuDBMhf0sMKc6I/gMKfKoILpTlCFSUDmp+9qW3ltrbPi8Q8JZP5VBPsYSPjGFs9l0hEIXN+Bw6Fyaxdj0Opr3eGd55j2FsoPiDRnHImk4Ec9nX7aE4g3xz6tZkr8oPY3H0jtjKxVUS7tM0GQHzivH+z76duMaJ/8IrA60p/RnmEfXGe7LMaXU1Mz7vMjZZO90HkZnhoVIuvLZNaVnIUNFG3Pmcuq6mTEcRDgEzKllfdLbOM0RsHWe76rcMPp7s0TxfEZGTDX3xDgEHHQiHi8v2tK4I4ce4704LgPvOahCn1rj5qtO3X2B6HJkV7WrEMFLvI6RZ8so1tq1zE3MhRhxmIKcxUhe7iec1YifBwn5/sLMn5pA8bbSoXXRRhkY+eXAgfl3LJ+3qRAiiYgn6AKqCICLif7EW02kTyw1MMocwGWbLky5pN+aEvZI5XxuejZWuja/X392brH4qBJtIfPh2pjfp9IZyzrTp6WG02g0YxvUa4MtoOnEDmDm4d3bQwKN4oMHjS8Vblw5W6Z0Mi1XHaO5pF0c/XN3yWNxHFTOzbaohONBC1wIzRybX/HI0ELHixpoAiFi3xIQptDtY5C0SzWReR2VWbIzzL2DdfpYGAs/JAq1VAe3IhHLDAIaEN7yFkWrlDp3QMnhGkGJY5d6JahY99o=
   - secure: d0lw/XSURxDpEZMB6HrK7KqX3Eh8tPCeyCz15sO6MAhFr02XrLYbmU/T6agyn1WeGgG9FGQ8zKNATP+gv84pBwi1RWsSFJr4Qkjqzy0bGjPz63gbK7giwthIF6oh9G+l9cueTEQ4nX4+xgN0O2h+RTo49SjRXOTHIChtDisma1i0Np1wdanDaiJXC+VidB+n7cUiW5KNdGMpaNyTaPIkvc+R/bGv8YS3lc4whPGUdqXGd1TZ2IHHk3U9dmuU33vcncKraqcWQHs/ZafeaP+fkVCdT8OthbHtsAIWaeNUDVQ5i6SV75icXaeu/xoXDLWqAfjwUyLfWyZBY0UjnmA4oE/a15pC2QQxFnudbMqKEZXiec4KBhFasOjHGbYqk1cl0a2nuUHS7Ei/vLgtQfHyoYwPlqSh3qkYZPqwQTIXW0C+0s101adzOx5g0WzpdzzwaXRhc+A9pOmn4rnHIWTNfJ9uuaWx9i0sywkeJ6vETROWyH6+w2Oqrtex8uOb0b3yugAGHvT3ObIX4OQv1Z337jL6DCJfEV1dMA9c1UP3YMjo9KL9bdWynsGpNEB//flJPJOpjYqxNk2SEoUOyGNzklW63R4gN44EHLmks7I99RiETnttlf/iwyTFDDTYLIjlwE/N395hlKRgrN+TyDi6sm5+BLkZEIDbNNutFRcN9Iw=
-  # AGREEMENTS_SERVICE_URL_TST:
-  - secure: "lNf7VS9YSWNEw3wRhnqNKyIcnu/tDCugvdtAC1dn2LJsrYzxJAbCU35aaDw19bR2DHRvKh6OHZ6uLBQji7dNETALN5Vm7azFQzct8l6QK3O8dwqyZ0lv9BztVKvVlS//WhpcuiRW/K78VjbzlAQm29H2h1RzCCcdtsP9B3bWDKTtJMe+RqoODaA3IzjJ/FUREc8OI9YW2DeWL3RbcOf9AOX7IUonsupb06dcMZlztQul8+fyEHK5+4qxnDo+CEm4X71cu8DinIu3XiyoVwbYAR9TGsPsLMkAIvieHzbKkTghhmv68yoIqToxUHFrh6fhRGVWWiThnKz9pVS0PE5OImlepZ7Gf48VDP/k0KNjSoAWdLUE3elHzIWryDpWd8VfbuH1Kq38SIdcVcehpKKtXK0rHSU2tGqvJRvtS8WJYsUe5rFC7A3bDZx58qQ+NxMk1LhIR/dXDs70LCBDh/+cq43qwjE/FksM/0qajmdPRLUgV4oooiamDE9Be5LfWeibAk9Goc1cRB/J/UnNAz/i8z0geb0VZVpBI2MjR79kHSc2ka8y0eZsycawS8tqVpm5Hey7fki56gYFrQGQYmS6z6NQC4b8/yTRYnCr5jREoE7n3qt/a4tFALcwvErarGM4IU5rJ3/B2TRLQW5N8eLgxhP0XClwxsFywO8cMiamT5g="
-  # AGREEMENTS_SERVICE_API_KEY_TST:
-  - secure: "kgUTKk/PAzB0VPaX5LUtXVkuz0tG50a6rXwhS3zHKMc11eV2yNsA6DZZ273KnaPMoZRP3eMtI2R8S+QFQFgvqxI7BivKRtkzlO3g0fOzTeX8RMTtorvPM/ZtUpmfsaejnLFqJvaUdr35Wbx5X0pTFBHB1yWNUvVDfo7v+HpW2bInIRg5uvfzzOowReOIPzmaRDKlzMfGU2jcRCfcZ5DaDuNDq6N/fVaOFeoI4XVstIRY5AvRm4/3uijtG1foOSkBLDPc/yioAl+9To1MMLdJDoUkgcWLumJRUhk0QP/1nPj/pLGzXpIuamXsDV/AL8wCo3nvXhnUHCf4zuF6eTX/f2IqfyBHeH5sJHWrfIgncXrNHLc1Jx+O4+H+MdBpU9yRSas+O5G0nR0oZwo5OYNS1VQs61sQTQqpvV9FOcSvBS4oYjS0osfRwgy4m5JF8Ow3gHnK81mMrKsCkNq4kn3PjZRt8u4MSKdj5D6JvgdijyH64/LwLFLB/xLdnDAvDlsbcf4YAqofR4/O+OUa/B5ahmU3trmRjXXcc88e/L68T+xZfd2o3P9D1k6Bzx+24s3YMOvNbo9mV0TsCP6tO2cktEyeiGps6+so0cwB3A4cUaQISZNesU/eWtl2F9sNH8J/g0lBNwC0jTAsCBxxzKJ4j8QivKwGw9jBgLLqy+9EC0k="
   
