@@ -47,7 +47,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
         templateId: itt_543
       getBuyerCompanyProfile:
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=userEmail=={{PRINCIPAL}}
+        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
         principalPlaceholder: "{{PRINCIPAL}}"
 
     
