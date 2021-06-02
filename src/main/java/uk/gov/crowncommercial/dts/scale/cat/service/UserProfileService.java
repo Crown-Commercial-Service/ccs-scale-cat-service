@@ -18,7 +18,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 
 /**
- * User profile service layer.
+ * User profile service layer. Now utilises Guava's {@link LoadingCache} to provide a basic
+ * time-based cache of <code>principal</code> values (i.e. the incoming JWT subject) to resolved
+ * Jaggaer sub user profiles.
+ * <p>
+ * TODO: Needs tests, but as much of this may change once Jaggaer is integrated with SSO will wait
+ * and see what the final architecture looks like
  */
 @Service
 @RequiredArgsConstructor
