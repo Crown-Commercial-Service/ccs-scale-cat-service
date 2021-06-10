@@ -126,7 +126,7 @@
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>${openapi-generator.version}</version>
 				<executions>
-				<!-- 
+	
 					<execution>
 						<goals>
 							<goal>generate</goal>
@@ -155,7 +155,7 @@
 							</configOptions>
 						</configuration>
 					</execution>
-					 -->
+					
 				</executions>
 			</plugin>
 		</plugins>
