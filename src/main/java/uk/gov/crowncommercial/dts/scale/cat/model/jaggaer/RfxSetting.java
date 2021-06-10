@@ -7,6 +7,8 @@ import lombok.Value;
 @Builder
 public class RfxSetting {
 
+  String rfxId;
+  String rfxReferenceCode;
   Integer rfiFlag;
   String tenderReferenceCode;
   String templateReferenceCode;

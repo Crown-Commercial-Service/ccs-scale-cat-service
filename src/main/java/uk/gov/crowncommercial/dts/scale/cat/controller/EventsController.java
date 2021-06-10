@@ -27,9 +27,21 @@ public class EventsController {
       @RequestBody Tender tender, JwtAuthenticationToken authentication) {
 
     var principal = authentication.getTokenAttributes().get("sub").toString();
-    log.info("createProcuremenProject invoked on behalf of principal: {}", principal);
+    log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
 
     return procurementEventService.createFromTender(procId, tender, principal);
+  }
+
+  @PostMapping("/tenders/projects/{procID}/events/{eventID}/name")
+  public EventSummary updateProcurementEventName(@PathVariable("procID") Integer procId,
+      @PathVariable("eventID") Integer eventId, @RequestBody NameTemp name,
+      JwtAuthenticationToken authentication) {
+
+    var principal = authentication.getTokenAttributes().get("sub").toString();
+    log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.updateProcurementEventName(procId, eventId, name.getName(),
+        principal);
   }
 
 }

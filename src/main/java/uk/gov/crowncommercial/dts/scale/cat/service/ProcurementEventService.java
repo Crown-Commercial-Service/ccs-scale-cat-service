@@ -71,6 +71,8 @@ public class ProcurementEventService {
 
     var createUpdateRfx = createUpdateRfxRequest(project, principal);
 
+    tendersAPIModelUtils.prettyPrintJson(createUpdateRfx);
+
     CreateUpdateRfxResponse createRfxResponse =
         jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
             .bodyValue(createUpdateRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
@@ -88,6 +90,8 @@ public class ProcurementEventService {
           createRfxResponse.getReturnMessage());
     }
     log.info("Created event: {}", createRfxResponse);
+
+    tendersAPIModelUtils.prettyPrintJson(createRfxResponse);
 
     // Persist the Jaggaer Rfx details as a new event in the tenders DB
     String ocdsAuthority = ocdsConfig.getAuthority();
@@ -154,6 +158,45 @@ public class ProcurementEventService {
     var rfx = new Rfx(rfxSetting, rfxAdditionalInfoList, suppliersList);
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
+  }
+
+  /**
+   * 
+   * @param projectId
+   * @param eventId
+   * @param name
+   * @param principal
+   * @return
+   */
+  public EventSummary updateProcurementEventName(Integer projectId, Integer eventId, String name,
+      String principal) {
+
+    // Get project from tenders DB to obtain Jaggaer project id
+    ProcurementEvent event = retryableTendersDBDelegate.findProcurementEventById(eventId)
+        .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
+
+
+    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
+    String jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+
+    // TODO: need a new col in DB (with Trev)
+    var rfxId = "rfq_53896";
+    var rfxReferenceCode = "itt_1949";
+
+    var rfxSetting = RfxSetting.builder().rfxId(rfxId).rfxReferenceCode(rfxReferenceCode)
+        .shortDescription(name).build();
+
+    var rfx = new Rfx(rfxSetting, null, null);
+
+    CreateUpdateRfxResponse createRfxResponse =
+        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+            .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
+            .bodyToMono(CreateUpdateRfxResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
+
+    // TODO - response in API says it is "OK", but content type is "application/vnd.api+json" - is a
+    // simple "OK" string valid?
+    return null;
   }
 
   /**

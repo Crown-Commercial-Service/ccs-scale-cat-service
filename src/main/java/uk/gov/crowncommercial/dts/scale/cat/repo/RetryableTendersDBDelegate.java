@@ -46,6 +46,14 @@ public class RetryableTendersDBDelegate {
     return procurementProjectRepo.findById(id);
   }
 
+  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
+      maxAttemptsExpression = "${config.retry.maxAttempts}",
+      backoff = @Backoff(delayExpression = "${config.retry.delay}",
+          multiplierExpression = "${config.retry.multiplier}"))
+  public Optional<ProcurementEvent> findProcurementEventById(Integer id) {
+    return procurementEventRepo.findById(id);
+  }
+
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.
