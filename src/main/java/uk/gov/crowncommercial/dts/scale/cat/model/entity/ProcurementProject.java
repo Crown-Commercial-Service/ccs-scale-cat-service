@@ -57,19 +57,19 @@ public class ProcurementProject {
    * Builds an instance from basic details
    *
    * @param agreementDetails
-   * @param jaggaerProjectId The tender project id
-   * @param jaggaerReferenceId The tender reference code
+   * @param externalProjectId The tender project id
+   * @param externalReferenceId The tender reference code
    * @param projectName aka project title
    * @param principal
    * @return a procurement project
    */
   public static ProcurementProject of(AgreementDetails agreementDetails, String externalProjectId,
-      String externalReferenceCode, String projectName, String principal) {
+      String externalReferenceId, String projectName, String principal) {
     var procurementProject = new ProcurementProject();
     procurementProject.setCaNumber(agreementDetails.getAgreementID());
     procurementProject.setLotNumber(agreementDetails.getLotID());
     procurementProject.setExternalProjectId(externalProjectId);
-    procurementProject.setExternalReferenceId(externalReferenceCode);
+    procurementProject.setExternalReferenceId(externalReferenceId);
     procurementProject.setProjectName(projectName);
     procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
     procurementProject.setCreatedAt(Instant.now());

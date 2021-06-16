@@ -160,18 +160,18 @@ public class ProcurementEventService {
   }
 
   /**
-   * Update the name 'short description' of a Jaggaer Rfx
+   * Update the name, i.e. 'short description' of a Jaggaer Rfx record.
    * 
-   * @param projectId
-   * @param eventId
-   * @param eventName
+   * @param projectId Database project Id
+   * @param eventId CCS generated event Id, e.g. 'ocds-b5fd17-2'
+   * @param eventName the new name
    */
   public void updateProcurementEventName(final Integer projectId, final String eventId,
       final String eventName, final String principal) {
 
     Assert.hasLength(eventName, "New event name must be supplied");
 
-    // Event ID will be in the format "ocds-b5fd17-1"
+    // EventId will be in the format "ocds-b5fd17-1"
     String ocdsAuthorityName;
     String ocidPrefix;
     Integer eventIdKey;
@@ -187,7 +187,7 @@ public class ProcurementEventService {
           "Event ID + '" + eventId + "' is not in the expected format");
     }
 
-    // Get project from tenders DB to obtain Jaggaer project id
+    // Get event from tenders DB to obtain Jaggaer project id
     ProcurementEvent event = retryableTendersDBDelegate
         .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName,
             ocidPrefix)

@@ -55,14 +55,19 @@ public class ProcurementEvent {
   Instant updatedAt;
 
   /**
-   * Builds an instance from basic details
-   *
-   * @param jaggaerEventId The rfx reference code
+   * Builds an instance from basic details.
+   * 
+   * @param project the parent {@link ProcurementProject}
+   * @param eventName Title/short description
+   * @param externalEventId Rfx id
+   * @param externalReferenceId Rfx reference code
+   * @param ocdsAuthority Authority, e.g. 'osds'
+   * @param ocidPrefix Prefix, e.g. 'b5fd17'
    * @param principal
    * @return a procurement event
    */
   public static ProcurementEvent of(ProcurementProject project, String eventName,
-      String externalEventId, String externalReferenceCode, String ocdsAuthority, String ocidPrefix,
+      String externalEventId, String externalReferenceId, String ocdsAuthority, String ocidPrefix,
       String principal) {
     var procurementEvent = new ProcurementEvent();
     procurementEvent.setProject(project);
@@ -70,7 +75,7 @@ public class ProcurementEvent {
     procurementEvent.setOcdsAuthorityName(ocdsAuthority);
     procurementEvent.setOcidPrefix(ocidPrefix);
     procurementEvent.setExternalEventId(externalEventId);
-    procurementEvent.setExternalReferenceId(externalReferenceCode);
+    procurementEvent.setExternalReferenceId(externalReferenceId);
     procurementEvent.setCreatedBy(principal); // Or Jaggaer user ID?
     procurementEvent.setCreatedAt(Instant.now());
     procurementEvent.setUpdatedBy(principal); // Or Jaggaer user ID?
