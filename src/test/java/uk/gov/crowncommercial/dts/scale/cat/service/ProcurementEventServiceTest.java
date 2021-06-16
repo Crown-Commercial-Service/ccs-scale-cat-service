@@ -209,6 +209,20 @@ class ProcurementEventServiceTest {
   }
 
   @Test
+  void testUpdateProcurementEventNameThrowsIllegalArgumentException2() throws Exception {
+
+    // Mock behaviours
+    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+
+    // Invoke & assert
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> procurementEventService
+            .updateProcurementEventName(PROC_PROJECT_ID, "EVENT-1", UPDATED_EVENT_NAME, PRINCIPAL));
+    assertEquals("Event ID 'EVENT-1' is not in the expected format", ex.getMessage());
+  }
+
+
+  @Test
   void testUpdateProcurementEventNameThrowsResourceNotFoundApplicationException() throws Exception {
 
     // Mock behaviours

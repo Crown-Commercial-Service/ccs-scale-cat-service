@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -98,27 +99,41 @@ public class ProcurementProjectService {
   }
 
   /**
+   * Update project name.
    * 
    * @param projectId
-   * @param eventId
-   * @param name
+   * @param namenew project name
    */
-  public void updateProcurementProjectName(final Integer projectId, final String projectName) {
+  public void updateProcurementProjectName(final Integer projectId, final String projectName,
+      final String principal) {
 
     Assert.hasLength(projectName, "New project name must be supplied");
 
     ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-    var createUpdateProject = new CreateUpdateProject(OperationCode.UPDATE,
+    var updateProject = new CreateUpdateProject(OperationCode.UPDATE,
         new Project(Tender.builder().tenderCode(project.getExternalProjectId())
             .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build()));
 
-    jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
-        .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
+    var updateProjectResponse =
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+            .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating project"));
+
+
+    if (updateProjectResponse.getReturnCode() != 0
+        || !"OK".equals(updateProjectResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
+          updateProjectResponse.getReturnMessage());
+    }
+    log.info("Updated project: {}", updateProjectResponse);
 
     project.setProjectName(projectName);
+    project.setUpdatedAt(Instant.now());
+    project.setUpdatedBy(principal);
     retryableTendersDBDelegate.save(project);
 
   }

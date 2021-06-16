@@ -43,7 +43,7 @@ public class ProjectsController {
 
     // TODO - defining RequestBody as Map - to revisit
     procurementProjectService.updateProcurementProjectName(procId,
-        request.get(Constants.ATTRIBUTE_NAME));
+        request.get(Constants.ATTRIBUTE_NAME), principal);
 
     return Constants.OK;
   }
