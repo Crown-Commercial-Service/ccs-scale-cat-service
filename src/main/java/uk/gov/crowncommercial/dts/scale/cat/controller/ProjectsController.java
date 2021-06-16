@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 /**
@@ -38,7 +38,7 @@ public class ProjectsController {
   @PostMapping(value = "/tenders/projects/{procID}/name",
       produces = MediaType.APPLICATION_JSON_VALUE)
   public String updateProcurementProjectName(@PathVariable("procID") Integer procId,
-      @RequestBody ProjectName projectName, JwtAuthenticationToken authentication) {
+      @RequestBody ProcurementProjectName projectName, JwtAuthenticationToken authentication) {
 
     var principal = authentication.getTokenAttributes().get("sub").toString();
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);

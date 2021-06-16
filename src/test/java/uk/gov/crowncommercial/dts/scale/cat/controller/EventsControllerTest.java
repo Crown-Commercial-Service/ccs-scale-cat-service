@@ -134,7 +134,7 @@ class EventsControllerTest {
   @Test
   void updateProcurementEventName_200_OK() throws Exception {
 
-    EventName eventName = new EventName();
+    ProcurementEventName eventName = new ProcurementEventName();
     eventName.setName("New name");
 
     mockMvc

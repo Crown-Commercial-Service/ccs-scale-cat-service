@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -130,7 +130,7 @@ class ProjectsControllerTest {
   @Test
   void updateProcurementProjectName_200_OK() throws Exception {
 
-    ProjectName projectName = new ProjectName();
+    ProcurementProjectName projectName = new ProcurementProjectName();
     projectName.setName("New name");
 
     mockMvc

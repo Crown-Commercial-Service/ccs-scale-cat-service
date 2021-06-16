@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementEventName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
@@ -38,7 +38,7 @@ public class EventsController {
   @PostMapping(value = "/tenders/projects/{procID}/events/{eventID}/name",
       produces = MediaType.APPLICATION_JSON_VALUE)
   public String updateProcurementEventName(@PathVariable("procID") Integer procId,
-      @PathVariable("eventID") String eventId, @RequestBody EventName eventName,
+      @PathVariable("eventID") String eventId, @RequestBody ProcurementEventName eventName,
       JwtAuthenticationToken authentication) {
 
     var principal = authentication.getTokenAttributes().get("sub").toString();
