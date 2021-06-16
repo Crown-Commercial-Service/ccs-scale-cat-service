@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +14,6 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -85,8 +85,9 @@ public class ProcurementProjectService {
 
     tendersAPIModelUtils.prettyPrintJson(createProjectResponse);
 
-    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.of(agreementDetails,
-        createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
+    var procurementProject = retryableTendersDBDelegate
+        .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
+            createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =
         procurementEventService.createFromProject(procurementProject.getId(), principal);
@@ -105,34 +106,25 @@ public class ProcurementProjectService {
    * @param projectId
    * @param eventId
    * @param name
-   * @param principal
-   * @return
    */
-  public EventSummary updateProcurementProjectName(Integer projectId, String name,
-      String principal) {
+  public void updateProcurementProjectName(final Integer projectId, final String projectName) {
 
-    // Get project from tenders DB to obtain Jaggaer project id
+    Assert.hasLength(projectName, "New project name must be supplied");
+
     ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
-    String jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    var createUpdateProject = new CreateUpdateProject(OperationCode.UPDATE,
+        new Project(Tender.builder().tenderCode(project.getExternalProjectId())
+            .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build()));
 
-    var tenderCode = "tender_44705";
-    var tenderReferenceCode = "project_2329";
+    jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+        .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
 
-    var createUpdateProject =
-        new CreateUpdateProject(OperationCode.UPDATE, new Project(Tender.builder()
-            .tenderCode(tenderCode).tenderReferenceCode(tenderReferenceCode).title(name).build()));
+    project.setProjectName(projectName);
+    retryableTendersDBDelegate.save(project);
 
-    CreateUpdateProjectResponse updateProjectResponse =
-        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
-            .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
-
-    // TODO - response in API says it is "OK", but content type is "application/vnd.api+json" - is a
-    // simple "OK" string valid?
-    return null;
   }
 
 }

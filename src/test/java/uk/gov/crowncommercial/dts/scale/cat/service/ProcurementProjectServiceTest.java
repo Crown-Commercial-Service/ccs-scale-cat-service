@@ -39,6 +39,7 @@ class ProcurementProjectServiceTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final String JAGGAER_USER_ID = "12345";
+  private static final String TENDER_CODE = "tender_0001";
   private static final String TENDER_REF_CODE = "project_0001";
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
@@ -83,10 +84,11 @@ class ProcurementProjectServiceTest {
     var createUpdateProjectResponse = new CreateUpdateProjectResponse();
     createUpdateProjectResponse.setReturnCode(0);
     createUpdateProjectResponse.setReturnMessage("OK");
+    createUpdateProjectResponse.setTenderCode(TENDER_CODE);
     createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
     var procurementProject =
-        ProcurementProject.of(agreementDetails, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
+        ProcurementProject.of(agreementDetails, TENDER_CODE, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventSummary = new EventSummary();

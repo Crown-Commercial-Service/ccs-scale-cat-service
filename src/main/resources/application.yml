@@ -16,7 +16,7 @@ spring:
   jpa:
     open-in-view: false
     database: postgresql
-    show-sql: false
+    show-sql: true
     hibernate:
       ddl-auto: validate
   datasource:

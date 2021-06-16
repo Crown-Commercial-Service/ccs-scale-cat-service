@@ -43,7 +43,6 @@ public class TendersAPIModelUtils {
     return eventSummary;
   }
 
-
   public void prettyPrintJson(Object object) {
 
     ObjectMapper mapper = new ObjectMapper();

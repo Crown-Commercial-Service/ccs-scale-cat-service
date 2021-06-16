@@ -2,14 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import java.util.Set;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
+import javax.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -39,8 +32,11 @@ public class ProcurementProject {
   @Column(name = "lot_number")
   String lotNumber;
 
-  @Column(name = "jaggaer_project_id")
-  String jaggaerProjectId;
+  @Column(name = "external_project_id")
+  String externalProjectId;
+
+  @Column(name = "external_reference_id")
+  String externalReferenceId;
 
   @Column(name = "project_name")
   String projectName;
@@ -61,17 +57,19 @@ public class ProcurementProject {
    * Builds an instance from basic details
    *
    * @param agreementDetails
-   * @param jaggaerProjectId The tender reference code
+   * @param jaggaerProjectId The tender project id
+   * @param jaggaerReferenceId The tender reference code
    * @param projectName aka project title
    * @param principal
    * @return a procurement project
    */
-  public static ProcurementProject of(AgreementDetails agreementDetails, String jaggaerProjectId,
-      String projectName, String principal) {
+  public static ProcurementProject of(AgreementDetails agreementDetails, String externalProjectId,
+      String externalReferenceCode, String projectName, String principal) {
     var procurementProject = new ProcurementProject();
     procurementProject.setCaNumber(agreementDetails.getAgreementID());
     procurementProject.setLotNumber(agreementDetails.getLotID());
-    procurementProject.setJaggaerProjectId(jaggaerProjectId);
+    procurementProject.setExternalProjectId(externalProjectId);
+    procurementProject.setExternalReferenceId(externalReferenceCode);
     procurementProject.setProjectName(projectName);
     procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
     procurementProject.setCreatedAt(Instant.now());
