@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
@@ -34,17 +35,17 @@ public class EventsController {
     return procurementEventService.createFromTender(procId, tender, principal);
   }
 
-  @PostMapping("/tenders/projects/{procID}/events/{eventID}/name")
+  @PostMapping(value = "/tenders/projects/{procID}/events/{eventID}/name",
+      produces = MediaType.APPLICATION_JSON_VALUE)
   public String updateProcurementEventName(@PathVariable("procID") Integer procId,
-      @PathVariable("eventID") String eventId, @RequestBody Map<String, String> request,
+      @PathVariable("eventID") String eventId, @RequestBody EventName eventName,
       JwtAuthenticationToken authentication) {
 
     var principal = authentication.getTokenAttributes().get("sub").toString();
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
 
-    // TODO - defining RequestBody as Map - to revisit
-    procurementEventService.updateProcurementEventName(procId, eventId,
-        request.get(Constants.ATTRIBUTE_NAME), principal);
+    procurementEventService.updateProcurementEventName(procId, eventId, eventName.getName(),
+        principal);
 
     return Constants.OK;
   }

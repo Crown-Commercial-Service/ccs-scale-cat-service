@@ -8,9 +8,6 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class Constants {
 
-  // TODO - to be reviewed
-  public static final String ATTRIBUTE_NAME = "name";
-
   // Controller response related
   public static final String OK = "OK";
 }
