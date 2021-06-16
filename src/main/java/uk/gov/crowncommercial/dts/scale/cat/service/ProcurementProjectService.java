@@ -67,8 +67,6 @@ public class ProcurementProjectService {
             .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
             .build()));
 
-    tendersAPIModelUtils.prettyPrintJson(createUpdateProject);
-
     var createProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
@@ -82,8 +80,6 @@ public class ProcurementProjectService {
           createProjectResponse.getReturnMessage());
     }
     log.info("Created project: {}", createProjectResponse);
-
-    tendersAPIModelUtils.prettyPrintJson(createProjectResponse);
 
     var procurementProject = retryableTendersDBDelegate
         .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),

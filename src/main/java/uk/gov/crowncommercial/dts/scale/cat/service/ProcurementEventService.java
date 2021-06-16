@@ -73,8 +73,6 @@ public class ProcurementEventService {
 
     var createUpdateRfx = createUpdateRfxRequest(project, principal);
 
-    tendersAPIModelUtils.prettyPrintJson(createUpdateRfx);
-
     CreateUpdateRfxResponse createRfxResponse =
         jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
             .bodyValue(createUpdateRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
@@ -92,8 +90,6 @@ public class ProcurementEventService {
           createRfxResponse.getReturnMessage());
     }
     log.info("Created event: {}", createRfxResponse);
-
-    tendersAPIModelUtils.prettyPrintJson(createRfxResponse);
 
     // Persist the Jaggaer Rfx details as a new event in the tenders DB
     String ocdsAuthority = ocdsConfig.getAuthority();

@@ -126,13 +126,12 @@
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>${openapi-generator.version}</version>
 				<executions>
-	
 					<execution>
 						<goals>
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/feature/SCC-443/cat/CaT-service.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
@@ -155,7 +154,6 @@
 							</configOptions>
 						</configuration>
 					</execution>
-					
 				</executions>
 			</plugin>
 		</plugins>

@@ -1,8 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import org.springframework.stereotype.Component;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 /**
@@ -41,21 +39,6 @@ public class TendersAPIModelUtils {
     eventSummary.setEventStage(stage);
 
     return eventSummary;
-  }
-
-  public void prettyPrintJson(Object object) {
-
-    ObjectMapper mapper = new ObjectMapper();
-
-    String json;
-    try {
-      json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(object);
-      System.out.println(json);
-    } catch (JsonProcessingException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-
   }
 
 }
