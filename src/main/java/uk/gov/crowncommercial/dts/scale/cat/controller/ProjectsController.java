@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import org.springframework.http.MediaType;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
@@ -15,29 +15,28 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
  *
  */
 @RestController
+@RequestMapping(path = "/tenders/projects", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
-public class ProjectsController {
+public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
-  // @PreAuthorize("isAuthenticated()")
-  @PostMapping("/tenders/projects/agreements")
+  @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
       @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
 
-    var principal = authentication.getTokenAttributes().get("sub").toString();
+    var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
   }
 
-  @PutMapping(value = "/tenders/projects/{procID}/name",
-      produces = MediaType.APPLICATION_JSON_VALUE)
+  @PutMapping("/{procID}/name")
   public String updateProcurementProjectName(@PathVariable("procID") Integer procId,
       @RequestBody ProcurementProjectName projectName, JwtAuthenticationToken authentication) {
 
-    var principal = authentication.getTokenAttributes().get("sub").toString();
+    var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
 
     procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
