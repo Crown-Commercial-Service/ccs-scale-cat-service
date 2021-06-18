@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -26,7 +25,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     // @formatter:off
     http.authorizeRequests(authz ->
       authz
-        .antMatchers(HttpMethod.POST, "/tenders/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR")
+        .antMatchers("/tenders/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR")
         .anyRequest().denyAll()
     )
     .csrf(CsrfConfigurer::disable)

@@ -2,10 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -35,7 +32,7 @@ public class ProjectsController {
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
   }
 
-  @PostMapping(value = "/tenders/projects/{procID}/name",
+  @PutMapping(value = "/tenders/projects/{procID}/name",
       produces = MediaType.APPLICATION_JSON_VALUE)
   public String updateProcurementProjectName(@PathVariable("procID") Integer procId,
       @RequestBody ProcurementProjectName projectName, JwtAuthenticationToken authentication) {

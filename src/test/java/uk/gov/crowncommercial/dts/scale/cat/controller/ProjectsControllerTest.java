@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -134,7 +135,7 @@ class ProjectsControllerTest {
     projectName.setName("New name");
 
     mockMvc
-        .perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/name")
+        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/name")
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(projectName)))
         .andDo(print()).andExpect(status().isOk())
