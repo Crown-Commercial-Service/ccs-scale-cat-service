@@ -20,11 +20,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 /**
- * Web (mock MVC) Project controller tests. Security aware.
+ * Web (mock MVC) Tenders controller tests. Security aware.
  */
-@WebMvcTest(BaseDataController.class)
+@WebMvcTest(TendersController.class)
 @ActiveProfiles("test")
-class BaseDataControllerTest {
+class TendersControllerTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
 

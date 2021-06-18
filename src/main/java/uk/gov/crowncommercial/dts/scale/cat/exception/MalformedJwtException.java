@@ -1,7 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.exception;
 
 /**
- *
+ * Malformed JSON Web Token exception
  */
 public class MalformedJwtException extends RuntimeException {
 

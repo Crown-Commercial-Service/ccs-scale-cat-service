@@ -12,13 +12,13 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 
 /**
-*
-*/
+ * Tenders ('Base Data' tag in YAML)
+ */
 @RestController
 @RequestMapping(path = "/tenders", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
-public class BaseDataController extends AbstractRestController {
+public class TendersController extends AbstractRestController {
 
   @GetMapping("/event-types")
   public Collection<EventType> listProcurementEventTypes(JwtAuthenticationToken authentication) {
