@@ -114,6 +114,24 @@ class ProjectsControllerTest {
   }
 
   @Test
+  void createProcurementProject_401_Forbidden_Invalid_JWT() throws Exception {
+    // No subject claim
+    JwtRequestPostProcessor invalidJwtReqPostProcessor =
+        jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+            .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+
+    mockMvc
+        .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Invalid access token")));
+  }
+
+  @Test
   void createProcurementProject_500_ISE() throws Exception {
 
     when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL))
