@@ -1,14 +1,18 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -72,17 +76,14 @@ public class ProcurementEventService {
     var createUpdateRfx = createUpdateRfxRequest(project, principal);
 
     CreateUpdateRfxResponse createRfxResponse =
-        jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
             .bodyValue(createUpdateRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
-
-    if (createRfxResponse == null) {
-      throw new JaggaerApplicationException(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-          "Unexpected error creating Rfx");
-    }
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error creating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
-        || !createRfxResponse.getReturnMessage().equals("OK")) {
+        || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
           createRfxResponse.getReturnMessage());
@@ -94,8 +95,9 @@ public class ProcurementEventService {
     String ocidPrefix = ocdsConfig.getOcidPrefix();
     String eventName = createUpdateRfx.getRfx().getRfxSetting().getShortDescription();
 
-    var procurementEvent = retryableTendersDBDelegate.save(ProcurementEvent.of(project, eventName,
-        createRfxResponse.getRfxReferenceCode(), ocdsAuthority, ocidPrefix, principal));
+    var procurementEvent = retryableTendersDBDelegate
+        .save(ProcurementEvent.of(project, eventName, createRfxResponse.getRfxId(),
+            createRfxResponse.getRfxReferenceCode(), ocdsAuthority, ocidPrefix, principal));
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         createRfxResponse.getRfxReferenceCode(), TEMP_EVENT_TYPE, TenderStatus.PLANNING,
@@ -130,7 +132,7 @@ public class ProcurementEventService {
     var ownerUser = new OwnerUser(jaggaerUserId);
 
     var rfxSetting =
-        RfxSetting.builder().rfiFlag(RFI_FLAG).tenderReferenceCode(project.getJaggaerProjectId())
+        RfxSetting.builder().rfiFlag(RFI_FLAG).tenderReferenceCode(project.getExternalReferenceId())
             .templateReferenceCode(jaggaerAPIConfig.getCreateEvent().get("templateId"))
             .shortDescription(eventName).buyerCompany(buyerCompany).ownerUser(ownerUser)
             .rfxType(RFX_TYPE).build();
@@ -154,6 +156,76 @@ public class ProcurementEventService {
     var rfx = new Rfx(rfxSetting, rfxAdditionalInfoList, suppliersList);
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
+  }
+
+  /**
+   * Update the name, i.e. 'short description' of a Jaggaer Rfx record.
+   * 
+   * @param projectId
+   * @param eventId CCS generated event Id, e.g. 'ocds-b5fd17-2'
+   * @param eventName the new name
+   */
+  public void updateProcurementEventName(final Integer projectId, final String eventId,
+      final String eventName, final String principal) {
+
+    Assert.hasLength(eventName, "New event name must be supplied");
+
+    // EventId will be in the format "ocds-b5fd17-1"
+    String ocdsAuthorityName;
+    String ocidPrefix;
+    Integer eventIdKey;
+
+    // Validate eventId
+    try {
+      var eventIdArray = eventId.split("-");
+      ocdsAuthorityName = eventIdArray[0];
+      ocidPrefix = eventIdArray[1];
+      eventIdKey = Integer.valueOf(eventIdArray[2]);
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Event ID '" + eventId + "' is not in the expected format");
+    }
+
+    // Get event from tenders DB to obtain Jaggaer project id
+    ProcurementEvent event = retryableTendersDBDelegate
+        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName,
+            ocidPrefix)
+        .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
+
+    // Validate projectId is correct
+    if (!event.getProject().getId().equals(projectId)) {
+      throw new ResourceNotFoundException(
+          "Project '" + projectId + "' is not valid for event '" + eventId + "'");
+    }
+
+    // Update Jaggaer
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).shortDescription(eventName).build();
+
+    var rfx = new Rfx(rfxSetting, null, null);
+
+    var createRfxResponse =
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+            .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
+            .bodyToMono(CreateUpdateRfxResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating Rfx"));
+
+    if (createRfxResponse.getReturnCode() != 0
+        || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
+      log.error(createRfxResponse.toString());
+      throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
+          createRfxResponse.getReturnMessage());
+    }
+    log.info("Updated event: {}", createRfxResponse);
+
+    // Save update to local Tenders DB
+    event.setEventName(eventName);
+    event.setUpdatedAt(Instant.now());
+    event.setUpdatedBy(principal);
+    retryableTendersDBDelegate.save(event);
+
   }
 
   /**

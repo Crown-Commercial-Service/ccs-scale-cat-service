@@ -1,13 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import org.springframework.stereotype.Component;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultName;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefaultNameComponents;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 /**
  * Utility methods for building and manipulating the sources generated from the Tenders API

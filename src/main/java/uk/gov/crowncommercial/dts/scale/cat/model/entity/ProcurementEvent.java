@@ -1,15 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
+import javax.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -39,10 +31,13 @@ public class ProcurementEvent {
   String ocdsAuthorityName;
 
   @Column(name = "ocid_prefix")
-  String ocidprefix;
+  String ocidPrefix;
 
-  @Column(name = "jaggaer_event_id")
-  String jaggaerEventId;
+  @Column(name = "external_event_id")
+  String externalEventId;
+
+  @Column(name = "external_reference_id")
+  String externalReferenceId;
 
   @Column(name = "event_name")
   String eventName;
@@ -60,20 +55,27 @@ public class ProcurementEvent {
   Instant updatedAt;
 
   /**
-   * Builds an instance from basic details
-   *
-   * @param jaggaerEventId The rfx reference code
+   * Builds an instance from basic details.
+   * 
+   * @param project the parent {@link ProcurementProject}
+   * @param eventName Title/short description
+   * @param externalEventId Rfx id
+   * @param externalReferenceId Rfx reference code
+   * @param ocdsAuthority Authority, e.g. 'osds'
+   * @param ocidPrefix Prefix, e.g. 'b5fd17'
    * @param principal
    * @return a procurement event
    */
   public static ProcurementEvent of(ProcurementProject project, String eventName,
-      String jaggaerEventId, String ocdsAuthority, String ocidPrefix, String principal) {
+      String externalEventId, String externalReferenceId, String ocdsAuthority, String ocidPrefix,
+      String principal) {
     var procurementEvent = new ProcurementEvent();
     procurementEvent.setProject(project);
     procurementEvent.setEventName(eventName);
     procurementEvent.setOcdsAuthorityName(ocdsAuthority);
-    procurementEvent.setOcidprefix(ocidPrefix);
-    procurementEvent.setJaggaerEventId(jaggaerEventId);
+    procurementEvent.setOcidPrefix(ocidPrefix);
+    procurementEvent.setExternalEventId(externalEventId);
+    procurementEvent.setExternalReferenceId(externalReferenceId);
     procurementEvent.setCreatedBy(principal); // Or Jaggaer user ID?
     procurementEvent.setCreatedAt(Instant.now());
     procurementEvent.setUpdatedBy(principal); // Or Jaggaer user ID?
@@ -82,6 +84,6 @@ public class ProcurementEvent {
   }
 
   public String getEventID() {
-    return ocdsAuthorityName + "-" + ocidprefix + "-" + id;
+    return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
   }
 }

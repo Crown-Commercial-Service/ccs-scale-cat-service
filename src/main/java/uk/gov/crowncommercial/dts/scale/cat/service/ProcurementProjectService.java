@@ -3,12 +3,15 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
@@ -79,8 +82,9 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
-    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.of(agreementDetails,
-        createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
+    var procurementProject = retryableTendersDBDelegate
+        .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
+            createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =
         procurementEventService.createFromProject(procurementProject.getId(), principal);
@@ -92,6 +96,46 @@ public class ProcurementProjectService {
   String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
     return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
         agreementDetails.getAgreementID(), agreementDetails.getLotID(), organisation);
+  }
+
+  /**
+   * Update project name.
+   * 
+   * @param projectId
+   * @param namenew project name
+   */
+  public void updateProcurementProjectName(final Integer projectId, final String projectName,
+      final String principal) {
+
+    Assert.hasLength(projectName, "New project name must be supplied");
+
+    ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    var updateProject = new CreateUpdateProject(OperationCode.UPDATE,
+        new Project(Tender.builder().tenderCode(project.getExternalProjectId())
+            .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build()));
+
+    var updateProjectResponse =
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+            .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating project"));
+
+
+    if (updateProjectResponse.getReturnCode() != 0
+        || !"OK".equals(updateProjectResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
+          updateProjectResponse.getReturnMessage());
+    }
+    log.info("Updated project: {}", updateProjectResponse);
+
+    project.setProjectName(projectName);
+    project.setUpdatedAt(Instant.now());
+    project.setUpdatedBy(principal);
+    retryableTendersDBDelegate.save(project);
+
   }
 
 }
