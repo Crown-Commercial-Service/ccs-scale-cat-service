@@ -40,7 +40,8 @@ public class GlobalErrorHandler implements ErrorController {
   private static final String ERR_MSG_RESOURCE_NOT_FOUND = "Resource not found";
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
-  @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class})
+  @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
+      IllegalArgumentException.class})
   public Errors handleValidationException(final Exception exception) {
 
     log.trace("Request validation exception", exception);

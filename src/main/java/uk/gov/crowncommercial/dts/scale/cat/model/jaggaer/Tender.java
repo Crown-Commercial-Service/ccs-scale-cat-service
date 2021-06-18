@@ -7,6 +7,8 @@ import lombok.Value;
 @Builder
 public class Tender {
 
+  String tenderCode;
+  String tenderReferenceCode;
   String title;
   BuyerCompany buyerCompany;
   ProjectOwner projectOwner;
