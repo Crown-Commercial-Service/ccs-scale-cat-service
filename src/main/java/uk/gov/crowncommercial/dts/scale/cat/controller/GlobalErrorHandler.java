@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.MalformedJwtException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
@@ -38,6 +39,7 @@ public class GlobalErrorHandler implements ErrorController {
   private static final String ERR_MSG_UPSTREAM = "An error occurred invoking an upstream service";
   private static final String ERR_MSG_VALIDATION = "Validation error processing the request";
   private static final String ERR_MSG_RESOURCE_NOT_FOUND = "Resource not found";
+  private static final String ERR_MSG_INVALID_JWT = "Invalid access token";
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
@@ -100,6 +102,16 @@ public class GlobalErrorHandler implements ErrorController {
     log.error("Exhausted retries", exception);
 
     var apiError = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
+    return buildErrors(Arrays.asList(apiError));
+  }
+
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  @ExceptionHandler(MalformedJwtException.class)
+  public Errors handleMalformedJwtException(final MalformedJwtException exception) {
+
+    log.error("MalformedJwtException", exception);
+
+    var apiError = new ApiError(HttpStatus.UNAUTHORIZED.toString(), ERR_MSG_INVALID_JWT, "");
     return buildErrors(Arrays.asList(apiError));
   }
 
