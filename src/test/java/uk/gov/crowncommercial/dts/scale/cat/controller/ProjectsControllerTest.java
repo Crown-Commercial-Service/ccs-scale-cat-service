@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -112,6 +114,24 @@ class ProjectsControllerTest {
   }
 
   @Test
+  void createProcurementProject_401_Forbidden_Invalid_JWT() throws Exception {
+    // No subject claim
+    JwtRequestPostProcessor invalidJwtReqPostProcessor =
+        jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+            .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+
+    mockMvc
+        .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Invalid access token")));
+  }
+
+  @Test
   void createProcurementProject_500_ISE() throws Exception {
 
     when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL))
@@ -143,6 +163,19 @@ class ProjectsControllerTest {
 
     verify(procurementProjectService, times(1)).updateProcurementProjectName(PROC_PROJECT_ID,
         projectName.getName(), PRINCIPAL);
+  }
+
+  /*
+   * TODO: This will be refactored to once filtering of event types per project is in place
+   */
+  @Test
+  void listProcurementEventTypes_200_OK() throws Exception {
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
+            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
+        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "RFP", "DA", "SL")));
   }
 
 }
