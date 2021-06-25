@@ -1,5 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.springframework.http.HttpHeaders.ACCEPT;
+import static org.springframework.http.HttpHeaders.ACCEPT_CHARSET;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Arrays;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
@@ -81,7 +85,9 @@ public class JaggaerOAuth2Config {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(jaggaerAPIConfig.getBaseUrl()).apply(oauth2Client.oauth2Configuration()).build();
+        .baseUrl(jaggaerAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+        .defaultHeader(ACCEPT_CHARSET, UTF_8.name()).apply(oauth2Client.oauth2Configuration())
+        .build();
   }
 
 }
