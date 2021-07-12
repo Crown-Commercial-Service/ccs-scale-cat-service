@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
@@ -160,7 +161,7 @@ public class ProcurementEventService {
 
   /**
    * Update the name, i.e. 'short description' of a Jaggaer Rfx record.
-   * 
+   *
    * @param projectId
    * @param eventId CCS generated event Id, e.g. 'ocds-b5fd17-2'
    * @param eventName the new name
@@ -169,27 +170,13 @@ public class ProcurementEventService {
       final String eventName, final String principal) {
 
     Assert.hasLength(eventName, "New event name must be supplied");
-
-    // EventId will be in the format "ocds-b5fd17-1"
-    String ocdsAuthorityName;
-    String ocidPrefix;
-    Integer eventIdKey;
-
-    // Validate eventId
-    try {
-      var eventIdArray = eventId.split("-");
-      ocdsAuthorityName = eventIdArray[0];
-      ocidPrefix = eventIdArray[1];
-      eventIdKey = Integer.valueOf(eventIdArray[2]);
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Event ID '" + eventId + "' is not in the expected format");
-    }
+    var eventOCID = validateEventId(eventId);
 
     // Get event from tenders DB to obtain Jaggaer project id
     ProcurementEvent event = retryableTendersDBDelegate
-        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName,
-            ocidPrefix)
+        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
+            Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),
+            eventOCID.getPublisherPrefix())
         .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
 
     // Validate projectId is correct
@@ -240,6 +227,21 @@ public class ProcurementEventService {
   private String getDefaultEventTitle(String projectName, String eventType) {
     return String.format(jaggaerAPIConfig.getCreateEvent().get("defaultTitleFormat"), projectName,
         eventType);
+  }
+
+  /**
+   * Validate the eventId is a valid {@link OCID}
+   *
+   * @param eventId
+   * @return an OCID
+   */
+  public OCID validateEventId(String eventId) {
+    try {
+      return OCID.fromString(eventId);
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Event ID '" + eventId + "' is not in the expected format");
+    }
   }
 
 }
