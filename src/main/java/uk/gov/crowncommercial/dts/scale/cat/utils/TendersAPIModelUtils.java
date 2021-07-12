@@ -28,17 +28,18 @@ public class TendersAPIModelUtils {
     return draftProcurementProject;
   }
 
-  public EventSummary buildEventSummary(String id, String name, String supportID, EventType type,
-      TenderStatus status, String stage) {
-    var eventSummary = new EventSummary();
-    eventSummary.setEventID(id);
-    eventSummary.setName(name);
-    eventSummary.setEventSupportID(supportID);
-    eventSummary.setEventType(type);
-    eventSummary.setStatus(status);
-    eventSummary.setEventStage(stage);
+  public EventStatus buildEventStatus(Integer projectId, String eventId, String name,
+      String supportID, EventType type, TenderStatus status, String stage) {
+    var eventStatus = new EventStatus();
+    eventStatus.setProjectID(projectId);
+    eventStatus.setEventID(eventId);
+    eventStatus.setName(name);
+    eventStatus.setEventSupportID(supportID);
+    eventStatus.setEventType(type);
+    eventStatus.setStatus(status);
+    eventStatus.setEventStage(stage);
 
-    return eventSummary;
+    return eventStatus;
   }
 
 }

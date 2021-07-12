@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementEventName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
@@ -23,7 +23,7 @@ public class EventsController extends AbstractRestController {
   private final ProcurementEventService procurementEventService;
 
   @PostMapping
-  public EventSummary createProcurementEvent(@PathVariable("procID") Integer procId,
+  public EventStatus createProcurementEvent(@PathVariable("procID") Integer procId,
       @RequestBody Tender tender, JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
