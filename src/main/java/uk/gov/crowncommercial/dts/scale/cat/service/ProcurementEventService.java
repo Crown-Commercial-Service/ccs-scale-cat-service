@@ -170,20 +170,9 @@ public class ProcurementEventService {
       final String eventName, final String principal) {
 
     Assert.hasLength(eventName, "New event name must be supplied");
-    var eventOCID = validateEventId(eventId);
 
     // Get event from tenders DB to obtain Jaggaer project id
-    ProcurementEvent event = retryableTendersDBDelegate
-        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-            Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),
-            eventOCID.getPublisherPrefix())
-        .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
-
-    // Validate projectId is correct
-    if (!event.getProject().getId().equals(projectId)) {
-      throw new ResourceNotFoundException(
-          "Project '" + projectId + "' is not valid for event '" + eventId + "'");
-    }
+    var event = validateProjectAndEventIds(projectId, eventId);
 
     // Update Jaggaer
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
@@ -212,7 +201,16 @@ public class ProcurementEventService {
     event.setUpdatedAt(Instant.now());
     event.setUpdatedBy(principal);
     retryableTendersDBDelegate.save(event);
+  }
 
+  public Tender getEvent(final Integer projectId, final String eventId, final String eventName,
+      final String principal) {
+
+    // Get event from tenders DB to obtain Jaggaer project id
+    var event = validateProjectAndEventIds(projectId, eventId);
+
+    // TODO: get RFX from Jaggaer / combine into Tender object
+    return new Tender();
   }
 
   /**
@@ -227,6 +225,33 @@ public class ProcurementEventService {
   private String getDefaultEventTitle(String projectName, String eventType) {
     return String.format(jaggaerAPIConfig.getCreateEvent().get("defaultTitleFormat"), projectName,
         eventType);
+  }
+
+  /**
+   * Validate the project and event IDs and return the {@link ProcurementEvent} entity
+   *
+   * @param projectId
+   * @param eventId
+   * @return procurement event entity
+   */
+  public ProcurementEvent validateProjectAndEventIds(final Integer projectId,
+      final String eventId) {
+    var eventOCID = validateEventId(eventId);
+
+    // Get event from tenders DB to obtain Jaggaer project id
+    var event = retryableTendersDBDelegate
+        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
+            Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),
+            eventOCID.getPublisherPrefix())
+        .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
+
+    // Validate projectId is correct
+    if (!event.getProject().getId().equals(projectId)) {
+      throw new ResourceNotFoundException(
+          "Project '" + projectId + "' is not valid for event '" + eventId + "'");
+    }
+
+    return event;
   }
 
   /**

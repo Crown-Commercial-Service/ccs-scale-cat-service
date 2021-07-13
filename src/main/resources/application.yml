@@ -50,6 +50,8 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
         principalPlaceholder: "{{PRINCIPAL}}"
+      getEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
 
     
 ---

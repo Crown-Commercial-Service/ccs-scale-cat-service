@@ -45,4 +45,11 @@ public class EventsController extends AbstractRestController {
 
     return Constants.OK;
   }
+
+  @GetMapping("/{eventID}")
+  public Tender getEventSummary(@PathVariable("procID") Integer procId,
+      @PathVariable("eventID") String eventId, JwtAuthenticationToken authentication) {
+
+    return new Tender();
+  }
 }

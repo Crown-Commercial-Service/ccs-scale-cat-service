@@ -18,5 +18,6 @@ public class JaggaerAPIConfig {
   private Map<String, String> createProject;
   private Map<String, String> createEvent;
   private Map<String, String> getBuyerCompanyProfile;
+  private Map<String, String> getEvent;
 
 }
