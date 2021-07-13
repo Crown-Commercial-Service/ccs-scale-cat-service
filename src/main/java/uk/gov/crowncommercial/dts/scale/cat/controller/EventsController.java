@@ -47,9 +47,12 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}")
-  public Tender getEventSummary(@PathVariable("procID") Integer procId,
+  public Tender getEvent(@PathVariable("procID") Integer procId,
       @PathVariable("eventID") String eventId, JwtAuthenticationToken authentication) {
 
-    return new Tender();
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getEvent invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.getEvent(procId, eventId, principal);
   }
 }

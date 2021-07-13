@@ -97,7 +97,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -143,7 +143,6 @@ class ProcurementEventServiceTest {
     assertEquals(EventType.RFP, eventSummary.getEventType());
   }
 
-
   @Test
   void testUpdateProcurementEventName() throws Exception {
 
@@ -161,7 +160,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(argThat(new UpdateEventMatcher(createUpdateRfx))).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -221,7 +220,6 @@ class ProcurementEventServiceTest {
     assertEquals("Event ID 'EVENT-1' is not in the expected format", ex.getMessage());
   }
 
-
   @Test
   void testUpdateProcurementEventNameThrowsResourceNotFoundApplicationException() throws Exception {
 
@@ -246,7 +244,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -279,7 +277,7 @@ class ProcurementEventServiceTest {
    */
   private class UpdateEventMatcher implements ArgumentMatcher<CreateUpdateRfx> {
 
-    private CreateUpdateRfx left;
+    private final CreateUpdateRfx left;
 
     UpdateEventMatcher(CreateUpdateRfx left) {
       this.left = left;

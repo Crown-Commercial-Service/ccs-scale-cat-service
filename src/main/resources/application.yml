@@ -41,7 +41,7 @@ config:
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
         templateId: project_609
-      createEvent:
+      createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
@@ -50,7 +50,7 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
         principalPlaceholder: "{{PRINCIPAL}}"
-      getEvent:
+      exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
 
     

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
 /**
  * Utility methods for building and manipulating the sources generated from the Tenders API
@@ -39,6 +40,13 @@ public class TendersAPIModelUtils {
     eventSummary.setEventStage(stage);
 
     return eventSummary;
+  }
+
+  public Tender buildTender(RfxSetting rfxSetting) {
+    var tender = new Tender();
+    tender.setId(rfxSetting.getRfxId());
+
+    return tender;
   }
 
 }
