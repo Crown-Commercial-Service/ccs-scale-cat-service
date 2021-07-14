@@ -4,6 +4,7 @@ import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import lombok.Data;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 
 /**
  *
@@ -17,6 +18,7 @@ public class JaggaerAPIConfig {
 
   private String baseUrl;
   private Integer timeoutDuration;
+  private Map<Integer, TenderStatus> rfxStatusToTenderStatus;
   private Map<String, String> createProject;
   private Map<String, String> createRfx;
   private Map<String, String> getBuyerCompanyProfile;

@@ -22,11 +22,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
@@ -38,6 +40,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @WebMvcTest(ProjectsController.class)
 @ActiveProfiles("test")
+@Import({JaggaerAPIConfig.class, TendersAPIModelUtils.class})
 class ProjectsControllerTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
@@ -49,7 +52,9 @@ class ProjectsControllerTest {
   private static final Integer PROC_PROJECT_ID = 1;
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
-  private final TendersAPIModelUtils tendersAPIModelUtils = new TendersAPIModelUtils();
+
+  @Autowired
+  private TendersAPIModelUtils tendersAPIModelUtils;
 
   @Autowired
   private MockMvc mockMvc;

@@ -22,12 +22,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
@@ -38,6 +40,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @WebMvcTest(controllers = EventsController.class)
 @ActiveProfiles("test")
+@Import({JaggaerAPIConfig.class, TendersAPIModelUtils.class})
 class EventsControllerTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
@@ -55,6 +58,9 @@ class EventsControllerTest {
   private MockMvc mockMvc;
 
   @Autowired
+  private TendersAPIModelUtils tendersAPIModelUtils;
+
+  @Autowired
   private ObjectMapper objectMapper;
 
   @MockBean
@@ -66,7 +72,6 @@ class EventsControllerTest {
   @MockBean
   private EventSummary eventSummary;
 
-  private final TendersAPIModelUtils tendersAPIModelUtils = new TendersAPIModelUtils();
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 
   @BeforeEach

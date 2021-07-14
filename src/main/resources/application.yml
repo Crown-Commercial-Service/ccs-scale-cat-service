@@ -35,7 +35,26 @@ config:
   external:
     jaggaer:
       baseUrl: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
-      timeoutDuration: 5 
+      timeoutDuration: 5
+      
+      rfxStatusToTenderStatus:
+        0: PLANNED
+        100: PLANNED
+        200: PLANNED
+        300: ACTIVE
+        350: ACTIVE
+        600: ACTIVE
+        1300: ACTIVE
+        400: ACTIVE
+        750: ACTIVE
+        800: ACTIVE
+        900: ACTIVE
+        500: COMPLETE
+        950: COMPLETE
+        1400: COMPLETE
+        1100: WITHDRAWN
+        1500: CANCELLED
+        
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"

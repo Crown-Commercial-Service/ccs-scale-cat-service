@@ -42,9 +42,6 @@ public class ProcurementEventService {
   // TODO: Jaggaer suppliers hard coded for now, pending further design
   private static final List<String> TEMP_SUPPLIER_IDS = Arrays.asList("53104", "53410", "53411");
 
-  // TODO: BuyerID hard coded for now
-  private static final String TEMP_BUYER_ID = "51435";
-
   private static final Integer RFI_FLAG = 0;
   private static final String RFX_TYPE = "STANDARD_ITT";
   private static final String ADDITIONAL_INFO_FRAMEWORK_NAME = "Framework Name";
@@ -126,12 +123,13 @@ public class ProcurementEventService {
   private CreateUpdateRfx createUpdateRfxRequest(final ProcurementProject project,
       final String principal) {
 
-    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
-    String jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
+    var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
 
     var eventName = getDefaultEventTitle(project.getProjectName(), TEMP_EVENT_TYPE.getValue());
-    var buyerCompany = new BuyerCompany(TEMP_BUYER_ID);
-    var ownerUser = new OwnerUser(jaggaerUserId);
+    var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
+    var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
 
     var rfxSetting =
         RfxSetting.builder().rfiFlag(RFI_FLAG).tenderReferenceCode(project.getExternalReferenceId())

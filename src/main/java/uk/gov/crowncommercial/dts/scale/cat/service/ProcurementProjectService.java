@@ -59,12 +59,14 @@ public class ProcurementProjectService {
   public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {
 
-    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
     var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+        new Project(Tender.builder().title(projectTitle)
+            .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
             .projectOwner(new ProjectOwner(jaggaerUserId))
             .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
             .build()));

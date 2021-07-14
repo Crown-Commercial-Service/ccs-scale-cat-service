@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
@@ -8,7 +10,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
  * Utility methods for building and manipulating the sources generated from the Tenders API
  */
 @Component
+@RequiredArgsConstructor
 public class TendersAPIModelUtils {
+
+  private final JaggaerAPIConfig jaggaerAPIConfig;
 
   public DraftProcurementProject buildDraftProcurementProject(AgreementDetails agreementDetails,
       Integer procurementID, String eventID, String projectTitle) {
@@ -45,7 +50,12 @@ public class TendersAPIModelUtils {
   public Tender buildTender(RfxSetting rfxSetting) {
     var tender = new Tender();
     tender.setId(rfxSetting.getRfxId());
+    tender.setTitle(rfxSetting.getShortDescription());
+    tender.setDescription(rfxSetting.getLongDescription());
+    tender.setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
 
+    // TODO: TBC - mappings required
+    tender.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     return tender;
   }
 

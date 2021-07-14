@@ -20,4 +20,6 @@ public class RfxSetting {
   BuyerCompany buyerCompany;
   OwnerUser ownerUser;
   String rfxType;
+  String status;
+  Integer statusCode;
 }
