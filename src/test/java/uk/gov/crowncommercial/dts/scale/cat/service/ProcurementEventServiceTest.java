@@ -41,7 +41,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class},
+        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ValidationService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
