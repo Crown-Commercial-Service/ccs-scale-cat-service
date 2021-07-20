@@ -62,11 +62,12 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
+    var tender = Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+        .projectOwner(new ProjectOwner(jaggaerUserId))
+        .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+    var projectTeam = ProjectTeam.builder().code("DIVISION").build();
     var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
-            .projectOwner(new ProjectOwner(jaggaerUserId))
-            .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
-            .build()));
+        Project.builder().tender(tender).projectTeam(projectTeam).build());
 
     var createProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
@@ -100,7 +101,7 @@ public class ProcurementProjectService {
 
   /**
    * Update project name.
-   * 
+   *
    * @param projectId
    * @param namenew project name
    */
@@ -111,10 +112,10 @@ public class ProcurementProjectService {
 
     ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-
-    var updateProject = new CreateUpdateProject(OperationCode.UPDATE,
-        new Project(Tender.builder().tenderCode(project.getExternalProjectId())
-            .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build()));
+    var tender = Tender.builder().tenderCode(project.getExternalProjectId())
+        .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build();
+    var updateProject =
+        new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
     var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
@@ -122,7 +123,6 @@ public class ProcurementProjectService {
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating project"));
-
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
