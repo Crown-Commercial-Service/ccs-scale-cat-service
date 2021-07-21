@@ -1,7 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.springframework.http.HttpHeaders.ACCEPT;
+import static org.springframework.http.HttpHeaders.ACCEPT_CHARSET;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +31,7 @@ import org.springframework.security.oauth2.core.http.converter.OAuth2AccessToken
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Configure and expose a non-reactive Jaggaer {@link WebClient} instance for use in calls to
@@ -31,6 +40,7 @@ import lombok.RequiredArgsConstructor;
  */
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class JaggaerOAuth2Config {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -77,11 +87,68 @@ public class JaggaerOAuth2Config {
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
     // TODO: Refactor out / investigate why default netty library causes 30 second delay
-    var client = new HttpClient(new SslContextFactory.Client(true));
+    var client = new HttpClient(new SslContextFactory.Client(true)) {
+
+      @Override
+      public Request newRequest(URI uri) {
+        return enhance(super.newRequest(uri));
+      }
+    };
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(jaggaerAPIConfig.getBaseUrl()).apply(oauth2Client.oauth2Configuration()).build();
+        .baseUrl(jaggaerAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+        .defaultHeader(ACCEPT_CHARSET, UTF_8.name()).apply(oauth2Client.oauth2Configuration())
+        .build();
+  }
+
+  /**
+   * See <a>https://www.baeldung.com/spring-log-webclient-calls<a> and
+   * <a>https://stackoverflow.com/a/64343794/2509595</a> for details
+   *
+   * @param inboundRequest
+   * @return the enhanced request with logging events on request/response
+   */
+  private Request enhance(Request inboundRequest) {
+    var sbLog = new StringBuilder();
+    // Request Logging
+    inboundRequest.onRequestBegin(request -> sbLog.append("Request: \n").append("URI: ")
+        .append(request.getURI()).append("\n").append("Method: ").append(request.getMethod()));
+    inboundRequest.onRequestHeaders(request -> {
+      sbLog.append("\nHeaders:\n");
+      for (HttpField header : request.getHeaders()) {
+        if (!"Authorization".equalsIgnoreCase(header.getName())) {
+          sbLog.append("\t\t" + header.getName() + " : " + header.getValue() + "\n");
+        } else {
+          sbLog.append("\t\tAuthorization : Bearer #####\n");
+        }
+      }
+    });
+    inboundRequest.onRequestContent(
+        (request, content) -> sbLog.append("Body: \n\t").append(content.toString()));
+    sbLog.append("\n");
+
+    // Response Logging
+    inboundRequest.onResponseBegin(response -> sbLog.append("Response:\n").append("Status: ")
+        .append(response.getStatus()).append("\n"));
+    inboundRequest.onResponseHeaders(response -> {
+      sbLog.append("Headers:\n");
+      for (HttpField header : response.getHeaders()) {
+        sbLog.append("\t\t" + header.getName() + " : " + header.getValue() + "\n");
+      }
+    });
+    inboundRequest.onResponseContent((response, content) -> {
+      var bufferAsString = StandardCharsets.UTF_8.decode(content).toString();
+      sbLog.append("Response Body:\n" + bufferAsString);
+    });
+
+    // Add actual log invocation
+    log.trace("HTTP ->\n");
+    inboundRequest.onRequestSuccess(request -> log.trace(sbLog.toString()));
+    inboundRequest.onResponseSuccess(response -> log.trace(sbLog.toString()));
+
+    // Return original request
+    return inboundRequest;
   }
 
 }

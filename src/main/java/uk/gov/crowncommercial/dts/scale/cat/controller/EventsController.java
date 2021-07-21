@@ -45,5 +45,4 @@ public class EventsController extends AbstractRestController {
 
     return Constants.OK;
   }
-
 }
