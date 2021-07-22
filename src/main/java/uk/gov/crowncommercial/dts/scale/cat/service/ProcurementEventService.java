@@ -20,7 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
@@ -68,7 +68,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
-  public EventSummary createFromProject(Integer projectId, String principal) {
+  public EventStatus createFromProject(Integer projectId, String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -100,8 +100,8 @@ public class ProcurementEventService {
         .save(ProcurementEvent.of(project, eventName, createRfxResponse.getRfxId(),
             createRfxResponse.getRfxReferenceCode(), ocdsAuthority, ocidPrefix, principal));
 
-    return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-        createRfxResponse.getRfxReferenceCode(), TEMP_EVENT_TYPE, TenderStatus.PLANNING,
+    return tendersAPIModelUtils.buildEventStatus(projectId, procurementEvent.getEventID(),
+        eventName, createRfxResponse.getRfxReferenceCode(), TEMP_EVENT_TYPE, TenderStatus.PLANNING,
         EVENT_STAGE);
   }
 
@@ -113,7 +113,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
-  public EventSummary createFromTender(final Integer projectId, final Tender tender,
+  public EventStatus createFromTender(final Integer projectId, final Tender tender,
       final String principal) {
     // Use of Tender is redundant as none of the data is currently required (may change)
     return createFromProject(projectId, principal);
