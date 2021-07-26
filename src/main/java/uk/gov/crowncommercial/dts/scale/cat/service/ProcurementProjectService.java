@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -65,9 +66,19 @@ public class ProcurementProjectService {
     var tender = Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
         .projectOwner(new ProjectOwner(jaggaerUserId))
         .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
-    var projectTeam = ProjectTeam.builder().code("DIVISION").build();
-    var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-        Project.builder().tender(tender).projectTeam(projectTeam).build());
+
+    var projectBuilder = Project.builder().tender(tender);
+
+    // By default, adding the division is disabled
+    if (Boolean.TRUE.equals(jaggaerAPIConfig.getAddDivisionToProjectTeam())) {
+      var userDivision = User.builder().code("DIVISION").build();
+      var projectTeam = ProjectTeam.builder().user(Collections.singleton(userDivision)).build();
+      projectBuilder.projectTeam(projectTeam);
+    }
+    log.debug("Project to create: {}", projectBuilder.toString());
+
+    var createUpdateProject =
+        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
     var createProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
