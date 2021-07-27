@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpHeaders.ACCEPT_CHARSET;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.HttpHeaders.WWW_AUTHENTICATE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +15,8 @@ import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.converter.FormHttpMessageConverter;
@@ -29,9 +33,11 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepo
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 /**
  * Configure and expose a non-reactive Jaggaer {@link WebClient} instance for use in calls to
@@ -97,9 +103,43 @@ public class JaggaerOAuth2Config {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(jaggaerAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
-        .defaultHeader(ACCEPT_CHARSET, UTF_8.name()).apply(oauth2Client.oauth2Configuration())
-        .build();
+        .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
+        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
+        .apply(oauth2Client.oauth2Configuration()).build();
+  }
+
+  /**
+   * SCC-517
+   *
+   * <p>
+   * Fixes Jaggaer REST API response for 401 Unauthorized (issues are invalid content-type and
+   * missing WWW-Authenticate header)
+   *
+   * @return
+   */
+  private ExchangeFilterFunction buildResponseHeaderFilterFunction() {
+    return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
+
+      var clientResponseMutator = clientResponse.mutate();
+
+      // Standardise 401 response
+      if (clientResponse.statusCode() == HttpStatus.UNAUTHORIZED) {
+
+        if (clientResponse.headers().header(WWW_AUTHENTICATE).isEmpty()) {
+          log.debug("Jaggaer 401 - injecting WWW-Authenticate header");
+          clientResponseMutator.header(WWW_AUTHENTICATE,
+              jaggaerAPIConfig.getHeaderValueWWWAuthenticate());
+        }
+
+        if (clientResponse.headers().header(CONTENT_TYPE)
+            .contains(jaggaerAPIConfig.getHeaderValueInvalidContentType())) {
+          log.debug("Jaggaer 401 - correcting Content-Type header");
+          clientResponseMutator.header(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        }
+      }
+
+      return Mono.just(clientResponseMutator.build());
+    });
   }
 
   /**
