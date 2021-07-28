@@ -164,7 +164,8 @@ class ProcurementProjectServiceTest {
     createUpdateProjectResponse.setReturnMessage("OK");
 
     var tender = Tender.builder().title(UPDATED_PROJECT_NAME).build();
-    var createUpdateProject = new CreateUpdateProject(OperationCode.UPDATE, new Project(tender));
+    var createUpdateProject =
+        new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
@@ -224,7 +225,7 @@ class ProcurementProjectServiceTest {
    */
   private class UpdateProjectMatcher implements ArgumentMatcher<CreateUpdateProject> {
 
-    private CreateUpdateProject left;
+    private final CreateUpdateProject left;
 
     UpdateProjectMatcher(CreateUpdateProject left) {
       this.left = left;

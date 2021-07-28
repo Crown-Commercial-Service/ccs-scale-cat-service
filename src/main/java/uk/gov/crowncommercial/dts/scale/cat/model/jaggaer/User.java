@@ -4,12 +4,16 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
+/**
+ *
+ */
 @Value
 @Builder
 @Jacksonized
-public class Project {
+public class User {
 
-  Tender tender;
-  ProjectTeam projectTeam;
+  String code;
+  String id;
+  String login;
 
 }
