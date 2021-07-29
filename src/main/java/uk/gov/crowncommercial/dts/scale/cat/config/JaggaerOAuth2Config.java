@@ -115,7 +115,7 @@ public class JaggaerOAuth2Config {
    * Fixes Jaggaer REST API response for 401 Unauthorized (issues are invalid content-type and
    * missing WWW-Authenticate header)
    *
-   * @return
+   * @return the configured filter function to mutate the response
    */
   private ExchangeFilterFunction buildResponseHeaderFilterFunction() {
     return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
