@@ -3,8 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,17 +78,18 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_200_OK() throws Exception {
 
-    var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+    var eventStatus = tendersAPIModelUtils.buildEventStatus(PROC_PROJECT_ID, EVENT_ID, EVENT_NAME,
+        JAGGAER_ID, EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
 
-    when(procurementEventService.createFromTender(anyInt(), any(Tender.class), anyString()))
-        .thenReturn(eventSummary);
+    when(procurementEventService.createFromTender(eq(PROC_PROJECT_ID), any(Tender.class),
+        anyString())).thenReturn(eventStatus);
 
     mockMvc
         .perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/events")
             .with(validJwtReqPostProcessor).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(tender)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventID").value(EVENT_ID))
+        .andExpect(jsonPath("$.projectID").value(PROC_PROJECT_ID))
         .andExpect(jsonPath("$.name").value(EVENT_NAME))
         .andExpect(jsonPath("$.eventSupportID").value(JAGGAER_ID))
         .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.toString()))

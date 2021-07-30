@@ -14,7 +14,10 @@ import lombok.Data;
 public class JaggaerAPIConfig {
 
   private String baseUrl;
+  private String headerValueWWWAuthenticate;
+  private String headerValueInvalidContentType;
   private Integer timeoutDuration;
+  private Boolean addDivisionToProjectTeam;
   private Map<String, String> createProject;
   private Map<String, String> createEvent;
   private Map<String, String> getBuyerCompanyProfile;

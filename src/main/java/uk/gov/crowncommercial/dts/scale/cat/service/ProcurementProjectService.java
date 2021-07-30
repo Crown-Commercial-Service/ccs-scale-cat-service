@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -62,11 +63,22 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
-    var createUpdateProject = new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE,
-        new Project(Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
-            .projectOwner(new ProjectOwner(jaggaerUserId))
-            .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId"))
-            .build()));
+    var tender = Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+        .projectOwner(new ProjectOwner(jaggaerUserId))
+        .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+
+    var projectBuilder = Project.builder().tender(tender);
+
+    // By default, adding the division is disabled
+    if (Boolean.TRUE.equals(jaggaerAPIConfig.getAddDivisionToProjectTeam())) {
+      var userDivision = User.builder().code("DIVISION").build();
+      var projectTeam = ProjectTeam.builder().user(Collections.singleton(userDivision)).build();
+      projectBuilder.projectTeam(projectTeam);
+    }
+    log.debug("Project to create: {}", projectBuilder.toString());
+
+    var createUpdateProject =
+        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
     var createProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
@@ -100,7 +112,7 @@ public class ProcurementProjectService {
 
   /**
    * Update project name.
-   * 
+   *
    * @param projectId
    * @param namenew project name
    */
@@ -111,10 +123,10 @@ public class ProcurementProjectService {
 
     ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-
-    var updateProject = new CreateUpdateProject(OperationCode.UPDATE,
-        new Project(Tender.builder().tenderCode(project.getExternalProjectId())
-            .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build()));
+    var tender = Tender.builder().tenderCode(project.getExternalProjectId())
+        .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build();
+    var updateProject =
+        new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
     var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
@@ -122,7 +134,6 @@ public class ProcurementProjectService {
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating project"));
-
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
