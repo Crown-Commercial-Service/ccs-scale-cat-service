@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -129,12 +130,12 @@ public class GlobalErrorHandler implements ErrorController {
   public ResponseEntity<Errors> handleError(final HttpServletRequest request,
       final HttpServletResponse response) {
 
-    Object exception = request.getAttribute("javax.servlet.error.exception");
+    var exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
 
     log.error("Unknown container/filter exception", exception);
 
-    return ResponseEntity.badRequest().body(buildErrors(Arrays
-        .asList(new ApiError(HttpStatus.INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
+    return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(buildErrors(
+        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
   }
 
   @Override

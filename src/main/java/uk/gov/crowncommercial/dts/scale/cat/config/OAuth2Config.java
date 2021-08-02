@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -14,8 +15,11 @@ import lombok.extern.slf4j.Slf4j;
  */
 // @EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity
+@RequiredArgsConstructor
 @Slf4j
 public class OAuth2Config extends WebSecurityConfigurerAdapter {
+
+  private final BearerTokenAuthenticationEntryPointDecorator bearerTokenAuthenticationEntryPointDecorator;
 
   @Override
   protected void configure(HttpSecurity http) throws Exception {
@@ -26,10 +30,14 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     http.authorizeRequests(authz ->
       authz
         .antMatchers("/tenders/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR")
+        .antMatchers("/error/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR")
         .anyRequest().denyAll()
     )
     .csrf(CsrfConfigurer::disable)
-    .oauth2ResourceServer().jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
+    .oauth2ResourceServer()
+      .authenticationEntryPoint(bearerTokenAuthenticationEntryPointDecorator)
+      .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
+
     // @formatter:on
   }
 
