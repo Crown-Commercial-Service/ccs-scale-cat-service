@@ -134,7 +134,10 @@ public class JaggaerOAuth2Config {
         if (clientResponse.headers().header(CONTENT_TYPE)
             .contains(jaggaerAPIConfig.getHeaderValueInvalidContentType())) {
           log.debug("Jaggaer 401 - correcting Content-Type header");
-          clientResponseMutator.header(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+          clientResponseMutator.headers(httpHeaders -> {
+            httpHeaders.remove(CONTENT_TYPE);
+            httpHeaders.add(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+          });
         }
       }
 
