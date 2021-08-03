@@ -19,7 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
-  private final BearerTokenAuthenticationEntryPointDecorator bearerTokenAuthenticationEntryPointDecorator;
+  private final UnauthorizedResponseDecorator unauthorizedResponseDecorator;
+  private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
 
   @Override
   protected void configure(HttpSecurity http) throws Exception {
@@ -35,7 +36,8 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     )
     .csrf(CsrfConfigurer::disable)
     .oauth2ResourceServer()
-      .authenticationEntryPoint(bearerTokenAuthenticationEntryPointDecorator)
+      .authenticationEntryPoint(unauthorizedResponseDecorator)
+      .accessDeniedHandler(accessDeniedResponseDecorator)
       .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
 
     // @formatter:on

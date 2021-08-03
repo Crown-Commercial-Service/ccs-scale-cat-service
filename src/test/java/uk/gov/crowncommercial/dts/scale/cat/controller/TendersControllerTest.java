@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,16 +15,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Web (mock MVC) Tenders controller tests. Security aware.
  */
 @WebMvcTest(TendersController.class)
+@Import({TendersAPIModelUtils.class})
 @ActiveProfiles("test")
 class TendersControllerTest {
 
@@ -59,13 +64,20 @@ class TendersControllerTest {
     mockMvc
         .perform(
             get("/tenders/event-types").with(invalidJwtReqPostProcessor).accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().isForbidden());
+        .andDo(print()).andExpect(status().isForbidden())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN")))
+        .andExpect(jsonPath("$.errors[0].title", is("Access Denied (Forbidden)")));
   }
 
   @Test
   void listProcurementEventTypes_401_Unauthorised() throws Exception {
     mockMvc.perform(get("/tenders/event-types").accept(APPLICATION_JSON)).andDo(print())
-        .andExpect(status().isUnauthorized());
+        .andExpect(status().isUnauthorized()).andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
   }
 
 }

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
@@ -36,7 +37,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 /**
  * Controller tests
  */
-@WebMvcTest(controllers = EventsController.class)
+@WebMvcTest(EventsController.class)
+@Import({TendersAPIModelUtils.class})
 @ActiveProfiles("test")
 class EventsControllerTest {
 
@@ -99,9 +101,15 @@ class EventsControllerTest {
 
   @Test
   void createProcurementEvent_401_Unauthorised() throws Exception {
-    mockMvc.perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/events")
-        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(tender)))
-        .andDo(print()).andExpect(status().is(401));
+    mockMvc
+        .perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/events")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(tender)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
   }
 
   @Test
@@ -113,7 +121,11 @@ class EventsControllerTest {
         .perform(post("/tenders/projects/" + PROC_PROJECT_ID + "/events")
             .with(invalidJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(tender)))
-        .andDo(print()).andExpect(status().isForbidden());
+        .andDo(print()).andExpect(status().isForbidden())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN")))
+        .andExpect(jsonPath("$.errors[0].title", is("Access Denied (Forbidden)")));
   }
 
   @Test
