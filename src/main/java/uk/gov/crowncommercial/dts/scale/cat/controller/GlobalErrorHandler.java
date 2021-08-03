@@ -16,6 +16,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import com.google.common.net.HttpHeaders;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -111,12 +112,16 @@ public class GlobalErrorHandler implements ErrorController {
 
   @ResponseStatus(UNAUTHORIZED)
   @ExceptionHandler(MalformedJwtException.class)
-  public Errors handleMalformedJwtException(final MalformedJwtException exception) {
+  public ResponseEntity<Errors> handleMalformedJwtException(final MalformedJwtException exception) {
 
     log.error("MalformedJwtException", exception);
 
     var apiError = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_UNAUTHORISED, "");
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    var wwwAuthenticateBearerInvalidJWT =
+        "Bearer error=\"invalid_token\", error_description=\"Invalid or malformed JWT\"";
+    return ResponseEntity.status(UNAUTHORIZED)
+        .header(HttpHeaders.WWW_AUTHENTICATE, wwwAuthenticateBearerInvalidJWT)
+        .body(tendersAPIModelUtils.buildErrors(Arrays.asList(apiError)));
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
