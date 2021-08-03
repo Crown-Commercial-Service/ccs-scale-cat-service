@@ -24,9 +24,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @RequiredArgsConstructor
 public class AccessDeniedResponseDecorator implements AccessDeniedHandler {
 
-  static final String ERR_MSG_ACCESS_DENIED_DETAIL =
-      "Access to the requested resource is forbidden";
-
   private final ObjectMapper objectMapper;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final BearerTokenAccessDeniedHandler bearerTokenAccessDeniedHandler =
@@ -37,8 +34,7 @@ public class AccessDeniedResponseDecorator implements AccessDeniedHandler {
       AccessDeniedException accessDeniedException) throws IOException, ServletException {
 
     bearerTokenAccessDeniedHandler.handle(request, response, accessDeniedException);
-    var error403 = new ApiError(FORBIDDEN.toString(), "Access Denied (Forbidden)",
-        ERR_MSG_ACCESS_DENIED_DETAIL);
+    var error403 = new ApiError(FORBIDDEN.toString(), Constants.ERR_MSG_FORBIDDEN, "");
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.getWriter().write(
         objectMapper.writeValueAsString(tendersAPIModelUtils.buildErrors(Arrays.asList(error403))));

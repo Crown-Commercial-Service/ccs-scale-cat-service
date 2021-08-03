@@ -109,8 +109,8 @@ class ProjectsControllerTest {
         .andDo(print()).andExpect(status().isForbidden())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
-        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN")))
-        .andExpect(jsonPath("$.errors[0].title", is("Access Denied (Forbidden)")));
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN"))).andExpect(
+            jsonPath("$.errors[0].title", is("Access to the requested resource is forbidden")));
   }
 
   @Test

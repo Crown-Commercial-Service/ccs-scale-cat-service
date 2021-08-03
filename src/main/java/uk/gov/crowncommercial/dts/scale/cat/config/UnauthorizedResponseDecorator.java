@@ -34,7 +34,7 @@ public class UnauthorizedResponseDecorator implements AuthenticationEntryPoint {
       AuthenticationException authException) throws IOException, ServletException {
 
     bearerTokenAuthenticationEntryPoint.commence(request, response, authException);
-    var error401 = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_INVALID_JWT, "");
+    var error401 = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_UNAUTHORISED, "");
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.getWriter().write(
         objectMapper.writeValueAsString(tendersAPIModelUtils.buildErrors(Arrays.asList(error401))));

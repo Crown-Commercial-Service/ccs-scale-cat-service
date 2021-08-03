@@ -115,7 +115,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("MalformedJwtException", exception);
 
-    var apiError = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_INVALID_JWT, "");
+    var apiError = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_UNAUTHORISED, "");
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
