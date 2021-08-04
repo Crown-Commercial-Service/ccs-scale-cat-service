@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -15,6 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
@@ -37,6 +41,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  * Web (mock MVC) Project controller tests. Security aware.
  */
 @WebMvcTest(ProjectsController.class)
+@Import({TendersAPIModelUtils.class})
 @ActiveProfiles("test")
 class ProjectsControllerTest {
 
@@ -100,9 +105,15 @@ class ProjectsControllerTest {
     JwtRequestPostProcessor invalidJwtReqPostProcessor =
         jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
 
-    mockMvc.perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
-        .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(agreementDetails)))
-        .andDo(print()).andExpect(status().isForbidden());
+    mockMvc
+        .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isForbidden())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN"))).andExpect(
+            jsonPath("$.errors[0].title", is("Access to the requested resource is forbidden")));
   }
 
   @Test
@@ -110,7 +121,12 @@ class ProjectsControllerTest {
     mockMvc
         .perform(post("/tenders/projects/agreements").contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
-        .andDo(print()).andExpect(status().isUnauthorized());
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
   }
 
   @Test
@@ -125,10 +141,11 @@ class ProjectsControllerTest {
             .contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
         .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
-        .andExpect(jsonPath("$.errors[0].title", is("Invalid access token")));
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
   }
 
   @Test
