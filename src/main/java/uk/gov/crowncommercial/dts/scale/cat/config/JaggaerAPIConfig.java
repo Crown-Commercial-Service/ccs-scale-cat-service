@@ -18,6 +18,7 @@ public class JaggaerAPIConfig {
   private String headerValueInvalidContentType;
   private Integer timeoutDuration;
   private Boolean addDivisionToProjectTeam;
+  private Long tokenExpirySeconds;
   private Map<String, String> createProject;
   private Map<String, String> createEvent;
   private Map<String, String> getBuyerCompanyProfile;
