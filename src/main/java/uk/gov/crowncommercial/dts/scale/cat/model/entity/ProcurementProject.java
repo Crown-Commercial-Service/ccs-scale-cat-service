@@ -66,8 +66,8 @@ public class ProcurementProject {
   public static ProcurementProject of(AgreementDetails agreementDetails, String externalProjectId,
       String externalReferenceId, String projectName, String principal) {
     var procurementProject = new ProcurementProject();
-    procurementProject.setCaNumber(agreementDetails.getAgreementID());
-    procurementProject.setLotNumber(agreementDetails.getLotID());
+    procurementProject.setCaNumber(agreementDetails.getAgreementId());
+    procurementProject.setLotNumber(agreementDetails.getLotId());
     procurementProject.setExternalProjectId(externalProjectId);
     procurementProject.setExternalReferenceId(externalReferenceId);
     procurementProject.setProjectName(projectName);

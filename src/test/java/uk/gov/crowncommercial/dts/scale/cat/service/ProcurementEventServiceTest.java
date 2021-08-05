@@ -83,8 +83,8 @@ class ProcurementEventServiceTest {
 
     // Stub some objects
     var agreementDetails = new AgreementDetails();
-    agreementDetails.setAgreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.setAgreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
@@ -136,13 +136,12 @@ class ProcurementEventServiceTest {
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventSummary.getName());
-    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportID());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventSummary.getEventName());
+    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
     assertEquals("Tender", eventSummary.getEventStage());
-    assertEquals(TenderStatus.PLANNING, eventSummary.getStatus());
+    assertEquals(TenderStatus.PLANNING, eventSummary.getEventStatus());
     assertEquals(EventType.RFP, eventSummary.getEventType());
   }
-
 
   @Test
   void testUpdateProcurementEventName() throws Exception {
@@ -221,7 +220,6 @@ class ProcurementEventServiceTest {
     assertEquals("Event ID 'EVENT-1' is not in the expected format", ex.getMessage());
   }
 
-
   @Test
   void testUpdateProcurementEventNameThrowsResourceNotFoundApplicationException() throws Exception {
 
@@ -279,7 +277,7 @@ class ProcurementEventServiceTest {
    */
   private class UpdateEventMatcher implements ArgumentMatcher<CreateUpdateRfx> {
 
-    private CreateUpdateRfx left;
+    private final CreateUpdateRfx left;
 
     UpdateEventMatcher(CreateUpdateRfx left) {
       this.left = left;

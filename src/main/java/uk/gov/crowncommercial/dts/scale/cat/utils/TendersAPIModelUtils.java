@@ -18,8 +18,8 @@ public class TendersAPIModelUtils {
     draftProcurementProject.setEventID(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();
-    defaultNameComponents.setAgreementID(agreementDetails.getAgreementID());
-    defaultNameComponents.setLotID(agreementDetails.getLotID());
+    defaultNameComponents.setAgreementID(agreementDetails.getAgreementId());
+    defaultNameComponents.setLotID(agreementDetails.getLotId());
     defaultNameComponents.setOrg("CCS");
 
     var defaultName = new DefaultName();
@@ -33,12 +33,12 @@ public class TendersAPIModelUtils {
   public EventStatus buildEventStatus(Integer projectId, String eventId, String name,
       String supportID, EventType type, TenderStatus status, String stage) {
     var eventStatus = new EventStatus();
-    eventStatus.setProjectID(projectId);
-    eventStatus.setEventID(eventId);
-    eventStatus.setName(name);
-    eventStatus.setEventSupportID(supportID);
+    eventStatus.setProjectId(projectId);
+    eventStatus.setEventId(eventId);
+    eventStatus.setEventName(name);
+    eventStatus.setEventSupportId(supportID);
     eventStatus.setEventType(type);
-    eventStatus.setStatus(status);
+    eventStatus.setEventStatus(status);
     eventStatus.setEventStage(stage);
 
     return eventStatus;

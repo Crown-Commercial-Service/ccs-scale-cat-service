@@ -78,8 +78,8 @@ class ProcurementProjectServiceTest {
 
   @BeforeEach
   void beforeEach() {
-    agreementDetails.setAgreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.setAgreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
   }
 
   @Test
@@ -97,7 +97,7 @@ class ProcurementProjectServiceTest {
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventStatus = new EventStatus();
-    eventStatus.setEventID(EVENT_OCID);
+    eventStatus.setEventId(EVENT_OCID);
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);

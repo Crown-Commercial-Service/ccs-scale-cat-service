@@ -102,12 +102,12 @@ public class ProcurementProjectService {
         procurementEventService.createFromProject(procurementProject.getId(), principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
-        procurementProject.getId(), eventSummary.getEventID(), projectTitle);
+        procurementProject.getId(), eventSummary.getEventId(), projectTitle);
   }
 
   String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
     return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
-        agreementDetails.getAgreementID(), agreementDetails.getLotID(), organisation);
+        agreementDetails.getAgreementId(), agreementDetails.getLotId(), organisation);
   }
 
   /**
