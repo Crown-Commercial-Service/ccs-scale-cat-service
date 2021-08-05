@@ -55,7 +55,9 @@ class ProjectsControllerTest {
   private static final Integer PROC_PROJECT_ID = 1;
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
-  private final TendersAPIModelUtils tendersAPIModelUtils = new TendersAPIModelUtils();
+
+  @Autowired
+  private TendersAPIModelUtils tendersAPIModelUtils;
 
   @Autowired
   private MockMvc mockMvc;

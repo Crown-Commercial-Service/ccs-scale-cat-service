@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -59,11 +60,13 @@ public class ProcurementProjectService {
   public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {
 
-    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
-    var tender = Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+    var tender = Tender.builder().title(projectTitle)
+        .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
         .projectOwner(new ProjectOwner(jaggaerUserId))
         .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
 
@@ -81,7 +84,7 @@ public class ProcurementProjectService {
         new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
     var createProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
@@ -129,7 +132,7 @@ public class ProcurementProjectService {
         new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
     var updateProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),

@@ -41,7 +41,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class},
+        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ValidationService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
@@ -97,7 +97,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -160,7 +160,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(argThat(new UpdateEventMatcher(createUpdateRfx))).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -244,7 +244,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
