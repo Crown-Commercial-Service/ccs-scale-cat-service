@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
+import java.util.List;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 /**
@@ -40,6 +42,12 @@ public class TendersAPIModelUtils {
     eventStatus.setEventStage(stage);
 
     return eventStatus;
+  }
+
+  public Errors buildErrors(List<ApiError> apiErrors) {
+    var errors = new Errors();
+    errors.setErrors(apiErrors);
+    return errors;
   }
 
 }
