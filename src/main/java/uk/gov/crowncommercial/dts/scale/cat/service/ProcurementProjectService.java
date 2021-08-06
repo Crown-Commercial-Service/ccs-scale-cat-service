@@ -15,8 +15,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -53,17 +53,17 @@ public class ProcurementProjectService {
    * </ol>
    *
    *
-   * @param agreementDetails
+   * @param projectRequest
    * @param principal
    * @return draft procurement project
    */
-  public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
+  public DraftProcurementProject createFromAgreementDetails(ProjectRequest projectRequest,
       String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
     var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
-    var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
+    var projectTitle = getDefaultProjectTitle(projectRequest, "CCS");
 
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
@@ -98,19 +98,19 @@ public class ProcurementProjectService {
     log.info("Created project: {}", createProjectResponse);
 
     var procurementProject = retryableTendersDBDelegate
-        .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
+        .save(ProcurementProject.of(projectRequest, createProjectResponse.getTenderCode(),
             createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
     var eventSummary =
         procurementEventService.createFromProject(procurementProject.getId(), principal);
 
-    return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
+    return tendersAPIModelUtils.buildDraftProcurementProject(projectRequest,
         procurementProject.getId(), eventSummary.getEventId(), projectTitle);
   }
 
-  String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
+  String getDefaultProjectTitle(ProjectRequest projectRequest, String organisation) {
     return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
-        agreementDetails.getAgreementId(), agreementDetails.getLotId(), organisation);
+        projectRequest.getAgreementId(), projectRequest.getLotId(), organisation);
   }
 
   /**

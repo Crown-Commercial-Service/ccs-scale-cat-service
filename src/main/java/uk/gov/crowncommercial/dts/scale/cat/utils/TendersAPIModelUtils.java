@@ -17,15 +17,15 @@ public class TendersAPIModelUtils {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
 
-  public DraftProcurementProject buildDraftProcurementProject(AgreementDetails agreementDetails,
+  public DraftProcurementProject buildDraftProcurementProject(ProjectRequest projectRequest,
       Integer procurementID, String eventID, String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setPocurementID(procurementID);
     draftProcurementProject.setEventID(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();
-    defaultNameComponents.setAgreementID(agreementDetails.getAgreementId());
-    defaultNameComponents.setLotID(agreementDetails.getLotId());
+    defaultNameComponents.setAgreementID(projectRequest.getAgreementId());
+    defaultNameComponents.setLotID(projectRequest.getLotId());
     defaultNameComponents.setOrg("CCS");
 
     var defaultName = new DefaultName();

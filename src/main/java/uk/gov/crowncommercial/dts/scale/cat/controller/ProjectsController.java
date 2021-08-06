@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 /**
@@ -27,12 +27,12 @@ public class ProjectsController extends AbstractRestController {
 
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
-      @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
+      @RequestBody ProjectRequest projectRequest, JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
 
-    return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
+    return procurementProjectService.createFromAgreementDetails(projectRequest, principal);
   }
 
   @PutMapping("/{procID}/name")

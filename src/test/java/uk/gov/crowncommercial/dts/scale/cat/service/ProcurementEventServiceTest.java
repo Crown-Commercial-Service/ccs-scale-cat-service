@@ -27,8 +27,8 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
@@ -82,9 +82,9 @@ class ProcurementEventServiceTest {
   void testCreateFromAgreementDetails() throws Exception {
 
     // Stub some objects
-    var agreementDetails = new AgreementDetails();
-    agreementDetails.setAgreementId(CA_NUMBER);
-    agreementDetails.setLotId(LOT_NUMBER);
+    var projectRequest = new ProjectRequest();
+    projectRequest.setAgreementId(CA_NUMBER);
+    projectRequest.setLotId(LOT_NUMBER);
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
@@ -92,7 +92,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxId(RFX_ID);
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
+    var procurementProject = ProcurementProject.of(projectRequest, "", "", "", "");
     var procurementEvent = new ProcurementEvent();
 
     // Mock behaviours

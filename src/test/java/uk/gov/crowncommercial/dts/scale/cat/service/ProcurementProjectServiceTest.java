@@ -24,8 +24,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -53,7 +53,7 @@ class ProcurementProjectServiceTest {
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
 
-  private final AgreementDetails agreementDetails = new AgreementDetails();
+  private final ProjectRequest projectRequest = new ProjectRequest();
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -78,8 +78,8 @@ class ProcurementProjectServiceTest {
 
   @BeforeEach
   void beforeEach() {
-    agreementDetails.setAgreementId(CA_NUMBER);
-    agreementDetails.setLotId(LOT_NUMBER);
+    projectRequest.setAgreementId(CA_NUMBER);
+    projectRequest.setLotId(LOT_NUMBER);
   }
 
   @Test
@@ -93,7 +93,7 @@ class ProcurementProjectServiceTest {
     createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
     var procurementProject =
-        ProcurementProject.of(agreementDetails, TENDER_CODE, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
+        ProcurementProject.of(projectRequest, TENDER_CODE, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventStatus = new EventStatus();
@@ -112,7 +112,7 @@ class ProcurementProjectServiceTest {
 
     // Invoke
     var draftProcurementProject =
-        procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL);
+        procurementProjectService.createFromAgreementDetails(projectRequest, PRINCIPAL);
 
     // Assert
     assertEquals(PROC_PROJECT_ID, draftProcurementProject.getPocurementID());
@@ -149,7 +149,7 @@ class ProcurementProjectServiceTest {
 
     // Invoke & assert
     JaggaerApplicationException jagEx = assertThrows(JaggaerApplicationException.class,
-        () -> procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL));
+        () -> procurementProjectService.createFromAgreementDetails(projectRequest, PRINCIPAL));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
 
