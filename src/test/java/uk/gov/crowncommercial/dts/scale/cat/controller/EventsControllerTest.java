@@ -57,7 +57,7 @@ class EventsControllerTest {
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
   private static final String EVENT_STAGE = "Tender";
 
-  private final Tender tender = new Tender();
+  private final EventRequest eventRequest = new EventRequest();
 
   @Autowired
   private MockMvc mockMvc;
@@ -91,13 +91,13 @@ class EventsControllerTest {
     var eventStatus = tendersAPIModelUtils.buildEventStatus(PROC_PROJECT_ID, EVENT_ID, EVENT_NAME,
         JAGGAER_ID, EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
 
-    when(procurementEventService.createFromTender(eq(PROC_PROJECT_ID), any(Tender.class),
-        anyString())).thenReturn(eventStatus);
+    when(procurementEventService.createFromEventRequest(eq(PROC_PROJECT_ID),
+        any(EventRequest.class), anyString())).thenReturn(eventStatus);
 
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(eventRequest)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventID").value(EVENT_ID))
         .andExpect(jsonPath("$.projectID").value(PROC_PROJECT_ID))
         .andExpect(jsonPath("$.name").value(EVENT_NAME))
@@ -112,7 +112,7 @@ class EventsControllerTest {
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).accept(APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(eventRequest)))
         .andDo(print()).andExpect(status().isUnauthorized())
         .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
         .andExpect(content().contentType(APPLICATION_JSON))
@@ -129,7 +129,7 @@ class EventsControllerTest {
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(invalidJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(eventRequest)))
         .andDo(print()).andExpect(status().isForbidden())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
@@ -140,13 +140,13 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_500_ISE() throws Exception {
 
-    when(procurementEventService.createFromTender(PROC_PROJECT_ID, tender, PRINCIPAL))
+    when(procurementEventService.createFromEventRequest(PROC_PROJECT_ID, eventRequest, PRINCIPAL))
         .thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(eventRequest)))
         .andDo(print()).andExpect(status().isInternalServerError())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
@@ -174,14 +174,16 @@ class EventsControllerTest {
   @Test
   void getEvent_200_OK() throws Exception {
 
-    var tender = new Tender();
-    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(tender);
+    var eventDetail = new EventDetail();
+    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL))
+        .thenReturn(eventDetail);
 
     mockMvc
         .perform(get(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
+    // TODO: Verify content
 
     verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
   }

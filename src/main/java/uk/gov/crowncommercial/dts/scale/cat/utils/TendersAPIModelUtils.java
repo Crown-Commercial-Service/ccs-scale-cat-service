@@ -56,16 +56,17 @@ public class TendersAPIModelUtils {
     return errors;
   }
 
-  public Tender buildTender(RfxSetting rfxSetting) {
-    var tender = new Tender();
-    tender.setId(rfxSetting.getRfxId());
-    tender.setTitle(rfxSetting.getShortDescription());
-    tender.setDescription(rfxSetting.getLongDescription());
-    tender.setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-
-    // TODO: TBC - mappings required
-    tender.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
-    return tender;
+  public EventDetail buildEventDetail(RfxSetting rfxSetting) {
+    var eventDetail = new EventDetail();
+    // TODO: Map to SCC-439 nonOCDS and OCDS fields
+    // eventDetail.setId(rfxSetting.getRfxId());
+    // eventDetail.setTitle(rfxSetting.getShortDescription());
+    // eventDetail.setDescription(rfxSetting.getLongDescription());
+    // eventDetail.setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    //
+    // // TODO: TBC - mappings required
+    // eventDetail.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
+    return eventDetail;
   }
 
 }

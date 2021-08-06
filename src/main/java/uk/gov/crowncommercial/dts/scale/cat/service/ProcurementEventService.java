@@ -20,10 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -107,12 +104,12 @@ public class ProcurementEventService {
    * This endpoint will create a Jaggaer Rfx (CCS 'Event' equivalent) on an existing project.
    *
    * @param projectId CCS project id
-   * @param tender CCS tender object (only relevant values need to be populated)
+   * @param eventRequest TODO: Use new detail e.g. downselectedSuppliers
    * @param principal
    * @return
    */
-  public EventStatus createFromTender(final Integer projectId, final Tender tender,
-      final String principal) {
+  public EventStatus createFromEventRequest(final Integer projectId,
+      final EventRequest eventRequest, final String principal) {
     // Use of Tender is redundant as none of the data is currently required (may change)
     return createFromProject(projectId, principal);
   }
@@ -210,7 +207,8 @@ public class ProcurementEventService {
    * @param principal
    * @return the converted Tender object
    */
-  public Tender getEvent(final Integer projectId, final String eventId, final String principal) {
+  public EventDetail getEvent(final Integer projectId, final String eventId,
+      final String principal) {
 
     // Get event from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
@@ -223,7 +221,7 @@ public class ProcurementEventService {
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating Rfx"));
 
-    return tendersAPIModelUtils.buildTender(exportRfxResponse.getRfxSetting());
+    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting());
   }
 
   /**
