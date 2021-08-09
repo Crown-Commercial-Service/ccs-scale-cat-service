@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class ApiError {
 
-	private final String status;
-	private final String title;
-	private final String detail;
+  private final String status;
+  private final String title;
+  private final String detail;
 }

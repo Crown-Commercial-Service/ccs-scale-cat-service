@@ -2,24 +2,30 @@ package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import java.util.List;
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
 /**
  * Utility methods for building and manipulating the sources generated from the Tenders API
  */
 @Component
+@RequiredArgsConstructor
 public class TendersAPIModelUtils {
 
-  public DraftProcurementProject buildDraftProcurementProject(AgreementDetails agreementDetails,
+  private final JaggaerAPIConfig jaggaerAPIConfig;
+
+  public DraftProcurementProject buildDraftProcurementProject(ProjectRequest projectRequest,
       Integer procurementID, String eventID, String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setPocurementID(procurementID);
     draftProcurementProject.setEventID(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();
-    defaultNameComponents.setAgreementID(agreementDetails.getAgreementID());
-    defaultNameComponents.setLotID(agreementDetails.getLotID());
+    defaultNameComponents.setAgreementID(projectRequest.getAgreementId());
+    defaultNameComponents.setLotID(projectRequest.getLotId());
     defaultNameComponents.setOrg("CCS");
 
     var defaultName = new DefaultName();
@@ -33,12 +39,12 @@ public class TendersAPIModelUtils {
   public EventStatus buildEventStatus(Integer projectId, String eventId, String name,
       String supportID, EventType type, TenderStatus status, String stage) {
     var eventStatus = new EventStatus();
-    eventStatus.setProjectID(projectId);
-    eventStatus.setEventID(eventId);
-    eventStatus.setName(name);
-    eventStatus.setEventSupportID(supportID);
+    eventStatus.setProjectId(projectId);
+    eventStatus.setEventId(eventId);
+    eventStatus.setEventName(name);
+    eventStatus.setEventSupportId(supportID);
     eventStatus.setEventType(type);
-    eventStatus.setStatus(status);
+    eventStatus.setEventStatus(status);
     eventStatus.setEventStage(stage);
 
     return eventStatus;
@@ -48,6 +54,19 @@ public class TendersAPIModelUtils {
     var errors = new Errors();
     errors.setErrors(apiErrors);
     return errors;
+  }
+
+  public EventDetail buildEventDetail(RfxSetting rfxSetting) {
+    var eventDetail = new EventDetail();
+    // TODO: Map to SCC-439 nonOCDS and OCDS fields
+    // eventDetail.setId(rfxSetting.getRfxId());
+    // eventDetail.setTitle(rfxSetting.getShortDescription());
+    // eventDetail.setDescription(rfxSetting.getLongDescription());
+    // eventDetail.setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    //
+    // // TODO: TBC - mappings required
+    // eventDetail.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
+    return eventDetail;
   }
 
 }
