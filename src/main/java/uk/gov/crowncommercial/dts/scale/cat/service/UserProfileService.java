@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 
@@ -32,6 +31,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 @RequiredArgsConstructor
 @Slf4j
 public class UserProfileService {
+
+  private static final JaggaerApplicationException INVALID_COMPANY_PROFILE_DATA_EXCEPTION =
+      new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+          "Invalid state: Jaggaer company profile data must contain exactly 1 'GURU' record");
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
@@ -75,11 +78,10 @@ public class UserProfileService {
         log.debug("Retrieved company profile record: {}", getCompanyDataResponse);
 
         if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
-          throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-              "Invalid state: Jaggaer company profile data must contain exactly 1 'GURU' record");
+          throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
         }
-        ReturnCompanyData returnCompanyData =
-            getCompanyDataResponse.getReturnCompanyData().stream().findFirst().get();
+        var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
+            .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
         Set<SubUser> subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
 
         var subUser = subUsers.stream().filter(su -> principal.equalsIgnoreCase(su.getEmail()))
