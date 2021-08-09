@@ -98,13 +98,13 @@ class EventsControllerTest {
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(eventRequest)))
-        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventID").value(EVENT_ID))
-        .andExpect(jsonPath("$.projectID").value(PROC_PROJECT_ID))
-        .andExpect(jsonPath("$.name").value(EVENT_NAME))
-        .andExpect(jsonPath("$.eventSupportID").value(JAGGAER_ID))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventId").value(EVENT_ID))
+        .andExpect(jsonPath("$.projectId").value(PROC_PROJECT_ID))
+        .andExpect(jsonPath("$.eventName").value(EVENT_NAME))
+        .andExpect(jsonPath("$.eventSupportId").value(JAGGAER_ID))
         .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.toString()))
         .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE))
-        .andExpect(jsonPath("$.status").value(EVENT_STATUS.toString()));
+        .andExpect(jsonPath("$.eventStatus").value(EVENT_STATUS.toString()));
   }
 
   @Test
