@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
@@ -56,8 +57,28 @@ public class TendersAPIModelUtils {
     return errors;
   }
 
-  public EventDetail buildEventDetail(RfxSetting rfxSetting) {
+  public EventDetail buildEventDetail(RfxSetting rfxSetting, ProcurementEvent procurementEvent) {
     var eventDetail = new EventDetail();
+
+    var projectSummary = new ProjectSummary();
+    var agreementDefinition = new AgreementDefinition();
+    agreementDefinition.setAgreementId(procurementEvent.getProject().getCaNumber());
+    // agreementDefinition.setAgreementName(TODO: Get it from the agreements service);
+    agreementDefinition.setLotId(procurementEvent.getProject().getLotNumber());
+
+    // Non-OCDS
+    var eventDetailNonOCDS = new EventDetailNonOCDS();
+    eventDetailNonOCDS.setEventId(rfxSetting.getRfxId());
+    eventDetailNonOCDS.setEventName(rfxSetting.getShortDescription());
+    eventDetailNonOCDS.setEventStatus(
+        jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    // eventDetailNonOCDS.setEventResponseDate(rfxSetting.get);
+    eventDetail.setNonOCDS(eventDetailNonOCDS);
+
+    // OCDS
+    var eventDetailOCDS = new EventDetailOCDS();
+
+    eventDetail.setOCDS(eventDetailOCDS);
     // TODO: Map to SCC-439 nonOCDS and OCDS fields
     // eventDetail.setId(rfxSetting.getRfxId());
     // eventDetail.setTitle(rfxSetting.getShortDescription());

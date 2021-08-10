@@ -231,7 +231,7 @@ public class ProcurementEventService {
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating Rfx"));
 
-    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting());
+    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event);
   }
 
   /**
