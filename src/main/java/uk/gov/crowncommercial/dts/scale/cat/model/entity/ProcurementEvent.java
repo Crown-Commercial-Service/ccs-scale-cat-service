@@ -2,7 +2,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import javax.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
 
 /**
@@ -13,7 +16,6 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "procurement_events")
 @Data
 @Builder
-@AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(exclude = "project")
 public class ProcurementEvent {
