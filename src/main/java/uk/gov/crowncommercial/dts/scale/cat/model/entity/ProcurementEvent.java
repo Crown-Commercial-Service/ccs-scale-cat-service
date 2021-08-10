@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 import java.time.Instant;
 import javax.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
@@ -14,6 +15,7 @@ import lombok.experimental.FieldDefaults;
 @Entity
 @Table(name = "procurement_events")
 @Data
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(exclude = "project")
 public class ProcurementEvent {
@@ -42,6 +44,12 @@ public class ProcurementEvent {
   @Column(name = "event_name")
   String eventName;
 
+  @Column(name = "event_type")
+  String eventType;
+
+  @Column(name = "down_selected_suppliers_ind")
+  Boolean downSelectedSuppliers;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
@@ -53,35 +61,6 @@ public class ProcurementEvent {
 
   @Column(name = "updated_at")
   Instant updatedAt;
-
-  /**
-   * Builds an instance from basic details.
-   * 
-   * @param project the parent {@link ProcurementProject}
-   * @param eventName Title/short description
-   * @param externalEventId Rfx id
-   * @param externalReferenceId Rfx reference code
-   * @param ocdsAuthority Authority, e.g. 'osds'
-   * @param ocidPrefix Prefix, e.g. 'b5fd17'
-   * @param principal
-   * @return a procurement event
-   */
-  public static ProcurementEvent of(ProcurementProject project, String eventName,
-      String externalEventId, String externalReferenceId, String ocdsAuthority, String ocidPrefix,
-      String principal) {
-    var procurementEvent = new ProcurementEvent();
-    procurementEvent.setProject(project);
-    procurementEvent.setEventName(eventName);
-    procurementEvent.setOcdsAuthorityName(ocdsAuthority);
-    procurementEvent.setOcidPrefix(ocidPrefix);
-    procurementEvent.setExternalEventId(externalEventId);
-    procurementEvent.setExternalReferenceId(externalReferenceId);
-    procurementEvent.setCreatedBy(principal); // Or Jaggaer user ID?
-    procurementEvent.setCreatedAt(Instant.now());
-    procurementEvent.setUpdatedBy(principal); // Or Jaggaer user ID?
-    procurementEvent.setUpdatedAt(Instant.now());
-    return procurementEvent;
-  }
 
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;

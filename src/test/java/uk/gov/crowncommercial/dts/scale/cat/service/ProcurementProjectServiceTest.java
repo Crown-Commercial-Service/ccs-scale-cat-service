@@ -25,6 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
@@ -52,6 +53,8 @@ class ProcurementProjectServiceTest {
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
+  private static final EventType EVENT_TYPE = EventType.DA;
+  private static final Boolean DOWNSELECTED_SUPPLIERS = true;
 
   private final ProjectRequest projectRequest = new ProjectRequest();
 
@@ -80,6 +83,8 @@ class ProcurementProjectServiceTest {
   void beforeEach() {
     projectRequest.setAgreementId(CA_NUMBER);
     projectRequest.setLotId(LOT_NUMBER);
+    projectRequest.setEventType(EVENT_TYPE);
+    projectRequest.setDownselectedSuppliers(DOWNSELECTED_SUPPLIERS);
   }
 
   @Test
@@ -107,8 +112,8 @@ class ProcurementProjectServiceTest {
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .thenReturn(createUpdateProjectResponse);
     when(procurementProjectRepo.save(any(ProcurementProject.class))).thenReturn(procurementProject);
-    when(procurementEventService.createFromProject(PROC_PROJECT_ID, PRINCIPAL))
-        .thenReturn(eventStatus);
+    when(procurementEventService.createFromProject(PROC_PROJECT_ID, EVENT_TYPE,
+        DOWNSELECTED_SUPPLIERS, PRINCIPAL)).thenReturn(eventStatus);
 
     // Invoke
     var draftProcurementProject =
@@ -129,7 +134,8 @@ class ProcurementProjectServiceTest {
     verify(procurementProjectRepo).save(any(ProcurementProject.class));
     // verify(jaggaerWebClient.post().uri(anyString()).bodyValue(any(CreateUpdateProject.class))
     // .retrieve().bodyToMono(eq(CreateUpdateProjectResponse.class))).block(any());
-    verify(procurementEventService).createFromProject(PROC_PROJECT_ID, PRINCIPAL);
+    verify(procurementEventService).createFromProject(PROC_PROJECT_ID, EVENT_TYPE,
+        DOWNSELECTED_SUPPLIERS, PRINCIPAL);
   }
 
   @Test

@@ -101,8 +101,8 @@ public class ProcurementProjectService {
         .save(ProcurementProject.of(projectRequest, createProjectResponse.getTenderCode(),
             createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
-    var eventSummary =
-        procurementEventService.createFromProject(procurementProject.getId(), principal);
+    var eventSummary = procurementEventService.createFromProject(procurementProject.getId(),
+        projectRequest.getEventType(), projectRequest.getDownselectedSuppliers(), principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(projectRequest,
         procurementProject.getId(), eventSummary.getEventId(), projectTitle);
