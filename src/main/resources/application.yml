@@ -75,6 +75,14 @@ config:
         principalPlaceholder: "{{PRINCIPAL}}"
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+        
+    agreementsService:
+      # baseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      getAgreementDetail:
+        uriTemplate: /agreements/{agreement-id}
+      getLotDetailsForAgreement:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
 
     
 ---
