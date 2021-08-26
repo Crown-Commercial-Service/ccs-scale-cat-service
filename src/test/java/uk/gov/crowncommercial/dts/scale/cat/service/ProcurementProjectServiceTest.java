@@ -24,9 +24,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -56,7 +56,7 @@ class ProcurementProjectServiceTest {
   private static final EventType EVENT_TYPE = EventType.DA;
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
 
-  private final ProjectRequest projectRequest = new ProjectRequest();
+  private final AgreementDetails agreementDetails = new AgreementDetails();
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -81,10 +81,10 @@ class ProcurementProjectServiceTest {
 
   @BeforeEach
   void beforeEach() {
-    projectRequest.setAgreementId(CA_NUMBER);
-    projectRequest.setLotId(LOT_NUMBER);
-    projectRequest.setEventType(EVENT_TYPE);
-    projectRequest.setDownselectedSuppliers(DOWNSELECTED_SUPPLIERS);
+    agreementDetails.setAgreementID(CA_NUMBER);
+    agreementDetails.setLotID(LOT_NUMBER);
+    // agreementDetails.setEventType(EVENT_TYPE);
+    // agreementDetails.setDownselectedSuppliers(DOWNSELECTED_SUPPLIERS);
   }
 
   @Test
@@ -98,11 +98,11 @@ class ProcurementProjectServiceTest {
     createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
     var procurementProject =
-        ProcurementProject.of(projectRequest, TENDER_CODE, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
+        ProcurementProject.of(agreementDetails, TENDER_CODE, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventStatus = new EventStatus();
-    eventStatus.setEventId(EVENT_OCID);
+    eventStatus.setEventID(EVENT_OCID);
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
@@ -117,7 +117,7 @@ class ProcurementProjectServiceTest {
 
     // Invoke
     var draftProcurementProject =
-        procurementProjectService.createFromAgreementDetails(projectRequest, PRINCIPAL);
+        procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL);
 
     // Assert
     assertEquals(PROC_PROJECT_ID, draftProcurementProject.getPocurementID());
@@ -155,7 +155,7 @@ class ProcurementProjectServiceTest {
 
     // Invoke & assert
     JaggaerApplicationException jagEx = assertThrows(JaggaerApplicationException.class,
-        () -> procurementProjectService.createFromAgreementDetails(projectRequest, PRINCIPAL));
+        () -> procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
 

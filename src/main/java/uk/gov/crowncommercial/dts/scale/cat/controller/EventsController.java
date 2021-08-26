@@ -7,9 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementEventName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
 /**
@@ -25,12 +25,12 @@ public class EventsController extends AbstractRestController {
 
   @PostMapping
   public EventStatus createProcurementEvent(@PathVariable("procID") Integer procId,
-      @RequestBody EventRequest eventRequest, JwtAuthenticationToken authentication) {
+      @RequestBody Tender tender, JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.createFromEventRequest(procId, eventRequest, principal);
+    return procurementEventService.createFromTender(procId, tender, principal);
   }
 
   @PutMapping("/{eventID}/name")

@@ -18,15 +18,15 @@ public class TendersAPIModelUtils {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
 
-  public DraftProcurementProject buildDraftProcurementProject(ProjectRequest projectRequest,
+  public DraftProcurementProject buildDraftProcurementProject(AgreementDetails agreementDetails,
       Integer procurementID, String eventID, String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setPocurementID(procurementID);
-    draftProcurementProject.setEventID(eventID);
+    draftProcurementProject.setEventId(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();
-    defaultNameComponents.setAgreementID(projectRequest.getAgreementId());
-    defaultNameComponents.setLotID(projectRequest.getLotId());
+    defaultNameComponents.setAgreementID(agreementDetails.getAgreementId());
+    defaultNameComponents.setLotID(agreementDetails.getLotId());
     defaultNameComponents.setOrg("CCS");
 
     var defaultName = new DefaultName();
@@ -42,10 +42,10 @@ public class TendersAPIModelUtils {
     var eventStatus = new EventStatus();
     eventStatus.setProjectId(projectId);
     eventStatus.setEventId(eventId);
-    eventStatus.setEventName(name);
-    eventStatus.setEventSupportId(supportID);
+    eventStatus.setName(name);
+    eventStatus.eventSupportId(supportID);
     eventStatus.setEventType(type);
-    eventStatus.setEventStatus(status);
+    eventStatus.setStatus(status);
     eventStatus.setEventStage(stage);
 
     return eventStatus;
@@ -60,18 +60,17 @@ public class TendersAPIModelUtils {
   public EventDetail buildEventDetail(RfxSetting rfxSetting, ProcurementEvent procurementEvent) {
     var eventDetail = new EventDetail();
 
-    var projectSummary = new ProjectSummary();
-    var agreementDefinition = new AgreementDefinition();
-    agreementDefinition.setAgreementId(procurementEvent.getProject().getCaNumber());
+    var agreementDetails = new AgreementDetails();
+    agreementDetails.setAgreementId(procurementEvent.getProject().getCaNumber());
     // agreementDefinition.setAgreementName(TODO: Get it from the agreements service);
-    agreementDefinition.setLotId(procurementEvent.getProject().getLotNumber());
+    agreementDetails.setLotId(procurementEvent.getProject().getLotNumber());
 
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventId(rfxSetting.getRfxId());
-    eventDetailNonOCDS.setEventName(rfxSetting.getShortDescription());
-    eventDetailNonOCDS.setEventStatus(
-        jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    eventDetailNonOCDS.setName(rfxSetting.getShortDescription());
+    eventDetailNonOCDS
+        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
     // eventDetailNonOCDS.setEventResponseDate(rfxSetting.get);
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 

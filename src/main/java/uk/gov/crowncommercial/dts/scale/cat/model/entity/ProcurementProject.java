@@ -6,7 +6,7 @@ import javax.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 
 /**
  * JPA entity representing a mapping between an internal ID, CA/Lot and Jaggaer internal project
@@ -63,11 +63,11 @@ public class ProcurementProject {
    * @param principal
    * @return a procurement project
    */
-  public static ProcurementProject of(ProjectRequest projectRequest, String externalProjectId,
+  public static ProcurementProject of(AgreementDetails agreementDetails, String externalProjectId,
       String externalReferenceId, String projectName, String principal) {
     var procurementProject = new ProcurementProject();
-    procurementProject.setCaNumber(projectRequest.getAgreementId());
-    procurementProject.setLotNumber(projectRequest.getLotId());
+    procurementProject.setCaNumber(agreementDetails.getAgreementId());
+    procurementProject.setLotNumber(agreementDetails.getLotId());
     procurementProject.setExternalProjectId(externalProjectId);
     procurementProject.setExternalReferenceId(externalReferenceId);
     procurementProject.setProjectName(projectName);

@@ -33,8 +33,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -54,7 +54,7 @@ class ProjectsControllerTest {
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
 
-  private final ProjectRequest projectRequest = new ProjectRequest();
+  private final AgreementDetails agreementDetails = new AgreementDetails();
 
   @Autowired
   private TendersAPIModelUtils tendersAPIModelUtils;
@@ -71,8 +71,8 @@ class ProjectsControllerTest {
 
   @BeforeEach
   void beforeEach() {
-    projectRequest.setAgreementId(CA_NUMBER);
-    projectRequest.setLotId(LOT_NUMBER);
+    agreementDetails.setAgreementID(CA_NUMBER);
+    agreementDetails.setLotID(LOT_NUMBER);
 
     validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
         .jwt(jwt -> jwt.subject(PRINCIPAL));
@@ -80,15 +80,16 @@ class ProjectsControllerTest {
 
   @Test
   void createProcurementProject_200_OK() throws Exception {
-    var draftProcurementProject = tendersAPIModelUtils.buildDraftProcurementProject(projectRequest,
-        PROC_PROJECT_ID, EVENT_OCID, PROJ_NAME);
+    var draftProcurementProject = tendersAPIModelUtils
+        .buildDraftProcurementProject(agreementDetails, PROC_PROJECT_ID, EVENT_OCID, PROJ_NAME);
 
-    when(procurementProjectService.createFromAgreementDetails(projectRequest, PRINCIPAL))
+    when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL))
         .thenReturn(draftProcurementProject);
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
-            .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(projectRequest)))
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.pocurementID").value(PROC_PROJECT_ID))
@@ -98,7 +99,7 @@ class ProjectsControllerTest {
         .andExpect(jsonPath("$.defaultName.components.lotID").value(LOT_NUMBER))
         .andExpect(jsonPath("$.defaultName.components.org").value(ORG));
 
-    verify(procurementProjectService).createFromAgreementDetails(any(ProjectRequest.class),
+    verify(procurementProjectService).createFromAgreementDetails(any(AgreementDetails.class),
         anyString());
   }
 
@@ -109,7 +110,8 @@ class ProjectsControllerTest {
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
-            .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(projectRequest)))
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isForbidden())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
@@ -121,7 +123,7 @@ class ProjectsControllerTest {
   void createProcurementProject_401_Unauthorised() throws Exception {
     mockMvc
         .perform(post("/tenders/projects/agreements").contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(projectRequest)))
+            .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
         .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
         .andExpect(content().contentType(APPLICATION_JSON))
@@ -139,7 +141,8 @@ class ProjectsControllerTest {
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
-            .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(projectRequest)))
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
         .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
         .andExpect(content().contentType(APPLICATION_JSON))
@@ -151,12 +154,13 @@ class ProjectsControllerTest {
   @Test
   void createProcurementProject_500_ISE() throws Exception {
 
-    when(procurementProjectService.createFromAgreementDetails(projectRequest, PRINCIPAL))
+    when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL))
         .thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
-            .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(projectRequest)))
+            .contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isInternalServerError())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))

@@ -27,9 +27,9 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
@@ -85,9 +85,9 @@ class ProcurementEventServiceTest {
   void testCreateFromProject() throws Exception {
 
     // Stub some objects
-    var projectRequest = new ProjectRequest();
-    projectRequest.setAgreementId(CA_NUMBER);
-    projectRequest.setLotId(LOT_NUMBER);
+    var agreementDetails = new AgreementDetails();
+    agreementDetails.agreementID(CA_NUMBER);
+    agreementDetails.setLotID(LOT_NUMBER);
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
@@ -95,7 +95,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxId(RFX_ID);
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(projectRequest, "", "", "", "");
+    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
@@ -121,44 +121,45 @@ class ProcurementEventServiceTest {
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-    var eventSummary = procurementEventService.createFromProject(PROC_PROJECT_ID, EVENT_TYPE,
+    var eventStatus = procurementEventService.createFromProject(PROC_PROJECT_ID, EVENT_TYPE,
         DOWNSELECTED_SUPPLIERS, PRINCIPAL);
 
     // Verify that entity was created as expected
     verify(procurementEventRepo).save(captor.capture());
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", captor.getValue().getEventName());
-    assertEquals(OCID_PREFIX, captor.getValue().getOcidPrefix());
-    assertEquals(OCDS_AUTH_NAME, captor.getValue().getOcdsAuthorityName());
-    assertEquals(RFX_ID, captor.getValue().getExternalEventId());
-    assertEquals(RFX_REF_CODE, captor.getValue().getExternalReferenceId());
-    assertEquals(PROC_PROJECT_ID, captor.getValue().getProject().getId());
-    assertEquals(PRINCIPAL, captor.getValue().getCreatedBy());
-    assertEquals(EVENT_TYPE.getValue(), captor.getValue().getEventType());
-    assertEquals(DOWNSELECTED_SUPPLIERS, captor.getValue().getDownSelectedSuppliers());
-    assertNotNull(captor.getValue().getCreatedAt());
-    assertNotNull(captor.getValue().getUpdatedAt());
+    var capturedProcEvent = captor.getValue();
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", capturedProcEvent.getEventName());
+    assertEquals(OCID_PREFIX, capturedProcEvent.getOcidPrefix());
+    assertEquals(OCDS_AUTH_NAME, capturedProcEvent.getOcdsAuthorityName());
+    assertEquals(RFX_ID, capturedProcEvent.getExternalEventId());
+    assertEquals(RFX_REF_CODE, capturedProcEvent.getExternalReferenceId());
+    assertEquals(PROC_PROJECT_ID, capturedProcEvent.getProject().getId());
+    assertEquals(PRINCIPAL, capturedProcEvent.getCreatedBy());
+    assertEquals(EVENT_TYPE.getValue(), capturedProcEvent.getEventType());
+    assertEquals(DOWNSELECTED_SUPPLIERS, capturedProcEvent.getDownSelectedSuppliers());
+    assertNotNull(capturedProcEvent.getCreatedAt());
+    assertNotNull(capturedProcEvent.getUpdatedAt());
 
     // Verify that event ID is generated correctly by entity
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", eventSummary.getEventName());
-    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
-    assertEquals("Tender", eventSummary.getEventStage());
-    assertEquals(TenderStatus.PLANNING, eventSummary.getEventStatus());
-    assertEquals(EventType.DA, eventSummary.getEventType());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", eventStatus.getName());
+    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportID());
+    assertEquals("Tender", eventStatus.getEventStage());
+    assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
+    assertEquals(EventType.DA, eventStatus.getEventType());
   }
 
   @Test
   void testCreateFromEventRequest() throws Exception {
 
     // Stub some objects
-    var projectRequest = new ProjectRequest();
-    projectRequest.setAgreementId(CA_NUMBER);
-    projectRequest.setLotId(LOT_NUMBER);
+    var agreementDetails = new AgreementDetails();
+    agreementDetails.agreementID(CA_NUMBER);
+    agreementDetails.setLotID(LOT_NUMBER);
 
     // Test with null values for EventType and DownselectedSuppliers
-    var eventRequest = new EventRequest();
+    var tender = new Tender();
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
@@ -166,7 +167,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxId(RFX_ID);
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(projectRequest, "", "", "", "");
+    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
@@ -192,8 +193,7 @@ class ProcurementEventServiceTest {
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-    var eventSummary =
-        procurementEventService.createFromEventRequest(PROC_PROJECT_ID, eventRequest, PRINCIPAL);
+    var eventStatus = procurementEventService.createFromTender(PROC_PROJECT_ID, tender, PRINCIPAL);
 
     // Verify that entity was created as expected
     verify(procurementEventRepo).save(captor.capture());
@@ -213,11 +213,11 @@ class ProcurementEventServiceTest {
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventSummary.getEventName());
-    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
-    assertEquals("Tender", eventSummary.getEventStage());
-    assertEquals(TenderStatus.PLANNING, eventSummary.getEventStatus());
-    assertEquals(EventType.RFP, eventSummary.getEventType());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventStatus.getName());
+    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportID());
+    assertEquals("Tender", eventStatus.getEventStage());
+    assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
+    assertEquals(EventType.RFP, eventStatus.getEventType());
   }
 
   @Test

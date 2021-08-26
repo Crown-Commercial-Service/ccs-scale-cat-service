@@ -22,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -63,7 +64,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
-  public EventStatus createFromProject(final Integer projectId, EventType eventType,
+  public EventStatus createFromProject(final Integer projectId, DefineEventType eventType,
       Boolean downselectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
@@ -71,7 +72,7 @@ public class ProcurementEventService {
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     // Set defaults if no values supplied
-    eventType = Objects.requireNonNullElse(eventType, EventType.RFP);
+    eventType = Objects.requireNonNullElse(eventType, DefineEventType.RFP);
     downselectedSuppliers = Objects.requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
 
     var createUpdateRfx = createUpdateRfxRequest(project, eventType, principal);
@@ -105,8 +106,9 @@ public class ProcurementEventService {
 
     var procurementEvent = retryableTendersDBDelegate.save(event);
 
+    // TODO: EventType is wrong - update
     return tendersAPIModelUtils.buildEventStatus(projectId, procurementEvent.getEventID(),
-        eventName, createRfxResponse.getRfxReferenceCode(), eventType, TenderStatus.PLANNING,
+        eventName, createRfxResponse.getRfxReferenceCode(), new EventType(), TenderStatus.PLANNING,
         EVENT_STAGE);
   }
 
@@ -118,17 +120,18 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
-  public EventStatus createFromEventRequest(final Integer projectId,
-      final EventRequest eventRequest, final String principal) {
-    return createFromProject(projectId, eventRequest.getEventType(),
-        eventRequest.getDownselectedSuppliers(), principal);
+  public EventStatus createFromTender(final Integer projectId, final Tender tender,
+      final String principal) {
+    // TODO: Replace hardcoded values
+    return createFromProject(projectId, /* tender.getEventType() */DefineEventType.RFP,
+        /* tender.getDownselectedSuppliers() */false, principal);
   }
 
   /**
    * Create Jaggaer request object.
    */
   private CreateUpdateRfx createUpdateRfxRequest(final ProcurementProject project,
-      final EventType eventType, final String principal) {
+      final DefineEventType eventType, final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
