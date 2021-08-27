@@ -86,8 +86,8 @@ class ProcurementEventServiceTest {
 
     // Stub some objects
     var agreementDetails = new AgreementDetails();
-    agreementDetails.agreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.agreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
@@ -121,7 +121,7 @@ class ProcurementEventServiceTest {
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-    var eventStatus = procurementEventService.createFromProject(PROC_PROJECT_ID, EVENT_TYPE,
+    var eventStatus = procurementEventService.createEvent(PROC_PROJECT_ID, EVENT_TYPE,
         DOWNSELECTED_SUPPLIERS, PRINCIPAL);
 
     // Verify that entity was created as expected
@@ -144,7 +144,7 @@ class ProcurementEventServiceTest {
 
     // Verify that response is correct
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", eventStatus.getName());
-    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportID());
+    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
     assertEquals("Tender", eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(EventType.DA, eventStatus.getEventType());
@@ -155,8 +155,8 @@ class ProcurementEventServiceTest {
 
     // Stub some objects
     var agreementDetails = new AgreementDetails();
-    agreementDetails.agreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.agreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
 
     // Test with null values for EventType and DownselectedSuppliers
     var tender = new Tender();
@@ -193,7 +193,8 @@ class ProcurementEventServiceTest {
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-    var eventStatus = procurementEventService.createFromTender(PROC_PROJECT_ID, tender, PRINCIPAL);
+    var eventStatus =
+        procurementEventService.createEventDeprecated(PROC_PROJECT_ID, tender, PRINCIPAL);
 
     // Verify that entity was created as expected
     verify(procurementEventRepo).save(captor.capture());

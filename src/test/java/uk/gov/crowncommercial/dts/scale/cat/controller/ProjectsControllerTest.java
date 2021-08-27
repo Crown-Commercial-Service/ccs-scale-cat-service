@@ -71,8 +71,8 @@ class ProjectsControllerTest {
 
   @BeforeEach
   void beforeEach() {
-    agreementDetails.setAgreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.setAgreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
 
     validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
         .jwt(jwt -> jwt.subject(PRINCIPAL));

@@ -1,13 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.time.Duration.ofSeconds;
+import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -54,17 +54,17 @@ public class ProcurementEventService {
   private final ValidationService validationService;
 
   /**
-   * This will create a Jaggaer Rfx (CCS 'Event' equivalent) based on agreement details. Designed to
-   * be called directly from the {@link ProcurementProjectService} during the Jaggaer project
-   * creation process.
+   * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
+   * event name, if specified, otherwise falls back on the default event title logic (using the
+   * project name).
    *
    * @param projectId CCS project id
-   * @param eventType will default to RFP if null
+   * @param createEvent wraps non-OCDS and OCDS details of the event
    * @param downSelectedSuppliers will default to FALSE if null
    * @param principal
    * @return
    */
-  public EventStatus createFromProject(final Integer projectId, DefineEventType eventType,
+  public EventStatus createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downselectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
@@ -72,10 +72,14 @@ public class ProcurementEventService {
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     // Set defaults if no values supplied
-    eventType = Objects.requireNonNullElse(eventType, DefineEventType.RFP);
-    downselectedSuppliers = Objects.requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
+    var defineEventType = requireNonNullElse(
+        requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS()).getEventType(),
+        DefineEventType.RFP);
+    downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
+    var eventName = requireNonNullElse(createEvent.getOCDS().getTitle(),
+        getDefaultEventTitle(project.getProjectName(), defineEventType.getValue()));
 
-    var createUpdateRfx = createUpdateRfxRequest(project, eventType, principal);
+    var createUpdateRfx = createUpdateRfxRequest(project, defineEventType, eventName, principal);
 
     CreateUpdateRfxResponse createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
@@ -93,12 +97,11 @@ public class ProcurementEventService {
     log.info("Created event: {}", createRfxResponse);
 
     // Persist the Jaggaer Rfx details as a new event in the tenders DB
-    String ocdsAuthority = ocdsConfig.getAuthority();
-    String ocidPrefix = ocdsConfig.getOcidPrefix();
-    String eventName = createUpdateRfx.getRfx().getRfxSetting().getShortDescription();
+    var ocdsAuthority = ocdsConfig.getAuthority();
+    var ocidPrefix = ocdsConfig.getOcidPrefix();
 
-    ProcurementEvent event = ProcurementEvent.builder().project(project).eventName(eventName)
-        .externalEventId(createRfxResponse.getRfxId()).eventType(eventType.getValue())
+    var event = ProcurementEvent.builder().project(project).eventName(eventName)
+        .externalEventId(createRfxResponse.getRfxId()).eventType(defineEventType.getValue())
         .downSelectedSuppliers(downselectedSuppliers)
         .externalReferenceId(createRfxResponse.getRfxReferenceCode())
         .ocdsAuthorityName(ocdsAuthority).ocidPrefix(ocidPrefix).createdBy(principal)
@@ -106,38 +109,21 @@ public class ProcurementEventService {
 
     var procurementEvent = retryableTendersDBDelegate.save(event);
 
-    // TODO: EventType is wrong - update
     return tendersAPIModelUtils.buildEventStatus(projectId, procurementEvent.getEventID(),
-        eventName, createRfxResponse.getRfxReferenceCode(), new EventType(), TenderStatus.PLANNING,
-        EVENT_STAGE);
-  }
-
-  /**
-   * This endpoint will create a Jaggaer Rfx (CCS 'Event' equivalent) on an existing project.
-   *
-   * @param projectId CCS project id
-   * @param eventRequest
-   * @param principal
-   * @return
-   */
-  public EventStatus createFromTender(final Integer projectId, final Tender tender,
-      final String principal) {
-    // TODO: Replace hardcoded values
-    return createFromProject(projectId, /* tender.getEventType() */DefineEventType.RFP,
-        /* tender.getDownselectedSuppliers() */false, principal);
+        eventName, createRfxResponse.getRfxReferenceCode(),
+        EventType.fromValue(defineEventType.getValue()), TenderStatus.PLANNING, EVENT_STAGE);
   }
 
   /**
    * Create Jaggaer request object.
    */
   private CreateUpdateRfx createUpdateRfxRequest(final ProcurementProject project,
-      final DefineEventType eventType, final String principal) {
+      final DefineEventType eventType, final String eventName, final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
     var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
 
-    var eventName = getDefaultEventTitle(project.getProjectName(), eventType.getValue());
     var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
     var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
 

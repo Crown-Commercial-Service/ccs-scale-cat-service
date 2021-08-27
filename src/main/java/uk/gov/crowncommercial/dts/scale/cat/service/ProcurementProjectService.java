@@ -16,7 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -102,9 +102,8 @@ public class ProcurementProjectService {
         .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
             createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
-    var eventStatus = procurementEventService.createFromProject(procurementProject.getId(),
-        /* agreementDetails.getEventType() */DefineEventType.RFP,
-        /* agreementDetails.getDownselectedSuppliers() */false, principal);
+    var eventStatus = procurementEventService.createEvent(procurementProject.getId(),
+        new CreateEvent(), null, principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
         procurementProject.getId(), eventStatus.getEventId(), projectTitle);

@@ -53,11 +53,11 @@ class EventsControllerTest {
   private static final String EVENT_ID = "ocds-b5fd17-1";
   private static final String EVENT_NAME = "NAME";
   private static final String JAGGAER_ID = "1";
-  private static final DefineEventType EVENT_TYPE = DefineEventType.RFP;
+  private static final EventType EVENT_TYPE = EventType.RFP;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
   private static final String EVENT_STAGE = "Tender";
 
-  private final Tender tender = new Tender();
+  private final CreateEvent createEvent = new CreateEvent();
 
   @Autowired
   private MockMvc mockMvc;
@@ -91,17 +91,17 @@ class EventsControllerTest {
     var eventStatus = tendersAPIModelUtils.buildEventStatus(PROC_PROJECT_ID, EVENT_ID, EVENT_NAME,
         JAGGAER_ID, EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
 
-    when(procurementEventService.createFromTender(eq(PROC_PROJECT_ID), any(Tender.class),
-        anyString())).thenReturn(eventStatus);
+    when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
+        eq(Boolean.FALSE), anyString())).thenReturn(eventStatus);
 
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
-        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventID").value(EVENT_ID))
-        .andExpect(jsonPath("$.projectID").value(PROC_PROJECT_ID))
+            .content(objectMapper.writeValueAsString(createEvent)))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventId").value(EVENT_ID))
+        .andExpect(jsonPath("$.projectId").value(PROC_PROJECT_ID))
         .andExpect(jsonPath("$.name").value(EVENT_NAME))
-        .andExpect(jsonPath("$.eventSupportID").value(JAGGAER_ID))
+        .andExpect(jsonPath("$.eventSupportId").value(JAGGAER_ID))
         .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.toString()))
         .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE))
         .andExpect(jsonPath("$.status").value(EVENT_STATUS.toString()));
@@ -112,7 +112,7 @@ class EventsControllerTest {
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).accept(APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(createEvent)))
         .andDo(print()).andExpect(status().isUnauthorized())
         .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
         .andExpect(content().contentType(APPLICATION_JSON))
@@ -129,7 +129,7 @@ class EventsControllerTest {
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(invalidJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(createEvent)))
         .andDo(print()).andExpect(status().isForbidden())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
@@ -140,13 +140,14 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_500_ISE() throws Exception {
 
-    when(procurementEventService.createFromTender(PROC_PROJECT_ID, tender, PRINCIPAL))
-        .thenThrow(new JaggaerApplicationException("1", "BANG"));
+    when(
+        procurementEventService.createEvent(PROC_PROJECT_ID, createEvent, Boolean.FALSE, PRINCIPAL))
+            .thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(tender)))
+            .content(objectMapper.writeValueAsString(createEvent)))
         .andDo(print()).andExpect(status().isInternalServerError())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
