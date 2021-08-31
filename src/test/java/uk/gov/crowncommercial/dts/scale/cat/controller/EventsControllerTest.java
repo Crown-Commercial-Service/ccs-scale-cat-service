@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -92,7 +93,7 @@ class EventsControllerTest {
         JAGGAER_ID, EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
 
     when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
-        eq(Boolean.FALSE), anyString())).thenReturn(eventStatus);
+        nullable(Boolean.class), anyString())).thenReturn(eventStatus);
 
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
@@ -140,9 +141,8 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_500_ISE() throws Exception {
 
-    when(
-        procurementEventService.createEvent(PROC_PROJECT_ID, createEvent, Boolean.FALSE, PRINCIPAL))
-            .thenThrow(new JaggaerApplicationException("1", "BANG"));
+    when(procurementEventService.createEvent(PROC_PROJECT_ID, createEvent, null, PRINCIPAL))
+        .thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)

@@ -27,10 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -81,6 +78,8 @@ class ProcurementEventServiceTest {
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
+  private final CreateEvent createEvent = new CreateEvent();
+
   @Test
   void testCreateFromProject() throws Exception {
 
@@ -119,9 +118,13 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
+    CreateEventNonOCDS createEventNonOCDS = new CreateEventNonOCDS();
+    createEventNonOCDS.setEventType(DefineEventType.DA);
+    createEvent.setNonOCDS(createEventNonOCDS);
+
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-    var eventStatus = procurementEventService.createEvent(PROC_PROJECT_ID, EVENT_TYPE,
+    var eventStatus = procurementEventService.createEvent(PROC_PROJECT_ID, createEvent,
         DOWNSELECTED_SUPPLIERS, PRINCIPAL);
 
     // Verify that entity was created as expected
@@ -159,8 +162,6 @@ class ProcurementEventServiceTest {
     agreementDetails.setLotId(LOT_NUMBER);
 
     // Test with null values for EventType and DownselectedSuppliers
-    var tender = new Tender();
-
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
     createUpdateRfxResponse.setReturnMessage("OK");
@@ -194,7 +195,7 @@ class ProcurementEventServiceTest {
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
     var eventStatus =
-        procurementEventService.createEventDeprecated(PROC_PROJECT_ID, tender, PRINCIPAL);
+        procurementEventService.createEvent(PROC_PROJECT_ID, createEvent, null, PRINCIPAL);
 
     // Verify that entity was created as expected
     verify(procurementEventRepo).save(captor.capture());
@@ -215,7 +216,7 @@ class ProcurementEventServiceTest {
 
     // Verify that response is correct
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventStatus.getName());
-    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportID());
+    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
     assertEquals("Tender", eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(EventType.RFP, eventStatus.getEventType());

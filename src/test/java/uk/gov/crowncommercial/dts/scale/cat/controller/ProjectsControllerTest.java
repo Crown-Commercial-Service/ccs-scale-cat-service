@@ -93,10 +93,10 @@ class ProjectsControllerTest {
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.pocurementID").value(PROC_PROJECT_ID))
-        .andExpect(jsonPath("$.eventID").value(EVENT_OCID))
+        .andExpect(jsonPath("$.eventId").value(EVENT_OCID))
         .andExpect(jsonPath("$.defaultName.name").value(PROJ_NAME))
-        .andExpect(jsonPath("$.defaultName.components.agreementID").value(CA_NUMBER))
-        .andExpect(jsonPath("$.defaultName.components.lotID").value(LOT_NUMBER))
+        .andExpect(jsonPath("$.defaultName.components.agreementId").value(CA_NUMBER))
+        .andExpect(jsonPath("$.defaultName.components.lotId").value(LOT_NUMBER))
         .andExpect(jsonPath("$.defaultName.components.org").value(ORG));
 
     verify(procurementProjectService).createFromAgreementDetails(any(AgreementDetails.class),

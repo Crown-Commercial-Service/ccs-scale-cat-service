@@ -122,8 +122,8 @@ class ProcurementProjectServiceTest {
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG,
         draftProcurementProject.getDefaultName().getName());
     assertEquals(CA_NUMBER,
-        draftProcurementProject.getDefaultName().getComponents().getAgreementID());
-    assertEquals(LOT_NUMBER, draftProcurementProject.getDefaultName().getComponents().getLotID());
+        draftProcurementProject.getDefaultName().getComponents().getAgreementId());
+    assertEquals(LOT_NUMBER, draftProcurementProject.getDefaultName().getComponents().getLotId());
     assertEquals(ORG, draftProcurementProject.getDefaultName().getComponents().getOrg());
 
     // Verify

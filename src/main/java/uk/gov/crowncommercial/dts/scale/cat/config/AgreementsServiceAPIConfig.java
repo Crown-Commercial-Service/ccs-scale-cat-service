@@ -9,7 +9,7 @@ import lombok.Data;
  *
  */
 @Configuration
-@ConfigurationProperties(prefix = "config.external.agreementsService", ignoreUnknownFields = true)
+@ConfigurationProperties(prefix = "config.external.agreements-service", ignoreUnknownFields = true)
 @Data
 public class AgreementsServiceAPIConfig {
 

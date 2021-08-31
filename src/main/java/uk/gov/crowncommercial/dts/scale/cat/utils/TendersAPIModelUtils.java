@@ -25,8 +25,8 @@ public class TendersAPIModelUtils {
     draftProcurementProject.setEventId(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();
-    defaultNameComponents.setAgreementID(agreementDetails.getAgreementId());
-    defaultNameComponents.setLotID(agreementDetails.getLotId());
+    defaultNameComponents.setAgreementId(agreementDetails.getAgreementId());
+    defaultNameComponents.setLotId(agreementDetails.getLotId());
     defaultNameComponents.setOrg("CCS");
 
     var defaultName = new DefaultName();

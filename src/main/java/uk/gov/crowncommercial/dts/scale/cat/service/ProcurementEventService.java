@@ -72,11 +72,12 @@ public class ProcurementEventService {
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     // Set defaults if no values supplied
-    var defineEventType = requireNonNullElse(
-        requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS()).getEventType(),
-        DefineEventType.RFP);
+    var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
+    var createEventOCDS = requireNonNullElse(createEvent.getOCDS(), new CreateEventOCDS());
+    var defineEventType =
+        requireNonNullElse(createEventNonOCDS.getEventType(), DefineEventType.RFP);
     downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
-    var eventName = requireNonNullElse(createEvent.getOCDS().getTitle(),
+    var eventName = requireNonNullElse(createEventOCDS.getTitle(),
         getDefaultEventTitle(project.getProjectName(), defineEventType.getValue()));
 
     var createUpdateRfx = createUpdateRfxRequest(project, defineEventType, eventName, principal);
