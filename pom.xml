@@ -121,7 +121,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-<!-- 			<plugin>
+			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
 				<version>${openapi-generator.version}</version>
@@ -131,7 +131,7 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/23c659f01e1f0d91e9c236a6a500826475eca886/cat/CaT-service.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
@@ -155,7 +155,7 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin> -->
+			</plugin>
 		</plugins>
 	</build>
 
