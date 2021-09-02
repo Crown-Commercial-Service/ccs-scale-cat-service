@@ -56,7 +56,7 @@ public class ProcurementProject {
   /**
    * Builds an instance from basic details
    *
-   * @param projectRequest
+   * @param agreementDetails
    * @param externalProjectId The tender project id
    * @param externalReferenceId The tender reference code
    * @param projectName aka project title
