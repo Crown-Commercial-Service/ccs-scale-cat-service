@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 
 /**
  * Tenders ('Base Data' tag in YAML)
@@ -21,12 +21,13 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 public class TendersController extends AbstractRestController {
 
   @GetMapping("/event-types")
-  public Collection<EventType> listProcurementEventTypes(JwtAuthenticationToken authentication) {
+  public Collection<DefineEventType> listProcurementEventTypes(
+      JwtAuthenticationToken authentication) {
 
     log.info("listProcurementEventTypes invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
-    return Arrays.asList(EventType.values());
+    return Arrays.asList(DefineEventType.values());
   }
 
 }

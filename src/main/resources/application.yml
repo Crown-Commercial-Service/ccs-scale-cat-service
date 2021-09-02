@@ -40,12 +40,31 @@ config:
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
+      
+      rfxStatusToTenderStatus:
+        0: PLANNED
+        100: PLANNED
+        200: PLANNED
+        300: ACTIVE
+        350: ACTIVE
+        600: ACTIVE
+        1300: ACTIVE
+        400: ACTIVE
+        750: ACTIVE
+        800: ACTIVE
+        900: ACTIVE
+        500: COMPLETE
+        950: COMPLETE
+        1400: COMPLETE
+        1100: WITHDRAWN
+        1500: CANCELLED      
+      
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
         templateId: project_609
-      createEvent:
+      createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
@@ -54,6 +73,16 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
         principalPlaceholder: "{{PRINCIPAL}}"
+      exportRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+        
+    agreementsService:
+      # baseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      getAgreementDetail:
+        uriTemplate: /agreements/{agreement-id}
+      getLotDetailsForAgreement:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
 
     
 ---

@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
@@ -49,12 +49,13 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @GetMapping("/{procID}/event-types")
-  public Collection<EventType> listProcurementEventTypes(JwtAuthenticationToken authentication) {
+  public Collection<DefineEventType> listProcurementEventTypes(
+      JwtAuthenticationToken authentication) {
 
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
     // TODO: This will be refactored to filter those applicable to the current project
-    return Arrays.asList(EventType.values());
+    return Arrays.asList(DefineEventType.values());
   }
 }

@@ -55,7 +55,9 @@ class ProjectsControllerTest {
   private static final Integer PROC_PROJECT_ID = 1;
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
-  private final TendersAPIModelUtils tendersAPIModelUtils = new TendersAPIModelUtils();
+
+  @Autowired
+  private TendersAPIModelUtils tendersAPIModelUtils;
 
   @Autowired
   private MockMvc mockMvc;
@@ -69,8 +71,8 @@ class ProjectsControllerTest {
 
   @BeforeEach
   void beforeEach() {
-    agreementDetails.setAgreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.setAgreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
 
     validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
         .jwt(jwt -> jwt.subject(PRINCIPAL));
@@ -91,10 +93,10 @@ class ProjectsControllerTest {
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.pocurementID").value(PROC_PROJECT_ID))
-        .andExpect(jsonPath("$.eventID").value(EVENT_OCID))
+        .andExpect(jsonPath("$.eventId").value(EVENT_OCID))
         .andExpect(jsonPath("$.defaultName.name").value(PROJ_NAME))
-        .andExpect(jsonPath("$.defaultName.components.agreementID").value(CA_NUMBER))
-        .andExpect(jsonPath("$.defaultName.components.lotID").value(LOT_NUMBER))
+        .andExpect(jsonPath("$.defaultName.components.agreementId").value(CA_NUMBER))
+        .andExpect(jsonPath("$.defaultName.components.lotId").value(LOT_NUMBER))
         .andExpect(jsonPath("$.defaultName.components.org").value(ORG));
 
     verify(procurementProjectService).createFromAgreementDetails(any(AgreementDetails.class),

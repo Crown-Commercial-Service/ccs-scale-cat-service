@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -15,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -59,11 +61,13 @@ public class ProcurementProjectService {
   public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
       String principal) {
 
-    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
-    var tender = Tender.builder().title(projectTitle).buyerCompany(new BuyerCompany("51435"))
+    var tender = Tender.builder().title(projectTitle)
+        .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
         .projectOwner(new ProjectOwner(jaggaerUserId))
         .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
 
@@ -81,7 +85,7 @@ public class ProcurementProjectService {
         new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
     var createProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
@@ -98,16 +102,16 @@ public class ProcurementProjectService {
         .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
             createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
-    var eventSummary =
-        procurementEventService.createFromProject(procurementProject.getId(), principal);
+    var eventStatus = procurementEventService.createEvent(procurementProject.getId(),
+        new CreateEvent(), null, principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
-        procurementProject.getId(), eventSummary.getEventID(), projectTitle);
+        procurementProject.getId(), eventStatus.getEventId(), projectTitle);
   }
 
   String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
     return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
-        agreementDetails.getAgreementID(), agreementDetails.getLotID(), organisation);
+        agreementDetails.getAgreementId(), agreementDetails.getLotId(), organisation);
   }
 
   /**
@@ -129,7 +133,7 @@ public class ProcurementProjectService {
         new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
     var updateProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),

@@ -27,9 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -41,7 +39,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class},
+        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ValidationService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
@@ -59,6 +57,8 @@ class ProcurementEventServiceTest {
   private static final String OCDS_AUTH_NAME = "ocds";
   private static final String OCID_PREFIX = "b5fd17";
   private static final String UPDATED_EVENT_NAME = "New Name";
+  private static final EventType EVENT_TYPE = EventType.DA;
+  private static final Boolean DOWNSELECTED_SUPPLIERS = true;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -78,13 +78,15 @@ class ProcurementEventServiceTest {
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
+  private final CreateEvent createEvent = new CreateEvent();
+
   @Test
-  void testCreateFromAgreementDetails() throws Exception {
+  void testCreateFromProject() throws Exception {
 
     // Stub some objects
     var agreementDetails = new AgreementDetails();
-    agreementDetails.setAgreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.agreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
     createUpdateRfxResponse.setReturnCode(0);
@@ -93,11 +95,85 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
     var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
-    var procurementEvent = new ProcurementEvent();
+    var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
+        .bodyValue(any(CreateUpdateRfx.class)).retrieve()
+        .bodyToMono(eq(CreateUpdateRfxResponse.class))
+        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .thenReturn(createUpdateRfxResponse);
+
+    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
+      procurementProject.setId(PROC_PROJECT_ID);
+      procurementProject.setProjectName(PROJECT_NAME);
+      return Optional.of(procurementProject);
+    });
+
+    when(procurementEventRepo.save(any(ProcurementEvent.class))).then(mock -> {
+      procurementEvent.setId(PROC_PROJECT_ID);
+      procurementEvent.setOcdsAuthorityName(OCDS_AUTH_NAME);
+      procurementEvent.setOcidPrefix(OCID_PREFIX);
+      return procurementEvent;
+    });
+
+    CreateEventNonOCDS createEventNonOCDS = new CreateEventNonOCDS();
+    createEventNonOCDS.setEventType(DefineEventType.DA);
+    createEvent.setNonOCDS(createEventNonOCDS);
+
+    // Invoke
+    ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
+    var eventStatus = procurementEventService.createEvent(PROC_PROJECT_ID, createEvent,
+        DOWNSELECTED_SUPPLIERS, PRINCIPAL);
+
+    // Verify that entity was created as expected
+    verify(procurementEventRepo).save(captor.capture());
+    var capturedProcEvent = captor.getValue();
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", capturedProcEvent.getEventName());
+    assertEquals(OCID_PREFIX, capturedProcEvent.getOcidPrefix());
+    assertEquals(OCDS_AUTH_NAME, capturedProcEvent.getOcdsAuthorityName());
+    assertEquals(RFX_ID, capturedProcEvent.getExternalEventId());
+    assertEquals(RFX_REF_CODE, capturedProcEvent.getExternalReferenceId());
+    assertEquals(PROC_PROJECT_ID, capturedProcEvent.getProject().getId());
+    assertEquals(PRINCIPAL, capturedProcEvent.getCreatedBy());
+    assertEquals(EVENT_TYPE.getValue(), capturedProcEvent.getEventType());
+    assertEquals(DOWNSELECTED_SUPPLIERS, capturedProcEvent.getDownSelectedSuppliers());
+    assertNotNull(capturedProcEvent.getCreatedAt());
+    assertNotNull(capturedProcEvent.getUpdatedAt());
+
+    // Verify that event ID is generated correctly by entity
+    assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
+
+    // Verify that response is correct
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", eventStatus.getName());
+    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
+    assertEquals("Tender", eventStatus.getEventStage());
+    assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
+    assertEquals(EventType.DA, eventStatus.getEventType());
+  }
+
+  @Test
+  void testCreateFromEventRequest() throws Exception {
+
+    // Stub some objects
+    var agreementDetails = new AgreementDetails();
+    agreementDetails.agreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
+
+    // Test with null values for EventType and DownselectedSuppliers
+    var createUpdateRfxResponse = new CreateUpdateRfxResponse();
+    createUpdateRfxResponse.setReturnCode(0);
+    createUpdateRfxResponse.setReturnMessage("OK");
+    createUpdateRfxResponse.setRfxId(RFX_ID);
+    createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
+
+    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
+    var procurementEvent = ProcurementEvent.builder().build();
+
+    // Mock behaviours
+    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -118,7 +194,8 @@ class ProcurementEventServiceTest {
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-    var eventSummary = procurementEventService.createFromProject(PROC_PROJECT_ID, PRINCIPAL);
+    var eventStatus =
+        procurementEventService.createEvent(PROC_PROJECT_ID, createEvent, null, PRINCIPAL);
 
     // Verify that entity was created as expected
     verify(procurementEventRepo).save(captor.capture());
@@ -129,6 +206,8 @@ class ProcurementEventServiceTest {
     assertEquals(RFX_REF_CODE, captor.getValue().getExternalReferenceId());
     assertEquals(PROC_PROJECT_ID, captor.getValue().getProject().getId());
     assertEquals(PRINCIPAL, captor.getValue().getCreatedBy());
+    assertEquals(EventType.RFP.getValue(), captor.getValue().getEventType());
+    assertEquals(false, captor.getValue().getDownSelectedSuppliers());
     assertNotNull(captor.getValue().getCreatedAt());
     assertNotNull(captor.getValue().getUpdatedAt());
 
@@ -136,20 +215,19 @@ class ProcurementEventServiceTest {
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventSummary.getName());
-    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportID());
-    assertEquals("Tender", eventSummary.getEventStage());
-    assertEquals(TenderStatus.PLANNING, eventSummary.getStatus());
-    assertEquals(EventType.RFP, eventSummary.getEventType());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventStatus.getName());
+    assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
+    assertEquals("Tender", eventStatus.getEventStage());
+    assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
+    assertEquals(EventType.RFP, eventStatus.getEventType());
   }
-
 
   @Test
   void testUpdateProcurementEventName() throws Exception {
 
     // Stub some objects
     var procurementProject = new ProcurementProject();
-    var procurementEvent = new ProcurementEvent();
+    var procurementEvent = ProcurementEvent.builder().build();
 
     var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).build();
     var rfx = new Rfx(rfxSetting, null, null);
@@ -161,7 +239,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(argThat(new UpdateEventMatcher(createUpdateRfx))).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -221,7 +299,6 @@ class ProcurementEventServiceTest {
     assertEquals("Event ID 'EVENT-1' is not in the expected format", ex.getMessage());
   }
 
-
   @Test
   void testUpdateProcurementEventNameThrowsResourceNotFoundApplicationException() throws Exception {
 
@@ -242,11 +319,11 @@ class ProcurementEventServiceTest {
     jaggaerErrorResponse.setReturnCode(1);
     jaggaerErrorResponse.setReturnMessage("NOT OK");
     var procurementProject = new ProcurementProject();
-    var procurementEvent = new ProcurementEvent();
+    var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -279,7 +356,7 @@ class ProcurementEventServiceTest {
    */
   private class UpdateEventMatcher implements ArgumentMatcher<CreateUpdateRfx> {
 
-    private CreateUpdateRfx left;
+    private final CreateUpdateRfx left;
 
     UpdateEventMatcher(CreateUpdateRfx left) {
       this.left = left;

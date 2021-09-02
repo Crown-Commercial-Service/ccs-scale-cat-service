@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class ReturnCompanyData {
 
+  private ReturnCompanyInfo returnCompanyInfo;
   private ReturnSubUser returnSubUser;
 
 }

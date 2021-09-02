@@ -1,8 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.time.Duration.ofSeconds;
+import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import java.time.Duration;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -17,13 +19,10 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -36,14 +35,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class ProcurementEventService {
 
-  // TODO: Rfx type is currently fixed, pending further design from Nick to add to request object(s)
-  private static final EventType TEMP_EVENT_TYPE = EventType.RFP;
-
   // TODO: Jaggaer suppliers hard coded for now, pending further design
   private static final List<String> TEMP_SUPPLIER_IDS = Arrays.asList("53104", "53410", "53411");
-
-  // TODO: BuyerID hard coded for now
-  private static final String TEMP_BUYER_ID = "51435";
 
   private static final Integer RFI_FLAG = 0;
   private static final String RFX_TYPE = "STANDARD_ITT";
@@ -58,28 +51,41 @@ public class ProcurementEventService {
   private final WebClient jaggaerWebClient;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
+  private final ValidationService validationService;
 
   /**
-   * This will create a Jaggaer Rfx (CCS 'Event' equivalent) based on agreement details. Designed to
-   * be called directly from the {@link ProcurementProjectService} during the Jaggaer project
-   * creation process.
+   * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
+   * event name, if specified, otherwise falls back on the default event title logic (using the
+   * project name).
    *
    * @param projectId CCS project id
+   * @param createEvent wraps non-OCDS and OCDS details of the event
+   * @param downSelectedSuppliers will default to FALSE if null
    * @param principal
    * @return
    */
-  public EventStatus createFromProject(Integer projectId, String principal) {
+  public EventStatus createEvent(final Integer projectId, final CreateEvent createEvent,
+      Boolean downselectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-    var createUpdateRfx = createUpdateRfxRequest(project, principal);
+    // Set defaults if no values supplied
+    var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
+    var createEventOCDS = requireNonNullElse(createEvent.getOCDS(), new CreateEventOCDS());
+    var defineEventType =
+        requireNonNullElse(createEventNonOCDS.getEventType(), DefineEventType.RFP);
+    downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
+    var eventName = requireNonNullElse(createEventOCDS.getTitle(),
+        getDefaultEventTitle(project.getProjectName(), defineEventType.getValue()));
+
+    var createUpdateRfx = createUpdateRfxRequest(project, defineEventType, eventName, principal);
 
     CreateUpdateRfxResponse createRfxResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
             .bodyValue(createUpdateRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error creating Rfx"));
 
@@ -92,49 +98,39 @@ public class ProcurementEventService {
     log.info("Created event: {}", createRfxResponse);
 
     // Persist the Jaggaer Rfx details as a new event in the tenders DB
-    String ocdsAuthority = ocdsConfig.getAuthority();
-    String ocidPrefix = ocdsConfig.getOcidPrefix();
-    String eventName = createUpdateRfx.getRfx().getRfxSetting().getShortDescription();
+    var ocdsAuthority = ocdsConfig.getAuthority();
+    var ocidPrefix = ocdsConfig.getOcidPrefix();
 
-    var procurementEvent = retryableTendersDBDelegate
-        .save(ProcurementEvent.of(project, eventName, createRfxResponse.getRfxId(),
-            createRfxResponse.getRfxReferenceCode(), ocdsAuthority, ocidPrefix, principal));
+    var event = ProcurementEvent.builder().project(project).eventName(eventName)
+        .externalEventId(createRfxResponse.getRfxId()).eventType(defineEventType.getValue())
+        .downSelectedSuppliers(downselectedSuppliers)
+        .externalReferenceId(createRfxResponse.getRfxReferenceCode())
+        .ocdsAuthorityName(ocdsAuthority).ocidPrefix(ocidPrefix).createdBy(principal)
+        .createdAt(Instant.now()).updatedBy(principal).updatedAt(Instant.now()).build();
+
+    var procurementEvent = retryableTendersDBDelegate.save(event);
 
     return tendersAPIModelUtils.buildEventStatus(projectId, procurementEvent.getEventID(),
-        eventName, createRfxResponse.getRfxReferenceCode(), TEMP_EVENT_TYPE, TenderStatus.PLANNING,
-        EVENT_STAGE);
-  }
-
-  /**
-   * This endpoint will create a Jaggaer Rfx (CCS 'Event' equivalent) on an existing project.
-   *
-   * @param projectId CCS project id
-   * @param tender CCS tender object (only relevant values need to be populated)
-   * @param principal
-   * @return
-   */
-  public EventStatus createFromTender(final Integer projectId, final Tender tender,
-      final String principal) {
-    // Use of Tender is redundant as none of the data is currently required (may change)
-    return createFromProject(projectId, principal);
+        eventName, createRfxResponse.getRfxReferenceCode(),
+        EventType.fromValue(defineEventType.getValue()), TenderStatus.PLANNING, EVENT_STAGE);
   }
 
   /**
    * Create Jaggaer request object.
    */
   private CreateUpdateRfx createUpdateRfxRequest(final ProcurementProject project,
-      final String principal) {
+      final DefineEventType eventType, final String eventName, final String principal) {
 
-    // Fetch Jaggaer ID (and org?) from Jaggaer profile based on OIDC login id
-    String jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
+    var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
+    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
 
-    var eventName = getDefaultEventTitle(project.getProjectName(), TEMP_EVENT_TYPE.getValue());
-    var buyerCompany = new BuyerCompany(TEMP_BUYER_ID);
-    var ownerUser = new OwnerUser(jaggaerUserId);
+    var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
+    var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
 
     var rfxSetting =
         RfxSetting.builder().rfiFlag(RFI_FLAG).tenderReferenceCode(project.getExternalReferenceId())
-            .templateReferenceCode(jaggaerAPIConfig.getCreateEvent().get("templateId"))
+            .templateReferenceCode(jaggaerAPIConfig.getCreateRfx().get("templateId"))
             .shortDescription(eventName).buyerCompany(buyerCompany).ownerUser(ownerUser)
             .rfxType(RFX_TYPE).build();
 
@@ -170,20 +166,9 @@ public class ProcurementEventService {
       final String eventName, final String principal) {
 
     Assert.hasLength(eventName, "New event name must be supplied");
-    var eventOCID = validateEventId(eventId);
 
     // Get event from tenders DB to obtain Jaggaer project id
-    ProcurementEvent event = retryableTendersDBDelegate
-        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-            Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),
-            eventOCID.getPublisherPrefix())
-        .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
-
-    // Validate projectId is correct
-    if (!event.getProject().getId().equals(projectId)) {
-      throw new ResourceNotFoundException(
-          "Project '" + projectId + "' is not valid for event '" + eventId + "'");
-    }
+    var event = validationService.validateProjectAndEventIds(projectId, eventId);
 
     // Update Jaggaer
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
@@ -192,10 +177,10 @@ public class ProcurementEventService {
     var rfx = new Rfx(rfxSetting, null, null);
 
     var createRfxResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateEvent().get("endpoint"))
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
             .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
             .bodyToMono(CreateUpdateRfxResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating Rfx"));
 
@@ -212,7 +197,31 @@ public class ProcurementEventService {
     event.setUpdatedAt(Instant.now());
     event.setUpdatedBy(principal);
     retryableTendersDBDelegate.save(event);
+  }
 
+  /**
+   * Retrieve a single event based on the ID
+   *
+   * @param projectId
+   * @param eventId
+   * @param principal
+   * @return the converted Tender object
+   */
+  public EventDetail getEvent(final Integer projectId, final String eventId,
+      final String principal) {
+
+    // Get event from tenders DB to obtain Jaggaer project id
+    var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
+
+    var exportRfxResponse =
+        ofNullable(jaggaerWebClient.get().uri(exportRfxUri, event.getExternalEventId()).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating Rfx"));
+
+    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event);
   }
 
   /**
@@ -225,23 +234,8 @@ public class ProcurementEventService {
   }
 
   private String getDefaultEventTitle(String projectName, String eventType) {
-    return String.format(jaggaerAPIConfig.getCreateEvent().get("defaultTitleFormat"), projectName,
+    return String.format(jaggaerAPIConfig.getCreateRfx().get("defaultTitleFormat"), projectName,
         eventType);
-  }
-
-  /**
-   * Validate the eventId is a valid {@link OCID}
-   *
-   * @param eventId
-   * @return an OCID
-   */
-  public OCID validateEventId(String eventId) {
-    try {
-      return OCID.fromString(eventId);
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Event ID '" + eventId + "' is not in the expected format");
-    }
   }
 
 }

@@ -25,6 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
@@ -52,6 +53,7 @@ class ProcurementProjectServiceTest {
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
+  private static final CreateEvent CREATE_EVENT = new CreateEvent();
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
 
@@ -78,8 +80,8 @@ class ProcurementProjectServiceTest {
 
   @BeforeEach
   void beforeEach() {
-    agreementDetails.setAgreementID(CA_NUMBER);
-    agreementDetails.setLotID(LOT_NUMBER);
+    agreementDetails.setAgreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
   }
 
   @Test
@@ -97,7 +99,7 @@ class ProcurementProjectServiceTest {
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventStatus = new EventStatus();
-    eventStatus.setEventID(EVENT_OCID);
+    eventStatus.setEventId(EVENT_OCID);
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
@@ -107,7 +109,7 @@ class ProcurementProjectServiceTest {
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .thenReturn(createUpdateProjectResponse);
     when(procurementProjectRepo.save(any(ProcurementProject.class))).thenReturn(procurementProject);
-    when(procurementEventService.createFromProject(PROC_PROJECT_ID, PRINCIPAL))
+    when(procurementEventService.createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL))
         .thenReturn(eventStatus);
 
     // Invoke
@@ -116,20 +118,18 @@ class ProcurementProjectServiceTest {
 
     // Assert
     assertEquals(PROC_PROJECT_ID, draftProcurementProject.getPocurementID());
-    assertEquals(EVENT_OCID, draftProcurementProject.getEventID());
+    assertEquals(EVENT_OCID, draftProcurementProject.getEventId());
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG,
         draftProcurementProject.getDefaultName().getName());
     assertEquals(CA_NUMBER,
-        draftProcurementProject.getDefaultName().getComponents().getAgreementID());
-    assertEquals(LOT_NUMBER, draftProcurementProject.getDefaultName().getComponents().getLotID());
+        draftProcurementProject.getDefaultName().getComponents().getAgreementId());
+    assertEquals(LOT_NUMBER, draftProcurementProject.getDefaultName().getComponents().getLotId());
     assertEquals(ORG, draftProcurementProject.getDefaultName().getComponents().getOrg());
 
     // Verify
     verify(userProfileService).resolveJaggaerUserId(PRINCIPAL);
     verify(procurementProjectRepo).save(any(ProcurementProject.class));
-    // verify(jaggaerWebClient.post().uri(anyString()).bodyValue(any(CreateUpdateProject.class))
-    // .retrieve().bodyToMono(eq(CreateUpdateProjectResponse.class))).block(any());
-    verify(procurementEventService).createFromProject(PROC_PROJECT_ID, PRINCIPAL);
+    verify(procurementEventService).createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL);
   }
 
   @Test

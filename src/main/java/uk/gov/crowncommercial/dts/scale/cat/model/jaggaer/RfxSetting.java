@@ -2,8 +2,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 @Value
+@Jacksonized
 @Builder
 public class RfxSetting {
 
@@ -18,4 +20,6 @@ public class RfxSetting {
   BuyerCompany buyerCompany;
   OwnerUser ownerUser;
   String rfxType;
+  String status;
+  Integer statusCode;
 }

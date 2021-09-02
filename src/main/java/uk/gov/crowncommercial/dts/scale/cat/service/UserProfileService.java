@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
 import java.util.Set;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.google.common.cache.CacheBuilder;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 
 /**
@@ -30,22 +32,31 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 @Slf4j
 public class UserProfileService {
 
+  private static final JaggaerApplicationException INVALID_COMPANY_PROFILE_DATA_EXCEPTION =
+      new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+          "Invalid state: Jaggaer company profile data must contain exactly 1 'GURU' record");
+
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
-  private final LoadingCache<String, SubUser> jaggaerSubUserProfileCache =
+  private final LoadingCache<String, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
 
   @SneakyThrows
   public String resolveJaggaerUserId(String principal) {
-    return jaggaerSubUserProfileCache.get(principal).getUserId();
+    return jaggaerSubUserProfileCache.get(principal).getSecond().getUserId();
   }
 
-  private CacheLoader<String, SubUser> jaggaerSubUserProfileCacheLoader() {
+  @SneakyThrows
+  public String resolveJaggaerBuyerCompanyId(String principal) {
+    return jaggaerSubUserProfileCache.get(principal).getFirst().getBravoId();
+  }
+
+  private CacheLoader<String, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCacheLoader() {
     return new CacheLoader<>() {
 
       @Override
-      public SubUser load(String principal) throws Exception {
+      public Pair<ReturnCompanyInfo, SubUser> load(String principal) throws Exception {
         var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
         var principalPlaceholder = getBuyerCompanyProfile.get("principalPlaceholder");
         var endpoint =
@@ -67,12 +78,11 @@ public class UserProfileService {
         log.debug("Retrieved company profile record: {}", getCompanyDataResponse);
 
         if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
-          throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-              "Invalid state: Jaggaer company profile data must contain exactly 1 'GURU' record");
+          throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
         }
-
-        Set<SubUser> subUsers = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
-            .get().getReturnSubUser().getSubUsers();
+        var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
+            .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
+        Set<SubUser> subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
 
         var subUser = subUsers.stream().filter(su -> principal.equalsIgnoreCase(su.getEmail()))
             .findFirst()
@@ -80,7 +90,8 @@ public class UserProfileService {
                 "Invalid state: Jaggaer company profile sub-user data must contain exactly 1 matching record by email for principal: "
                     + principal));
         log.debug("Matched sub-user record: {}", subUser);
-        return subUser;
+
+        return Pair.of(returnCompanyData.getReturnCompanyInfo(), subUser);
       }
     };
   }

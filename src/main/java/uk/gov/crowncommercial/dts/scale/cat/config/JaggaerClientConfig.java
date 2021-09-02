@@ -47,7 +47,7 @@ import reactor.core.publisher.Mono;
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
-public class JaggaerOAuth2Config {
+public class JaggaerClientConfig {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerTokenResponseConverter jaggaerTokenResponseConverter;
