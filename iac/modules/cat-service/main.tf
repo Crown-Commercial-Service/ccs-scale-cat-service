@@ -81,9 +81,3 @@ resource "cloudfoundry_route" "cat_service" {
     port = 8080
   }
 }
-
-# Bind to nginx IP Router UPS
-resource "cloudfoundry_route_service_binding" "cat-service" {
-  service_instance = data.cloudfoundry_user_provided_service.ip_router.id
-  route            = cloudfoundry_route.cat_service.id
-}
