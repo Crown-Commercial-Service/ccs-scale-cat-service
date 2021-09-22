@@ -1,36 +1,57 @@
 # CCS Scale CaT Service (API)
 
 ## Overview
-Java 11 / SpringBoot skeleton component for the CaT API. Exposes some very basic data in JSON format from the Scale shared Agreements API (currently deployed in AWS).
 
-## Local
-The service can be configured and run locally assuming external IPs are in the Agreements API allowed list.
+This is the Java 11+ SpringBoot implementation of the CaT (Tenders) API [Open API specification](https://github.com/Crown-Commercial-Service/ccs-scale-api-definitions/blob/master/cat/CaT-service.yaml).
 
-### Configure (Eclipse / STS)
+It is deployed via Travis CI & Terraform to the GOV.UK PaaS environments.
 
-1. Clone this repo locally
-2. Import existing Maven project
-3. Open the (Spring) Boot Dashboard view and open the config for the project (right-click menu)
-4. Under the Environment tab add 3 environment variables:
-    - `AGREEMENTS_SERVICE_URL` (base URL including `/[env]/scale/agreements-service` path prefix)
-    - `AGREEMENTS_SERVICE_API_KEY` (environment specific)
-    - `ROLLBAR_ACCESS_TOKEN` (a valid access token for CCS organisation in Rollbar)
+## Prerequisites
 
-### Run (Eclipse / STS)
-Once configured, start the service from the Boot Dashboard and make a GET request in Postman or another API client to http://localhost:8080/agreement-summaries
+The [Terraform CaT infra](https://github.com/Crown-Commercial-Service/ccs-scale-cat-paas-infra) should have been provisioned against the target environment(s) prior to provisioning of this service infrastructure. This will ensure the Tenders DB is created and initialised with the necessary schema.
 
-### Build (Maven)
-Run `mvn clean package` from a shell to run the test suite and build the deployable JAR artifact into the target directory
+## Local initialisation & provisioning (sandbox spaces only)
 
-## Cloud Foundry
-The application is configured for deployment to the GOV.UK PaaS Cloud Foundry platform in the CCS organisation.
+Terraform state for each space (environment) is persisted to a dedicated AWS account. Access keys for an account in this environment with the appropriate permissions must be obtained before provisioning any infrastructure from a local development machine. The S3 state bucket name and Dynamo DB locaking table name must also be known.
 
-### Configuration
-The Github repository enabled in the CCS Travis CI organisational account on travis-ci.com: https://travis-ci.com/github/Crown-Commercial-Service/ccs-scale-cat-service/.
+1. The AWS credentials, state bucket name and DDB locking table name must be supplied during the `terraform init` operation to setup the backend. `cd` to the `iac/environments/{env}` folder corresponding to the environment you are provisioning, and execute the following command to initialise the backend:
 
-Multi-environment/branch build and deployment configuration is contained within the `.travis.yml` file.  This file defines a Maven based build (caching the .m2 repo), required environment variables (encrypted where appropriate) and installs the Cloud Foundry CLI tools on the build VM.
+   ```
+   terraform init \
+   -backend-config="access_key=ACCESS_KEY_ID" \
+   -backend-config="secret_key=SECRET_ACCESS_KEY" \
+   -backend-config="bucket=S3_STATE_BUCKET_NAME" \
+   -backend-config="dynamodb_table=DDB_LOCK_TABLE_NAME"
+   ```
 
-### Deployment
-For each environment/branch deploy configuration block, the [script](https://docs.travis-ci.com/user/deployment/script/) provider is used to call `deploy.sh` which performs the tasks of logging into Cloud Foundry and pushing the app via its manifest.
+   Note: some static/non-sensitive options are supplied in the `backend.tf` file. Any sensitive config supplied via command line only (this may change in the future if we can use Vault or similar).
 
-The `manifest.yml` file defines the actual Cloud Foundry build and deployment, using the Java Buildpack (specifying version 11) and variable substitution to utilise or pass through into the runtime environment required data from the CI deployment configuration.
+   This will ensure all Terraform state is persisted to the dedicated bucket and that concurrent builds are prevented via the DDB locking table.
+
+2. `cd` to `/uk-gov-paas/iac/environments/{env}`
+3. Build the CaT Service using maven `mvn clean package`
+
+4. We use Terraform to provision the underlying service infrastructure in a space. We will need to supply the Cloud Foundry login credentials for the user who will provision the infrastructure.
+
+   These credentials can be supplied in one of 3 ways:
+
+   - via a `secret.tfvars` file, e.g. `terraform apply -var-file="secret.tfvars"` (this file should not be committed to Git)
+   - via input variables in the terminal, e.g. `terraform apply -var="cf_username=USERNAME" -var="cf_password=PASSWORD"`
+   - via environment variables, e.g. `$ export TF_VAR_cf_username=USERNAME`
+
+   Assume one of these approaches is used in the commands below (TBD)
+
+5. Run `terraform plan` to confirm the changes look ok
+6. Run `terraform apply` to deploy to UK.Gov PaaS
+
+## Provision the service via Travis
+
+The main environments are provisioned automatically via Travis CI. Merges to key branches will trigger an automatic deployment to certain environments - mapped below:
+
+- `develop` branch -> `development` space
+- `release/int` branch -> `int` space
+- `release/nft` branch -> `nft` space
+- `release/uat` branch -> `uat` space
+
+* other environments TBD (these mappings may change as we evolve the process as more environments come online)
+* feature branches can be deployed to specific sandboxes by making minor changes in the `travis.yml` file (follow instructions)
