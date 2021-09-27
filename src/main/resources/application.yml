@@ -23,6 +23,10 @@ spring:
   datasource:
     hikari:
       connectionTimeout: 10000
+
+server:
+  error:
+    path: "/error"
       
 config:
   ocds:

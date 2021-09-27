@@ -146,9 +146,4 @@ public class GlobalErrorHandler implements ErrorController {
         Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
   }
 
-  @Override
-  public String getErrorPath() {
-    return "/error";
-  }
-
 }
