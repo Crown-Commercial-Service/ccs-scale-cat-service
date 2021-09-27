@@ -132,7 +132,6 @@
 						</goals>
 						<configuration>
 							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/173a41212f49ef95b9c75012eed8247a72053073/cat/CaT-service.yaml</inputSpec>
-							<!-- <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-api-definitions-common/main/OCDS/OCDS_Requirements_Ext.yaml</inputSpec> -->
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
