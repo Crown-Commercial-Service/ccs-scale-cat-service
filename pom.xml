@@ -6,8 +6,8 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.4.5</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<version>2.5.5</version>
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
 	<artifactId>ccs-scale-cat-service</artifactId>
@@ -19,7 +19,7 @@
 		<java.version>11</java.version>
 		<swagger-parser.version>2.0.27</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
-		<openapi-generator.version>5.1.1</openapi-generator.version>
+		<openapi-generator.version>5.2.1</openapi-generator.version>
 	</properties>
 
 	<dependencies>
