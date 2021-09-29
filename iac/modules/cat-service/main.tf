@@ -35,6 +35,14 @@ data "aws_ssm_parameter" "jaggaer_client_secret" {
   name = "/cat/${var.environment}/jaggaer-client-secret"
 }
 
+data "aws_ssm_parameter" "jaggaer_base_url" {
+  name = "/cat/${var.environment}/jaggaer-base-url"
+}
+
+data "aws_ssm_parameter" "jaggaer_token_url" {
+  name = "/cat/${var.environment}/jaggaer-token-url"
+}
+
 data "aws_ssm_parameter" "auth_server_jwk_set_uri" {
   name = "/cat/${var.environment}/auth-server-jwk-set-uri"
 }
@@ -48,6 +56,8 @@ resource "cloudfoundry_app" "cat_service" {
     JBP_CONFIG_OPEN_JDK_JRE : "{ \"jre\": { version: 11.+ } }"
     "spring.security.oauth2.client.registration.jaggaer.client-id" : data.aws_ssm_parameter.jaggaer_client_id.value
     "spring.security.oauth2.client.registration.jaggaer.client-secret" : data.aws_ssm_parameter.jaggaer_client_secret.value
+    "spring.security.oauth2.client.provider.jaggaer.token-uri" : data.aws_ssm_parameter.jaggaer_token_url.value
+    "config.external.jaggaer.baseUrl" : data.aws_ssm_parameter.jaggaer_base_url.value
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
   }
   health_check_timeout = var.healthcheck_timeout
