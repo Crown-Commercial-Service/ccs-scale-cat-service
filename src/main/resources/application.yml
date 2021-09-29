@@ -39,7 +39,7 @@ config:
         
   external:
     jaggaer:
-      baseUrl: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
+#      baseUrl: "SET IN ENV"
       timeoutDuration: 5
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
@@ -102,9 +102,9 @@ spring:
   security:
     oauth2:
       client:
-        provider:
-          jaggaer:
-            token-uri: https://crowncommercialservice-ws02-prep.bravosolution.co.uk/esop/jint/api/public/v1/tokens 
+#        provider:
+#          jaggaer:
+#            token-uri: "SET IN ENV" 
         registration:
           jaggaer:
             authorization-grant-type: client_credentials
