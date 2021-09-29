@@ -102,11 +102,11 @@ public class ProcurementProjectService {
         .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
             createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
 
-    var eventStatus = procurementEventService.createEvent(procurementProject.getId(),
+    var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
-        procurementProject.getId(), eventStatus.getEventId(), projectTitle);
+        procurementProject.getId(), eventSummary.getId(), projectTitle);
   }
 
   String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {

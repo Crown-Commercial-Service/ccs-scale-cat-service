@@ -37,18 +37,16 @@ public class TendersAPIModelUtils {
     return draftProcurementProject;
   }
 
-  public EventStatus buildEventStatus(Integer projectId, String eventId, String name,
-      String supportID, EventType type, TenderStatus status, String stage) {
-    var eventStatus = new EventStatus();
-    eventStatus.setProjectId(projectId);
-    eventStatus.setEventId(eventId);
-    eventStatus.setName(name);
-    eventStatus.eventSupportId(supportID);
-    eventStatus.setEventType(type);
-    eventStatus.setStatus(status);
-    eventStatus.setEventStage(stage);
-
-    return eventStatus;
+  public EventSummary buildEventSummary(String eventId, String name, String supportID,
+      EventType type, TenderStatus status, String stage) {
+    var eventSummary = new EventSummary();
+    eventSummary.setId(eventId);
+    eventSummary.setTitle(name);
+    eventSummary.setEventStage(ReleaseTag.PLANNING);
+    eventSummary.setStatus(status);
+    eventSummary.setEventType(type);
+    eventSummary.setEventSupportId(supportID);
+    return eventSummary;
   }
 
   public Errors buildErrors(List<ApiError> apiErrors) {
@@ -67,25 +65,32 @@ public class TendersAPIModelUtils {
 
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
-    eventDetailNonOCDS.setEventId(rfxSetting.getRfxId());
-    eventDetailNonOCDS.setName(rfxSetting.getShortDescription());
-    eventDetailNonOCDS
-        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    // eventDetailNonOCDS.setEventResponseDate(rfxSetting.get);
+    eventDetailNonOCDS.setEventType(EventType.fromValue(procurementEvent.getEventType()));
+    eventDetailNonOCDS.setEventSupportId(null);
+
     eventDetail.setNonOCDS(eventDetailNonOCDS);
+
+    // eventDetailNonOCDS.setEventId(rfxSetting.getRfxId());
+    // eventDetailNonOCDS.setName(rfxSetting.getShortDescription());
+    // eventDetailNonOCDS
+    // .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    // eventDetailNonOCDS.setEventResponseDate(rfxSetting.get);
+
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();
 
+    eventDetailOCDS.setId(rfxSetting.getRfxId());
+    eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
+    eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
+    eventDetailOCDS
+        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    // TODO: TBC - mappings required
+    eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
+
     eventDetail.setOCDS(eventDetailOCDS);
     // TODO: Map to SCC-439 nonOCDS and OCDS fields
-    // eventDetail.setId(rfxSetting.getRfxId());
-    // eventDetail.setTitle(rfxSetting.getShortDescription());
-    // eventDetail.setDescription(rfxSetting.getLongDescription());
-    // eventDetail.setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    //
-    // // TODO: TBC - mappings required
-    // eventDetail.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
+
     return eventDetail;
   }
 

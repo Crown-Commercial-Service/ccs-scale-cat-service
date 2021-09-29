@@ -64,7 +64,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
-  public EventStatus createEvent(final Integer projectId, final CreateEvent createEvent,
+  public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downselectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
@@ -110,9 +110,9 @@ public class ProcurementEventService {
 
     var procurementEvent = retryableTendersDBDelegate.save(event);
 
-    return tendersAPIModelUtils.buildEventStatus(projectId, procurementEvent.getEventID(),
-        eventName, createRfxResponse.getRfxReferenceCode(),
-        EventType.fromValue(defineEventType.getValue()), TenderStatus.PLANNING, EVENT_STAGE);
+    return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+        createRfxResponse.getRfxReferenceCode(), EventType.fromValue(defineEventType.getValue()),
+        TenderStatus.PLANNING, EVENT_STAGE);
   }
 
   /**
