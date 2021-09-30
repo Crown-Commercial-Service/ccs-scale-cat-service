@@ -26,7 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -98,8 +98,8 @@ class ProcurementProjectServiceTest {
         ProcurementProject.of(agreementDetails, TENDER_CODE, TENDER_REF_CODE, PROJ_NAME, PRINCIPAL);
     procurementProject.setId(PROC_PROJECT_ID);
 
-    var eventStatus = new EventStatus();
-    eventStatus.setEventId(EVENT_OCID);
+    var eventSummary = new EventSummary();
+    eventSummary.setId(EVENT_OCID);
 
     // Mock behaviours
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
@@ -110,7 +110,7 @@ class ProcurementProjectServiceTest {
             .thenReturn(createUpdateProjectResponse);
     when(procurementProjectRepo.save(any(ProcurementProject.class))).thenReturn(procurementProject);
     when(procurementEventService.createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL))
-        .thenReturn(eventStatus);
+        .thenReturn(eventSummary);
 
     // Invoke
     var draftProcurementProject =

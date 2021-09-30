@@ -38,11 +38,11 @@ public class TendersAPIModelUtils {
   }
 
   public EventSummary buildEventSummary(String eventId, String name, String supportID,
-      EventType type, TenderStatus status, String stage) {
+      EventType type, TenderStatus status, ReleaseTag stage) {
     var eventSummary = new EventSummary();
     eventSummary.setId(eventId);
     eventSummary.setTitle(name);
-    eventSummary.setEventStage(ReleaseTag.PLANNING);
+    eventSummary.setEventStage(stage);
     eventSummary.setStatus(status);
     eventSummary.setEventType(type);
     eventSummary.setEventSupportId(supportID);
@@ -60,26 +60,18 @@ public class TendersAPIModelUtils {
 
     var agreementDetails = new AgreementDetails();
     agreementDetails.setAgreementId(procurementEvent.getProject().getCaNumber());
-    // agreementDefinition.setAgreementName(TODO: Get it from the agreements service);
     agreementDetails.setLotId(procurementEvent.getProject().getLotNumber());
+
+    // TODO: SCC-439 complete mapping of all nonOCDS and OCDS fields
 
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventType(EventType.fromValue(procurementEvent.getEventType()));
     eventDetailNonOCDS.setEventSupportId(null);
-
     eventDetail.setNonOCDS(eventDetailNonOCDS);
-
-    // eventDetailNonOCDS.setEventId(rfxSetting.getRfxId());
-    // eventDetailNonOCDS.setName(rfxSetting.getShortDescription());
-    // eventDetailNonOCDS
-    // .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    // eventDetailNonOCDS.setEventResponseDate(rfxSetting.get);
-
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();
-
     eventDetailOCDS.setId(rfxSetting.getRfxId());
     eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
     eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
@@ -87,9 +79,7 @@ public class TendersAPIModelUtils {
         .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
     // TODO: TBC - mappings required
     eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
-
     eventDetail.setOCDS(eventDetailOCDS);
-    // TODO: Map to SCC-439 nonOCDS and OCDS fields
 
     return eventDetail;
   }

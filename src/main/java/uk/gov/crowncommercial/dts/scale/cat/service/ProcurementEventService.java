@@ -43,7 +43,7 @@ public class ProcurementEventService {
   private static final String ADDITIONAL_INFO_FRAMEWORK_NAME = "Framework Name";
   private static final String ADDITIONAL_INFO_LOT_NUMBER = "Lot Number";
   private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
-  private static final String EVENT_STAGE = "Tender";
+  private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
 
   private final UserProfileService userProfileService;
   private final JaggaerAPIConfig jaggaerAPIConfig;
