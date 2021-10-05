@@ -56,7 +56,7 @@ class EventsControllerTest {
   private static final String JAGGAER_ID = "1";
   private static final EventType EVENT_TYPE = EventType.RFP;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
-  private static final String EVENT_STAGE = "Tender";
+  private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -89,8 +89,8 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_200_OK() throws Exception {
 
-    var eventStatus = tendersAPIModelUtils.buildEventStatus(PROC_PROJECT_ID, EVENT_ID, EVENT_NAME,
-        JAGGAER_ID, EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+    var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
+        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
 
     when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
         nullable(Boolean.class), anyString())).thenReturn(eventStatus);
@@ -99,13 +99,12 @@ class EventsControllerTest {
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(createEvent)))
-        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventId").value(EVENT_ID))
-        .andExpect(jsonPath("$.projectId").value(PROC_PROJECT_ID))
-        .andExpect(jsonPath("$.name").value(EVENT_NAME))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(EVENT_ID))
+        .andExpect(jsonPath("$.title").value(EVENT_NAME))
         .andExpect(jsonPath("$.eventSupportId").value(JAGGAER_ID))
-        .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.toString()))
-        .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE))
-        .andExpect(jsonPath("$.status").value(EVENT_STATUS.toString()));
+        .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.getValue()))
+        .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE.getValue()))
+        .andExpect(jsonPath("$.status").value(EVENT_STATUS.getValue()));
   }
 
   @Test

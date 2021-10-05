@@ -146,9 +146,9 @@ class ProcurementEventServiceTest {
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", eventStatus.getName());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-DA", eventStatus.getTitle());
     assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
-    assertEquals("Tender", eventStatus.getEventStage());
+    assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(EventType.DA, eventStatus.getEventType());
   }
@@ -215,9 +215,9 @@ class ProcurementEventServiceTest {
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventStatus.getName());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventStatus.getTitle());
     assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
-    assertEquals("Tender", eventStatus.getEventStage());
+    assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(EventType.RFP, eventStatus.getEventType());
   }

@@ -43,7 +43,7 @@ public class ProcurementEventService {
   private static final String ADDITIONAL_INFO_FRAMEWORK_NAME = "Framework Name";
   private static final String ADDITIONAL_INFO_LOT_NUMBER = "Lot Number";
   private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
-  private static final String EVENT_STAGE = "Tender";
+  private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
 
   private final UserProfileService userProfileService;
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -64,7 +64,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
-  public EventStatus createEvent(final Integer projectId, final CreateEvent createEvent,
+  public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downselectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
@@ -110,9 +110,9 @@ public class ProcurementEventService {
 
     var procurementEvent = retryableTendersDBDelegate.save(event);
 
-    return tendersAPIModelUtils.buildEventStatus(projectId, procurementEvent.getEventID(),
-        eventName, createRfxResponse.getRfxReferenceCode(),
-        EventType.fromValue(defineEventType.getValue()), TenderStatus.PLANNING, EVENT_STAGE);
+    return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+        createRfxResponse.getRfxReferenceCode(), EventType.fromValue(defineEventType.getValue()),
+        TenderStatus.PLANNING, EVENT_STAGE);
   }
 
   /**

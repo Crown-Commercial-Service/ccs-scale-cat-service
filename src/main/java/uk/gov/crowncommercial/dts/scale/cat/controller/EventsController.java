@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementEventName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
@@ -24,7 +24,7 @@ public class EventsController extends AbstractRestController {
   private final ProcurementEventService procurementEventService;
 
   @PostMapping
-  public EventStatus createProcurementEvent(@PathVariable("procID") Integer procId,
+  public EventSummary createProcurementEvent(@PathVariable("procID") Integer procId,
       @RequestBody CreateEvent createEvent, JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
