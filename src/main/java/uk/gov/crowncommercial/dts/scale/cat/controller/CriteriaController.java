@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Set;
-import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,7 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService;
     produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
-public class CriteriaController {
+public class CriteriaController extends AbstractRestController {
 
   private final CriteriaService criteriaService;
 
@@ -29,7 +28,10 @@ public class CriteriaController {
   public Set<EvalCriteria> getEventEvaluationCriteria(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
-    throw new NotImplementedException("not yet");
+    final var principal = getPrincipalFromJwt(authentication);
+    log.info("getEventEvaluationCriteria invoked on behalf of principal: {}", principal);
+
+    return criteriaService.getEvalCriteria(procId, eventId);
   }
 
 }
