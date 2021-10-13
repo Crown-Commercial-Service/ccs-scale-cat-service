@@ -7,8 +7,6 @@ import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  *
@@ -18,8 +16,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 public class CriteriaService {
 
   private final AgreementsService agreementsService;
-  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ValidationService validationService;
 
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId) {
