@@ -47,6 +47,10 @@ data "aws_ssm_parameter" "auth_server_jwk_set_uri" {
   name = "/cat/${var.environment}/auth-server-jwk-set-uri"
 }
 
+data "aws_ssm_parameter" "agreements_service_base_url" {
+  name = "/cat/${var.environment}/agreements-service-base-url"
+}
+
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
@@ -59,6 +63,7 @@ resource "cloudfoundry_app" "cat_service" {
     "spring.security.oauth2.client.provider.jaggaer.token-uri" : data.aws_ssm_parameter.jaggaer_token_url.value
     "config.external.jaggaer.baseUrl" : data.aws_ssm_parameter.jaggaer_base_url.value
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
+    "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"
