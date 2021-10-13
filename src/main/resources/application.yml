@@ -88,7 +88,7 @@ config:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
-      getLotEventRFITemplate:
+      getLotEventTypeDataTemplates:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
 
     

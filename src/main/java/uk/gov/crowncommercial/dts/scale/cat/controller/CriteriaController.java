@@ -25,8 +25,8 @@ public class CriteriaController extends AbstractRestController {
   private final CriteriaService criteriaService;
 
   @GetMapping
-  public Set<EvalCriteria> getEventEvaluationCriteria(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+  public Set<EvalCriteria> getEventEvaluationCriteria(@PathVariable("proc-id") final Integer procId,
+      @PathVariable("event-id") final String eventId, final JwtAuthenticationToken authentication) {
 
     final var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriteria invoked on behalf of principal: {}", principal);

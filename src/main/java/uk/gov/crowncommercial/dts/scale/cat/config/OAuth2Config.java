@@ -23,15 +23,15 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
   private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
 
   @Override
-  protected void configure(HttpSecurity http) throws Exception {
+  protected void configure(final HttpSecurity http) throws Exception {
 
     log.info("Configuring resource server...");
 
     // @formatter:off
     http.authorizeRequests(authz ->
       authz
-        .antMatchers("/tenders/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR")
-        .antMatchers("/error/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR")
+        .antMatchers("/tenders/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT")
+        .antMatchers("/error/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT")
         .anyRequest().denyAll()
     )
     .csrf(CsrfConfigurer::disable)
@@ -47,11 +47,11 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     log.info("Configuring custom JwtAuthenticationConverter to read CAT roles..");
 
-    var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    final var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
     grantedAuthoritiesConverter.setAuthorityPrefix("");
 
-    var jwtAuthenticationConverter = new JwtAuthenticationConverter();
+    final var jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 

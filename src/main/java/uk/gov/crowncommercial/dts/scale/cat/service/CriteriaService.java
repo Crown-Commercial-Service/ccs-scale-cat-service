@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -27,12 +28,16 @@ public class CriteriaService {
     final var event = validationService.validateProjectAndEventIds(projectId, eventId);
 
     // Call the AS to get the template criteria
-    final var templateCriteria =
-        agreementsService.getLotEventTemplateCriteria(event.getProject().getCaNumber(),
+    final var lotEventTypeDataTemplates =
+        agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
 
+    // TODO: Decide how to handle multiple data templates being returned by AS
+    final var dataTemplate = lotEventTypeDataTemplates.stream().findFirst()
+        .orElseThrow(() -> new AgreementsServiceApplicationException("Data template not found"));
+
     // Convert to EvalCriteria and return
-    return templateCriteria.stream().map(tc -> {
+    return dataTemplate.getCriteria().stream().map(tc -> {
       final var evalCriteria = new EvalCriteria();
       evalCriteria.setId(tc.getId());
       evalCriteria.setDescription(tc.getDescription());
