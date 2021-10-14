@@ -51,7 +51,7 @@ public class GlobalErrorHandler implements ErrorController {
   public ResponseEntity<Errors> handleError(final HttpServletRequest request,
       final HttpServletResponse response) {
 
-    final var exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
+    var exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
 
     log.error("Unknown container/filter exception", exception);
 
@@ -65,7 +65,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Exhausted retries", exception);
 
-    final var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
+    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
@@ -75,8 +75,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("MalformedJwtException", exception);
 
-    final var apiError = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_UNAUTHORISED, "");
-    final var wwwAuthenticateBearerInvalidJWT =
+    var apiError = new ApiError(UNAUTHORIZED.toString(), Constants.ERR_MSG_UNAUTHORISED, "");
+    var wwwAuthenticateBearerInvalidJWT =
         "Bearer error=\"invalid_token\", error_description=\"Invalid or malformed JWT\"";
     return ResponseEntity.status(UNAUTHORIZED)
         .header(HttpHeaders.WWW_AUTHENTICATE, wwwAuthenticateBearerInvalidJWT)
@@ -89,8 +89,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.info("Requested resource not found", exception);
 
-    final var apiError =
-        new ApiError(NOT_FOUND.toString(), ERR_MSG_VALIDATION, exception.getMessage());
+    var apiError = new ApiError(NOT_FOUND.toString(), ERR_MSG_VALIDATION, exception.getMessage());
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
@@ -100,7 +99,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Unknown application exception", exception);
 
-    final var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, "");
+    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, "");
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
@@ -110,7 +109,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Upstream application error", exception);
 
-    final var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
+    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
@@ -121,7 +120,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.trace("Request validation exception", exception);
 
-    final var apiError =
+    var apiError =
         new ApiError(BAD_REQUEST.toString(), ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
@@ -137,7 +136,7 @@ public class GlobalErrorHandler implements ErrorController {
       invokedService = request.get().getMethod() + " " + request.get().getURI();
     }
 
-    final var logErrorMsg =
+    var logErrorMsg =
         String.format("Error invoking upstream service [%s], received status: [%d], body: [%s]",
             invokedService, exception.getRawStatusCode(), exception.getResponseBodyAsString());
 

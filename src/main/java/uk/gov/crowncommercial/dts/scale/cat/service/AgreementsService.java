@@ -28,13 +28,13 @@ public class AgreementsService {
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId,
       final String lotId, final EventType eventType) {
 
-    final var getLotEventTypeDataTemplatesUri =
+    var getLotEventTypeDataTemplatesUri =
         agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
 
     final ParameterizedTypeReference<List<List<TemplateCriteria>>> typeRefTemplateCriteria =
         new ParameterizedTypeReference<>() {};
 
-    final var dataTemplates = ofNullable(agreementsServiceWebClient.get()
+    var dataTemplates = ofNullable(agreementsServiceWebClient.get()
         .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
         .bodyToMono(typeRefTemplateCriteria)
         .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))

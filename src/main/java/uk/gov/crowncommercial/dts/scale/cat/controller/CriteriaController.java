@@ -29,7 +29,7 @@ public class CriteriaController extends AbstractRestController {
   public Set<EvalCriteria> getEventEvaluationCriteria(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId, final JwtAuthenticationToken authentication) {
 
-    final var principal = getPrincipalFromJwt(authentication);
+    var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriteria invoked on behalf of principal: {}", principal);
 
     return criteriaService.getEvalCriteria(procId, eventId);
@@ -41,7 +41,7 @@ public class CriteriaController extends AbstractRestController {
       @PathVariable("criterion-id") final String criterionId,
       final JwtAuthenticationToken authentication) {
 
-    final var principal = getPrincipalFromJwt(authentication);
+    var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriterionGroups invoked on behalf of principal: {}", principal);
 
     return criteriaService.getEvalCriterionGroups(procId, eventId, criterionId);

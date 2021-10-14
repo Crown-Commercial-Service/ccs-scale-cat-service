@@ -22,15 +22,15 @@ public class CriteriaService {
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId) {
 
     // Get project from tenders DB to obtain Jaggaer project id
-    final var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    var event = validationService.validateProjectAndEventIds(projectId, eventId);
 
     // Call the AS to get the template criteria
-    final var lotEventTypeDataTemplates =
+    var lotEventTypeDataTemplates =
         agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
 
     // TODO: Decide how to handle multiple data templates being returned by AS
-    final var dataTemplate = lotEventTypeDataTemplates.stream().findFirst()
+    var dataTemplate = lotEventTypeDataTemplates.stream().findFirst()
         .orElseThrow(() -> new AgreementsServiceApplicationException("Data template not found"));
 
     // Convert to EvalCriteria and return
@@ -42,24 +42,24 @@ public class CriteriaService {
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
       final String criterionId) {
-    final var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    var event = validationService.validateProjectAndEventIds(projectId, eventId);
 
-    final var lotEventTypeDataTemplates =
+    var lotEventTypeDataTemplates =
         agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
 
     // TODO: Decide how to handle multiple data templates being returned by AS
-    final var dataTemplate = lotEventTypeDataTemplates.stream().findFirst()
+    var dataTemplate = lotEventTypeDataTemplates.stream().findFirst()
         .orElseThrow(() -> new AgreementsServiceApplicationException("Data template not found"));
 
-    final var criteria = dataTemplate.getCriteria().stream()
+    var criteria = dataTemplate.getCriteria().stream()
         .filter(tc -> Objects.equals(tc.getId(), criterionId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Criterion '" + criterionId + "' not found"));
 
     return criteria.getRequirementGroups().stream().map(rg -> {
-      final var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
+      var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
           .prompt(rg.getNonOCDS().getPrompt()).mandatory(rg.getNonOCDS().getMandatory());
-      final var questionGroupOCDS = new RequirementGroup1().id(rg.getOcds().getId())
+      var questionGroupOCDS = new RequirementGroup1().id(rg.getOcds().getId())
           .description(rg.getOcds().getDescription());
       return new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
     }).collect(Collectors.toSet());
