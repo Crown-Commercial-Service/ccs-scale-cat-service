@@ -1,11 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
-import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
 
 /**
  *
@@ -32,7 +30,7 @@ public class RequirementGroup {
 
     String id;
     String description;
-    Set<Question> requirements; // Should match Tenders API Question type
+    // Set<Question> requirements; // Should match Tenders API Question type
   }
 
   NonOCDS nonOCDS;

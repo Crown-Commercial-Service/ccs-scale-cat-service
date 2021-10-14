@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroup;
 import uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService;
 
 /**
@@ -32,6 +33,18 @@ public class CriteriaController extends AbstractRestController {
     log.info("getEventEvaluationCriteria invoked on behalf of principal: {}", principal);
 
     return criteriaService.getEvalCriteria(procId, eventId);
+  }
+
+  @GetMapping("/{criterion-id}/groups")
+  public Set<QuestionGroup> getEventEvaluationCriterionGroups(
+      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
+      @PathVariable("criterion-id") final String criterionId,
+      final JwtAuthenticationToken authentication) {
+
+    final var principal = getPrincipalFromJwt(authentication);
+    log.info("getEventEvaluationCriterionGroups invoked on behalf of principal: {}", principal);
+
+    return criteriaService.getEvalCriterionGroups(procId, eventId, criterionId);
   }
 
 }
