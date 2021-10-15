@@ -47,11 +47,11 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     log.info("Configuring custom JwtAuthenticationConverter to read CAT roles..");
 
-    final var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
     grantedAuthoritiesConverter.setAuthorityPrefix("");
 
-    final var jwtAuthenticationConverter = new JwtAuthenticationConverter();
+    var jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 
