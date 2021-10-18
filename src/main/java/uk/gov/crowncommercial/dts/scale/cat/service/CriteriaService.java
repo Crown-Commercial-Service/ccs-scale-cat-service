@@ -36,15 +36,20 @@ public class CriteriaService {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    DataTemplate dataTemplate;
 
-    // Call the AS to get the template criteria
-    var lotEventTypeDataTemplates =
-        agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-            event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
+    // If the template has been persisted, get it from the local database
+    if (event.getProcurementTemplatePayload() != null) {
+      dataTemplate = event.getProcurementTemplatePayload();
+    } else {
+      var lotEventTypeDataTemplates =
+          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
 
-    // TODO: Decide how to handle multiple data templates being returned by AS
-    var dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-        () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+      // TODO: Decide how to handle multiple data templates being returned by AS
+      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
+          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+    }
 
     // Convert to EvalCriteria and return
     return dataTemplate
@@ -56,14 +61,20 @@ public class CriteriaService {
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
       final String criterionId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    DataTemplate dataTemplate;
 
-    var lotEventTypeDataTemplates =
-        agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-            event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
+    // If the template has been persisted, get it from the local database
+    if (event.getProcurementTemplatePayload() != null) {
+      dataTemplate = event.getProcurementTemplatePayload();
+    } else {
+      var lotEventTypeDataTemplates =
+          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
 
-    // TODO: Decide how to handle multiple data templates being returned by AS
-    var dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-        () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+      // TODO: Decide how to handle multiple data templates being returned by AS
+      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
+          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+    }
 
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
 
@@ -79,14 +90,20 @@ public class CriteriaService {
   public Set<Question> getEvalCriterionGroupQuestions(final Integer projectId, final String eventId,
       final String criterionId, final String groupId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    DataTemplate dataTemplate;
 
-    var lotEventTypeDataTemplates =
-        agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-            event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
+    // If the template has been persisted, get it from the local database
+    if (event.getProcurementTemplatePayload() != null) {
+      dataTemplate = event.getProcurementTemplatePayload();
+    } else {
+      var lotEventTypeDataTemplates =
+          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
 
-    // TODO: Decide how to handle multiple data templates being returned by AS
-    var dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-        () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+      // TODO: Decide how to handle multiple data templates being returned by AS
+      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
+          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+    }
 
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
@@ -101,7 +118,7 @@ public class CriteriaService {
           .answered(r.getNonOCDS().getAnswered())
           .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
               new QuestionNonOCDSOptions().value(o.get("value"))
-                       .selected(Boolean.valueOf(o.get("selected")))).collect(Collectors.toList()));
+                       .selected(Boolean.valueOf(o.get("select")))).collect(Collectors.toList()));
 
       var questionOCDS = new Requirement1()
           .id(r.getOcds().getId())
@@ -152,7 +169,6 @@ public class CriteriaService {
       // If payload exists already, then retrieve, update the criterion.group.question.options array
       // and persist back
       dataTemplate = event.getProcurementTemplatePayload();
-      log.info("dataTemplate: " + dataTemplate);
     } else {
       log.debug("Procurement template does not exist in DB");
       // If payload does not exist, get the data template from AS service
@@ -174,8 +190,9 @@ public class CriteriaService {
     var options = question.getNonOCDS().getOptions();
     if (options != null && !options.isEmpty()) {
       requirement.getNonOCDS()
-          .setOptions(options.stream()
-              .map(o -> Map.of("value", o.getValue(), "selected", o.getSelected().toString()))
+          .updateOptions(options.stream()
+              .map(o -> Map.of("value", o.getValue(), "select",
+                  o.getSelected() == null ? "false" : o.getSelected().toString()))
               .collect(Collectors.toList()));
     }
 
