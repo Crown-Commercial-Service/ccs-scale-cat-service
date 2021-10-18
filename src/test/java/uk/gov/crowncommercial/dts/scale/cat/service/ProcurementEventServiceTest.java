@@ -230,7 +230,7 @@ class ProcurementEventServiceTest {
     var procurementEvent = ProcurementEvent.builder().build();
 
     var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).build();
-    var rfx = new Rfx(rfxSetting, null, null);
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
     var createUpdateRfx = new CreateUpdateRfx(OperationCode.UPDATE, rfx);
 
     var createUpdateRfxResponse = new CreateUpdateRfxResponse();
