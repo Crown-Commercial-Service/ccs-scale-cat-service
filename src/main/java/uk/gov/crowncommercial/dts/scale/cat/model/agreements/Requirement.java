@@ -39,6 +39,11 @@ public class Requirement {
     Boolean mandatory;
     Boolean multiAnswer;
     List<Map<String, String>> options; // Maps to QuestionNonOCDSOptions
+
+    public void setOptions(final List<Map<String, String>> options) {
+      this.options.clear();
+      this.options.addAll(options);
+    }
   }
 
   @Value
