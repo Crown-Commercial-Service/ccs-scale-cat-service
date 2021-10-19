@@ -150,7 +150,8 @@ public class ProcurementEventService {
         new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
     var suppliersList = new SuppliersList(getSuppliers());
-    var rfx = new Rfx(rfxSetting, rfxAdditionalInfoList, suppliersList);
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
+        .suppliersList(suppliersList).build();
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
   }
@@ -174,7 +175,7 @@ public class ProcurementEventService {
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
         .rfxReferenceCode(event.getExternalReferenceId()).shortDescription(eventName).build();
 
-    var rfx = new Rfx(rfxSetting, null, null);
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
 
     var createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
