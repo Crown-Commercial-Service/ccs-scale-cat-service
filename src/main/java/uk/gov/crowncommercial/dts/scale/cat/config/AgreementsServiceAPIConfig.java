@@ -18,5 +18,6 @@ public class AgreementsServiceAPIConfig {
   private Integer timeoutDuration;
   private Map<String, String> getAgreementDetail;
   private Map<String, String> getLotDetailsForAgreement;
+  private Map<String, String> getEventTypesForAgreement;
 
 }

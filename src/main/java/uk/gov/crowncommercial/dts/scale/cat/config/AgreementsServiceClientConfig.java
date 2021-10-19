@@ -4,6 +4,7 @@ import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ClientHttpConnector;
@@ -31,6 +32,10 @@ public class AgreementsServiceClientConfig {
         .baseUrl(agreementsServiceAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
         .defaultHeader("x-api-key", agreementsServiceAPIConfig.getApiKey()).build();
+  }
+  @Bean
+  public ModelMapper modelMapper() {
+    return new ModelMapper();
   }
 
 }

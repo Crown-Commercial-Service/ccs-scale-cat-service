@@ -5,20 +5,26 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -36,6 +42,9 @@ public class ProcurementProjectService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
+  private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
+  private final WebClient agreementsServiceWebClient;
+  private final ObjectMapper mapper;
 
   /**
    * SCC-440/441
@@ -116,9 +125,9 @@ public class ProcurementProjectService {
 
   /**
    * Update project name.
-   *
-   * @param projectId
-   * @param namenew project name
+   * @param projectId The Project Id
+   * @param projectName The Project Name
+   * @param principal The Principal
    */
   public void updateProcurementProjectName(final Integer projectId, final String projectName,
       final String principal) {
@@ -153,4 +162,26 @@ public class ProcurementProjectService {
 
   }
 
+  /**
+   * Event types for given project
+   * @param projectId the project id
+   * @return Collection of event types
+   */
+  public Collection<EventType> getEventTypes(final Integer projectId){
+
+    final ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+            .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    var eventTypes =
+            ofNullable(agreementsServiceWebClient.get()
+                            .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"), project.getCaNumber(),project.getLotNumber())
+                            .retrieve()
+                            .bodyToMono(Object[].class)
+                            .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))
+            )
+                    .orElseThrow(() -> new ResourceNotFoundException("Unexpected error finding event types"));
+
+    return  Arrays.stream(eventTypes).map(object -> mapper.convertValue(object, EventType.class))
+            .collect(Collectors.toList());
+  }
 }

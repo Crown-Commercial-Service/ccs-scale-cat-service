@@ -1,15 +1,14 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.util.Arrays;
 import java.util.Collection;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.model.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
@@ -48,14 +47,15 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK;
   }
 
-  @GetMapping("/{procID}/event-types")
-  public Collection<DefineEventType> listProcurementEventTypes(
-      JwtAuthenticationToken authentication) {
+  @GetMapping("/{proc-id}/event-types")
+  public Collection<EventType> listProcurementEventTypes(
+          @PathVariable("proc-id") Integer procId,
+          JwtAuthenticationToken authentication
+  ) {
 
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
-    // TODO: This will be refactored to filter those applicable to the current project
-    return Arrays.asList(DefineEventType.values());
+    return procurementProjectService.getEventTypes(procId);
   }
 }

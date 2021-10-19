@@ -20,6 +20,7 @@
 		<swagger-parser.version>2.0.28</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
+		<modelmapper.version>2.3.5</modelmapper.version>
 	</properties>
 
 	<dependencies>
@@ -112,7 +113,11 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
+		<dependency>
+			<groupId>org.modelmapper</groupId>
+			<artifactId>modelmapper</artifactId>
+			<version>${modelmapper.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>
