@@ -8,12 +8,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -23,7 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
@@ -36,20 +35,7 @@ public class CriteriaService {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    DataTemplate dataTemplate;
-
-    // If the template has been persisted, get it from the local database
-    if (event.getProcurementTemplatePayload() != null) {
-      dataTemplate = event.getProcurementTemplatePayload();
-    } else {
-      var lotEventTypeDataTemplates =
-          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
-
-      // TODO: Decide how to handle multiple data templates being returned by AS
-      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
-    }
+    var dataTemplate = retrieveDataTemplate(event);
 
     // Convert to EvalCriteria and return
     return dataTemplate
@@ -61,21 +47,7 @@ public class CriteriaService {
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
       final String criterionId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    DataTemplate dataTemplate;
-
-    // If the template has been persisted, get it from the local database
-    if (event.getProcurementTemplatePayload() != null) {
-      dataTemplate = event.getProcurementTemplatePayload();
-    } else {
-      var lotEventTypeDataTemplates =
-          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
-
-      // TODO: Decide how to handle multiple data templates being returned by AS
-      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
-    }
-
+    var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
 
     return criteria.getRequirementGroups().stream().map(rg -> {
@@ -90,21 +62,7 @@ public class CriteriaService {
   public Set<Question> getEvalCriterionGroupQuestions(final Integer projectId, final String eventId,
       final String criterionId, final String groupId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    DataTemplate dataTemplate;
-
-    // If the template has been persisted, get it from the local database
-    if (event.getProcurementTemplatePayload() != null) {
-      dataTemplate = event.getProcurementTemplatePayload();
-    } else {
-      var lotEventTypeDataTemplates =
-          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
-
-      // TODO: Decide how to handle multiple data templates being returned by AS
-      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
-    }
-
+    var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
 
@@ -140,46 +98,13 @@ public class CriteriaService {
 
   }
 
-  private TemplateCriteria extractTemplateCriteria(final DataTemplate dataTemplate,
-      final String criterionId) {
-    return dataTemplate.getCriteria().stream().filter(tc -> Objects.equals(tc.getId(), criterionId))
-        .findFirst().orElseThrow(
-            () -> new ResourceNotFoundException("Criterion '" + criterionId + "' not found"));
-  }
-
-  private RequirementGroup extractRequirementGroup(final TemplateCriteria criteria,
-      final String groupId) {
-    return criteria.getRequirementGroups().stream()
-        .filter(rg -> Objects.equals(rg.getOcds().getId(), groupId)).findFirst().orElseThrow(
-            () -> new ResourceNotFoundException("Criterion group '" + groupId + "' not found"));
-
-  }
-
   public void putQuestionOptionDetails(final Question question, final Integer projectId,
       final String eventId, final String criterionId, final String groupId,
       final String questionId) {
 
     // Get the project/event and check if there is a pre-existing event.procurement_template_payload
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
-
-    DataTemplate dataTemplate;
-
-    if (event.getProcurementTemplatePayload() != null) {
-      log.debug("Procurement template existed in DB");
-      // If payload exists already, then retrieve, update the criterion.group.question.options array
-      // and persist back
-      dataTemplate = event.getProcurementTemplatePayload();
-    } else {
-      log.debug("Procurement template does not exist in DB");
-      // If payload does not exist, get the data template from AS service
-      var lotEventTypeDataTemplates =
-          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
-
-      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
-    }
-
+    var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
 
@@ -198,6 +123,39 @@ public class CriteriaService {
 
     event.setProcurementTemplatePayload(dataTemplate);
     retryableTendersDBDelegate.save(event);
+  }
+
+  private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
+    DataTemplate dataTemplate;
+
+    // If the template has been persisted, get it from the local database
+    if (event.getProcurementTemplatePayload() != null) {
+      dataTemplate = event.getProcurementTemplatePayload();
+    } else {
+      var lotEventTypeDataTemplates =
+          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
+
+      // TODO: Decide how to handle multiple data templates being returned by AS
+      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
+          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+    }
+    return dataTemplate;
+  }
+
+  private TemplateCriteria extractTemplateCriteria(final DataTemplate dataTemplate,
+      final String criterionId) {
+    return dataTemplate.getCriteria().stream().filter(tc -> Objects.equals(tc.getId(), criterionId))
+        .findFirst().orElseThrow(
+            () -> new ResourceNotFoundException("Criterion '" + criterionId + "' not found"));
+  }
+
+  private RequirementGroup extractRequirementGroup(final TemplateCriteria criteria,
+      final String groupId) {
+    return criteria.getRequirementGroups().stream()
+        .filter(rg -> Objects.equals(rg.getOcds().getId(), groupId)).findFirst().orElseThrow(
+            () -> new ResourceNotFoundException("Criterion group '" + groupId + "' not found"));
+
   }
 
 }
