@@ -3,10 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Set;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
@@ -59,6 +56,21 @@ public class CriteriaController extends AbstractRestController {
         principal);
 
     return criteriaService.getEvalCriterionGroupQuestions(procId, eventId, criterionId, groupId);
+  }
+
+  @PutMapping("/{criterion-id}/groups/{group-id}/questions/{question-id}")
+  public void putQuestionOptionDetails(@RequestBody final Question question,
+      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
+      @PathVariable("criterion-id") final String criterionId,
+      @PathVariable("group-id") final String groupId,
+      @PathVariable("question-id") final String questionId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("putQuestionOptionDetails invoked on behalf of principal: {}", principal);
+
+    criteriaService.putQuestionOptionDetails(question, procId, eventId, criterionId, groupId,
+        questionId);
   }
 
 }
