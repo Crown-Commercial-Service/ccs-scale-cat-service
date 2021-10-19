@@ -172,13 +172,10 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
 
     // Update Jaggaer
-    // var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-    // .rfxReferenceCode(event.getExternalReferenceId()).shortDescription(eventName).build();
-    // var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).shortDescription(eventName).build();
 
-    // TODO - just testing envelope update
-    var rfx = createQuestionTestRfx(event.getExternalEventId(), "Tender Response",
-        "This is my question 2", "Test question inserted by Tenders API");
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
 
     var createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
@@ -240,26 +237,6 @@ public class ProcurementEventService {
   private String getDefaultEventTitle(String projectName, String eventType) {
     return String.format(jaggaerAPIConfig.getCreateRfx().get("defaultTitleFormat"), projectName,
         eventType);
-  }
-
-  /**
-   * TODO: demo snippet of code that illustrates how to build a Technical Envelope/Question in
-   * Jaggaer
-   */
-  private Rfx createQuestionTestRfx(final String eventId, final String sectionName,
-      final String questionText, final String questionDescription) {
-
-    var rfxSetting = RfxSetting.builder().rfxId(eventId).build();
-
-    var question = TechEnvelopeParameter.builder().name(questionText)
-        .description(questionDescription).mandatory(0).type(TechEnvelopeQuestionType.TEXT).build();
-    var parameterList =
-        TechEnvelopeParameterList.builder().parameters(Arrays.asList(question)).build();
-    var section = TechEnvelopeSection.builder().name(sectionName).type("TECH").questionType("LOCAL")
-        .parameterList(parameterList).build();
-    var techEnvelope = TechEnvelope.builder().sections(Arrays.asList(section)).build();
-
-    return Rfx.builder().rfxSetting(rfxSetting).techEnvelope(techEnvelope).build();
   }
 
 }
