@@ -20,7 +20,7 @@
 		<swagger-parser.version>2.0.28</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
-		<hibernate-types.version>2.13.0</hibernate-types.version>
+		<hibernate-types.version>2.13.0</hibernate-types.version>i
 	</properties>
 
 	<dependencies>

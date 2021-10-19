@@ -83,13 +83,15 @@ config:
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
-      timeoutDuration: 5      
+      timeoutDuration: 5
       getAgreementDetail:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
       getLotEventTypeDataTemplates:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+      getEventTypesForAgreement:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}//event-types
 
     
 ---
