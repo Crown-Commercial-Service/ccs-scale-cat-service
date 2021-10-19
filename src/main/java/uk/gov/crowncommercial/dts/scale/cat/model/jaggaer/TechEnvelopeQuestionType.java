@@ -6,6 +6,6 @@ package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
  */
 public enum TechEnvelopeQuestionType {
 
-  ATTACH, TEXT
+  TEXT
 
 }

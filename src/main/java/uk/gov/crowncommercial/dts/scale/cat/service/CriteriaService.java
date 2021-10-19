@@ -197,9 +197,10 @@ public class CriteriaService {
    * Jaggaer.
    * 
    * Current behaviour - it will add questions it does not already have, but will not add
-   * duplicates. Questions are not deleted.
+   * duplicates. Questions are not deleted - needs investigation.
    * 
-   * 'Mandatory' and 'description' fields are not supplied so cannot be completed.
+   * 'Mandatory' and 'description' fields are not supplied so cannot be completed. Id's are not
+   * supplied so cannot update existing.
    */
   private Rfx createTechnicalEnvelopeUpdateRfx(final Question question,
       final ProcurementEvent event, final Requirement requirement) {
