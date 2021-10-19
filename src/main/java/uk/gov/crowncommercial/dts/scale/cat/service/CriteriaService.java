@@ -1,21 +1,29 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -23,6 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
@@ -30,6 +39,8 @@ public class CriteriaService {
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final JaggaerAPIConfig jaggaerAPIConfig;
+  private final WebClient jaggaerWebClient;
 
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId) {
 
@@ -121,8 +132,30 @@ public class CriteriaService {
               .collect(Collectors.toList()));
     }
 
+    // Update Jaggaer Technical Envelope (only for Supplier questions)
+    if (Party.TENDERER == criteria.getRelatesTo()) {
+      var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
+      var createRfxResponse =
+          ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+              .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
+              .bodyToMono(CreateUpdateRfxResponse.class)
+              .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                  .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                      "Unexpected error updating Rfx"));
+
+      if (createRfxResponse.getReturnCode() != 0
+          || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
+        log.error(createRfxResponse.toString());
+        throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
+            createRfxResponse.getReturnMessage());
+      }
+      log.info("Updated event: {}", createRfxResponse);
+    }
+
+    // Update Tenders DB
     event.setProcurementTemplatePayload(dataTemplate);
     retryableTendersDBDelegate.save(event);
+
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
@@ -156,6 +189,44 @@ public class CriteriaService {
         .filter(rg -> Objects.equals(rg.getOcds().getId(), groupId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Criterion group '" + groupId + "' not found"));
 
+  }
+
+  /**
+   * Rough first cut of code that adds Technical Envelope questions into Jaggaer. This will build an
+   * Rfx object containing the Technical Envelope that can be sent to update an existing Rfx in
+   * Jaggaer.
+   * 
+   * Current behaviour - it will add questions it does not already have, but will not add
+   * duplicates. Questions are not deleted.
+   * 
+   * 'Mandatory' and 'description' fields are not supplied so cannot be completed.
+   */
+  private Rfx createTechnicalEnvelopeUpdateRfx(final Question question,
+      final ProcurementEvent event, final Requirement requirement) {
+
+    var questionType = TechEnvelopeQuestionType.TEXT; // maps to this Jaggaer type
+    var sectionName = "Tender Response"; // default existing section
+    var sectionQuestionType = "LOCAL";
+    var sectionType = "TECH";
+
+    // only Value question types are supported at present
+    if ("Value".equals(requirement.getNonOCDS().getQuestionType())) {
+      var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId()).build();
+      var parameterList = TechEnvelopeParameterList.builder()
+          .parameters(question.getNonOCDS().getOptions().stream().map(
+              q -> TechEnvelopeParameter.builder().name(q.getValue()).type(questionType).build())
+              .collect(Collectors.toList()))
+          .build();
+      var section = TechEnvelopeSection.builder().name(sectionName).type(sectionType)
+          .questionType(sectionQuestionType).parameterList(parameterList).build();
+      var techEnvelope = TechEnvelope.builder().sections(Arrays.asList(section)).build();
+
+      return Rfx.builder().rfxSetting(rfxSetting).techEnvelope(techEnvelope).build();
+
+    } else {
+      throw new IllegalArgumentException("Question type of '"
+          + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
+    }
   }
 
 }
