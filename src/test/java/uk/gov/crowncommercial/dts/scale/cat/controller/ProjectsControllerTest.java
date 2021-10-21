@@ -33,15 +33,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Web (mock MVC) Project controller tests. Security aware.
@@ -196,17 +194,15 @@ class ProjectsControllerTest {
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
 
-    List<EventType> eventTypes = Arrays.stream(uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType.values())
-            .map(eventType -> new EventType(eventType.getValue(), eventType.getValue())).collect(Collectors.toList());
-    when(procurementProjectService.getEventTypes(PROC_PROJECT_ID))
-            .thenReturn(eventTypes);
+    when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
+            .thenReturn(Arrays.asList( DefineEventType.values()));
 
     mockMvc
         .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
-        .andExpect(jsonPath("$[*]['type']", contains("EOI", "RFI", "RFP", "DA", "SL")));
+        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "RFP", "DA", "SL")));
   }
 
 }

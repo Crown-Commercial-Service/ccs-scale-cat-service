@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
-import uk.gov.crowncommercial.dts.scale.cat.model.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
@@ -48,7 +48,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @GetMapping("/{proc-id}/event-types")
-  public Collection<EventType> listProcurementEventTypes(
+  public Collection<DefineEventType> listProcurementEventTypes(
           @PathVariable("proc-id") Integer procId,
           JwtAuthenticationToken authentication
   ) {
@@ -56,6 +56,6 @@ public class ProjectsController extends AbstractRestController {
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
-    return procurementProjectService.getEventTypes(procId);
+    return procurementProjectService.getProjectEventTypes(procId);
   }
 }
