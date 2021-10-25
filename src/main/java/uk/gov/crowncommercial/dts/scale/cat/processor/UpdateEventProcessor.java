@@ -5,12 +5,20 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 
+/**
+ * Superclass for UpdateEvent processors, implementing the Chain of Responsibility design pattern.
+ * 
+ * UpdateEvent only contains a small number of properties that are allowed to be updated on an Event
+ * at present. However, if this grows in the future then this approach should prevent any
+ * proliferation of complicated if.. then logic in a single update method.
+ *
+ */
 @Slf4j
-public abstract class EventUpdateProcessor {
+public abstract class UpdateEventProcessor {
 
-  protected EventUpdateProcessor nextProcessor;
+  protected UpdateEventProcessor nextProcessor;
 
-  EventUpdateProcessor(EventUpdateProcessor nextProcessor) {
+  UpdateEventProcessor(UpdateEventProcessor nextProcessor) {
     if (nextProcessor != null) {
       this.nextProcessor = nextProcessor;
     } else {

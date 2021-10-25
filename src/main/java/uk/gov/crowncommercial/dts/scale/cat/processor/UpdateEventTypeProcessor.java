@@ -6,10 +6,14 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 
+/**
+ * Processor for updating an event type.
+ *
+ */
 @Slf4j
-public class UpdateEventTypeProcessor extends EventUpdateProcessor {
+public class UpdateEventTypeProcessor extends UpdateEventProcessor {
 
-  public UpdateEventTypeProcessor(EventUpdateProcessor nextProcessor) {
+  public UpdateEventTypeProcessor(UpdateEventProcessor nextProcessor) {
     super(nextProcessor);
   }
 
@@ -17,6 +21,8 @@ public class UpdateEventTypeProcessor extends EventUpdateProcessor {
   public void processItem(UpdateEvent updateEvent, Rfx rfx, ProcurementEvent dbEvent,
       String principal) {
 
+    // TODO: Need clarification on the rules here - are there any restrictions on eventType state
+    // changes? - see SCC-655/SCC-656
     log.debug("Update Event Type");
     if (updateEvent.getEventType() != null) {
       dbEvent.setEventType(updateEvent.getEventType().getValue());

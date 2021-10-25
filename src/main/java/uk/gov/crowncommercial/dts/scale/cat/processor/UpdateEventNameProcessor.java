@@ -5,10 +5,14 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 
+/**
+ * Processor for updating an event name.
+ *
+ */
 @Slf4j
-public class UpdateEventNameProcessor extends EventUpdateProcessor {
+public class UpdateEventNameProcessor extends UpdateEventProcessor {
 
-  public UpdateEventNameProcessor(EventUpdateProcessor nextProcessor) {
+  public UpdateEventNameProcessor(UpdateEventProcessor nextProcessor) {
     super(nextProcessor);
   }
 
