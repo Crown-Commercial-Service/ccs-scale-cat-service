@@ -10,8 +10,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -174,7 +173,7 @@ public class ProcurementProjectService {
 
     final var eventTypes = ofNullable(agreementsServiceWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-            project.getCaNumber(), project.getLotNumber()).retrieve().bodyToMono(EventType[].class)
+            project.getCaNumber(), project.getLotNumber()).retrieve().bodyToMono(ProjectEventType[].class)
         .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).orElseThrow(
         () -> new ResourceNotFoundException("Unexpected error finding event types"));
 
@@ -182,8 +181,4 @@ public class ProcurementProjectService {
         .collect(Collectors.toList());
   }
 
-  @Data @AllArgsConstructor static class EventType {
-
-    private String type;
-  }
 }

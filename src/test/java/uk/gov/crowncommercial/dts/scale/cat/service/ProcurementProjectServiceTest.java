@@ -239,17 +239,14 @@ class ProcurementProjectServiceTest {
       return Optional.of(procurementProject);
     });
 
-    ProcurementProjectService.EventType[] eventTypes =
-        {new ProcurementProjectService.EventType("EOI"),
-            new ProcurementProjectService.EventType("RFI"),
-            new ProcurementProjectService.EventType("RFP"),
-            new ProcurementProjectService.EventType("DA"),
-            new ProcurementProjectService.EventType("SL")};
+    ProjectEventType[] eventTypes =
+        new ProjectEventType[] {new ProjectEventType("EOI"), new ProjectEventType("RFI"), new ProjectEventType("RFP"),
+            new ProjectEventType("DA"), new ProjectEventType("SL")};
 
     when(jaggaerWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
             CA_NUMBER, LOT_NUMBER).retrieve()
-        .bodyToMono(eq(ProcurementProjectService.EventType[].class))
+        .bodyToMono(eq(ProjectEventType[].class))
         .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).thenReturn(
         eventTypes);
 
