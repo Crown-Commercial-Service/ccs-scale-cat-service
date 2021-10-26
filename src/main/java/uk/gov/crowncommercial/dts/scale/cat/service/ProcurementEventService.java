@@ -58,6 +58,8 @@ public class ProcurementEventService {
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
    * project name).
+   * 
+   * Creates with a default event type of 'TBD'.
    *
    * @param projectId CCS project id
    * @param createEvent wraps non-OCDS and OCDS details of the event
@@ -78,10 +80,13 @@ public class ProcurementEventService {
     var defineEventType =
         requireNonNullElse(createEventNonOCDS.getEventType(), DefineEventType.RFP);
     downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
+
+    // TODO: if we are creating an event with a default type of 'TBD' - then why are we using RFP in
+    // the event name, or should this be TBD?
     var eventName = requireNonNullElse(createEventOCDS.getTitle(),
         getDefaultEventTitle(project.getProjectName(), defineEventType.getValue()));
 
-    var createUpdateRfx = createUpdateRfxRequest(project, defineEventType, eventName, principal);
+    var createUpdateRfx = createRfxRequest(project, eventName, principal);
 
     CreateUpdateRfxResponse createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
@@ -103,7 +108,7 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var event = ProcurementEvent.builder().project(project).eventName(eventName)
-        .externalEventId(createRfxResponse.getRfxId()).eventType(defineEventType.getValue())
+        .externalEventId(createRfxResponse.getRfxId()).eventType(EventType.TBD.getValue())
         .downSelectedSuppliers(downselectedSuppliers)
         .externalReferenceId(createRfxResponse.getRfxReferenceCode())
         .ocdsAuthorityName(ocdsAuthority).ocidPrefix(ocidPrefix).createdBy(principal)
@@ -119,8 +124,8 @@ public class ProcurementEventService {
   /**
    * Create Jaggaer request object.
    */
-  private CreateUpdateRfx createUpdateRfxRequest(final ProcurementProject project,
-      final DefineEventType eventType, final String eventName, final String principal) {
+  private CreateUpdateRfx createRfxRequest(final ProcurementProject project, final String eventName,
+      final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);

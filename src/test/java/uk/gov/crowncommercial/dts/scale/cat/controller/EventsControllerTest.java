@@ -155,28 +155,27 @@ class EventsControllerTest {
   }
 
   @Test
-  void updateProcurementEventName_200_OK() throws Exception {
+  void updateProcurementEvent_200_OK() throws Exception {
 
-    ProcurementEventName eventName = new ProcurementEventName();
-    eventName.setName("New name");
+    UpdateEvent updateEvent = new UpdateEvent();
+    updateEvent.setName("New name");
 
     mockMvc
-        .perform(put(EVENTS_PATH + "/{eventID}/name", PROC_PROJECT_ID, EVENT_ID)
+        .perform(put(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(eventName)))
+            .content(objectMapper.writeValueAsString(updateEvent)))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementEventService, times(1)).updateProcurementEventName(PROC_PROJECT_ID, EVENT_ID,
-        eventName.getName(), PRINCIPAL);
+    verify(procurementEventService, times(1)).updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID,
+        updateEvent, PRINCIPAL);
   }
 
   @Test
   void getEvent_200_OK() throws Exception {
 
     var eventDetail = new EventDetail();
-    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL))
-        .thenReturn(eventDetail);
+    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID)).thenReturn(eventDetail);
 
     mockMvc
         .perform(get(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
@@ -185,6 +184,6 @@ class EventsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
     // TODO: Verify content
 
-    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID);
   }
 }
