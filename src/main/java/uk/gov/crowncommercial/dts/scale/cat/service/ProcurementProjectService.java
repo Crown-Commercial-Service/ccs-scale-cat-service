@@ -8,10 +8,10 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -44,7 +44,6 @@ public class ProcurementProjectService {
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
   private final WebClient agreementsServiceWebClient;
-  private final ObjectMapper mapper;
 
   /**
    * SCC-440/441
@@ -170,18 +169,21 @@ public class ProcurementProjectService {
    */
   public Collection<DefineEventType> getProjectEventTypes(final Integer projectId) {
 
-    final var project =
-        retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(
-            () -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-    var eventTypes = ofNullable(agreementsServiceWebClient.get()
+    final var eventTypes = ofNullable(agreementsServiceWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-            project.getCaNumber(), project.getLotNumber()).retrieve().bodyToMono(Object[].class)
-        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration())))
-        .orElseThrow(() -> new ResourceNotFoundException("Unexpected error finding event types"));
+            project.getCaNumber(), project.getLotNumber()).retrieve().bodyToMono(EventType[].class)
+        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).orElseThrow(
+        () -> new ResourceNotFoundException("Unexpected error finding event types"));
 
-    return Arrays.stream(eventTypes)
-        .map(object -> DefineEventType.fromValue((String) ((LinkedHashMap) object).get("type")))
+    return Arrays.stream(eventTypes).map(object -> DefineEventType.fromValue(object.getType()))
         .collect(Collectors.toList());
+  }
+
+  @Data @AllArgsConstructor static class EventType {
+
+    private String type;
   }
 }

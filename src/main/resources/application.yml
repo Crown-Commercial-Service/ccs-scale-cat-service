@@ -91,7 +91,7 @@ config:
       getLotEventTypeDataTemplates:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
       getEventTypesForAgreement:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}//event-types
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
 
 
 ---
