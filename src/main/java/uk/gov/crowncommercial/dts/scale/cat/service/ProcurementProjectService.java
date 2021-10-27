@@ -20,10 +20,11 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -168,17 +169,19 @@ public class ProcurementProjectService {
    */
   public Collection<DefineEventType> getProjectEventTypes(final Integer projectId) {
 
-    final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
-        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+      final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+          .orElseThrow(
+              () -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-    final var eventTypes = ofNullable(agreementsServiceWebClient.get()
-        .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-            project.getCaNumber(), project.getLotNumber()).retrieve().bodyToMono(ProjectEventType[].class)
-        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).orElseThrow(
-        () -> new ResourceNotFoundException("Unexpected error finding event types"));
+      final var eventTypes = ofNullable(agreementsServiceWebClient.get()
+          .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
+              project.getCaNumber(), project.getLotNumber()).retrieve()
+          .bodyToMono(ProjectEventType[].class)
+          .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration())))
+          .orElseThrow(() -> new ResourceNotFoundException("Unexpected error finding event types"));
 
-    return Arrays.stream(eventTypes).map(object -> DefineEventType.fromValue(object.getType()))
-        .collect(Collectors.toList());
+      return Arrays.stream(eventTypes).map(object -> DefineEventType.fromValue(object.getType()))
+          .collect(Collectors.toList());
   }
 
 }

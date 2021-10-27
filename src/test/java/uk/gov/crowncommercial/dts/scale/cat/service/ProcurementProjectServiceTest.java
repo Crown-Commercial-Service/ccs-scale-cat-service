@@ -239,9 +239,20 @@ class ProcurementProjectServiceTest {
       return Optional.of(procurementProject);
     });
 
+    ProjectEventType eoiEventType = new ProjectEventType();
+    eoiEventType.setType("EOI");
+    ProjectEventType rfiEventType = new ProjectEventType();
+    rfiEventType.setType("RFI");
+    ProjectEventType rfpEventType = new ProjectEventType();
+    rfpEventType.setType("RFP");
+    ProjectEventType daEventType = new ProjectEventType();
+    daEventType.setType("DA");
+    ProjectEventType slEventType = new ProjectEventType();
+    slEventType.setType("SL");
+
     ProjectEventType[] eventTypes =
-        new ProjectEventType[] {new ProjectEventType("EOI"), new ProjectEventType("RFI"), new ProjectEventType("RFP"),
-            new ProjectEventType("DA"), new ProjectEventType("SL")};
+
+        new ProjectEventType[] {eoiEventType, rfiEventType, rfpEventType, daEventType, slEventType};
 
     when(jaggaerWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
