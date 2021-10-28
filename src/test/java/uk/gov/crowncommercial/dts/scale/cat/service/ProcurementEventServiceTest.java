@@ -341,7 +341,7 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void testUpdateProcurementEventNameThrowsJaggaerApplicationException() throws Exception {
+  void testUpdateProcurementEventThrowsJaggaerApplicationException() throws Exception {
     // Stub some objects
     var updateEvent = new UpdateEvent();
     var jaggaerErrorResponse = new CreateUpdateRfxResponse();

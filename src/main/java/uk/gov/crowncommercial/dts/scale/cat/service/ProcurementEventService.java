@@ -23,8 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.processor.UpdateEventNameProcessor;
-import uk.gov.crowncommercial.dts.scale.cat.processor.UpdateEventTypeProcessor;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -186,7 +184,8 @@ public class ProcurementEventService {
   }
 
   /**
-   * Update Event.
+   * Update Event. If no values are set the method does not carry out updates and no errors are
+   * thrown.
    *
    * @param procId
    * @param eventId
@@ -196,35 +195,54 @@ public class ProcurementEventService {
   public void updateProcurementEvent(Integer procId, String eventId, UpdateEvent updateEvent,
       final String principal) {
 
+    log.debug("Update Event {}", updateEvent);
+
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
         .rfxReferenceCode(event.getExternalReferenceId()).build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
+    var updateJaggaer = false;
+    var updateDB = false;
 
-    // Process updates
-    var updateEventTypeProcessor = new UpdateEventTypeProcessor(null);
-    var updateEventNameProcessor = new UpdateEventNameProcessor(updateEventTypeProcessor);
-    updateEventNameProcessor.process(updateEvent, rfx, event, principal);
+    // Update event name
+    if (updateEvent.getName() != null && !updateEvent.getName().isEmpty()) {
+      rfx.getRfxSetting().setShortDescription(updateEvent.getName());
+      event.setEventName(updateEvent.getName());
+      updateJaggaer = true;
+      updateDB = true;
+    }
+
+    // Update event type
+    if (updateEvent.getEventType() != null) {
+      event.setEventType(updateEvent.getEventType().getValue());
+      updateDB = true;
+    }
 
     // Save to Jaggaer
-    var createRfxResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-            .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
-            .bodyToMono(CreateUpdateRfxResponse.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating Rfx"));
+    if (updateJaggaer) {
+      var createRfxResponse =
+          ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+              .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
+              .bodyToMono(CreateUpdateRfxResponse.class)
+              .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                  .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                      "Unexpected error updating Rfx"));
 
-    if (createRfxResponse.getReturnCode() != 0
-        || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
-      log.error(createRfxResponse.toString());
-      throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
-          createRfxResponse.getReturnMessage());
+      if (createRfxResponse.getReturnCode() != 0
+          || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
+        log.error(createRfxResponse.toString());
+        throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
+            createRfxResponse.getReturnMessage());
+      }
+      log.info("Updated event: {}", createRfxResponse);
     }
-    log.info("Updated event: {}", createRfxResponse);
 
-    // Save update to local Tenders DB
-    retryableTendersDBDelegate.save(event);
+    // Save to Tenders DB
+    if (updateDB) {
+      event.setUpdatedAt(Instant.now());
+      event.setUpdatedBy(principal);
+      retryableTendersDBDelegate.save(event);
+    }
 
   }
 
