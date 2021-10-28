@@ -169,19 +169,18 @@ public class ProcurementProjectService {
    */
   public Collection<DefineEventType> getProjectEventTypes(final Integer projectId) {
 
-      final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
-          .orElseThrow(
-              () -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-      final var eventTypes = ofNullable(agreementsServiceWebClient.get()
-          .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-              project.getCaNumber(), project.getLotNumber()).retrieve()
-          .bodyToMono(ProjectEventType[].class)
-          .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration())))
-          .orElseThrow(() -> new ResourceNotFoundException("Unexpected error finding event types"));
+    final var eventTypes = ofNullable(agreementsServiceWebClient.get()
+        .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
+            project.getCaNumber(), project.getLotNumber()).retrieve()
+        .bodyToMono(ProjectEventType[].class)
+        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).orElseThrow(
+        () -> new ResourceNotFoundException("Unexpected error finding event types"));
 
-      return Arrays.stream(eventTypes).map(object -> DefineEventType.fromValue(object.getType()))
-          .collect(Collectors.toList());
+    return Arrays.stream(eventTypes).map(object -> DefineEventType.fromValue(object.getType()))
+        .collect(Collectors.toList());
   }
 
 }
