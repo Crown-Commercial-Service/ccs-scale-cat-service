@@ -43,6 +43,10 @@ data "aws_ssm_parameter" "jaggaer_token_url" {
   name = "/cat/${var.environment}/jaggaer-token-url"
 }
 
+data "aws_ssm_parameter" "jaggaer_self_service_id" {
+  name = "/cat/${var.environment}/jaggaer-self-service-id"
+}
+
 data "aws_ssm_parameter" "auth_server_jwk_set_uri" {
   name = "/cat/${var.environment}/auth-server-jwk-set-uri"
 }
@@ -62,6 +66,7 @@ resource "cloudfoundry_app" "cat_service" {
     "spring.security.oauth2.client.registration.jaggaer.client-secret" : data.aws_ssm_parameter.jaggaer_client_secret.value
     "spring.security.oauth2.client.provider.jaggaer.token-uri" : data.aws_ssm_parameter.jaggaer_token_url.value
     "config.external.jaggaer.baseUrl" : data.aws_ssm_parameter.jaggaer_base_url.value
+    "config.external.jaggaer.self-service-id" : data.aws_ssm_parameter.jaggaer_self_service_id.value
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
     "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
   }
