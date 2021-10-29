@@ -89,7 +89,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.info("Requested resource not found", exception);
 
-    var apiError = new ApiError(NOT_FOUND.toString(), ERR_MSG_VALIDATION, exception.getMessage());
+    var apiError =
+        new ApiError(NOT_FOUND.toString(), ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
@@ -120,8 +121,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.trace("Request validation exception", exception);
 
-    var apiError =
-        new ApiError(BAD_REQUEST.toString(), ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
+    var apiError = new ApiError(BAD_REQUEST.toString(), ERR_MSG_VALIDATION, exception.getMessage());
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 

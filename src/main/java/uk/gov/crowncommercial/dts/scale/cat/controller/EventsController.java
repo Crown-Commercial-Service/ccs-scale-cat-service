@@ -1,7 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import javax.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 @RequestMapping(path = "/tenders/projects/{procID}/events", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
@@ -45,7 +48,7 @@ public class EventsController extends AbstractRestController {
 
   @PutMapping("/{eventID}")
   public String updateProcurementEvent(@PathVariable("procID") Integer procId,
-      @PathVariable("eventID") String eventId, @RequestBody UpdateEvent updateEvent,
+      @PathVariable("eventID") String eventId, @Valid @RequestBody UpdateEvent updateEvent,
       JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
