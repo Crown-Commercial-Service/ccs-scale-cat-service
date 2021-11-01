@@ -295,22 +295,17 @@ class ProcurementEventServiceTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setEventType(EVENT_TYPE);
 
-    var rfx = Rfx.builder().build();
-    var updateRfx = new CreateUpdateRfx(OperationCode.UPDATE, rfx);
-
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = updateEvent(updateEvent);
 
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
-
   }
 
 
   @Test
-  void testUpdateProcurementEventNameThrowsIllegalArgumentException2() throws Exception {
-
+  void testUpdateProcurementEventThrowsIllegalArgumentException2() throws Exception {
 
     var updateEvent = new UpdateEvent();
 
@@ -325,8 +320,7 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void testUpdateProcurementEventNameThrowsResourceNotFoundApplicationException() throws Exception {
-
+  void testUpdateProcurementEventThrowsResourceNotFoundApplicationException() throws Exception {
 
     var updateEvent = new UpdateEvent();
 
@@ -344,6 +338,8 @@ class ProcurementEventServiceTest {
   void testUpdateProcurementEventThrowsJaggaerApplicationException() throws Exception {
     // Stub some objects
     var updateEvent = new UpdateEvent();
+    updateEvent.setName(UPDATED_EVENT_NAME);
+
     var jaggaerErrorResponse = new CreateUpdateRfxResponse();
     jaggaerErrorResponse.setReturnCode(1);
     jaggaerErrorResponse.setReturnMessage("NOT OK");

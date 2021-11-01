@@ -14,6 +14,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.retry.ExhaustedRetryException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import com.google.common.net.HttpHeaders;
@@ -116,7 +117,7 @@ public class GlobalErrorHandler implements ErrorController {
 
   @ResponseStatus(BAD_REQUEST)
   @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
-      IllegalArgumentException.class})
+      IllegalArgumentException.class, MethodArgumentNotValidException.class})
   public Errors handleValidationException(final Exception exception) {
 
     log.trace("Request validation exception", exception);
