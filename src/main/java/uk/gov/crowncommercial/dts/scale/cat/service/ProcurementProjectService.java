@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -19,11 +18,12 @@ import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -66,8 +66,8 @@ public class ProcurementProjectService {
    * @param principal
    * @return draft procurement project
    */
-  public DraftProcurementProject createFromAgreementDetails(AgreementDetails agreementDetails,
-      String principal) {
+  public DraftProcurementProject createFromAgreementDetails(final AgreementDetails agreementDetails,
+      final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
@@ -117,13 +117,15 @@ public class ProcurementProjectService {
         procurementProject.getId(), eventSummary.getId(), projectTitle);
   }
 
-  String getDefaultProjectTitle(AgreementDetails agreementDetails, String organisation) {
+  String getDefaultProjectTitle(final AgreementDetails agreementDetails,
+      final String organisation) {
     return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
         agreementDetails.getAgreementId(), agreementDetails.getLotId(), organisation);
   }
 
   /**
    * Update project name.
+   *
    * @param projectId The Project Id
    * @param projectName The Project Name
    * @param principal The Principal
@@ -133,7 +135,7 @@ public class ProcurementProjectService {
 
     Assert.hasLength(projectName, "New project name must be supplied");
 
-    ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+    var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     var tender = Tender.builder().tenderCode(project.getExternalProjectId())
         .tenderReferenceCode(project.getExternalReferenceId()).title(projectName).build();
@@ -167,19 +169,19 @@ public class ProcurementProjectService {
    * @param projectId the project id
    * @return Collection of event types
    */
-  public Collection<DefineEventType> getProjectEventTypes(final Integer projectId) {
+  public Collection<ViewEventType> getProjectEventTypes(final Integer projectId) {
 
     final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     final var eventTypes = ofNullable(agreementsServiceWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-            project.getCaNumber(), project.getLotNumber()).retrieve()
-        .bodyToMono(ProjectEventType[].class)
+            project.getCaNumber(), project.getLotNumber())
+        .retrieve().bodyToMono(ProjectEventType[].class)
         .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).orElseThrow(
-        () -> new ResourceNotFoundException("Unexpected error finding event types"));
+            () -> new ResourceNotFoundException("Unexpected error finding event types"));
 
-    return Arrays.stream(eventTypes).map(object -> DefineEventType.fromValue(object.getType()))
+    return Arrays.stream(eventTypes).map(object -> ViewEventType.fromValue(object.getType()))
         .collect(Collectors.toList());
   }
 

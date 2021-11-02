@@ -50,6 +50,10 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
+    		<groupId>org.springframework.boot</groupId>
+    		<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.retry</groupId>
 			<artifactId>spring-retry</artifactId>
 		</dependency>
@@ -78,6 +82,10 @@
 				<exclusion>
 					<groupId>com.google.guava</groupId>
 					<artifactId>guava</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>javax.validation</groupId>
+					<artifactId>validation-api</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -151,7 +159,8 @@
 							<verbose>false</verbose>
 							<configOptions>
 								<sourceFolder>src/gen/java/main</sourceFolder>
-								<useBeanValidation>false</useBeanValidation>
+								<useBeanValidation>true</useBeanValidation>
+								<performBeanValidation>true</performBeanValidation>
 								<dateLibrary>java8</dateLibrary>
 								<hideGenerationTimestamp>true</hideGenerationTimestamp>
 								<openApiNullable>false</openApiNullable>

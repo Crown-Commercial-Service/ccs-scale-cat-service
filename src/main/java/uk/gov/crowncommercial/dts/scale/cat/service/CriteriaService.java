@@ -144,7 +144,7 @@ public class CriteriaService {
                       "Unexpected error updating Rfx"));
 
       if (createRfxResponse.getReturnCode() != 0
-          || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
+          || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
         log.error(createRfxResponse.toString());
         throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
             createRfxResponse.getReturnMessage());
@@ -167,7 +167,7 @@ public class CriteriaService {
     } else {
       var lotEventTypeDataTemplates =
           agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-              event.getProject().getLotNumber(), EventType.fromValue(event.getEventType()));
+              event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
 
       // TODO: Decide how to handle multiple data templates being returned by AS
       dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
@@ -195,10 +195,10 @@ public class CriteriaService {
    * Rough first cut of code that adds Technical Envelope questions into Jaggaer. This will build an
    * Rfx object containing the Technical Envelope that can be sent to update an existing Rfx in
    * Jaggaer.
-   * 
+   *
    * Current behaviour - it will add questions it does not already have, but will not add
    * duplicates. Questions are not deleted - needs investigation.
-   * 
+   *
    * 'Mandatory' and 'description' fields are not supplied so cannot be completed. Id's are not
    * supplied so cannot update existing.
    */
@@ -224,10 +224,9 @@ public class CriteriaService {
 
       return Rfx.builder().rfxSetting(rfxSetting).techEnvelope(techEnvelope).build();
 
-    } else {
-      throw new IllegalArgumentException("Question type of '"
-          + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
     }
+    throw new IllegalArgumentException("Question type of '"
+        + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
   }
 
 }

@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
+package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import lombok.Data;
 

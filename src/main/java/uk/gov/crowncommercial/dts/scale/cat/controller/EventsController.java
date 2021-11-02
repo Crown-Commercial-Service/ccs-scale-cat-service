@@ -1,7 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import javax.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,7 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementEventName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
 /**
@@ -19,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 @RequestMapping(path = "/tenders/projects/{procID}/events", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
@@ -33,20 +36,6 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.createEvent(procId, createEvent, null, principal);
   }
 
-  @PutMapping("/{eventID}/name")
-  public String updateProcurementEventName(@PathVariable("procID") Integer procId,
-      @PathVariable("eventID") String eventId, @RequestBody ProcurementEventName eventName,
-      JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
-    log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
-
-    procurementEventService.updateProcurementEventName(procId, eventId, eventName.getName(),
-        principal);
-
-    return Constants.OK;
-  }
-
   @GetMapping("/{eventID}")
   public EventDetail getEvent(@PathVariable("procID") Integer procId,
       @PathVariable("eventID") String eventId, JwtAuthenticationToken authentication) {
@@ -54,6 +43,19 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEvent invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.getEvent(procId, eventId, principal);
+    return procurementEventService.getEvent(procId, eventId);
+  }
+
+  @PutMapping("/{eventID}")
+  public String updateProcurementEvent(@PathVariable("procID") Integer procId,
+      @PathVariable("eventID") String eventId, @Valid @RequestBody UpdateEvent updateEvent,
+      JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("updateProcurementEvent invoked on behalf of principal: {}", principal);
+
+    procurementEventService.updateProcurementEvent(procId, eventId, updateEvent, principal);
+
+    return Constants.OK;
   }
 }
