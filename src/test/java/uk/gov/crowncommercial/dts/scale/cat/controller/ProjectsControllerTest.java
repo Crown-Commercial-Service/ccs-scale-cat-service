@@ -34,9 +34,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import java.util.Arrays;
 
 /**
  * Web (mock MVC) Project controller tests. Security aware.
@@ -190,6 +193,10 @@ class ProjectsControllerTest {
    */
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
+
+    when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
+            .thenReturn(Arrays.asList( DefineEventType.values()));
+
     mockMvc
         .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))

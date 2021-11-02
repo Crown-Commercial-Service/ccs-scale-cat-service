@@ -5,14 +5,14 @@
 #        jwt:
 #          jwk-set-uri: "SET IN ENV"
 
-          
+
 logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
     uk.gov.crowncommercial.dts.scale.cat: DEBUG
-        
+
 spring:
   jpa:
     open-in-view: false
@@ -27,7 +27,7 @@ spring:
 server:
   error:
     path: "/error"
-      
+
 config:
   ocds:
     authority: ocds
@@ -36,7 +36,7 @@ config:
     maxAttempts: 5
     multiplier: 2
     delay: 1000
-        
+
   external:
     jaggaer:
 #      baseUrl: "SET IN ENV"
@@ -44,7 +44,7 @@ config:
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
-      
+
       rfxStatusToTenderStatus:
         0: PLANNED
         100: PLANNED
@@ -61,37 +61,39 @@ config:
         950: COMPLETE
         1400: COMPLETE
         1100: WITHDRAWN
-        1500: CANCELLED      
-      
+        1500: CANCELLED
+
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
-        templateId: project_609
+        templateId: tender_49
       createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_543
+        templateId: itt_445
       getBuyerCompanyProfile:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
         principalPlaceholder: "{{PRINCIPAL}}"
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
-        
+
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
-      timeoutDuration: 5      
+      timeoutDuration: 5
       getAgreementDetail:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
       getLotEventTypeDataTemplates:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+      getEventTypesForAgreement:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
 
-    
+
 ---
 spring:
   config:
@@ -107,20 +109,20 @@ spring:
       client:
 #        provider:
 #          jaggaer:
-#            token-uri: "SET IN ENV" 
+#            token-uri: "SET IN ENV"
         registration:
           jaggaer:
             authorization-grant-type: client_credentials
 #            client-id: "SET IN ENV"
 #            client-secret: "SET IN ENV"
-    
+
 ---
 spring:
   config:
     activate:
       on-profile:
         - local
-  datasource: 
+  datasource:
     url: jdbc:h2:mem:tenders;MODE=PostgreSQL
   jpa:
     database: h2
@@ -139,13 +141,13 @@ spring:
     database: postgresql
     show-sql: true
     hibernate:
-      ddl-auto: validate      
-      
+      ddl-auto: validate
+
 ---
 spring:
   config:
     activate:
       on-profile:
         - local-pg
-  datasource: 
+  datasource:
     url: jdbc:postgresql://127.0.0.1:5432/cat

@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.util.Arrays;
 import java.util.Collection;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
@@ -48,14 +47,15 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK;
   }
 
-  @GetMapping("/{procID}/event-types")
+  @GetMapping("/{proc-id}/event-types")
   public Collection<DefineEventType> listProcurementEventTypes(
-      JwtAuthenticationToken authentication) {
+          @PathVariable("proc-id") Integer procId,
+          JwtAuthenticationToken authentication
+  ) {
 
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
-    // TODO: This will be refactored to filter those applicable to the current project
-    return Arrays.asList(DefineEventType.values());
+    return procurementProjectService.getProjectEventTypes(procId);
   }
 }
