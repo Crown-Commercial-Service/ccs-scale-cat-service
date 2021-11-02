@@ -3,7 +3,6 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
-import java.util.Set;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -43,12 +42,12 @@ public class UserProfileService {
           .build(jaggaerSubUserProfileCacheLoader());
 
   @SneakyThrows
-  public String resolveJaggaerUserId(String principal) {
+  public String resolveJaggaerUserId(final String principal) {
     return jaggaerSubUserProfileCache.get(principal).getSecond().getUserId();
   }
 
   @SneakyThrows
-  public String resolveJaggaerBuyerCompanyId(String principal) {
+  public String resolveJaggaerBuyerCompanyId(final String principal) {
     return jaggaerSubUserProfileCache.get(principal).getFirst().getBravoId();
   }
 
@@ -56,7 +55,7 @@ public class UserProfileService {
     return new CacheLoader<>() {
 
       @Override
-      public Pair<ReturnCompanyInfo, SubUser> load(String principal) throws Exception {
+      public Pair<ReturnCompanyInfo, SubUser> load(final String principal) throws Exception {
         var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
         var principalPlaceholder = getBuyerCompanyProfile.get("principalPlaceholder");
         var endpoint =
@@ -82,7 +81,7 @@ public class UserProfileService {
         }
         var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
             .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
-        Set<SubUser> subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
+        var subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
 
         var subUser = subUsers.stream().filter(su -> principal.equalsIgnoreCase(su.getEmail()))
             .findFirst()
