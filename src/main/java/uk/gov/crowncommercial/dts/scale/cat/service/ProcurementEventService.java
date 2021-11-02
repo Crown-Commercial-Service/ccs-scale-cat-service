@@ -56,7 +56,7 @@ public class ProcurementEventService {
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
    * project name).
-   * 
+   *
    * Creates with a default event type of 'TBD'.
    *
    * @param projectId CCS project id
@@ -69,24 +69,24 @@ public class ProcurementEventService {
       Boolean downselectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
-    ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+    var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     // Set defaults if no values supplied
     var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
     var createEventOCDS = requireNonNullElse(createEvent.getOCDS(), new CreateEventOCDS());
-    var defineEventType =
-        requireNonNullElse(createEventNonOCDS.getEventType(), DefineEventType.RFP);
+    var eventTypeValue = ofNullable(createEventNonOCDS.getEventType())
+        .map(DefineEventType::getValue).orElseGet(() -> ViewEventType.TBD.getValue());
+
     downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
 
-    // TODO: if we are creating an event with a default type of 'TBD' - then why are we using RFP in
-    // the event name, or should this be TBD?
+    // TODO: Updated default event name to '###-TBD' - confirm correct (after removal of RFP)
     var eventName = requireNonNullElse(createEventOCDS.getTitle(),
-        getDefaultEventTitle(project.getProjectName(), defineEventType.getValue()));
+        getDefaultEventTitle(project.getProjectName(), eventTypeValue));
 
     var createUpdateRfx = createRfxRequest(project, eventName, principal);
 
-    CreateUpdateRfxResponse createRfxResponse =
+    var createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
             .bodyValue(createUpdateRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -94,7 +94,7 @@ public class ProcurementEventService {
                     "Unexpected error creating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
-        || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
+        || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
           createRfxResponse.getReturnMessage());
@@ -106,7 +106,7 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var event = ProcurementEvent.builder().project(project).eventName(eventName)
-        .externalEventId(createRfxResponse.getRfxId()).eventType(EventType.TBD.getValue())
+        .externalEventId(createRfxResponse.getRfxId()).eventType(eventTypeValue)
         .downSelectedSuppliers(downselectedSuppliers)
         .externalReferenceId(createRfxResponse.getRfxReferenceCode())
         .ocdsAuthorityName(ocdsAuthority).ocidPrefix(ocidPrefix).createdBy(principal)
@@ -115,7 +115,7 @@ public class ProcurementEventService {
     var procurementEvent = retryableTendersDBDelegate.save(event);
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-        createRfxResponse.getRfxReferenceCode(), EventType.fromValue(defineEventType.getValue()),
+        createRfxResponse.getRfxReferenceCode(), ViewEventType.fromValue(eventTypeValue),
         TenderStatus.PLANNING, EVENT_STAGE);
   }
 
@@ -192,8 +192,8 @@ public class ProcurementEventService {
    * @param updateEvent
    * @param principal
    */
-  public void updateProcurementEvent(Integer procId, String eventId, UpdateEvent updateEvent,
-      final String principal) {
+  public void updateProcurementEvent(final Integer procId, final String eventId,
+      final UpdateEvent updateEvent, final String principal) {
 
     log.debug("Update Event {}", updateEvent);
 
@@ -229,7 +229,7 @@ public class ProcurementEventService {
                       "Unexpected error updating Rfx"));
 
       if (createRfxResponse.getReturnCode() != 0
-          || !createRfxResponse.getReturnMessage().equals(Constants.OK)) {
+          || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
         log.error(createRfxResponse.toString());
         throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
             createRfxResponse.getReturnMessage());
@@ -255,7 +255,7 @@ public class ProcurementEventService {
         .collect(Collectors.toList());
   }
 
-  private String getDefaultEventTitle(String projectName, String eventType) {
+  private String getDefaultEventTitle(final String projectName, final String eventType) {
     return String.format(jaggaerAPIConfig.getCreateRfx().get("defaultTitleFormat"), projectName,
         eventType);
   }

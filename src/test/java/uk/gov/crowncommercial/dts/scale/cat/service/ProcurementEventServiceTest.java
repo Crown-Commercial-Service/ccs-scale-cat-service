@@ -58,7 +58,7 @@ class ProcurementEventServiceTest {
   private static final String OCID_PREFIX = "b5fd17";
   private static final String UPDATED_EVENT_NAME = "New Name";
   private static final String UPDATED_EVENT_TYPE = "DA";
-  private static final EventType EVENT_TYPE = EventType.DA;
+  private static final DefineEventType EVENT_TYPE = DefineEventType.DA;
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
@@ -119,7 +119,7 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
-    CreateEventNonOCDS createEventNonOCDS = new CreateEventNonOCDS();
+    var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.DA);
     createEvent.setNonOCDS(createEventNonOCDS);
 
@@ -138,7 +138,7 @@ class ProcurementEventServiceTest {
     assertEquals(RFX_REF_CODE, capturedProcEvent.getExternalReferenceId());
     assertEquals(PROC_PROJECT_ID, capturedProcEvent.getProject().getId());
     assertEquals(PRINCIPAL, capturedProcEvent.getCreatedBy());
-    assertEquals(EventType.TBD.getValue(), capturedProcEvent.getEventType());
+    assertEquals(ViewEventType.DA.getValue(), capturedProcEvent.getEventType());
     assertEquals(DOWNSELECTED_SUPPLIERS, capturedProcEvent.getDownSelectedSuppliers());
     assertNotNull(capturedProcEvent.getCreatedAt());
     assertNotNull(capturedProcEvent.getUpdatedAt());
@@ -151,7 +151,7 @@ class ProcurementEventServiceTest {
     assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
     assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
-    assertEquals(EventType.DA, eventStatus.getEventType());
+    assertEquals(ViewEventType.DA, eventStatus.getEventType());
   }
 
   @Test
@@ -200,14 +200,14 @@ class ProcurementEventServiceTest {
 
     // Verify that entity was created as expected
     verify(procurementEventRepo).save(captor.capture());
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", captor.getValue().getEventName());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-TBD", captor.getValue().getEventName());
     assertEquals(OCID_PREFIX, captor.getValue().getOcidPrefix());
     assertEquals(OCDS_AUTH_NAME, captor.getValue().getOcdsAuthorityName());
     assertEquals(RFX_ID, captor.getValue().getExternalEventId());
     assertEquals(RFX_REF_CODE, captor.getValue().getExternalReferenceId());
     assertEquals(PROC_PROJECT_ID, captor.getValue().getProject().getId());
     assertEquals(PRINCIPAL, captor.getValue().getCreatedBy());
-    assertEquals(EventType.TBD.getValue(), captor.getValue().getEventType());
+    assertEquals(ViewEventType.TBD.getValue(), captor.getValue().getEventType());
     assertEquals(false, captor.getValue().getDownSelectedSuppliers());
     assertNotNull(captor.getValue().getCreatedAt());
     assertNotNull(captor.getValue().getUpdatedAt());
@@ -216,11 +216,11 @@ class ProcurementEventServiceTest {
     assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
 
     // Verify that response is correct
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-RFP", eventStatus.getTitle());
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-TBD", eventStatus.getTitle());
     assertEquals(RFX_REF_CODE, eventStatus.getEventSupportId());
     assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
-    assertEquals(EventType.RFP, eventStatus.getEventType());
+    assertEquals(ViewEventType.TBD, eventStatus.getEventType());
   }
 
   @Test
@@ -248,7 +248,7 @@ class ProcurementEventServiceTest {
             .thenReturn(createUpdateRfxResponse);
 
     // Validate Database update
-    ArgumentCaptor<ProcurementEvent> captor = updateEvent(updateEvent);
+    var captor = updateEvent(updateEvent);
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_NAME, captor.getValue().getEventName());
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
@@ -280,7 +280,7 @@ class ProcurementEventServiceTest {
             .thenReturn(createUpdateRfxResponse);
 
     // Invoke
-    ArgumentCaptor<ProcurementEvent> captor = updateEvent(updateEvent);
+    var captor = updateEvent(updateEvent);
 
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_NAME, captor.getValue().getEventName());
@@ -296,13 +296,12 @@ class ProcurementEventServiceTest {
     updateEvent.setEventType(EVENT_TYPE);
 
     // Invoke
-    ArgumentCaptor<ProcurementEvent> captor = updateEvent(updateEvent);
+    var captor = updateEvent(updateEvent);
 
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
   }
-
 
   @Test
   void testUpdateProcurementEventThrowsIllegalArgumentException2() throws Exception {
@@ -313,9 +312,8 @@ class ProcurementEventServiceTest {
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
 
     // Invoke & assert
-    IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> procurementEventService
-            .updateProcurementEvent(PROC_PROJECT_ID, "EVENT-1", updateEvent, PRINCIPAL));
+    var ex = assertThrows(IllegalArgumentException.class, () -> procurementEventService
+        .updateProcurementEvent(PROC_PROJECT_ID, "EVENT-1", updateEvent, PRINCIPAL));
     assertEquals("Event ID 'EVENT-1' is not in the expected format", ex.getMessage());
   }
 
@@ -328,9 +326,8 @@ class ProcurementEventServiceTest {
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
 
     // Invoke & assert
-    ResourceNotFoundException ex =
-        assertThrows(ResourceNotFoundException.class, () -> procurementEventService
-            .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
+    var ex = assertThrows(ResourceNotFoundException.class, () -> procurementEventService
+        .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
     assertEquals("Event 'ocds-b5fd17-2' not found", ex.getMessage());
   }
 
@@ -369,9 +366,8 @@ class ProcurementEventServiceTest {
         });
 
     // Invoke & assert
-    JaggaerApplicationException jagEx =
-        assertThrows(JaggaerApplicationException.class, () -> procurementEventService
-            .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
+    var jagEx = assertThrows(JaggaerApplicationException.class, () -> procurementEventService
+        .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
 
@@ -383,19 +379,20 @@ class ProcurementEventServiceTest {
 
     private final CreateUpdateRfx left;
 
-    UpdateEventNameMatcher(CreateUpdateRfx left) {
+    UpdateEventNameMatcher(final CreateUpdateRfx left) {
       this.left = left;
     }
 
     @Override
-    public boolean matches(CreateUpdateRfx right) {
+    public boolean matches(final CreateUpdateRfx right) {
       return left.getRfx().getRfxSetting().getShortDescription()
           .equals(right.getRfx().getRfxSetting().getShortDescription())
           && right.getOperationCode() == OperationCode.UPDATE;
     }
   }
 
-  private ArgumentCaptor<ProcurementEvent> updateEvent(UpdateEvent updateEvent) throws Exception {
+  private ArgumentCaptor<ProcurementEvent> updateEvent(final UpdateEvent updateEvent)
+      throws Exception {
 
     // Stub some objects
     var procurementProject = new ProcurementProject();

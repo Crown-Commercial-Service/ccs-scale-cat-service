@@ -8,9 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 /**
@@ -26,7 +26,8 @@ public class ProjectsController extends AbstractRestController {
 
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
-      @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
+      @RequestBody final AgreementDetails agreementDetails,
+      final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
@@ -35,8 +36,9 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @PutMapping("/{procID}/name")
-  public String updateProcurementProjectName(@PathVariable("procID") Integer procId,
-      @RequestBody ProcurementProjectName projectName, JwtAuthenticationToken authentication) {
+  public String updateProcurementProjectName(@PathVariable("procID") final Integer procId,
+      @RequestBody final ProcurementProjectName projectName,
+      final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
@@ -48,10 +50,8 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @GetMapping("/{proc-id}/event-types")
-  public Collection<DefineEventType> listProcurementEventTypes(
-          @PathVariable("proc-id") Integer procId,
-          JwtAuthenticationToken authentication
-  ) {
+  public Collection<ViewEventType> listProcurementEventTypes(
+      @PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
 
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));

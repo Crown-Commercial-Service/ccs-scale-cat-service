@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -9,10 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Optional;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -24,15 +22,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -157,7 +157,7 @@ class ProcurementProjectServiceTest {
             .thenReturn(jaggaerErrorResponse);
 
     // Invoke & assert
-    JaggaerApplicationException jagEx = assertThrows(JaggaerApplicationException.class,
+    var jagEx = assertThrows(JaggaerApplicationException.class,
         () -> procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
@@ -209,9 +209,8 @@ class ProcurementProjectServiceTest {
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
 
     // Invoke & assert
-    IllegalArgumentException ex =
-        assertThrows(IllegalArgumentException.class, () -> procurementProjectService
-            .updateProcurementProjectName(PROC_PROJECT_ID, null, PRINCIPAL));
+    var ex = assertThrows(IllegalArgumentException.class, () -> procurementProjectService
+        .updateProcurementProjectName(PROC_PROJECT_ID, null, PRINCIPAL));
     assertEquals("New project name must be supplied", ex.getMessage());
   }
 
@@ -222,13 +221,13 @@ class ProcurementProjectServiceTest {
     when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
 
     // Invoke & assert
-    ResourceNotFoundException ex =
-        assertThrows(ResourceNotFoundException.class, () -> procurementProjectService
-            .updateProcurementProjectName(PROC_PROJECT_ID, UPDATED_PROJECT_NAME, PRINCIPAL));
+    var ex = assertThrows(ResourceNotFoundException.class, () -> procurementProjectService
+        .updateProcurementProjectName(PROC_PROJECT_ID, UPDATED_PROJECT_NAME, PRINCIPAL));
     assertEquals("Project '1' not found", ex.getMessage());
   }
 
-  @Test void testGetProjectEventTypes() throws JsonProcessingException {
+  @Test
+  void testGetProjectEventTypes() throws JsonProcessingException {
 
     // Mock behaviours
     var procurementProject = new ProcurementProject();
@@ -239,49 +238,50 @@ class ProcurementProjectServiceTest {
       return Optional.of(procurementProject);
     });
 
-    ProjectEventType eoiEventType = new ProjectEventType();
+    var eoiEventType = new ProjectEventType();
     eoiEventType.setType("EOI");
-    ProjectEventType rfiEventType = new ProjectEventType();
+    var rfiEventType = new ProjectEventType();
     rfiEventType.setType("RFI");
-    ProjectEventType rfpEventType = new ProjectEventType();
-    rfpEventType.setType("RFP");
-    ProjectEventType daEventType = new ProjectEventType();
+    var caEventType = new ProjectEventType();
+    caEventType.setType("CA");
+    var daEventType = new ProjectEventType();
     daEventType.setType("DA");
-    ProjectEventType slEventType = new ProjectEventType();
-    slEventType.setType("SL");
+    var fcEventType = new ProjectEventType();
+    fcEventType.setType("FC");
 
-    ProjectEventType[] eventTypes =
-
-        new ProjectEventType[] {eoiEventType, rfiEventType, rfpEventType, daEventType, slEventType};
+    var eventTypes =
+        new ProjectEventType[] {eoiEventType, rfiEventType, caEventType, daEventType, fcEventType};
 
     when(jaggaerWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-            CA_NUMBER, LOT_NUMBER).retrieve()
-        .bodyToMono(eq(ProjectEventType[].class))
-        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).thenReturn(
-        eventTypes);
+            CA_NUMBER, LOT_NUMBER)
+        .retrieve().bodyToMono(eq(ProjectEventType[].class))
+        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration())))
+            .thenReturn(eventTypes);
 
     // Invoke
-    Collection<DefineEventType> projectEventTypes =
-        procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID);
+    var projectEventTypes = procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID);
 
     // Verify
     verify(procurementProjectRepo).findById(PROC_PROJECT_ID);
 
-    assertEquals(projectEventTypes, Arrays.asList(DefineEventType.values()));
+    assertTrue(Arrays.asList(ViewEventType.values()).containsAll(projectEventTypes),
+        "ViewEventType not superset of projectEventTypes");
   }
 
-  @Test void testGetProjectEventTypesThrowsResourceNotFoundApplicationException() throws Exception {
+  @Test
+  void testGetProjectEventTypesThrowsResourceNotFoundApplicationException() throws Exception {
 
     // Mock behaviours
     when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> Optional.ofNullable(null));
 
     // Invoke & assert
-    ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+    var ex = assertThrows(ResourceNotFoundException.class,
         () -> procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID));
     assertEquals("Project '1' not found", ex.getMessage());
 
   }
+
   /**
    * Custom matcher to verify the object sent to Jaggaer to update a project.
    *
@@ -290,12 +290,12 @@ class ProcurementProjectServiceTest {
 
     private final CreateUpdateProject left;
 
-    UpdateProjectMatcher(CreateUpdateProject left) {
+    UpdateProjectMatcher(final CreateUpdateProject left) {
       this.left = left;
     }
 
     @Override
-    public boolean matches(CreateUpdateProject right) {
+    public boolean matches(final CreateUpdateProject right) {
       return left.getProject().getTender().getTitle()
           .equals(right.getProject().getTender().getTitle())
           && right.getOperationCode() == OperationCode.UPDATE;

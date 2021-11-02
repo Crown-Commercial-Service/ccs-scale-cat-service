@@ -18,8 +18,9 @@ public class TendersAPIModelUtils {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
 
-  public DraftProcurementProject buildDraftProcurementProject(AgreementDetails agreementDetails,
-      Integer procurementID, String eventID, String projectTitle) {
+  public DraftProcurementProject buildDraftProcurementProject(
+      final AgreementDetails agreementDetails, final Integer procurementID, final String eventID,
+      final String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setPocurementID(procurementID);
     draftProcurementProject.setEventId(eventID);
@@ -37,8 +38,9 @@ public class TendersAPIModelUtils {
     return draftProcurementProject;
   }
 
-  public EventSummary buildEventSummary(String eventId, String name, String supportID,
-      EventType type, TenderStatus status, ReleaseTag stage) {
+  public EventSummary buildEventSummary(final String eventId, final String name,
+      final String supportID, final ViewEventType type, final TenderStatus status,
+      final ReleaseTag stage) {
     var eventSummary = new EventSummary();
     eventSummary.setId(eventId);
     eventSummary.setTitle(name);
@@ -49,13 +51,14 @@ public class TendersAPIModelUtils {
     return eventSummary;
   }
 
-  public Errors buildErrors(List<ApiError> apiErrors) {
+  public Errors buildErrors(final List<ApiError> apiErrors) {
     var errors = new Errors();
     errors.setErrors(apiErrors);
     return errors;
   }
 
-  public EventDetail buildEventDetail(RfxSetting rfxSetting, ProcurementEvent procurementEvent) {
+  public EventDetail buildEventDetail(final RfxSetting rfxSetting,
+      final ProcurementEvent procurementEvent) {
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
@@ -66,7 +69,7 @@ public class TendersAPIModelUtils {
 
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
-    eventDetailNonOCDS.setEventType(EventType.fromValue(procurementEvent.getEventType()));
+    eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
     eventDetailNonOCDS.setEventSupportId(null);
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 

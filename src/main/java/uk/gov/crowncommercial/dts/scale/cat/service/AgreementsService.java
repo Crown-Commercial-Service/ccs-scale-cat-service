@@ -13,7 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
 /**
  *
@@ -26,7 +26,7 @@ public class AgreementsService {
   private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
 
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId,
-      final String lotId, final EventType eventType) {
+      final String lotId, final ViewEventType eventType) {
 
     var getLotEventTypeDataTemplatesUri =
         agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);

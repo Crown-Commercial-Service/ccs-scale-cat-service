@@ -54,7 +54,7 @@ class EventsControllerTest {
   private static final String EVENT_ID = "ocds-b5fd17-1";
   private static final String EVENT_NAME = "NAME";
   private static final String JAGGAER_ID = "1";
-  private static final EventType EVENT_TYPE = EventType.RFP;
+  private static final ViewEventType EVENT_TYPE = ViewEventType.TBD;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
 
@@ -123,7 +123,7 @@ class EventsControllerTest {
 
   @Test
   void createProcurementEvent_403_Forbidden() throws Exception {
-    JwtRequestPostProcessor invalidJwtReqPostProcessor =
+    var invalidJwtReqPostProcessor =
         jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
 
     mockMvc
@@ -157,7 +157,7 @@ class EventsControllerTest {
   @Test
   void updateProcurementEvent_200_OK() throws Exception {
 
-    UpdateEvent updateEvent = new UpdateEvent();
+    var updateEvent = new UpdateEvent();
     updateEvent.setName("New name");
 
     mockMvc
