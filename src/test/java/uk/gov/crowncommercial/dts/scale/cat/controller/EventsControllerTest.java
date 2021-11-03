@@ -54,9 +54,9 @@ class EventsControllerTest {
   private static final String EVENT_ID = "ocds-b5fd17-1";
   private static final String EVENT_NAME = "NAME";
   private static final String JAGGAER_ID = "1";
-  private static final EventType EVENT_TYPE = EventType.RFP;
+  private static final ViewEventType EVENT_TYPE = ViewEventType.TBD;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
-  private static final String EVENT_STAGE = "Tender";
+  private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -89,8 +89,8 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_200_OK() throws Exception {
 
-    var eventStatus = tendersAPIModelUtils.buildEventStatus(PROC_PROJECT_ID, EVENT_ID, EVENT_NAME,
-        JAGGAER_ID, EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+    var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
+        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
 
     when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
         nullable(Boolean.class), anyString())).thenReturn(eventStatus);
@@ -99,13 +99,12 @@ class EventsControllerTest {
         .perform(post(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(createEvent)))
-        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.eventId").value(EVENT_ID))
-        .andExpect(jsonPath("$.projectId").value(PROC_PROJECT_ID))
-        .andExpect(jsonPath("$.name").value(EVENT_NAME))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(EVENT_ID))
+        .andExpect(jsonPath("$.title").value(EVENT_NAME))
         .andExpect(jsonPath("$.eventSupportId").value(JAGGAER_ID))
-        .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.toString()))
-        .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE))
-        .andExpect(jsonPath("$.status").value(EVENT_STATUS.toString()));
+        .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.getValue()))
+        .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE.getValue()))
+        .andExpect(jsonPath("$.status").value(EVENT_STATUS.getValue()));
   }
 
   @Test
@@ -124,7 +123,7 @@ class EventsControllerTest {
 
   @Test
   void createProcurementEvent_403_Forbidden() throws Exception {
-    JwtRequestPostProcessor invalidJwtReqPostProcessor =
+    var invalidJwtReqPostProcessor =
         jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
 
     mockMvc
@@ -156,28 +155,27 @@ class EventsControllerTest {
   }
 
   @Test
-  void updateProcurementEventName_200_OK() throws Exception {
+  void updateProcurementEvent_200_OK() throws Exception {
 
-    ProcurementEventName eventName = new ProcurementEventName();
-    eventName.setName("New name");
+    var updateEvent = new UpdateEvent();
+    updateEvent.setName("New name");
 
     mockMvc
-        .perform(put(EVENTS_PATH + "/{eventID}/name", PROC_PROJECT_ID, EVENT_ID)
+        .perform(put(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(eventName)))
+            .content(objectMapper.writeValueAsString(updateEvent)))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementEventService, times(1)).updateProcurementEventName(PROC_PROJECT_ID, EVENT_ID,
-        eventName.getName(), PRINCIPAL);
+    verify(procurementEventService, times(1)).updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID,
+        updateEvent, PRINCIPAL);
   }
 
   @Test
   void getEvent_200_OK() throws Exception {
 
     var eventDetail = new EventDetail();
-    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL))
-        .thenReturn(eventDetail);
+    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID)).thenReturn(eventDetail);
 
     mockMvc
         .perform(get(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
@@ -186,6 +184,6 @@ class EventsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
     // TODO: Verify content
 
-    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID);
   }
 }

@@ -9,5 +9,5 @@ module "deploy-all" {
   environment = "uat"
   cf_username = var.cf_username
   cf_password = var.cf_password
-  instances   = 3  
+  instances   = 3
 }

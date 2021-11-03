@@ -7,10 +7,11 @@ import lombok.extern.jackson.Jacksonized;
 @Value
 @Builder
 @Jacksonized
-public class Rfx {
+public class TechEnvelopeSection {
 
-  RfxSetting rfxSetting;
-  RfxAdditionalInfoList rfxAdditionalInfoList;
-  SuppliersList suppliersList;
-  TechEnvelope techEnvelope;
+  String name;
+  String type;
+  Integer sectionPos;
+  String questionType;
+  TechEnvelopeParameterList parameterList;
 }

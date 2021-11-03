@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -105,7 +107,7 @@ class ProjectsControllerTest {
 
   @Test
   void createProcurementProject_403_Forbidden() throws Exception {
-    JwtRequestPostProcessor invalidJwtReqPostProcessor =
+    var invalidJwtReqPostProcessor =
         jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
 
     mockMvc
@@ -135,9 +137,8 @@ class ProjectsControllerTest {
   @Test
   void createProcurementProject_401_Forbidden_Invalid_JWT() throws Exception {
     // No subject claim
-    JwtRequestPostProcessor invalidJwtReqPostProcessor =
-        jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
-            .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+    var invalidJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
@@ -171,7 +172,7 @@ class ProjectsControllerTest {
   @Test
   void updateProcurementProjectName_200_OK() throws Exception {
 
-    ProcurementProjectName projectName = new ProcurementProjectName();
+    var projectName = new ProcurementProjectName();
     projectName.setName("New name");
 
     mockMvc
@@ -190,12 +191,16 @@ class ProjectsControllerTest {
    */
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
+
+    when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
+        .thenReturn(Arrays.asList(ViewEventType.values()));
+
     mockMvc
         .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
-        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "RFP", "DA", "SL")));
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(6))
+        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "CA", "DA", "FC", "TBD")));
   }
 
 }
