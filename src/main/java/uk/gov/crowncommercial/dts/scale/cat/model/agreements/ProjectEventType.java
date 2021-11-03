@@ -6,4 +6,8 @@ import lombok.Data;
 public class ProjectEventType {
 
     private String type;
+
+    private String description;
+
+    private  Boolean preMarketEvent;
 }

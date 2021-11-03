@@ -2,20 +2,20 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,21 +29,20 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Service layer tests
  */
 @SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class,
-    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class},
+    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,ModelMapper.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
@@ -60,6 +59,7 @@ class ProcurementProjectServiceTest {
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
   private static final CreateEvent CREATE_EVENT = new CreateEvent();
+
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
 
@@ -80,6 +80,9 @@ class ProcurementProjectServiceTest {
 
   @MockBean
   private AgreementsServiceAPIConfig agreementsServiceAPIConfig;
+
+  @Autowired
+  private ModelMapper modelMapper;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
@@ -238,26 +241,12 @@ class ProcurementProjectServiceTest {
       return Optional.of(procurementProject);
     });
 
-    var eoiEventType = new ProjectEventType();
-    eoiEventType.setType("EOI");
-    var rfiEventType = new ProjectEventType();
-    rfiEventType.setType("RFI");
-    var caEventType = new ProjectEventType();
-    caEventType.setType("CA");
-    var daEventType = new ProjectEventType();
-    daEventType.setType("DA");
-    var fcEventType = new ProjectEventType();
-    fcEventType.setType("FC");
-
-    var eventTypes =
-        new ProjectEventType[] {eoiEventType, rfiEventType, caEventType, daEventType, fcEventType};
-
     when(jaggaerWebClient.get()
         .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
             CA_NUMBER, LOT_NUMBER)
         .retrieve().bodyToMono(eq(ProjectEventType[].class))
         .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration())))
-            .thenReturn(eventTypes);
+            .thenReturn(TestUtils.getProjectEvents());
 
     // Invoke
     var projectEventTypes = procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID);
@@ -265,8 +254,23 @@ class ProcurementProjectServiceTest {
     // Verify
     verify(procurementProjectRepo).findById(PROC_PROJECT_ID);
 
-    assertTrue(Arrays.asList(ViewEventType.values()).containsAll(projectEventTypes),
-        "ViewEventType not superset of projectEventTypes");
+    //TODO : better way to compare ??
+    String defineEventTypes =
+        projectEventTypes.stream().map(eventType -> eventType.getType().getValue())
+            .collect(Collectors.joining(","));
+    String eventTypesDescription =
+        projectEventTypes.stream().map(eventType -> eventType.getDescription())
+            .collect(Collectors.joining(","));
+    String expectedEventTypes =
+        TestUtils.getEventTypes().stream().map(eventType -> eventType.getType().getValue())
+            .collect(Collectors.joining(","));
+    String expectedEventTypesDescription =
+        TestUtils.getEventTypes().stream().map(eventType -> eventType.getDescription())
+            .collect(Collectors.joining(","));
+    assertEquals(defineEventTypes,expectedEventTypes); ;
+    assertEquals(eventTypesDescription,expectedEventTypesDescription); ;
+
+
   }
 
   @Test

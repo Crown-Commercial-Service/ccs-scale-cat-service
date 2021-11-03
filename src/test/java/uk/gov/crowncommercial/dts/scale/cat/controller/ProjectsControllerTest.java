@@ -19,7 +19,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,10 +33,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -192,15 +190,17 @@ class ProjectsControllerTest {
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
 
+    var expectedJson =
+        "[" + "{\"type\":\"EOI\",\"description\":\"Expression of Interest\",\"preMarketActivity\":true}," + "{\"type\":\"RFI\",\"description\":\"Request for Information\",\"preMarketActivity\":true}," + "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true}," + "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true}," + "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
     when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
-        .thenReturn(Arrays.asList(ViewEventType.values()));
+        .thenReturn(TestUtils.getEventTypes());
 
     mockMvc
         .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(6))
-        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "CA", "DA", "FC", "TBD")));
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
+        .andExpect(content().string(expectedJson));
   }
 
 }
