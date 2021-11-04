@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
@@ -191,7 +190,15 @@ class ProjectsControllerTest {
   void listProcurementEventTypes_200_OK() throws Exception {
 
     var expectedJson =
-        "[" + "{\"type\":\"EOI\",\"description\":\"Expression of Interest\",\"preMarketActivity\":true}," + "{\"type\":\"RFI\",\"description\":\"Request for Information\",\"preMarketActivity\":true}," + "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true}," + "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true}," + "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
+        "[" +
+        "{\"type\":\"EOI\",\"description\":\"Expression of Interest\"," +
+        "\"preMarketActivity\":true}," +
+        "{\"type\":\"RFI\",\"description\":\"Request for Information\"," +
+        "\"preMarketActivity\":true}," +
+        "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true}," +
+        "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true}," +
+        "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
+
     when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
         .thenReturn(TestUtils.getEventTypes());
 
@@ -199,7 +206,8 @@ class ProjectsControllerTest {
         .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.size()").value(5))
         .andExpect(content().string(expectedJson));
   }
 

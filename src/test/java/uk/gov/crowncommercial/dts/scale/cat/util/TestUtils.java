@@ -24,23 +24,26 @@ public class TestUtils {
     return eoiEventType;
   }
 
-
   public static List<EventType> getEventTypes() {
     var eventTypes =
-        new EventType[] {getEventType(DefineEventType.EOI, EXPRESSION_OF_INTEREST, true),
+        new EventType[] {
+            getEventType(DefineEventType.EOI, EXPRESSION_OF_INTEREST, true),
             getEventType(DefineEventType.RFI, REQUEST_FOR_INFORMATION, true),
             getEventType(DefineEventType.CA, CAPABILITY_ASSESSMENT, true),
             getEventType(DefineEventType.DA, DIRECT_AWARD, true),
             getEventType(DefineEventType.FC, FURTHER_COMPETITION, true)};
     return Arrays.asList(eventTypes);
   }
-  private static ProjectEventType getProjectEventType(String type, String description, boolean preMarketActivity) {
+
+  private static ProjectEventType getProjectEventType(String type, String description,
+      boolean preMarketActivity) {
     var eoiEventType = new ProjectEventType();
     eoiEventType.setType(type);
     eoiEventType.setDescription(description);
     eoiEventType.setPreMarketActivity(preMarketActivity);
     return eoiEventType;
   }
+
   public static ProjectEventType[] getProjectEvents() {
     return
         new ProjectEventType[] {

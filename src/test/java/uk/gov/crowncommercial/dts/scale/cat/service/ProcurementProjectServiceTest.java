@@ -82,9 +82,6 @@ class ProcurementProjectServiceTest {
   private AgreementsServiceAPIConfig agreementsServiceAPIConfig;
 
   @Autowired
-  private ModelMapper modelMapper;
-
-  @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
   @Autowired
