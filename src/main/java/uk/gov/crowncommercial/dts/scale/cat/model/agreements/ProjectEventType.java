@@ -9,5 +9,5 @@ public class ProjectEventType {
 
     private String description;
 
-    private  Boolean preMarketEvent;
+    private  Boolean preMarketActivity;
 }

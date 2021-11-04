@@ -34,11 +34,11 @@ public class TestUtils {
             getEventType(DefineEventType.FC, FURTHER_COMPETITION, true)};
     return Arrays.asList(eventTypes);
   }
-  private static ProjectEventType getProjectEventType(String type, String description, boolean preMarketEvent) {
+  private static ProjectEventType getProjectEventType(String type, String description, boolean preMarketActivity) {
     var eoiEventType = new ProjectEventType();
     eoiEventType.setType(type);
     eoiEventType.setDescription(description);
-    eoiEventType.setPreMarketEvent(preMarketEvent);
+    eoiEventType.setPreMarketActivity(preMarketActivity);
     return eoiEventType;
   }
   public static ProjectEventType[] getProjectEvents() {
