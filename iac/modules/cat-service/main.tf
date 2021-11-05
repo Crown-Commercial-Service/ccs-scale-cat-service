@@ -55,6 +55,10 @@ data "aws_ssm_parameter" "agreements_service_base_url" {
   name = "/cat/${var.environment}/agreements-service-base-url"
 }
 
+data "aws_ssm_parameter" "conclave_wrapper_api_key" {
+  name = "/cat/${var.environment}/conclave-wrapper-api-key"
+}
+
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
@@ -69,6 +73,7 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.self-service-id" : data.aws_ssm_parameter.jaggaer_self_service_id.value
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
     "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
+    "config.external.conclave.wrapper-api-key" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"
