@@ -8,7 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
-import java.util.*;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,8 +29,14 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -42,7 +48,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  * Service layer tests
  */
 @SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class,
-    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,ModelMapper.class},
+    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ModelMapper.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
@@ -59,7 +65,6 @@ class ProcurementProjectServiceTest {
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
   private static final CreateEvent CREATE_EVENT = new CreateEvent();
-
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
 
@@ -251,22 +256,17 @@ class ProcurementProjectServiceTest {
     // Verify
     verify(procurementProjectRepo).findById(PROC_PROJECT_ID);
 
-    //TODO : better way to compare ??
-    String defineEventTypes =
-        projectEventTypes.stream().map(eventType -> eventType.getType().getValue())
-            .collect(Collectors.joining(","));
-    String eventTypesDescription =
-        projectEventTypes.stream().map(eventType -> eventType.getDescription())
-            .collect(Collectors.joining(","));
-    String expectedEventTypes =
-        TestUtils.getEventTypes().stream().map(eventType -> eventType.getType().getValue())
-            .collect(Collectors.joining(","));
-    String expectedEventTypesDescription =
-        TestUtils.getEventTypes().stream().map(eventType -> eventType.getDescription())
-            .collect(Collectors.joining(","));
-    assertEquals(defineEventTypes,expectedEventTypes); ;
-    assertEquals(eventTypesDescription,expectedEventTypesDescription); ;
-
+    // TODO : better way to compare ??
+    var defineEventTypes = projectEventTypes.stream()
+        .map(eventType -> eventType.getType().getValue()).collect(Collectors.joining(","));
+    var eventTypesDescription =
+        projectEventTypes.stream().map(EventType::getDescription).collect(Collectors.joining(","));
+    var expectedEventTypes = TestUtils.getEventTypes().stream()
+        .map(eventType -> eventType.getType().getValue()).collect(Collectors.joining(","));
+    var expectedEventTypesDescription = TestUtils.getEventTypes().stream()
+        .map(EventType::getDescription).collect(Collectors.joining(","));
+    assertEquals(defineEventTypes, expectedEventTypes);
+    assertEquals(eventTypesDescription, expectedEventTypesDescription);
 
   }
 

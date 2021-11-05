@@ -15,8 +15,8 @@ public class TestUtils {
   public static final String DIRECT_AWARD = "Direct Award";
   public static final String FURTHER_COMPETITION = "Further Competition";
 
-  public static EventType getEventType(DefineEventType defineEventType, String description,
-      boolean preMarketActivity) {
+  public static EventType getEventType(final DefineEventType defineEventType,
+      final String description, final boolean preMarketActivity) {
     var eoiEventType = new EventType();
     eoiEventType.setType(defineEventType);
     eoiEventType.setDescription(description);
@@ -26,8 +26,7 @@ public class TestUtils {
 
   public static List<EventType> getEventTypes() {
     var eventTypes =
-        new EventType[] {
-            getEventType(DefineEventType.EOI, EXPRESSION_OF_INTEREST, true),
+        new EventType[] {getEventType(DefineEventType.EOI, EXPRESSION_OF_INTEREST, true),
             getEventType(DefineEventType.RFI, REQUEST_FOR_INFORMATION, true),
             getEventType(DefineEventType.CA, CAPABILITY_ASSESSMENT, true),
             getEventType(DefineEventType.DA, DIRECT_AWARD, true),
@@ -35,8 +34,8 @@ public class TestUtils {
     return Arrays.asList(eventTypes);
   }
 
-  private static ProjectEventType getProjectEventType(String type, String description,
-      boolean preMarketActivity) {
+  private static ProjectEventType getProjectEventType(final String type, final String description,
+      final boolean preMarketActivity) {
     var eoiEventType = new ProjectEventType();
     eoiEventType.setType(type);
     eoiEventType.setDescription(description);
@@ -45,12 +44,10 @@ public class TestUtils {
   }
 
   public static ProjectEventType[] getProjectEvents() {
-    return
-        new ProjectEventType[] {
-            getProjectEventType("EOI", EXPRESSION_OF_INTEREST, true),
-            getProjectEventType("RFI", REQUEST_FOR_INFORMATION, true),
-            getProjectEventType("CA", CAPABILITY_ASSESSMENT, true),
-            getProjectEventType("DA", DIRECT_AWARD, false),
-            getProjectEventType("FC", FURTHER_COMPETITION, false)};
+    return new ProjectEventType[] {getProjectEventType("EOI", EXPRESSION_OF_INTEREST, true),
+        getProjectEventType("RFI", REQUEST_FOR_INFORMATION, true),
+        getProjectEventType("CA", CAPABILITY_ASSESSMENT, true),
+        getProjectEventType("DA", DIRECT_AWARD, false),
+        getProjectEventType("FC", FURTHER_COMPETITION, false)};
   }
 }
