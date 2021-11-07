@@ -93,6 +93,12 @@ config:
       getEventTypesForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
 
+    conclaveWrapper:
+      # baseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      timeoutDuration: 5
+      getUser:
+        uriTemplate: /user-profiles?user-id={user-id}
 
 ---
 spring:
