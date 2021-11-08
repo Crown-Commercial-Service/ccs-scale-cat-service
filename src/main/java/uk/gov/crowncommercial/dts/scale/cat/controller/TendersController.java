@@ -12,7 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.google.common.base.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
+import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 
 /**
  * Tenders ('Base Data' tag in YAML)
@@ -22,6 +26,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 @RequiredArgsConstructor
 @Slf4j
 public class TendersController extends AbstractRestController {
+
+  private final ConclaveService conclaveService;
+  private final UserProfileService userProfileService;
 
   @GetMapping("/event-types")
   public Collection<ViewEventType> listProcurementEventTypes(
@@ -34,7 +41,7 @@ public class TendersController extends AbstractRestController {
   }
 
   @GetMapping("/users/{user-id}")
-  public Object getUserRoles(@PathVariable("user-id") final String userId,
+  public GetUserResponse getUser(@PathVariable("user-id") final String userId,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
@@ -46,7 +53,10 @@ public class TendersController extends AbstractRestController {
       throw new AccessDeniedException("TODO");
     }
 
-    return null;
+    var conclaveUser = conclaveService.getUser(userId);
+
+    // TODO - check conclave user roles(?) buyer/supplier and invoke Jaggaer to cross-check
+    return new GetUserResponse().addRolesItem(RolesEnum.BUYER);
   }
 
 }
