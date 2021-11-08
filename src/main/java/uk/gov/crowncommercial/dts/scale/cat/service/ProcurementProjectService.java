@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -20,11 +21,9 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -44,6 +43,7 @@ public class ProcurementProjectService {
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
   private final WebClient agreementsServiceWebClient;
+  private final ModelMapper modelMapper;
 
   /**
    * SCC-440/441
@@ -169,7 +169,7 @@ public class ProcurementProjectService {
    * @param projectId the project id
    * @return Collection of event types
    */
-  public Collection<ViewEventType> getProjectEventTypes(final Integer projectId) {
+  public Collection<EventType> getProjectEventTypes(final Integer projectId) {
 
     final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -181,7 +181,7 @@ public class ProcurementProjectService {
         .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration()))).orElseThrow(
             () -> new ResourceNotFoundException("Unexpected error finding event types"));
 
-    return Arrays.stream(eventTypes).map(object -> ViewEventType.fromValue(object.getType()))
+    return Arrays.stream(eventTypes).map(object -> modelMapper.map(object, EventType.class))
         .collect(Collectors.toList());
   }
 
