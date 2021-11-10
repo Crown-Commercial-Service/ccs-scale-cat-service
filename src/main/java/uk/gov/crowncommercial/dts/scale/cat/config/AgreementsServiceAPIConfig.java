@@ -13,10 +13,14 @@ import lombok.Data;
 @Data
 public class AgreementsServiceAPIConfig {
 
+  public static final String KEY_URI_TEMPLATE = "uriTemplate";
+
   private String baseUrl;
   private String apiKey;
   private Integer timeoutDuration;
   private Map<String, String> getAgreementDetail;
   private Map<String, String> getLotDetailsForAgreement;
+  private Map<String, String> getLotEventTypeDataTemplates;
+  private Map<String, String> getEventTypesForAgreement;
 
 }

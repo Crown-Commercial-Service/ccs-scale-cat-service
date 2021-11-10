@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
@@ -36,6 +35,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -105,7 +105,7 @@ class ProjectsControllerTest {
 
   @Test
   void createProcurementProject_403_Forbidden() throws Exception {
-    JwtRequestPostProcessor invalidJwtReqPostProcessor =
+    var invalidJwtReqPostProcessor =
         jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
 
     mockMvc
@@ -135,9 +135,8 @@ class ProjectsControllerTest {
   @Test
   void createProcurementProject_401_Forbidden_Invalid_JWT() throws Exception {
     // No subject claim
-    JwtRequestPostProcessor invalidJwtReqPostProcessor =
-        jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
-            .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+    var invalidJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
@@ -171,7 +170,7 @@ class ProjectsControllerTest {
   @Test
   void updateProcurementProjectName_200_OK() throws Exception {
 
-    ProcurementProjectName projectName = new ProcurementProjectName();
+    var projectName = new ProcurementProjectName();
     projectName.setName("New name");
 
     mockMvc
@@ -190,12 +189,24 @@ class ProjectsControllerTest {
    */
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
+
+    var expectedJson = "[" + "{\"type\":\"EOI\",\"description\":\"Expression of Interest\","
+        + "\"preMarketActivity\":true},"
+        + "{\"type\":\"RFI\",\"description\":\"Request for Information\","
+        + "\"preMarketActivity\":true},"
+        + "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true},"
+        + "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true},"
+        + "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
+
+    when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
+        .thenReturn(TestUtils.getEventTypes());
+
     mockMvc
         .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
-        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "RFP", "DA", "SL")));
+        .andExpect(content().string(expectedJson));
   }
 
 }

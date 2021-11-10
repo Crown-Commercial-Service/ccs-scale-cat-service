@@ -18,8 +18,9 @@ public class TendersAPIModelUtils {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
 
-  public DraftProcurementProject buildDraftProcurementProject(AgreementDetails agreementDetails,
-      Integer procurementID, String eventID, String projectTitle) {
+  public DraftProcurementProject buildDraftProcurementProject(
+      final AgreementDetails agreementDetails, final Integer procurementID, final String eventID,
+      final String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setPocurementID(procurementID);
     draftProcurementProject.setEventId(eventID);
@@ -37,55 +38,52 @@ public class TendersAPIModelUtils {
     return draftProcurementProject;
   }
 
-  public EventStatus buildEventStatus(Integer projectId, String eventId, String name,
-      String supportID, EventType type, TenderStatus status, String stage) {
-    var eventStatus = new EventStatus();
-    eventStatus.setProjectId(projectId);
-    eventStatus.setEventId(eventId);
-    eventStatus.setName(name);
-    eventStatus.eventSupportId(supportID);
-    eventStatus.setEventType(type);
-    eventStatus.setStatus(status);
-    eventStatus.setEventStage(stage);
-
-    return eventStatus;
+  public EventSummary buildEventSummary(final String eventId, final String name,
+      final String supportID, final ViewEventType type, final TenderStatus status,
+      final ReleaseTag stage) {
+    var eventSummary = new EventSummary();
+    eventSummary.setId(eventId);
+    eventSummary.setTitle(name);
+    eventSummary.setEventStage(stage);
+    eventSummary.setStatus(status);
+    eventSummary.setEventType(type);
+    eventSummary.setEventSupportId(supportID);
+    return eventSummary;
   }
 
-  public Errors buildErrors(List<ApiError> apiErrors) {
+  public Errors buildErrors(final List<ApiError> apiErrors) {
     var errors = new Errors();
     errors.setErrors(apiErrors);
     return errors;
   }
 
-  public EventDetail buildEventDetail(RfxSetting rfxSetting, ProcurementEvent procurementEvent) {
+  public EventDetail buildEventDetail(final RfxSetting rfxSetting,
+      final ProcurementEvent procurementEvent) {
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
     agreementDetails.setAgreementId(procurementEvent.getProject().getCaNumber());
-    // agreementDefinition.setAgreementName(TODO: Get it from the agreements service);
     agreementDetails.setLotId(procurementEvent.getProject().getLotNumber());
+
+    // TODO: SCC-439 complete mapping of all nonOCDS and OCDS fields
 
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
-    eventDetailNonOCDS.setEventId(rfxSetting.getRfxId());
-    eventDetailNonOCDS.setName(rfxSetting.getShortDescription());
-    eventDetailNonOCDS
-        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    // eventDetailNonOCDS.setEventResponseDate(rfxSetting.get);
+    eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
+    eventDetailNonOCDS.setEventSupportId(null);
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();
-
+    eventDetailOCDS.setId(rfxSetting.getRfxId());
+    eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
+    eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
+    eventDetailOCDS
+        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+    // TODO: TBC - mappings required
+    eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     eventDetail.setOCDS(eventDetailOCDS);
-    // TODO: Map to SCC-439 nonOCDS and OCDS fields
-    // eventDetail.setId(rfxSetting.getRfxId());
-    // eventDetail.setTitle(rfxSetting.getShortDescription());
-    // eventDetail.setDescription(rfxSetting.getLongDescription());
-    // eventDetail.setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    //
-    // // TODO: TBC - mappings required
-    // eventDetail.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
+
     return eventDetail;
   }
 

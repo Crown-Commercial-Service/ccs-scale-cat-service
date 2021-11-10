@@ -14,6 +14,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.retry.ExhaustedRetryException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import com.google.common.net.HttpHeaders;
@@ -21,9 +22,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.MalformedJwtException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UpstreamServiceException;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -47,57 +48,16 @@ public class GlobalErrorHandler implements ErrorController {
 
   private final TendersAPIModelUtils tendersAPIModelUtils;
 
-  @ResponseStatus(BAD_REQUEST)
-  @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
-      IllegalArgumentException.class})
-  public Errors handleValidationException(final Exception exception) {
+  @RequestMapping("/error")
+  public ResponseEntity<Errors> handleError(final HttpServletRequest request,
+      final HttpServletResponse response) {
 
-    log.trace("Request validation exception", exception);
+    var exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
 
-    var apiError =
-        new ApiError(BAD_REQUEST.toString(), ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
-  }
+    log.error("Unknown container/filter exception", exception);
 
-  @ResponseStatus(INTERNAL_SERVER_ERROR)
-  @ExceptionHandler({WebClientResponseException.class})
-  public Errors handleWebClientResponseException(final WebClientResponseException exception) {
-
-    Optional<HttpRequest> request = Optional.ofNullable(exception.getRequest());
-
-    var invokedService = "unknown";
-    if (request.isPresent()) {
-      invokedService = request.get().getMethod() + " " + request.get().getURI();
-    }
-
-    var logErrorMsg =
-        String.format("Error invoking upstream service [%s], received status: [%d], body: [%s]",
-            invokedService, exception.getRawStatusCode(), exception.getResponseBodyAsString());
-
-    log.error(logErrorMsg, exception);
-
-    return tendersAPIModelUtils.buildErrors(
-        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "")));
-  }
-
-  @ResponseStatus(NOT_FOUND)
-  @ExceptionHandler({ResourceNotFoundException.class})
-  public Errors handleResourceNotFoundException(final ResourceNotFoundException exception) {
-
-    log.info("Requested resource not found", exception);
-
-    var apiError = new ApiError(NOT_FOUND.toString(), ERR_MSG_VALIDATION, exception.getMessage());
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
-  }
-
-  @ResponseStatus(INTERNAL_SERVER_ERROR)
-  @ExceptionHandler(JaggaerApplicationException.class)
-  public Errors handleJaggaerApplicationException(final JaggaerApplicationException exception) {
-
-    log.error("Jaggaer application error", exception);
-
-    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(tendersAPIModelUtils.buildErrors(
+        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -124,6 +84,17 @@ public class GlobalErrorHandler implements ErrorController {
         .body(tendersAPIModelUtils.buildErrors(Arrays.asList(apiError)));
   }
 
+  @ResponseStatus(NOT_FOUND)
+  @ExceptionHandler({ResourceNotFoundException.class})
+  public Errors handleResourceNotFoundException(final ResourceNotFoundException exception) {
+
+    log.info("Requested resource not found", exception);
+
+    var apiError =
+        new ApiError(NOT_FOUND.toString(), ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+  }
+
   @ResponseStatus(INTERNAL_SERVER_ERROR)
   @ExceptionHandler(Exception.class)
   public Errors handleUnknownException(final Exception exception) {
@@ -134,16 +105,46 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
-  @RequestMapping("/error")
-  public ResponseEntity<Errors> handleError(final HttpServletRequest request,
-      final HttpServletResponse response) {
+  @ResponseStatus(INTERNAL_SERVER_ERROR)
+  @ExceptionHandler(UpstreamServiceException.class)
+  public Errors handleUpstreamServiceException(final UpstreamServiceException exception) {
 
-    var exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
+    log.error("Upstream application error", exception);
 
-    log.error("Unknown container/filter exception", exception);
+    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+  }
 
-    return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(tendersAPIModelUtils.buildErrors(
-        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
+  @ResponseStatus(BAD_REQUEST)
+  @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
+      IllegalArgumentException.class, MethodArgumentNotValidException.class})
+  public Errors handleValidationException(final Exception exception) {
+
+    log.trace("Request validation exception", exception);
+
+    var apiError = new ApiError(BAD_REQUEST.toString(), ERR_MSG_VALIDATION, exception.getMessage());
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+  }
+
+  @ResponseStatus(INTERNAL_SERVER_ERROR)
+  @ExceptionHandler({WebClientResponseException.class})
+  public Errors handleWebClientResponseException(final WebClientResponseException exception) {
+
+    final Optional<HttpRequest> request = Optional.ofNullable(exception.getRequest());
+
+    var invokedService = "unknown";
+    if (request.isPresent()) {
+      invokedService = request.get().getMethod() + " " + request.get().getURI();
+    }
+
+    var logErrorMsg =
+        String.format("Error invoking upstream service [%s], received status: [%d], body: [%s]",
+            invokedService, exception.getRawStatusCode(), exception.getResponseBodyAsString());
+
+    log.error(logErrorMsg, exception);
+
+    return tendersAPIModelUtils.buildErrors(
+        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "")));
   }
 
 }
