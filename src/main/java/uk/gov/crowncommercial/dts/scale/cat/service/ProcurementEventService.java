@@ -34,8 +34,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class ProcurementEventService {
 
-  // TODO: Jaggaer suppliers hard coded for now, pending further design
-  private static final List<String> TEMP_SUPPLIER_IDS = Arrays.asList("53104", "53410", "53411");
+  // TODO: Single test-supplier (supplier org mappings pending)
+  private static final List<String> TEMP_SUPPLIER_IDS = Arrays.asList("53104");
 
   private static final Integer RFI_FLAG = 0;
   private static final String RFX_TYPE = "STANDARD_ITT";
