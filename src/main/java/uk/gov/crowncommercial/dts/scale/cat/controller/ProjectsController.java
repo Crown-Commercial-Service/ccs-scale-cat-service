@@ -26,7 +26,7 @@ public class ProjectsController extends AbstractRestController {
       @RequestBody final AgreementDetails agreementDetails,
       final JwtAuthenticationToken authentication) {
 
-    var principal = getPrincipalFromJwt(authentication);
+    final var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
@@ -37,7 +37,7 @@ public class ProjectsController extends AbstractRestController {
       @RequestBody final ProcurementProjectName projectName,
       final JwtAuthenticationToken authentication) {
 
-    var principal = getPrincipalFromJwt(authentication);
+    final var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
 
     procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
@@ -54,5 +54,15 @@ public class ProjectsController extends AbstractRestController {
         getPrincipalFromJwt(authentication));
 
     return procurementProjectService.getProjectEventTypes(procId);
+  }
+
+  @GetMapping("/{proc-id}/users")
+  public Collection<TeamMember> getProjectUsers(@PathVariable("proc-id") final Integer procId,
+      final JwtAuthenticationToken authentication) {
+
+    log.info("getProjectUsers invoked on behalf of principal: {}",
+        getPrincipalFromJwt(authentication));
+
+    return procurementProjectService.getProjectTeamMembers(procId);
   }
 }

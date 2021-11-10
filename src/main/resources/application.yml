@@ -38,6 +38,12 @@ config:
     delay: 1000
 
   external:
+    conclave:
+      # baseUrl: "SET IN ENV"
+      # wrapper-api-key: "SET IN ENV"
+      timeoutDuration: 5
+      getUserProfile:
+        endpoint: /user-profiles?user-id={email}
     jaggaer:
 #      baseUrl: "SET IN ENV"
       timeoutDuration: 5
@@ -68,6 +74,8 @@ config:
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
         templateId: tender_49
+      getProject:
+        endpoint: /esop/jint/api/public/ja/v1/projects/{id}
       createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
@@ -75,7 +83,7 @@ config:
         templateId: itt_445
       getBuyerCompanyProfile:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID==${config.external.jaggaer.self-service-id}
         principalPlaceholder: "{{PRINCIPAL}}"
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}

@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
@@ -75,11 +76,11 @@ public class UserProfileService {
     return jaggaerSubUserProfileCache.get(subUserIdentityEmail).getFirst().getBravoId();
   }
 
-  @SneakyThrows
-  public String resolveJaggaerUserEmail(final String principalUserId) {
-    var subUserIdentityUserId =
+  // @SneakyThrows
+  public SubUser resolveJaggaerUserEmail(final String principalUserId) throws ExecutionException {
+    final var subUserIdentityUserId =
         new SubUserIdentity(principalUserId, getFilterPredicateUserId(principalUserId));
-    return jaggaerSubUserProfileCache.get(subUserIdentityUserId).getSecond().getEmail();
+    return jaggaerSubUserProfileCache.get(subUserIdentityUserId).getSecond();
   }
 
   private CacheLoader<SubUserIdentity, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCacheLoader() {
@@ -88,12 +89,12 @@ public class UserProfileService {
       @Override
       public Pair<ReturnCompanyInfo, SubUser> load(final SubUserIdentity subUserIdentity)
           throws Exception {
-        var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
-        var endpoint = getBuyerCompanyProfile.get("endpoint");
+        final var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
+        final var endpoint = getBuyerCompanyProfile.get("endpoint");
 
         log.info("Calling company profiles endpoint: {}", endpoint);
 
-        var getCompanyDataResponse = ofNullable(
+        final var getCompanyDataResponse = ofNullable(
             jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
                 .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).orElseThrow(
                     () -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
@@ -109,11 +110,12 @@ public class UserProfileService {
         if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
           throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
         }
-        var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
-            .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
-        var subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
+        final var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream()
+            .findFirst().orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
+        final var subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
 
-        var subUser = subUsers.stream().filter(subUserIdentity.getFilterPredicate()).findFirst()
+        final var subUser = subUsers.stream().filter(subUserIdentity.getFilterPredicate())
+            .findFirst()
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Invalid state: Jaggaer company profile sub-user data must contain exactly 1 matching record for user identity: "
                     + subUserIdentity.getIdentity()));

@@ -8,7 +8,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave.ConclaveUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 
 /**
  *
@@ -20,12 +20,13 @@ public class ConclaveService {
   private final WebClient conclaveWebClient;
   private final ConclaveAPIConfig conclaveAPIConfig;
 
-  public ConclaveUser getUser(final String userId) {
+  public UserProfileResponseInfo getUser(final String userId) {
 
-    var getUserTemplateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
+    final var getUserTemplateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
 
     return ofNullable(conclaveWebClient.get().uri(getUserTemplateURI, userId).retrieve()
-        .bodyToMono(ConclaveUser.class).block(ofSeconds(conclaveAPIConfig.getTimeoutDuration())))
+        .bodyToMono(UserProfileResponseInfo.class)
+        .block(ofSeconds(conclaveAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new AgreementsServiceApplicationException(
                 "Unexpected error retrieving RFI template from AS"));
   }

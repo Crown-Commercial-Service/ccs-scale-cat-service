@@ -24,6 +24,7 @@ public class JaggaerAPIConfig {
   private Boolean addDivisionToProjectTeam;
   private Long tokenExpirySeconds;
   private Map<String, String> createProject;
+  private Map<String, String> getProject;
   private Map<String, String> createRfx;
   private Map<String, String> getBuyerCompanyProfile;
   private Map<String, String> exportRfx;

@@ -13,16 +13,21 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -185,4 +190,118 @@ public class ProcurementProjectService {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Get Project Team members. This is a combination of Project Team members on the project and
+   * email recipients on the rfx.
+   *
+   * @param projectId CCS project id
+   * @return Collection of project team members
+   */
+  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId) {
+
+    // Get project (project team) from Jaggaer
+    final var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    final var jaggaerProject = getJaggaerProject(dbProject.getExternalProjectId());
+
+    // Get rfx (email recipients) from Jaggaer
+    final var dbEvent = getCurrentEvent(dbProject);
+    final var exportRfxResponse = getJaggaerEvent(dbEvent.getExternalEventId());
+
+    // Combine the user ids and remove duplicates
+    final Set<String> teamIds = jaggaerProject.getProjectTeam().getUser().stream().map(User::getId)
+        .collect(Collectors.toSet());
+    teamIds.addAll(exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
+        .map(e -> e.getUser().getId()).collect(Collectors.toSet()));
+
+    // Retrieve additional info on each user from Jaggaer and Conclave
+    return teamIds.stream().map(this::getTeamMember).filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+  }
+
+  /**
+   * Get a Team Member.
+   *
+   * @param jaggaerUserId
+   * @return
+   */
+  public TeamMember getTeamMember(final String jaggaerUserId) {
+    try {
+
+      final SubUser jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
+      final UserProfileResponseInfo conclaveUser = conclaveService.getUser(jaggaerUser.getEmail());
+
+      final var tm = new TeamMember();
+      final var cp = new ContactPoint1();
+      tm.setId(jaggaerUserId);
+      cp.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
+      cp.setEmail(conclaveUser.getUserName());
+
+      // TODO: can probably get this from the Conclave Wrapper '/contacts' endpoint - but didn't
+      // seem to work if I supplied my conclave id
+      cp.setTelephone(jaggaerUser.getPhoneNumber());
+      tm.setContact(cp);
+      return tm;
+
+    } catch (final WebClientResponseException wcre) {
+      if (wcre.getStatusCode() == HttpStatus.NOT_FOUND) {
+        log.warn("Unable to find user '{}' in Conclave when building Project Team, so ignoring.",
+            jaggaerUserId);
+      }
+      return null;
+    } catch (final Exception e) {
+      if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
+        log.warn(
+            "Unable to find user '{}' in Jaggaer user cache when building Project Team, so ignoring.",
+            jaggaerUserId);
+        return null;
+      } else {
+        throw new UnhandledEdgeCaseException("Unexpected exception building Project Team list");
+      }
+    }
+  }
+
+  /**
+   * Get Project from Jaggaer.
+   *
+   * @param jaggaerProjectId
+   * @return Jaggaer Project
+   */
+  private Project getJaggaerProject(final String jaggaerProjectId) {
+    final var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(getProjectUri, jaggaerProjectId).retrieve()
+        .bodyToMono(Project.class).block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving project"));
+
+  }
+
+  /**
+   * Get Rfx from Jaggaer.
+   *
+   * @param jaggaerEventId
+   * @return Jaggaer Rfx
+   */
+  private ExportRfxResponse getJaggaerEvent(final String jaggaerEventId) {
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, jaggaerEventId).retrieve()
+        .bodyToMono(ExportRfxResponse.class)
+        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving Rfx"));
+  }
+
+  /**
+   * TODO: what extra logic is required in the event there are multiple events on a project?
+   */
+  private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
+
+    final Optional<ProcurementEvent> event = project.getProcurementEvents().stream().findFirst();
+    if (event.isPresent()) {
+      return event.get();
+    }
+    throw new IllegalStateException("Could not find event for project " + project.getId());
+  }
+
 }
+
