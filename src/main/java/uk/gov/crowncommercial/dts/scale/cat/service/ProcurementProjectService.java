@@ -9,9 +9,11 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
@@ -244,25 +246,25 @@ public class ProcurementProjectService {
       var jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
 
-      if (conclaveUser.isPresent()) {
-        var user = conclaveUser.get();
-        var teamMember = new TeamMember();
-        var contact = new ContactPoint1();
-        teamMember.setId(user.getUserName());
-        contact.setName(user.getFirstName() + " " + user.getLastName());
-        contact.setEmail(user.getUserName());
-        contact.setTelephone(jaggaerUser.getPhoneNumber());
-        // TODO: can get more contact info from Conclave via
-        // conclaveService.getUserContacts(jaggaerUser.getEmail())
-        // Question on logic for doing this outstanding on SCAT-2240
-        // cp.setFaxNumber(null);
-        // cp.setUrl(null);
-        teamMember.setContact(contact);
-        return teamMember;
-      } else {
-        log.warn("Unable to find user '{}' in Conclave, so ignoring.", jaggaerUserId);
-        return null;
+      var teamMember = new TeamMember();
+      var contact = new ContactPoint1();
+      teamMember.setId(conclaveUser.getUserName());
+      contact.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
+      contact.setEmail(conclaveUser.getUserName());
+      contact.setTelephone(jaggaerUser.getPhoneNumber());
+      // TODO: can get more contact info from Conclave via
+      // conclaveService.getUserContacts(jaggaerUser.getEmail())
+      // Question on logic for doing this outstanding on SCAT-2240
+      // cp.setFaxNumber(null);
+      // cp.setUrl(null);
+      teamMember.setContact(contact);
+      return teamMember;
+    } catch (final WebClientResponseException wcre) {
+      if (wcre.getStatusCode() == HttpStatus.NOT_FOUND) {
+        log.warn("Unable to find user '{}' in Conclave when building Project Team, so ignoring.",
+            jaggaerUserId);
       }
+      return null;
     } catch (final Exception e) {
       if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
         log.warn(
