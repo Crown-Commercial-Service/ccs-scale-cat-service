@@ -55,4 +55,15 @@ public class ProjectsController extends AbstractRestController {
 
     return procurementProjectService.getProjectEventTypes(procId);
   }
+
+  @GetMapping("/{proc-id}/users")
+  public Collection<TeamMember> getProjectUsers(@PathVariable("proc-id") final Integer procId,
+      final JwtAuthenticationToken authentication) {
+
+    log.info("getProjectUsers invoked on behalf of principal: {}",
+        getPrincipalFromJwt(authentication));
+
+    return procurementProjectService.getProjectTeamMembers(procId);
+  }
+
 }

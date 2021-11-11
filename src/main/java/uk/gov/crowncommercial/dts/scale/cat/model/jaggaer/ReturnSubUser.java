@@ -21,6 +21,8 @@ public class ReturnSubUser {
     String email;
     String login;
     String userId;
+    String phoneNumber;
+    String mobilePhoneNumber;
 
   }
 

@@ -3,14 +3,18 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Predicate;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -37,33 +41,59 @@ public class UserProfileService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
-  private final LoadingCache<String, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCache =
+  private final LoadingCache<SubUserIdentity, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
 
-  @SneakyThrows
-  public String resolveJaggaerUserId(final String principal) {
-    return jaggaerSubUserProfileCache.get(principal).getSecond().getUserId();
+  @Value
+  @EqualsAndHashCode(exclude = "filterPredicate")
+  private class SubUserIdentity {
+
+    // email, userId - any uniquely identifying property
+    String identity;
+    Predicate<? super SubUser> filterPredicate;
+  }
+
+  private Predicate<? super SubUser> getFilterPredicateEmail(final String email) {
+    return su -> email.equalsIgnoreCase(su.getEmail());
+  }
+
+  private Predicate<? super SubUser> getFilterPredicateUserId(final String userId) {
+    return su -> userId.equalsIgnoreCase(su.getUserId());
   }
 
   @SneakyThrows
-  public String resolveJaggaerBuyerCompanyId(final String principal) {
-    return jaggaerSubUserProfileCache.get(principal).getFirst().getBravoId();
+  public String resolveJaggaerUserId(final String principalEmail) {
+    var subUserIdentityEmail =
+        new SubUserIdentity(principalEmail, getFilterPredicateEmail(principalEmail));
+    return jaggaerSubUserProfileCache.get(subUserIdentityEmail).getSecond().getUserId();
   }
 
-  private CacheLoader<String, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCacheLoader() {
+  @SneakyThrows
+  public String resolveJaggaerBuyerCompanyId(final String principalEmail) {
+    var subUserIdentityEmail =
+        new SubUserIdentity(principalEmail, getFilterPredicateEmail(principalEmail));
+    return jaggaerSubUserProfileCache.get(subUserIdentityEmail).getFirst().getBravoId();
+  }
+
+  public SubUser resolveJaggaerUserEmail(final String principalUserId) throws ExecutionException {
+    final var subUserIdentityUserId =
+        new SubUserIdentity(principalUserId, getFilterPredicateUserId(principalUserId));
+    return jaggaerSubUserProfileCache.get(subUserIdentityUserId).getSecond();
+  }
+
+  private CacheLoader<SubUserIdentity, Pair<ReturnCompanyInfo, SubUser>> jaggaerSubUserProfileCacheLoader() {
     return new CacheLoader<>() {
 
       @Override
-      public Pair<ReturnCompanyInfo, SubUser> load(final String principal) throws Exception {
-        var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
-        var principalPlaceholder = getBuyerCompanyProfile.get("principalPlaceholder");
-        var endpoint =
-            getBuyerCompanyProfile.get("endpoint").replace(principalPlaceholder, principal);
+      public Pair<ReturnCompanyInfo, SubUser> load(final SubUserIdentity subUserIdentity)
+          throws Exception {
+        final var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
+        final var endpoint = getBuyerCompanyProfile.get("endpoint");
 
         log.info("Calling company profiles endpoint: {}", endpoint);
 
-        var getCompanyDataResponse = ofNullable(
+        final var getCompanyDataResponse = ofNullable(
             jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
                 .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).orElseThrow(
                     () -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
@@ -79,15 +109,15 @@ public class UserProfileService {
         if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
           throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
         }
-        var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
-            .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
-        var subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
+        final var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream()
+            .findFirst().orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
+        final var subUsers = returnCompanyData.getReturnSubUser().getSubUsers();
 
-        var subUser = subUsers.stream().filter(su -> principal.equalsIgnoreCase(su.getEmail()))
+        final var subUser = subUsers.stream().filter(subUserIdentity.getFilterPredicate())
             .findFirst()
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                "Invalid state: Jaggaer company profile sub-user data must contain exactly 1 matching record by email for principal: "
-                    + principal));
+                "Invalid state: Jaggaer company profile sub-user data must contain exactly 1 matching record for user identity: "
+                    + subUserIdentity.getIdentity()));
         log.debug("Matched sub-user record: {}", subUser);
 
         return Pair.of(returnCompanyData.getReturnCompanyInfo(), subUser);

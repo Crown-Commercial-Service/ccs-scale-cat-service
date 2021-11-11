@@ -12,5 +12,6 @@ import lombok.experimental.FieldDefaults;
 public class ExportRfxResponse {
 
   RfxSetting rfxSetting;
+  EmailRecipientList emailRecipientList;
 
 }

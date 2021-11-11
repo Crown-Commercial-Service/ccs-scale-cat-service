@@ -68,6 +68,8 @@ config:
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
         templateId: tender_49
+      getProject:
+        endpoint: /esop/jint/api/public/ja/v1/projects/{id}
       createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
@@ -75,7 +77,7 @@ config:
         templateId: itt_445
       getBuyerCompanyProfile:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID==${config.external.jaggaer.self-service-id}
         principalPlaceholder: "{{PRINCIPAL}}"
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
@@ -93,6 +95,14 @@ config:
       getEventTypesForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
 
+    conclaveWrapper:
+      # baseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      timeoutDuration: 5
+      getUser:
+        uriTemplate: /user-profiles?user-id={user-id}
+      getUserContacts:
+        uriTemplate: /user-profiles/contacts?user-id={email}
 
 ---
 spring:
