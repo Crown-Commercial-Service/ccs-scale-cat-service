@@ -76,7 +76,6 @@ public class UserProfileService {
     return jaggaerSubUserProfileCache.get(subUserIdentityEmail).getFirst().getBravoId();
   }
 
-  // @SneakyThrows
   public SubUser resolveJaggaerUserEmail(final String principalUserId) throws ExecutionException {
     final var subUserIdentityUserId =
         new SubUserIdentity(principalUserId, getFilterPredicateUserId(principalUserId));

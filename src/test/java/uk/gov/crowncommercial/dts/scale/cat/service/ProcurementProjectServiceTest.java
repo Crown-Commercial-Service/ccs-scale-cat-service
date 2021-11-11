@@ -75,6 +75,9 @@ class ProcurementProjectServiceTest {
   private UserProfileService userProfileService;
 
   @MockBean
+  private ConclaveService conclaveService;
+
+  @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
 
   @MockBean

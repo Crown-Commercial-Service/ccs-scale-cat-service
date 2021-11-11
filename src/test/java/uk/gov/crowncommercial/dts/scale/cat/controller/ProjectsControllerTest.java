@@ -33,7 +33,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -209,4 +211,61 @@ class ProjectsControllerTest {
         .andExpect(content().string(expectedJson));
   }
 
+  @Test
+  void getProjectUsers_200_OK() throws Exception {
+
+    TeamMember teamMember = new TeamMember();
+    ContactPoint1 contact = new ContactPoint1();
+    contact.setEmail(PRINCIPAL);
+    contact.setName(USER_NAME);
+    teamMember.setId(PRINCIPAL);
+    teamMember.setContact(contact);
+
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+        .thenReturn(Arrays.asList(teamMember));
+
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(1))
+        .andExpect(jsonPath("$[0].id", is(PRINCIPAL)))
+        .andExpect(jsonPath("$[0].contact.name", is(USER_NAME)))
+        .andExpect(jsonPath("$[0].contact.email", is(PRINCIPAL)));
+  }
+
+  @Test
+  void getProjectUsers_401_Forbidden_Invalid_JWT() throws Exception {
+    // No subject claim
+    var invalidJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+            .with(invalidJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
+  }
+
+  @Test
+  void getProjectUsers_500_ISE() throws Exception {
+
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+        .thenThrow(new JaggaerApplicationException("1", "BANG"));
+
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isInternalServerError())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("500 INTERNAL_SERVER_ERROR"))).andExpect(
+            jsonPath("$.errors[0].title", is("An error occurred invoking an upstream service")));
+  }
 }

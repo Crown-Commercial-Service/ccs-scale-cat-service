@@ -22,12 +22,10 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -200,10 +198,10 @@ public class ProcurementProjectService {
   public Collection<TeamMember> getProjectTeamMembers(final Integer projectId) {
 
     // Get Project (project team)
-    final var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+    var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    final var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
-    final var jaggaerProject = ofNullable(jaggaerWebClient.get()
+    var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
+    var jaggaerProject = ofNullable(jaggaerWebClient.get()
         .uri(getProjectUri, dbProject.getExternalProjectId()).retrieve().bodyToMono(Project.class)
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
@@ -211,9 +209,9 @@ public class ProcurementProjectService {
 
 
     // Get Rfx (email recipients)
-    final var dbEvent = getCurrentEvent(dbProject);
-    final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
-    final var exportRfxResponse =
+    var dbEvent = getCurrentEvent(dbProject);
+    var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
+    var exportRfxResponse =
         ofNullable(jaggaerWebClient.get().uri(exportRfxUri, dbEvent.getExternalEventId()).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
@@ -240,12 +238,14 @@ public class ProcurementProjectService {
   private TeamMember getTeamMember(final String jaggaerUserId) {
     try {
 
-      final SubUser jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
-      final UserProfileResponseInfo conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
+      var jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
+      var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
 
-      final var tm = new TeamMember();
-      final var cp = new ContactPoint1();
-      tm.setId(String.valueOf(conclaveUser.getDetail().getId()));
+      var tm = new TeamMember();
+      var cp = new ContactPoint1();
+      // Conclave user id is currently email, this may be changed in the future if the `extCode`
+      // attribute in Jaggaer is used to store a different Conclave id.
+      tm.setId(conclaveUser.getUserName());
       cp.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
       cp.setEmail(conclaveUser.getUserName());
       cp.setTelephone(jaggaerUser.getPhoneNumber());
@@ -283,7 +283,7 @@ public class ProcurementProjectService {
    */
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
 
-    final Optional<ProcurementEvent> event = project.getProcurementEvents().stream().findFirst();
+    Optional<ProcurementEvent> event = project.getProcurementEvents().stream().findFirst();
     if (event.isPresent()) {
       return event.get();
     }

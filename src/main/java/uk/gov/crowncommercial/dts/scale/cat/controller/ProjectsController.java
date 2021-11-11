@@ -26,7 +26,7 @@ public class ProjectsController extends AbstractRestController {
       @RequestBody final AgreementDetails agreementDetails,
       final JwtAuthenticationToken authentication) {
 
-    final var principal = getPrincipalFromJwt(authentication);
+    var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
@@ -37,7 +37,7 @@ public class ProjectsController extends AbstractRestController {
       @RequestBody final ProcurementProjectName projectName,
       final JwtAuthenticationToken authentication) {
 
-    final var principal = getPrincipalFromJwt(authentication);
+    var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
 
     procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
@@ -66,23 +66,4 @@ public class ProjectsController extends AbstractRestController {
     return procurementProjectService.getProjectTeamMembers(procId);
   }
 
-  @PutMapping("/{proc-id}/users/{user-id}")
-  public Collection<TeamMember> addProjectUser(@PathVariable("proc-id") final Integer procId,
-      final JwtAuthenticationToken authentication) {
-
-    log.info("addProjectUser invoked on behalf of principal: {}",
-        getPrincipalFromJwt(authentication));
-
-    // Delete project mapping to the thshsh e t
-    // return procurementProjectService.getProjectTeamMembers(procId);
-
-    /*
-     *
-     * POST - {{host}}/esop/jint/api/public/ja/v1/projects
-     *
-     * { "operationCode": "CREATEUPDATE", "project": { "tender": { "tenderReferenceCode":
-     * "project_2833" }, "projectTeam": { "user": [ { "id": 93226 } ] } } }
-     */
-    return null;
-  }
 }

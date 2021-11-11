@@ -53,7 +53,7 @@ class ConclaveUserServiceTest {
             .thenReturn(userProfileResponseInfo);
 
     // Invoke
-    final var userProfile = conclaveService.getUserProfile(CONCLAVE_USER_ID);
+    var userProfile = conclaveService.getUserProfile(CONCLAVE_USER_ID);
 
     // Verify
     assertEquals(userProfileResponseInfo, userProfile);
@@ -70,7 +70,7 @@ class ConclaveUserServiceTest {
             .thenReturn(userContactInfoList);
 
     // Invoke
-    final var userContacts = conclaveService.getUserContacts(CONCLAVE_USER_ID);
+    var userContacts = conclaveService.getUserContacts(CONCLAVE_USER_ID);
 
     // Verify
     assertEquals(userContactInfoList, userContacts);
