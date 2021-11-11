@@ -1,19 +1,17 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
@@ -41,6 +39,7 @@ public class ProcurementProjectService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final UserProfileService userProfileService;
+  private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
@@ -79,7 +78,7 @@ public class ProcurementProjectService {
 
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
-        .projectOwner(new ProjectOwner(jaggaerUserId))
+        .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
         .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
 
     var projectBuilder = Project.builder().tender(tender);
@@ -232,37 +231,38 @@ public class ProcurementProjectService {
   /**
    * Get a Team Member.
    *
+   * Conclave user id is currently email address, but that may change in the future following a
+   * Jaggaer update to insert a Conclave ID into the `extCode` attribute on a user in Jaggaer. This
+   * (and other aspects of the code) may need to be updated in future to use this - TBD.
+   *
    * @param jaggaerUserId
    * @return TeamMember
    */
   private TeamMember getTeamMember(final String jaggaerUserId) {
-    try {
 
+    try {
       var jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
 
-      var tm = new TeamMember();
-      var cp = new ContactPoint1();
-      // Conclave user id is currently email, this may be changed in the future if the `extCode`
-      // attribute in Jaggaer is used to store a different Conclave id.
-      tm.setId(conclaveUser.getUserName());
-      cp.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
-      cp.setEmail(conclaveUser.getUserName());
-      cp.setTelephone(jaggaerUser.getPhoneNumber());
-      // TODO: can get more contact info from Conclave via
-      // conclaveService.getUserContacts(jaggaerUser.getEmail())
-      // Question on logic for doing this outstanding on SCAT-2240
-      // cp.setFaxNumber(null);
-      // cp.setUrl(null);
-      tm.setContact(cp);
-      return tm;
-
-    } catch (final WebClientResponseException wcre) {
-      if (wcre.getStatusCode() == HttpStatus.NOT_FOUND) {
-        log.warn("Unable to find user '{}' in Conclave when building Project Team, so ignoring.",
-            jaggaerUserId);
+      if (conclaveUser.isPresent()) {
+        var user = conclaveUser.get();
+        var teamMember = new TeamMember();
+        var contact = new ContactPoint1();
+        teamMember.setId(user.getUserName());
+        contact.setName(user.getFirstName() + " " + user.getLastName());
+        contact.setEmail(user.getUserName());
+        contact.setTelephone(jaggaerUser.getPhoneNumber());
+        // TODO: can get more contact info from Conclave via
+        // conclaveService.getUserContacts(jaggaerUser.getEmail())
+        // Question on logic for doing this outstanding on SCAT-2240
+        // cp.setFaxNumber(null);
+        // cp.setUrl(null);
+        teamMember.setContact(contact);
+        return teamMember;
+      } else {
+        log.warn("Unable to find user '{}' in Conclave, so ignoring.", jaggaerUserId);
+        return null;
       }
-      return null;
     } catch (final Exception e) {
       if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
         log.warn(
@@ -290,6 +290,4 @@ public class ProcurementProjectService {
     throw new UnhandledEdgeCaseException(
         "Could not find current event for project " + project.getId());
   }
-
 }
-

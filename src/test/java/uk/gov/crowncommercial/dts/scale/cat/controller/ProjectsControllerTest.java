@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,7 @@ class ProjectsControllerTest {
   private static final String ORG = "CCS";
   private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG;
   private static final String EVENT_OCID = "ocds-abc123-1";
+  private static final String USER_NAME = "Jim Beam";
   private static final Integer PROC_PROJECT_ID = 1;
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
@@ -269,3 +271,4 @@ class ProjectsControllerTest {
             jsonPath("$.errors[0].title", is("An error occurred invoking an upstream service")));
   }
 }
+
