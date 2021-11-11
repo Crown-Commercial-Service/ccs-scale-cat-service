@@ -19,5 +19,5 @@ public class ConclaveAPIConfig {
   private String apiKey;
   private Integer timeoutDuration;
   private Map<String, String> getUser;
-
+  private Map<String, String> getUserContacts;
 }

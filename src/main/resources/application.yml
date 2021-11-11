@@ -38,12 +38,6 @@ config:
     delay: 1000
 
   external:
-    conclave:
-      # baseUrl: "SET IN ENV"
-      # wrapper-api-key: "SET IN ENV"
-      timeoutDuration: 5
-      getUserProfile:
-        endpoint: /user-profiles?user-id={email}
     jaggaer:
 #      baseUrl: "SET IN ENV"
       timeoutDuration: 5
@@ -107,6 +101,8 @@ config:
       timeoutDuration: 5
       getUser:
         uriTemplate: /user-profiles?user-id={user-id}
+      getUserContacts:
+        uriTemplate: /user-profiles/contacts?user-id={email}
 
 ---
 spring:

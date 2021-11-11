@@ -199,16 +199,28 @@ public class ProcurementProjectService {
    */
   public Collection<TeamMember> getProjectTeamMembers(final Integer projectId) {
 
-    // Get project (project team) from Jaggaer
+    // Get Project (project team)
     final var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    final var jaggaerProject = getJaggaerProject(dbProject.getExternalProjectId());
+    final var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
+    final var jaggaerProject = ofNullable(jaggaerWebClient.get()
+        .uri(getProjectUri, dbProject.getExternalProjectId()).retrieve().bodyToMono(Project.class)
+        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving project"));
 
-    // Get rfx (email recipients) from Jaggaer
+
+    // Get Rfx (email recipients)
     final var dbEvent = getCurrentEvent(dbProject);
-    final var exportRfxResponse = getJaggaerEvent(dbEvent.getExternalEventId());
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
+    final var exportRfxResponse =
+        ofNullable(jaggaerWebClient.get().uri(exportRfxUri, dbEvent.getExternalEventId()).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
 
-    // Combine the user ids and remove duplicates
+    // Combine the user IDs and remove duplicates
     final Set<String> teamIds = jaggaerProject.getProjectTeam().getUser().stream().map(User::getId)
         .collect(Collectors.toSet());
     teamIds.addAll(exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
@@ -223,23 +235,25 @@ public class ProcurementProjectService {
    * Get a Team Member.
    *
    * @param jaggaerUserId
-   * @return
+   * @return TeamMember
    */
-  public TeamMember getTeamMember(final String jaggaerUserId) {
+  private TeamMember getTeamMember(final String jaggaerUserId) {
     try {
 
       final SubUser jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
-      final UserProfileResponseInfo conclaveUser = conclaveService.getUser(jaggaerUser.getEmail());
+      final UserProfileResponseInfo conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
 
       final var tm = new TeamMember();
       final var cp = new ContactPoint1();
-      tm.setId(jaggaerUserId);
+      tm.setId(String.valueOf(conclaveUser.getDetail().getId()));
       cp.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
       cp.setEmail(conclaveUser.getUserName());
-
-      // TODO: can probably get this from the Conclave Wrapper '/contacts' endpoint - but didn't
-      // seem to work if I supplied my conclave id
       cp.setTelephone(jaggaerUser.getPhoneNumber());
+      // TODO: can get more contact info from Conclave via
+      // conclaveService.getUserContacts(jaggaerUser.getEmail())
+      // Question on logic for doing this outstanding on SCAT-2240
+      // cp.setFaxNumber(null);
+      // cp.setUrl(null);
       tm.setContact(cp);
       return tm;
 
@@ -262,37 +276,10 @@ public class ProcurementProjectService {
   }
 
   /**
-   * Get Project from Jaggaer.
+   * Returns the current event for a project.
    *
-   * @param jaggaerProjectId
-   * @return Jaggaer Project
-   */
-  private Project getJaggaerProject(final String jaggaerProjectId) {
-    final var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
-    return ofNullable(jaggaerWebClient.get().uri(getProjectUri, jaggaerProjectId).retrieve()
-        .bodyToMono(Project.class).block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                "Unexpected error retrieving project"));
-
-  }
-
-  /**
-   * Get Rfx from Jaggaer.
-   *
-   * @param jaggaerEventId
-   * @return Jaggaer Rfx
-   */
-  private ExportRfxResponse getJaggaerEvent(final String jaggaerEventId) {
-    final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
-    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, jaggaerEventId).retrieve()
-        .bodyToMono(ExportRfxResponse.class)
-        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                "Unexpected error retrieving Rfx"));
-  }
-
-  /**
-   * TODO: what extra logic is required in the event there are multiple events on a project?
+   * TODO: what extra logic is required in the event there are multiple events on a project? (Event
+   * status is not captured in the Tenders DB currently).
    */
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
 
@@ -300,7 +287,8 @@ public class ProcurementProjectService {
     if (event.isPresent()) {
       return event.get();
     }
-    throw new IllegalStateException("Could not find event for project " + project.getId());
+    throw new UnhandledEdgeCaseException(
+        "Could not find current event for project " + project.getId());
   }
 
 }

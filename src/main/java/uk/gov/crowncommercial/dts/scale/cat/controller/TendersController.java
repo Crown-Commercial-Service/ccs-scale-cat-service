@@ -53,7 +53,7 @@ public class TendersController extends AbstractRestController {
       throw new AccessDeniedException("TODO");
     }
 
-    var conclaveUser = conclaveService.getUser(userId);
+    var conclaveUser = conclaveService.getUserProfile(userId);
 
     // TODO - check conclave user roles(?) buyer/supplier and invoke Jaggaer to cross-check
     return new GetUserResponse().addRolesItem(RolesEnum.BUYER);
