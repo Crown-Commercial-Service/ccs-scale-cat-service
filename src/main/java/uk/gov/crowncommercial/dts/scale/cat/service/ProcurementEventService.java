@@ -126,8 +126,9 @@ public class ProcurementEventService {
       final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
-    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal).get().getUserId();
+    var jaggaerBuyerCompanyId =
+        userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
 
     var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
     var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();

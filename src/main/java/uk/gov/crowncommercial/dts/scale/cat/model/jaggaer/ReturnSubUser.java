@@ -2,9 +2,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
 import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  *
@@ -12,8 +13,9 @@ import lombok.experimental.FieldDefaults;
 @Data
 public class ReturnSubUser {
 
-  @Data
-  @FieldDefaults(level = AccessLevel.PRIVATE)
+  @Value
+  @Builder
+  @Jacksonized
   public static class SubUser {
 
     String name;

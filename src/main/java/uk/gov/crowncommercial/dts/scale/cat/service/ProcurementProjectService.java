@@ -24,9 +24,11 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -74,8 +76,9 @@ public class ProcurementProjectService {
       final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
-    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal).get().getUserId();
+    var jaggaerBuyerCompanyId =
+        userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
     var tender = Tender.builder().title(projectTitle)
