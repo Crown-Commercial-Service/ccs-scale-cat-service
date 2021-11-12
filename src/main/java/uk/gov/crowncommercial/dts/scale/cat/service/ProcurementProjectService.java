@@ -241,8 +241,8 @@ public class ProcurementProjectService {
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(userId)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+
+    var jaggaerUserId = userProfileService.resolveJaggaerUserId(userId);
 
     var user = User.builder().id(jaggaerUserId).build();
     var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
@@ -266,6 +266,7 @@ public class ProcurementProjectService {
 
     return getTeamMember(userId);
   }
+
 
   /**
    * Get a Team Member.
