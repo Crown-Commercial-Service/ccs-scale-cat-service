@@ -18,17 +18,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -76,7 +75,8 @@ public class ProcurementProjectService {
       final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal).get().getUserId();
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
     var jaggaerBuyerCompanyId =
         userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
@@ -211,7 +211,6 @@ public class ProcurementProjectService {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving project"));
 
-
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
     var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
@@ -244,7 +243,8 @@ public class ProcurementProjectService {
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUserId = userProfileService.resolveJaggaerUserId(userId);
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(userId)
+        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
     var user = User.builder().id(jaggaerUserId).build();
     var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
@@ -269,7 +269,6 @@ public class ProcurementProjectService {
     return getTeamMember(userId);
   }
 
-
   /**
    * Get a Team Member.
    *
@@ -283,7 +282,7 @@ public class ProcurementProjectService {
   private TeamMember getTeamMember(final String jaggaerUserId) {
 
     try {
-      var jaggaerUser = userProfileService.resolveJaggaerUserEmail(jaggaerUserId);
+      var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId).orElseThrow();
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
 
       var teamMember = new TeamMember();
@@ -306,14 +305,14 @@ public class ProcurementProjectService {
       }
       return null;
     } catch (final Exception e) {
-      if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
+      if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class
+          || e instanceof NoSuchElementException) {
         log.warn(
             "Unable to find user '{}' in Jaggaer user cache when building Project Team, so ignoring.",
             jaggaerUserId);
         return null;
-      } else {
-        throw new UnhandledEdgeCaseException("Unexpected exception building Project Team list");
       }
+      throw new UnhandledEdgeCaseException("Unexpected exception building Project Team list", e);
     }
   }
 
@@ -325,7 +324,7 @@ public class ProcurementProjectService {
    */
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
 
-    Optional<ProcurementEvent> event = project.getProcurementEvents().stream().findFirst();
+    var event = project.getProcurementEvents().stream().findFirst();
     if (event.isPresent()) {
       return event.get();
     }

@@ -48,9 +48,8 @@ public class ProfileManagementService {
         Map.of(SYSID_CONCLAVE, new HashSet<RolesEnum>(), SYSID_JAGGAER, new HashSet<RolesEnum>());
 
     conclaveUser.getDetail().getRolePermissionInfo().stream().map(RolePermissionInfo::getRoleKey)
-        .filter(conclaveBuyerSupplierRoleKeys::containsKey).forEach(rk -> {
-          sysRoleMappings.get(SYSID_CONCLAVE).add(conclaveBuyerSupplierRoleKeys.get(rk));
-        });
+        .filter(conclaveBuyerSupplierRoleKeys::containsKey).forEach(
+            rk -> sysRoleMappings.get(SYSID_CONCLAVE).add(conclaveBuyerSupplierRoleKeys.get(rk)));
     log.debug(
         format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, sysRoleMappings.get(SYSID_CONCLAVE)));
     validateBuyerSupplierConclaveRoles(sysRoleMappings.get(SYSID_CONCLAVE), userId);
