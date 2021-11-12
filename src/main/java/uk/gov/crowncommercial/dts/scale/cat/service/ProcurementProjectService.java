@@ -219,15 +219,25 @@ public class ProcurementProjectService {
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
 
+    //
+    var projectOwner = jaggaerProject.getTender().getProjectOwner();
+
     // Combine the user IDs and remove duplicates
     final Set<String> teamIds = jaggaerProject.getProjectTeam().getUser().stream().map(User::getId)
         .collect(Collectors.toSet());
-    teamIds.addAll(exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
-        .map(e -> e.getUser().getId()).collect(Collectors.toSet()));
+    final Set<String> emailRecipientIds = exportRfxResponse.getEmailRecipientList()
+        .getEmailRecipient().stream().map(e -> e.getUser().getId()).collect(Collectors.toSet());
+
+    final Set<String> combinedIds = new HashSet<>();
+    combinedIds.add(projectOwner.getId());
+    combinedIds.addAll(teamIds);
+    combinedIds.addAll(emailRecipientIds);
+
 
     // Retrieve additional info on each user from Jaggaer and Conclave
-    return teamIds.stream().map(this::getTeamMember).filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    return combinedIds.stream()
+        .map(i -> getTeamMember(i, teamIds, emailRecipientIds, projectOwner.getId()))
+        .filter(Objects::nonNull).collect(Collectors.toSet());
   }
 
   /**
@@ -264,7 +274,9 @@ public class ProcurementProjectService {
     }
     log.info("Updated project team: {}", updateProjectResponse);
 
-    return getTeamMember(userId);
+    return getProjectTeamMembers(projectId).stream()
+        .filter(tm -> tm.getOCDS().getId().equals(jaggaerUserId)).findFirst().orElseThrow();
+
   }
 
 
@@ -278,7 +290,8 @@ public class ProcurementProjectService {
    * @param jaggaerUserId
    * @return TeamMember
    */
-  private TeamMember getTeamMember(final String jaggaerUserId) {
+  private TeamMember getTeamMember(final String jaggaerUserId, final Set<String> teamMemberIds,
+      final Set<String> emailRecipientIds, final String projectOwnerId) {
 
     try {
       var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId)
@@ -287,8 +300,10 @@ public class ProcurementProjectService {
           .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
 
       var teamMember = new TeamMember();
+
+      var tmOCDS = new TeamMemberOCDS();
       var contact = new ContactPoint1();
-      teamMember.setId(conclaveUser.getUserName());
+      tmOCDS.setId(conclaveUser.getUserName());
       contact.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
       contact.setEmail(conclaveUser.getUserName());
       contact.setTelephone(jaggaerUser.getPhoneNumber());
@@ -297,7 +312,15 @@ public class ProcurementProjectService {
       // Question on logic for doing this outstanding on SCAT-2240
       // cp.setFaxNumber(null);
       // cp.setUrl(null);
-      teamMember.setContact(contact);
+      tmOCDS.setContact(contact);
+      teamMember.setOCDS(tmOCDS);
+
+      var tmNonOCDS = new TeamMemberNonOCDS();
+      tmNonOCDS.setProjectOwner(jaggaerUserId.equals(projectOwnerId));
+      tmNonOCDS.setTeamMember(teamMemberIds.contains(jaggaerUserId));
+      tmNonOCDS.setEmailRecipient(emailRecipientIds.contains(jaggaerUserId));
+      teamMember.setNonOCDS(tmNonOCDS);
+
       return teamMember;
     } catch (final ResourceNotFoundException rnfe) {
       log.warn("Unable to find user '{}' in {} when building Project Team, so ignoring.",
