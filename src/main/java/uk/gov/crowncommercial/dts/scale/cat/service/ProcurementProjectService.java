@@ -231,6 +231,43 @@ public class ProcurementProjectService {
   }
 
   /**
+   * Add an existing user to a Project Team.
+   *
+   * @param projectId CCS project id
+   * @param userId Conclave user id (email)
+   * @return
+   */
+  public TeamMember addProjectTeamMember(final Integer projectId, final String userId) {
+
+    var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    var jaggaerUserId = userProfileService.resolveJaggaerUserId(userId);
+
+    var user = User.builder().id(jaggaerUserId).build();
+    var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
+    var tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
+    var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+        Project.builder().tender(tender).projectTeam(projectTeam).build());
+
+    var updateProjectResponse =
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+            .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating project"));
+
+    if (updateProjectResponse.getReturnCode() != 0
+        || !"OK".equals(updateProjectResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
+          updateProjectResponse.getReturnMessage());
+    }
+    log.info("Updated project team: {}", updateProjectResponse);
+
+    return getTeamMember(userId);
+  }
+
+
+  /**
    * Get a Team Member.
    *
    * Conclave user id is currently email address, but that may change in the future following a
