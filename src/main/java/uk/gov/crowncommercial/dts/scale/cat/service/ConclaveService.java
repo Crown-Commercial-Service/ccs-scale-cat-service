@@ -1,8 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
-import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig.KEY_URI_TEMPLATE;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -18,24 +17,27 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 @RequiredArgsConstructor
 public class ConclaveService {
 
-  private final WebClient conclaveWebClient;
   private final ConclaveAPIConfig conclaveAPIConfig;
+  private final WebClient conclaveWebClient;
+  private final WebclientWrapper webclientWrapper;
 
   /**
-   * Get User Profile details.
+   * Finds and returns a user profile from Conclave.
    *
-   * @param userId
-   * @return
+   * @param email
+   * @return an optional user profile (empty if not found)
    */
-  public UserProfileResponseInfo getUserProfile(final String userId) {
+  public Optional<UserProfileResponseInfo> getUserProfile(final String email) {
 
     final var getUserTemplateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
 
-    return ofNullable(conclaveWebClient.get().uri(getUserTemplateURI, userId).retrieve()
-        .bodyToMono(UserProfileResponseInfo.class)
-        .block(ofSeconds(conclaveAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new ConclaveApplicationException(
-                "Unexpected error retrieving User profile from Conclave"));
+    try {
+      return webclientWrapper.getOptionalResource(UserProfileResponseInfo.class, conclaveWebClient,
+          getUserTemplateURI, email);
+    } catch (Exception e) {
+      throw new ConclaveApplicationException(
+          "Unexpected error retrieving User profile from Conclave");
+    }
   }
 
   /**
@@ -48,10 +50,12 @@ public class ConclaveService {
 
     final var getUserTemplateURI = conclaveAPIConfig.getGetUserContacts().get(KEY_URI_TEMPLATE);
 
-    return ofNullable(conclaveWebClient.get().uri(getUserTemplateURI, userId).retrieve()
-        .bodyToMono(UserContactInfoList.class)
-        .block(ofSeconds(conclaveAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new ConclaveApplicationException(
-                "Unexpected error retrieving User contacts from Conclave"));
+    try {
+      return webclientWrapper.getOptionalResource(UserContactInfoList.class, conclaveWebClient,
+          getUserTemplateURI, userId).orElseThrow();
+    } catch (Exception e) {
+      throw new ConclaveApplicationException(
+          "Unexpected error retrieving User contacts from Conclave");
+    }
   }
 }

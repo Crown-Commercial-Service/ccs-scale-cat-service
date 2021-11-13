@@ -23,8 +23,8 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
   private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
 
   // TODO: Move to SSM.
-  private static final String[] CONCLAVE_ROLES = new String[] {"CAT_USER", "CAT_ADMINISTRATOR",
-      "ACCESS_CAT", "CAT_USER_LOGIN_DIRECTOR", "JAGGAER_BUYER", "JAGGAER_SUPPLIER"};
+  private static final String[] CONCLAVE_ROLES =
+      new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT", "CAT_USER_LOGIN_DIRECTOR"};
 
   @Override
   protected void configure(final HttpSecurity http) throws Exception {

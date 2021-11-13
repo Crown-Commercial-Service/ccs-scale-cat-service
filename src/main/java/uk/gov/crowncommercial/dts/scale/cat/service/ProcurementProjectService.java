@@ -9,11 +9,9 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
@@ -282,8 +280,10 @@ public class ProcurementProjectService {
   private TeamMember getTeamMember(final String jaggaerUserId) {
 
     try {
-      var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId).orElseThrow();
-      var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail());
+      var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId)
+          .orElseThrow(() -> new ResourceNotFoundException("Jaggaer"));
+      var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail())
+          .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
 
       var teamMember = new TeamMember();
       var contact = new ContactPoint1();
@@ -298,15 +298,12 @@ public class ProcurementProjectService {
       // cp.setUrl(null);
       teamMember.setContact(contact);
       return teamMember;
-    } catch (final WebClientResponseException wcre) {
-      if (wcre.getStatusCode() == HttpStatus.NOT_FOUND) {
-        log.warn("Unable to find user '{}' in Conclave when building Project Team, so ignoring.",
-            jaggaerUserId);
-      }
+    } catch (final ResourceNotFoundException rnfe) {
+      log.warn("Unable to find user '{}' in {} when building Project Team, so ignoring.",
+          jaggaerUserId, rnfe.getMessage());
       return null;
     } catch (final Exception e) {
-      if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class
-          || e instanceof NoSuchElementException) {
+      if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
         log.warn(
             "Unable to find user '{}' in Jaggaer user cache when building Project Team, so ignoring.",
             jaggaerUserId);

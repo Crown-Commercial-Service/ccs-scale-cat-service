@@ -30,13 +30,13 @@ public class ProfileManagementService {
   static final String MSG_FMT_SYS_ROLES = "%s user [%s] has roles %s";
   static final String MSG_FMT_BOTH_ROLES = "User [%s] is both buyer AND supplier in Conclave";
 
-  private final ConclaveWrapperApiService conclaveService;
+  private final ConclaveService conclaveService;
   private final ConclaveAPIConfig conclaveAPIConfig;
   private final UserProfileService userProfileService;
 
   public List<RolesEnum> getUserRoles(final String userId) {
     Assert.hasLength(userId, "userId must not be empty");
-    var conclaveUser = conclaveService.getUserDetails(userId)
+    var conclaveUser = conclaveService.getUserProfile(userId)
         // CON-1680-AC2(a)
         .orElseThrow(
             () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));

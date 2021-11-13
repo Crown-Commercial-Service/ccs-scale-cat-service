@@ -36,7 +36,7 @@ class ProfileManagementServiceTest {
   private static final String ROLEKEY_SUPPLIER = "JAEGGER_SUPPLIER";
 
   @MockBean
-  private ConclaveWrapperApiService conclaveService;
+  private ConclaveService conclaveService;
 
   @MockBean
   private UserProfileService userProfileService;
@@ -54,7 +54,7 @@ class ProfileManagementServiceTest {
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfo)));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID))
         .thenReturn(Optional.of(SubUser.builder().build()));
 
@@ -74,7 +74,7 @@ class ProfileManagementServiceTest {
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfo)));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveSupplierData(USERID))
         .thenReturn(Optional.of(new ReturnCompanyData()));
 
@@ -90,7 +90,7 @@ class ProfileManagementServiceTest {
   @Test
   void testGetUserRolesNoConclaveUserThrowsResourceNotFound() {
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.empty());
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.empty());
 
     var ex = assertThrows(ResourceNotFoundException.class,
         () -> profileManagementService.getUserRoles(USERID));
@@ -108,7 +108,7 @@ class ProfileManagementServiceTest {
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfo)));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID)).thenReturn(Optional.empty());
 
@@ -127,7 +127,7 @@ class ProfileManagementServiceTest {
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
         .detail(new UserResponseDetail().rolePermissionInfo(new ArrayList<>()));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
 
     var ex = assertThrows(UserRolesConflictException.class,
         () -> profileManagementService.getUserRoles(USERID));
@@ -146,7 +146,7 @@ class ProfileManagementServiceTest {
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfoSupplier)));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID))
         .thenReturn(Optional.of(SubUser.builder().build()));
     when(userProfileService.resolveSupplierData(USERID)).thenReturn(Optional.empty());
@@ -170,7 +170,7 @@ class ProfileManagementServiceTest {
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfoSupplier)));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID))
         .thenReturn(Optional.of(new ReturnCompanyData()));
@@ -196,7 +196,7 @@ class ProfileManagementServiceTest {
         new UserProfileResponseInfo().userName(USERID).detail(new UserResponseDetail()
             .rolePermissionInfo(List.of(rolePermissionInfoBuyer, rolePermissionInfoSupplier)));
 
-    when(conclaveService.getUserDetails(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID))
         .thenReturn(Optional.of(SubUser.builder().build()));
     when(userProfileService.resolveSupplierData(USERID))
