@@ -68,7 +68,9 @@ public class ProjectsController extends AbstractRestController {
 
   @PutMapping("/{proc-id}/users/{user-id}")
   public TeamMember addProjectUser(@PathVariable("proc-id") final Integer procId,
-      @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+      @PathVariable("user-id") final String userId,
+      @RequestBody final UpdateTeamMember updateTeamMember,
+      final JwtAuthenticationToken authentication) {
 
     log.info("addProjectUser invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));

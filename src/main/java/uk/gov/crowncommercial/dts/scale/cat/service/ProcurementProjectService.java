@@ -219,7 +219,7 @@ public class ProcurementProjectService {
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
 
-    //
+    // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
 
     // Combine the user IDs and remove duplicates
@@ -227,12 +227,10 @@ public class ProcurementProjectService {
         .collect(Collectors.toSet());
     final Set<String> emailRecipientIds = exportRfxResponse.getEmailRecipientList()
         .getEmailRecipient().stream().map(e -> e.getUser().getId()).collect(Collectors.toSet());
-
     final Set<String> combinedIds = new HashSet<>();
     combinedIds.add(projectOwner.getId());
     combinedIds.addAll(teamIds);
     combinedIds.addAll(emailRecipientIds);
-
 
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
@@ -247,32 +245,78 @@ public class ProcurementProjectService {
    * @param userId Conclave user id (email)
    * @return
    */
-  public TeamMember addProjectTeamMember(final Integer projectId, final String userId) {
+  public TeamMember addProjectTeamMember(final Integer projectId, final String userId,
+      final UpdateTeamMember updateTeamMember) {
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(userId);
 
-    var user = User.builder().id(jaggaerUserId).build();
-    var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
-    var tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
-    var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
-        Project.builder().tender(tender).projectTeam(projectTeam).build());
 
-    var updateProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-            .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating project"));
+    // TODO - refactor the switch below to try and share update project code
 
-    if (updateProjectResponse.getReturnCode() != 0
-        || !"OK".equals(updateProjectResponse.getReturnMessage())) {
-      throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
-          updateProjectResponse.getReturnMessage());
+    if (updateTeamMember.getUserType() == UpdateTeamMemberType.PROJECT_OWNER
+        || updateTeamMember.getUserType() == UpdateTeamMemberType.TEAM_MEMBER) {
+
+      if (updateTeamMember.getUserType() == UpdateTeamMemberType.PROJECT_OWNER) {
+
+      } else {
+
+      }
     }
-    log.info("Updated project team: {}", updateProjectResponse);
+
+
+    // Add as Team Member
+    switch (updateTeamMember.getUserType()) {
+      case TEAM_MEMBER:
+        var user = User.builder().id(jaggaerUserId).build();
+        var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
+        var tender =
+            Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
+        var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+            Project.builder().tender(tender).projectTeam(projectTeam).build());
+
+        var updateProjectResponse = ofNullable(
+            jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).orElseThrow(
+                    () -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                        "Unexpected error updating project"));
+
+        if (updateProjectResponse.getReturnCode() != 0
+            || !"OK".equals(updateProjectResponse.getReturnMessage())) {
+          throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
+              updateProjectResponse.getReturnMessage());
+        }
+        log.info("Updated project team: {}", updateProjectResponse);
+        break;
+      case PROJECT_OWNER:
+        var projectOwner = ProjectOwner.builder().id(jaggaerUserId).build();
+        var tenderPO = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId())
+            .projectOwner(projectOwner).build();
+        var updateProjectPO = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+            Project.builder().tender(tenderPO).build());
+
+        var updateProjectResponsePO = ofNullable(
+            jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                .bodyValue(updateProjectPO).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).orElseThrow(
+                    () -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                        "Unexpected error updating project"));
+
+        if (updateProjectResponsePO.getReturnCode() != 0
+            || !"OK".equals(updateProjectResponsePO.getReturnMessage())) {
+          throw new JaggaerApplicationException(updateProjectResponsePO.getReturnCode(),
+              updateProjectResponsePO.getReturnMessage());
+        }
+        log.info("Updated project owner: {}", updateProjectResponsePO);
+        break;
+      case EMAIL_RECIPIENT:
+        break;
+      default:
+        log.warn("No matching update team member type supplied");
+    }
 
     return getProjectTeamMembers(projectId).stream()
         .filter(tm -> tm.getOCDS().getId().equals(jaggaerUserId)).findFirst().orElseThrow();
