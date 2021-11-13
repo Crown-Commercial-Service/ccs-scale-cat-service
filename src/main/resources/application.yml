@@ -77,8 +77,11 @@ config:
         templateId: itt_445
       getBuyerCompanyProfile:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID==${config.external.jaggaer.self-service-id}
-        principalPlaceholder: "{{PRINCIPAL}}"
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+      getSupplierCompanyProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;userEmail=={{PRINCIPAL}}        
+      getSupplierSubUserProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
 
@@ -99,6 +102,9 @@ config:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
       timeoutDuration: 5
+      # Role keys are incorrectly spelt in Conclave
+      buyerRoleKey: JAEGGER_BUYER
+      supplierRoleKey: JAEGGER_SUPPLIER      
       getUser:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:

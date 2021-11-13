@@ -1,9 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import java.time.Duration;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +11,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
@@ -23,7 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 @SpringBootTest(classes = {ConclaveService.class, ConclaveAPIConfig.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(ConclaveAPIConfig.class)
-class ConclaveUserServiceTest {
+class ConclaveServiceTest {
 
   private static final String CONCLAVE_USER_ID = "12345";
 
@@ -32,6 +30,9 @@ class ConclaveUserServiceTest {
 
   @MockBean
   private UserProfileResponseInfo userProfileResponseInfo;
+
+  @MockBean
+  private WebclientWrapper webclientWrapper;
 
   @MockBean
   private UserContactInfoList userContactInfoList;
@@ -43,31 +44,27 @@ class ConclaveUserServiceTest {
   private ConclaveService conclaveService;
 
   @Test
-  void testGetUserProfile() throws JsonProcessingException {
+  void testGetUserProfile() {
 
     // Mock behaviours
-    when(conclaveWebClient.get()
-        .uri(conclaveAPIConfig.getGetUser().get("uriTemplate"), CONCLAVE_USER_ID).retrieve()
-        .bodyToMono(eq(UserProfileResponseInfo.class))
-        .block(Duration.ofSeconds(conclaveAPIConfig.getTimeoutDuration())))
-            .thenReturn(userProfileResponseInfo);
+    when(webclientWrapper.getOptionalResource(UserProfileResponseInfo.class, conclaveWebClient,
+        conclaveAPIConfig.getGetUser().get("uriTemplate"), CONCLAVE_USER_ID))
+            .thenReturn(Optional.of(userProfileResponseInfo));
 
     // Invoke
     var userProfile = conclaveService.getUserProfile(CONCLAVE_USER_ID);
 
     // Verify
-    assertEquals(userProfileResponseInfo, userProfile);
+    assertEquals(Optional.of(userProfileResponseInfo), userProfile);
   }
 
   @Test
-  void testGetUserContacts() throws JsonProcessingException {
+  void testGetUserContacts() {
 
     // Mock behaviours
-    when(conclaveWebClient.get()
-        .uri(conclaveAPIConfig.getGetUserContacts().get("uriTemplate"), CONCLAVE_USER_ID).retrieve()
-        .bodyToMono(eq(UserContactInfoList.class))
-        .block(Duration.ofSeconds(conclaveAPIConfig.getTimeoutDuration())))
-            .thenReturn(userContactInfoList);
+    when(webclientWrapper.getOptionalResource(UserContactInfoList.class, conclaveWebClient,
+        conclaveAPIConfig.getGetUserContacts().get("uriTemplate"), CONCLAVE_USER_ID))
+            .thenReturn(Optional.of(userContactInfoList));
 
     // Invoke
     var userContacts = conclaveService.getUserContacts(CONCLAVE_USER_ID);

@@ -1,9 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.*;
 import java.util.Arrays;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
@@ -22,9 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
-import uk.gov.crowncommercial.dts.scale.cat.exception.MalformedJwtException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UpstreamServiceException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -82,6 +77,26 @@ public class GlobalErrorHandler implements ErrorController {
     return ResponseEntity.status(UNAUTHORIZED)
         .header(HttpHeaders.WWW_AUTHENTICATE, wwwAuthenticateBearerInvalidJWT)
         .body(tendersAPIModelUtils.buildErrors(Arrays.asList(apiError)));
+  }
+
+  @ResponseStatus(FORBIDDEN)
+  @ExceptionHandler(AuthorisationFailureException.class)
+  public Errors handleUnauthorisedException(final AuthorisationFailureException exception) {
+
+    log.error("UnauthorisedException", exception);
+
+    var apiError = new ApiError(FORBIDDEN.toString(), exception.getMessage(), "");
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+  }
+
+  @ResponseStatus(CONFLICT)
+  @ExceptionHandler(UserRolesConflictException.class)
+  public Errors handleUserRolesConflictException(final UserRolesConflictException exception) {
+
+    log.error("UserRolesConflictException", exception);
+
+    var apiError = new ApiError(CONFLICT.toString(), exception.getMessage(), "");
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
   @ResponseStatus(NOT_FOUND)

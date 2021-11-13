@@ -11,4 +11,8 @@ public class UnhandledEdgeCaseException extends RuntimeException {
     super(msg);
   }
 
+  public UnhandledEdgeCaseException(final String msg, final Throwable cause) {
+    super(msg, cause);
+  }
+
 }
