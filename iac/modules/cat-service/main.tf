@@ -8,7 +8,7 @@ data "cloudfoundry_space" "space" {
 }
 
 data "cloudfoundry_domain" "domain" {
-  name = "apps.internal"
+  name = "london.cloudapps.digital"
 }
 
 data "cloudfoundry_service_instance" "tenders_database" {
@@ -111,4 +111,10 @@ resource "cloudfoundry_route" "cat_service" {
     app  = cloudfoundry_app.cat_service.id
     port = 8080
   }
+}
+
+# Bind to nginx IP Router UPS
+resource "cloudfoundry_route_service_binding" "cat_service" {
+  service_instance = data.cloudfoundry_user_provided_service.ip_router.id
+  route            = cloudfoundry_route.cat_service.id
 }
