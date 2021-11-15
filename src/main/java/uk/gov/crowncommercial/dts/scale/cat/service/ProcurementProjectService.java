@@ -234,78 +234,61 @@ public class ProcurementProjectService {
   }
 
   /**
-   * Add an existing user to a Project Team.
+   * Add/Update Project Team Member (owner, team members, email recipients).
    *
    * @param projectId CCS project id
    * @param userId Conclave user id (email)
-   * @return
+   * @param updateTeamMember contains details of type of update to perform
+   * @return Team Member details
    */
   public TeamMember addProjectTeamMember(final Integer projectId, final String userId,
       final UpdateTeamMember updateTeamMember) {
+
+    log.debug("Add/update Project Team");
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     var jaggaerUserId = userProfileService.resolveJaggaerUserId(userId);
+    var user = User.builder().id(jaggaerUserId).build();
+    Tender tender;
 
-    if (updateTeamMember.getUserType() == UpdateTeamMemberType.PROJECT_OWNER
-        || updateTeamMember.getUserType() == UpdateTeamMemberType.TEAM_MEMBER) {
-
-      CreateUpdateProject updateProject;
-
-      if (updateTeamMember.getUserType() == UpdateTeamMemberType.PROJECT_OWNER) {
-        /*
-         * Update Project Owner
-         */
+    switch (updateTeamMember.getUserType()) {
+      case PROJECT_OWNER:
         log.debug("Project Owner update");
         var projectOwner = ProjectOwner.builder().id(jaggaerUserId).build();
-        var tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId())
+        tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId())
             .projectOwner(projectOwner).build();
-        updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+        var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
             Project.builder().tender(tender).build());
-
-      } else {
-        /*
-         * Add Team Member
-         */
+        jaggaerService.createUpdateProject(updateProject);
+        break;
+      case TEAM_MEMBER:
         log.debug("Team Member update");
-        var user = User.builder().id(jaggaerUserId).build();
         var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
-        var tender =
-            Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
+        tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
         updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
             Project.builder().tender(tender).projectTeam(projectTeam).build());
-      }
-
-      var updateProjectResponse = jaggaerService.createUpdateProject(updateProject);
-      log.info("Updated project team: {}", updateProjectResponse);
-
-    } else {
-
-      if (updateTeamMember.getUserType() == UpdateTeamMemberType.EMAIL_RECIPIENT) {
-        /*
-         * Add EMail Recipient
-         */
-        log.debug("Team member update");
+        jaggaerService.createUpdateProject(updateProject);
+        break;
+      case EMAIL_RECIPIENT:
+        log.debug("EMail Recipient update");
         ProcurementEvent event = getCurrentEvent(dbProject);
-        var user = User.builder().id(jaggaerUserId).build();
         var emailRecipient = EmailRecipient.builder().user(user).build();
         var emailRecipients =
             EmailRecipientList.builder().emailRecipient(Arrays.asList(emailRecipient)).build();
         var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
             .rfxReferenceCode(event.getExternalReferenceId()).build();
         var rfx = Rfx.builder().rfxSetting(rfxSetting).emailRecipientList(emailRecipients).build();
-        var createRfxResponse = jaggaerService.createUpdateRfx(rfx);
-        log.info("Updated event: {}", createRfxResponse);
-      } else {
+        jaggaerService.createUpdateRfx(rfx);
+        break;
+      default:
         log.warn("No matching update team member type supplied");
         throw new IllegalArgumentException("Unknown Team Member Update Type");
-      }
     }
 
     return getProjectTeamMembers(projectId).stream()
         .filter(tm -> tm.getOCDS().getId().equals(userId)).findFirst().orElseThrow();
-
   }
 
 
