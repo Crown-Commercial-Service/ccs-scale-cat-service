@@ -22,6 +22,10 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
   private final UnauthorizedResponseDecorator unauthorizedResponseDecorator;
   private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
 
+  // TODO: Move to SSM.
+  private static final String[] CONCLAVE_ROLES =
+      new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT", "CAT_USER_LOGIN_DIRECTOR"};
+
   @Override
   protected void configure(final HttpSecurity http) throws Exception {
 
@@ -30,8 +34,8 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     // @formatter:off
     http.authorizeRequests(authz ->
       authz
-        .antMatchers("/tenders/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT")
-        .antMatchers("/error/**").hasAnyAuthority("CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT")
+        .antMatchers("/tenders/**").hasAnyAuthority(CONCLAVE_ROLES)
+        .antMatchers("/error/**").hasAnyAuthority(CONCLAVE_ROLES)
         .anyRequest().denyAll()
     )
     .csrf(CsrfConfigurer::disable)

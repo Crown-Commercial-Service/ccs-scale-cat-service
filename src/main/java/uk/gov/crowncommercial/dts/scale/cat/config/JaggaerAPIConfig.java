@@ -15,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 public class JaggaerAPIConfig {
 
   public static final String ENDPOINT = "endpoint";
+  public static final String PRINCIPAL_PLACEHOLDER = "{{PRINCIPAL}}";
 
   private String baseUrl;
   private String headerValueWWWAuthenticate;
@@ -24,8 +25,11 @@ public class JaggaerAPIConfig {
   private Boolean addDivisionToProjectTeam;
   private Long tokenExpirySeconds;
   private Map<String, String> createProject;
+  private Map<String, String> getProject;
   private Map<String, String> createRfx;
   private Map<String, String> getBuyerCompanyProfile;
   private Map<String, String> exportRfx;
+  private Map<String, String> getSupplierCompanyProfile;
+  private Map<String, String> getSupplierSubUserProfile;
 
 }

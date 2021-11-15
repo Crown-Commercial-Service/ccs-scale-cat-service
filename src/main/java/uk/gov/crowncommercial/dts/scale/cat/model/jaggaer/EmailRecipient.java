@@ -5,14 +5,18 @@ import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 /**
- *
- */
+*
+*/
 @Value
 @Builder
 @Jacksonized
-public class ReturnCompanyInfo {
+public class EmailRecipient {
 
-  String bravoId;
-  String companyName;
-
+  User user;
+  String email;
+  String division;
+  String profile;
+  Integer objectVisibility;
+  Integer divisionId;
+  Integer profileId;
 }

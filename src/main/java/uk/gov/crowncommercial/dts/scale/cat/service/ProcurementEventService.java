@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -76,7 +77,7 @@ public class ProcurementEventService {
     var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
     var createEventOCDS = requireNonNullElse(createEvent.getOCDS(), new CreateEventOCDS());
     var eventTypeValue = ofNullable(createEventNonOCDS.getEventType())
-        .map(DefineEventType::getValue).orElseGet(() -> ViewEventType.TBD.getValue());
+        .map(DefineEventType::getValue).orElseGet(ViewEventType.TBD::getValue);
 
     downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
 
@@ -126,8 +127,10 @@ public class ProcurementEventService {
       final String principal) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveJaggaerUserId(principal);
-    var jaggaerBuyerCompanyId = userProfileService.resolveJaggaerBuyerCompanyId(principal);
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+    var jaggaerBuyerCompanyId =
+        userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
 
     var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
     var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();

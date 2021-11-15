@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -209,4 +210,110 @@ class ProjectsControllerTest {
         .andExpect(content().string(expectedJson));
   }
 
+  @Test
+  void getProjectUsers_200_OK() throws Exception {
+    ;
+
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+        .thenReturn(Arrays.asList(TestUtils.getTeamMember()));
+
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(1))
+        .andExpect(jsonPath("$[0].id", is(TestUtils.USERID)))
+        .andExpect(jsonPath("$[0].contact.name", is(TestUtils.USER_NAME)))
+        .andExpect(jsonPath("$[0].contact.email", is(TestUtils.USERID)));
+  }
+
+  @Test
+  void getProjectUsers_401_Forbidden_Invalid_JWT() throws Exception {
+    // No subject claim
+    var invalidJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+            .with(invalidJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
+  }
+
+  @Test
+  void getProjectUsers_500_ISE() throws Exception {
+
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+        .thenThrow(new JaggaerApplicationException("1", "BANG"));
+
+    mockMvc
+        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isInternalServerError())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("500 INTERNAL_SERVER_ERROR"))).andExpect(
+            jsonPath("$.errors[0].title", is("An error occurred invoking an upstream service")));
+  }
+
+  @Test
+  void addProjectUser_200_OK() throws Exception {
+
+    when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID))
+        .thenReturn(TestUtils.getTeamMember());
+
+    mockMvc
+        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.id", is(TestUtils.USERID)))
+        .andExpect(jsonPath("$.contact.name", is(TestUtils.USER_NAME)))
+        .andExpect(jsonPath("$.contact.email", is(TestUtils.USERID)));
+
+    verify(procurementProjectService).addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID);
+  }
+
+  @Test
+  void addProjectUser_401_Forbidden_Invalid_JWT() throws Exception {
+    // No subject claim
+    var invalidJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
+
+    mockMvc
+        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
+            .with(invalidJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
+  }
+
+  @Test
+  void addProjectUser_500_ISE() throws Exception {
+
+    when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID))
+        .thenThrow(new JaggaerApplicationException("1", "BANG"));
+
+    mockMvc
+        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(agreementDetails)))
+        .andDo(print()).andExpect(status().isInternalServerError())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("500 INTERNAL_SERVER_ERROR"))).andExpect(
+            jsonPath("$.errors[0].title", is("An error occurred invoking an upstream service")));
+  }
+
 }
+

@@ -29,6 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -58,8 +59,13 @@ class ProcurementEventServiceTest {
   private static final String OCID_PREFIX = "b5fd17";
   private static final String UPDATED_EVENT_NAME = "New Name";
   private static final String UPDATED_EVENT_TYPE = "DA";
+  private static final String BUYER_COMPANY_BRAVO_ID = "54321";
   private static final DefineEventType EVENT_TYPE = DefineEventType.DA;
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
+  private static final Optional<SubUser> JAGGAER_USER =
+      Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
+  private static final ReturnCompanyInfo BUYER_COMPANY_INFO =
+      ReturnCompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -99,7 +105,8 @@ class ProcurementEventServiceTest {
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
@@ -173,7 +180,8 @@ class ProcurementEventServiceTest {
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
@@ -240,7 +248,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setReturnCode(0);
     createUpdateRfxResponse.setReturnMessage("OK");
 
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(argThat(new UpdateEventNameMatcher(updateRfx))).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
@@ -272,7 +280,7 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setReturnCode(0);
     createUpdateRfxResponse.setReturnMessage("OK");
 
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(argThat(new UpdateEventNameMatcher(updateRfx))).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))
@@ -309,7 +317,7 @@ class ProcurementEventServiceTest {
     var updateEvent = new UpdateEvent();
 
     // Mock behaviours
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
 
     // Invoke & assert
     var ex = assertThrows(IllegalArgumentException.class, () -> procurementEventService
@@ -323,7 +331,7 @@ class ProcurementEventServiceTest {
     var updateEvent = new UpdateEvent();
 
     // Mock behaviours
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
 
     // Invoke & assert
     var ex = assertThrows(ResourceNotFoundException.class, () -> procurementEventService
@@ -344,7 +352,7 @@ class ProcurementEventServiceTest {
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
-    when(userProfileService.resolveJaggaerUserId(PRINCIPAL)).thenReturn(JAGGAER_USER_ID);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
         .bodyValue(any(CreateUpdateRfx.class)).retrieve()
         .bodyToMono(eq(CreateUpdateRfxResponse.class))

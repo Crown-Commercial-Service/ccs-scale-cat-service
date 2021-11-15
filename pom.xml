@@ -51,8 +51,8 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-    		<groupId>org.springframework.boot</groupId>
-    		<artifactId>spring-boot-starter-validation</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.retry</groupId>
@@ -146,6 +146,7 @@
 				<version>${openapi-generator.version}</version>
 				<executions>
 					<execution>
+						<id>tenders-api</id>
 						<goals>
 							<goal>generate</goal>
 						</goals>
@@ -174,8 +175,36 @@
 							</configOptions>
 						</configuration>
 					</execution>
+					<execution>
+						<id>conclave-wrapper-api</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>https://tst.api.crowncommercial.gov.uk/user-profiles/swagger/v1/swagger.json</inputSpec>
+							<generatorName>spring</generatorName>
+							<generateModels>true</generateModels>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateApis>false</generateApis>
+							<generateModelTests>false</generateModelTests>
+							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.conclave-wrapper.generated</modelPackage>
+							<skipValidateSpec>false</skipValidateSpec>
+							<strictSpec>true</strictSpec>
+							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
+							<verbose>false</verbose>
+							<configOptions>
+								<sourceFolder>src/gen/java/main</sourceFolder>
+								<useBeanValidation>true</useBeanValidation>
+								<performBeanValidation>true</performBeanValidation>
+								<dateLibrary>java8</dateLibrary>
+								<hideGenerationTimestamp>true</hideGenerationTimestamp>
+								<openApiNullable>false</openApiNullable>
+								<useOptional>true</useOptional>
+							</configOptions>
+						</configuration>
+					</execution>
 				</executions>
-			</plugin>
+			</plugin> 
 		</plugins>
 	</build>
 
