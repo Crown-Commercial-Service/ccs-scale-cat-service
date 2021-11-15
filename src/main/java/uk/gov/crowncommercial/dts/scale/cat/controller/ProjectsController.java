@@ -75,7 +75,7 @@ public class ProjectsController extends AbstractRestController {
     log.info("addProjectUser invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
-    return procurementProjectService.addProjectTeamMember(procId, userId);
+    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember);
   }
 
 }
