@@ -34,7 +34,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+<<<<<<< Upstream, based on origin/develop
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
+=======
+>>>>>>> 44a11bd SCAT-2381 - added Jaggaer service
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -44,8 +47,9 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class,
-    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ModelMapper.class},
+@SpringBootTest(
+    classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class,
+        RetryableTendersDBDelegate.class, ModelMapper.class, JaggaerService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {

@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
@@ -15,7 +14,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -38,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class ProcurementProjectService {
 
+  // TODO: Migrate these to use the JaggaerService wrapper as time allows
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final UserProfileService userProfileService;
@@ -48,6 +47,7 @@ public class ProcurementProjectService {
   private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
   private final WebClient agreementsServiceWebClient;
   private final ModelMapper modelMapper;
+  private final JaggaerService jaggaerService;
 
   /**
    * SCC-440/441
@@ -212,13 +212,7 @@ public class ProcurementProjectService {
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
-    var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
-    var exportRfxResponse =
-        ofNullable(jaggaerWebClient.get().uri(exportRfxUri, dbEvent.getExternalEventId()).retrieve()
-            .bodyToMono(ExportRfxResponse.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error retrieving rfx"));
+    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
 
     // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
@@ -283,21 +277,11 @@ public class ProcurementProjectService {
             Project.builder().tender(tender).projectTeam(projectTeam).build());
       }
 
-      var updateProjectResponse =
-          ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-              .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-              .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                  .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                      "Unexpected error updating project"));
-
-      if (updateProjectResponse.getReturnCode() != 0
-          || !"OK".equals(updateProjectResponse.getReturnMessage())) {
-        throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
-            updateProjectResponse.getReturnMessage());
-      }
+      var updateProjectResponse = jaggaerService.createUpdateProject(updateProject);
       log.info("Updated project team: {}", updateProjectResponse);
 
     } else {
+
       if (updateTeamMember.getUserType() == UpdateTeamMemberType.EMAIL_RECIPIENT) {
         /*
          * Add EMail Recipient
@@ -311,21 +295,7 @@ public class ProcurementProjectService {
         var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
             .rfxReferenceCode(event.getExternalReferenceId()).build();
         var rfx = Rfx.builder().rfxSetting(rfxSetting).emailRecipientList(emailRecipients).build();
-
-        var createRfxResponse =
-            ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-                .bodyValue(new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx)).retrieve()
-                .bodyToMono(CreateUpdateRfxResponse.class)
-                .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).orElseThrow(
-                    () -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                        "Unexpected error updating Rfx"));
-
-        if (createRfxResponse.getReturnCode() != 0
-            || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
-          log.error(createRfxResponse.toString());
-          throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
-              createRfxResponse.getReturnMessage());
-        }
+        var createRfxResponse = jaggaerService.createUpdateRfx(rfx);
         log.info("Updated event: {}", createRfxResponse);
       } else {
         log.warn("No matching update team member type supplied");
