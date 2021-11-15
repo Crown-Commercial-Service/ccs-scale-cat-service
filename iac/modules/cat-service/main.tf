@@ -8,7 +8,7 @@ data "cloudfoundry_space" "space" {
 }
 
 data "cloudfoundry_domain" "domain" {
-  name = "apps.internal"
+  name = "london.cloudapps.digital"
 }
 
 data "cloudfoundry_service_instance" "tenders_database" {
