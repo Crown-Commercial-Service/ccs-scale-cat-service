@@ -8,13 +8,17 @@ import java.util.Optional;
  */
 public class JaggaerApplicationException extends UpstreamServiceException {
 
+  private static final String SERVICE_NAME = "Jaggaer";
   /**
    *
    */
   private static final long serialVersionUID = 1L;
 
   public JaggaerApplicationException(final Object code, final String message) {
-    super("Jaggaer", Optional.of(code), message);
+    super(SERVICE_NAME, Optional.of(code), message);
   }
 
+  public JaggaerApplicationException(final String message) {
+    super(SERVICE_NAME, Optional.empty(), message);
+  }
 }

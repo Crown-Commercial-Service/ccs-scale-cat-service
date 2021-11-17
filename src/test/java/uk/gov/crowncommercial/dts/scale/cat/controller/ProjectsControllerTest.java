@@ -35,6 +35,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMemberType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -222,9 +224,12 @@ class ProjectsControllerTest {
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(1))
-        .andExpect(jsonPath("$[0].id", is(TestUtils.USERID)))
-        .andExpect(jsonPath("$[0].contact.name", is(TestUtils.USER_NAME)))
-        .andExpect(jsonPath("$[0].contact.email", is(TestUtils.USERID)));
+        .andExpect(jsonPath("$[0].OCDS.id", is(TestUtils.USERID)))
+        .andExpect(jsonPath("$[0].OCDS.contact.name", is(TestUtils.USER_NAME)))
+        .andExpect(jsonPath("$[0].OCDS.contact.email", is(TestUtils.USERID)))
+        .andExpect(jsonPath("$[0].nonOCDS.teamMember", is(true)))
+        .andExpect(jsonPath("$[0].nonOCDS.emailRecipient", is(false)))
+        .andExpect(jsonPath("$[0].nonOCDS.projectOwner", is(false)));
   }
 
   @Test
@@ -265,19 +270,27 @@ class ProjectsControllerTest {
   @Test
   void addProjectUser_200_OK() throws Exception {
 
-    when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID))
-        .thenReturn(TestUtils.getTeamMember());
+    UpdateTeamMember updateTeamMember = new UpdateTeamMember();
+    updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
+
+    when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
+        updateTeamMember)).thenReturn(TestUtils.getTeamMember());
 
     mockMvc
         .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
-            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON))
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(updateTeamMember)))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
-        .andExpect(jsonPath("$.id", is(TestUtils.USERID)))
-        .andExpect(jsonPath("$.contact.name", is(TestUtils.USER_NAME)))
-        .andExpect(jsonPath("$.contact.email", is(TestUtils.USERID)));
+        .andExpect(jsonPath("$.OCDS.id", is(TestUtils.USERID)))
+        .andExpect(jsonPath("$.OCDS.contact.name", is(TestUtils.USER_NAME)))
+        .andExpect(jsonPath("$.OCDS.contact.email", is(TestUtils.USERID)))
+        .andExpect(jsonPath("$.nonOCDS.teamMember", is(true)))
+        .andExpect(jsonPath("$.nonOCDS.emailRecipient", is(false)))
+        .andExpect(jsonPath("$.nonOCDS.projectOwner", is(false)));
 
-    verify(procurementProjectService).addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID);
+    verify(procurementProjectService).addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
+        updateTeamMember);
   }
 
   @Test
@@ -301,13 +314,16 @@ class ProjectsControllerTest {
   @Test
   void addProjectUser_500_ISE() throws Exception {
 
-    when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID))
-        .thenThrow(new JaggaerApplicationException("1", "BANG"));
+    UpdateTeamMember updateTeamMember = new UpdateTeamMember();
+    updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
+
+    when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
+        updateTeamMember)).thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(agreementDetails)))
+            .content(objectMapper.writeValueAsString(updateTeamMember)))
         .andDo(print()).andExpect(status().isInternalServerError())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))

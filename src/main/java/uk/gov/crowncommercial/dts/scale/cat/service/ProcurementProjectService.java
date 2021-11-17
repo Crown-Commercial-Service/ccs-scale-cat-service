@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
@@ -37,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class ProcurementProjectService {
 
+  // TODO: Migrate these to use the JaggaerService wrapper as time allows
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final UserProfileService userProfileService;
@@ -47,6 +47,7 @@ public class ProcurementProjectService {
   private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
   private final WebClient agreementsServiceWebClient;
   private final ModelMapper modelMapper;
+  private final JaggaerService jaggaerService;
 
   /**
    * SCC-440/441
@@ -211,61 +212,86 @@ public class ProcurementProjectService {
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
-    var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
-    var exportRfxResponse =
-        ofNullable(jaggaerWebClient.get().uri(exportRfxUri, dbEvent.getExternalEventId()).retrieve()
-            .bodyToMono(ExportRfxResponse.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error retrieving rfx"));
+    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+
+    // Get Project Owner
+    var projectOwner = jaggaerProject.getTender().getProjectOwner();
 
     // Combine the user IDs and remove duplicates
     final Set<String> teamIds = jaggaerProject.getProjectTeam().getUser().stream().map(User::getId)
         .collect(Collectors.toSet());
-    teamIds.addAll(exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
-        .map(e -> e.getUser().getId()).collect(Collectors.toSet()));
+    final Set<String> emailRecipientIds = exportRfxResponse.getEmailRecipientList()
+        .getEmailRecipient().stream().map(e -> e.getUser().getId()).collect(Collectors.toSet());
+    final Set<String> combinedIds = new HashSet<>();
+    combinedIds.add(projectOwner.getId());
+    combinedIds.addAll(teamIds);
+    combinedIds.addAll(emailRecipientIds);
 
     // Retrieve additional info on each user from Jaggaer and Conclave
-    return teamIds.stream().map(this::getTeamMember).filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    return combinedIds.stream()
+        .map(i -> getTeamMember(i, teamIds, emailRecipientIds, projectOwner.getId()))
+        .filter(Objects::nonNull).collect(Collectors.toSet());
   }
 
   /**
-   * Add an existing user to a Project Team.
+   * Add/Update Project Team Member (owner, team members, email recipients).
    *
    * @param projectId CCS project id
    * @param userId Conclave user id (email)
-   * @return
+   * @param updateTeamMember contains details of type of update to perform
+   * @return Team Member details
    */
-  public TeamMember addProjectTeamMember(final Integer projectId, final String userId) {
+  public TeamMember addProjectTeamMember(final Integer projectId, final String userId,
+      final UpdateTeamMember updateTeamMember) {
+
+    log.debug("Add/update Project Team");
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(userId)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
-
+    var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
+        .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
+    var jaggaerUserId = jaggaerUser.getUserId();
     var user = User.builder().id(jaggaerUserId).build();
-    var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
-    var tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
-    var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
-        Project.builder().tender(tender).projectTeam(projectTeam).build());
+    Tender tender;
 
-    var updateProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-            .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating project"));
-
-    if (updateProjectResponse.getReturnCode() != 0
-        || !"OK".equals(updateProjectResponse.getReturnMessage())) {
-      throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
-          updateProjectResponse.getReturnMessage());
+    switch (updateTeamMember.getUserType()) {
+      case PROJECT_OWNER:
+        log.debug("Project Owner update");
+        var projectOwner = ProjectOwner.builder().id(jaggaerUserId).build();
+        tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId())
+            .projectOwner(projectOwner).build();
+        var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+            Project.builder().tender(tender).build());
+        jaggaerService.createUpdateProject(updateProject);
+        break;
+      case TEAM_MEMBER:
+        log.debug("Team Member update");
+        var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
+        tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
+        updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+            Project.builder().tender(tender).projectTeam(projectTeam).build());
+        jaggaerService.createUpdateProject(updateProject);
+        break;
+      case EMAIL_RECIPIENT:
+        log.debug("EMail Recipient update");
+        ProcurementEvent event = getCurrentEvent(dbProject);
+        var emailRecipient = EmailRecipient.builder().user(user).build();
+        var emailRecipients =
+            EmailRecipientList.builder().emailRecipient(Arrays.asList(emailRecipient)).build();
+        var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+            .rfxReferenceCode(event.getExternalReferenceId()).build();
+        var rfx = Rfx.builder().rfxSetting(rfxSetting).emailRecipientList(emailRecipients).build();
+        jaggaerService.createUpdateRfx(rfx);
+        break;
+      default:
+        log.warn("No matching update team member type supplied");
+        throw new IllegalArgumentException("Unknown Team Member Update Type");
     }
-    log.info("Updated project team: {}", updateProjectResponse);
 
-    return getTeamMember(userId);
+    return getProjectTeamMembers(projectId).stream()
+        .filter(tm -> tm.getOCDS().getId().equals(userId)).findFirst().orElseThrow();
   }
+
 
   /**
    * Get a Team Member.
@@ -277,7 +303,8 @@ public class ProcurementProjectService {
    * @param jaggaerUserId
    * @return TeamMember
    */
-  private TeamMember getTeamMember(final String jaggaerUserId) {
+  private TeamMember getTeamMember(final String jaggaerUserId, final Set<String> teamMemberIds,
+      final Set<String> emailRecipientIds, final String projectOwnerId) {
 
     try {
       var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId)
@@ -286,8 +313,10 @@ public class ProcurementProjectService {
           .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
 
       var teamMember = new TeamMember();
+
+      var tmOCDS = new TeamMemberOCDS();
       var contact = new ContactPoint1();
-      teamMember.setId(conclaveUser.getUserName());
+      tmOCDS.setId(conclaveUser.getUserName());
       contact.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
       contact.setEmail(conclaveUser.getUserName());
       contact.setTelephone(jaggaerUser.getPhoneNumber());
@@ -296,7 +325,15 @@ public class ProcurementProjectService {
       // Question on logic for doing this outstanding on SCAT-2240
       // cp.setFaxNumber(null);
       // cp.setUrl(null);
-      teamMember.setContact(contact);
+      tmOCDS.setContact(contact);
+      teamMember.setOCDS(tmOCDS);
+
+      var tmNonOCDS = new TeamMemberNonOCDS();
+      tmNonOCDS.setProjectOwner(jaggaerUserId.equals(projectOwnerId));
+      tmNonOCDS.setTeamMember(teamMemberIds.contains(jaggaerUserId));
+      tmNonOCDS.setEmailRecipient(emailRecipientIds.contains(jaggaerUserId));
+      teamMember.setNonOCDS(tmNonOCDS);
+
       return teamMember;
     } catch (final ResourceNotFoundException rnfe) {
       log.warn("Unable to find user '{}' in {} when building Project Team, so ignoring.",

@@ -13,4 +13,5 @@ public class Rfx {
   RfxAdditionalInfoList rfxAdditionalInfoList;
   SuppliersList suppliersList;
   TechEnvelope techEnvelope;
+  EmailRecipientList emailRecipientList;
 }

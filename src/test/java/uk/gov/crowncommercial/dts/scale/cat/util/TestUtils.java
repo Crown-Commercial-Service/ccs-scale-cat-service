@@ -3,10 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.util;
 import java.util.Arrays;
 import java.util.List;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 public class TestUtils {
 
@@ -60,8 +57,18 @@ public class TestUtils {
     ContactPoint1 contact = new ContactPoint1();
     contact.setEmail(USERID);
     contact.setName(USER_NAME);
-    teamMember.setId(USERID);
-    teamMember.setContact(contact);
+
+    TeamMemberOCDS tmOCDS = new TeamMemberOCDS();
+    tmOCDS.setId(USERID);
+    tmOCDS.setContact(contact);
+
+    TeamMemberNonOCDS tmNoNOCDS = new TeamMemberNonOCDS();
+    tmNoNOCDS.setTeamMember(true);
+    tmNoNOCDS.setEmailRecipient(false);
+    tmNoNOCDS.setProjectOwner(false);
+
+    teamMember.setOCDS(tmOCDS);
+    teamMember.setNonOCDS(tmNoNOCDS);
     return teamMember;
   }
 }
