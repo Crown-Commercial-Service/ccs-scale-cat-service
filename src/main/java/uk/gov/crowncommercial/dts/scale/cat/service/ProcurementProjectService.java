@@ -252,21 +252,25 @@ public class ProcurementProjectService {
         .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
     var user = User.builder().id(jaggaerUserId).build();
+
     Tender tender;
+    ProjectTeam projectTeam;
 
     switch (updateTeamMember.getUserType()) {
       case PROJECT_OWNER:
         log.debug("Project Owner update");
+        // User has to also be a Team Member before they can be a Project Owner
+        projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
         var projectOwner = ProjectOwner.builder().id(jaggaerUserId).build();
         tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId())
             .projectOwner(projectOwner).build();
         var updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
-            Project.builder().tender(tender).build());
+            Project.builder().tender(tender).projectTeam(projectTeam).build());
         jaggaerService.createUpdateProject(updateProject);
         break;
       case TEAM_MEMBER:
         log.debug("Team Member update");
-        var projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
+        projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
         tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
         updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
             Project.builder().tender(tender).projectTeam(projectTeam).build());
@@ -289,7 +293,7 @@ public class ProcurementProjectService {
     }
 
     return getProjectTeamMembers(projectId).stream()
-        .filter(tm -> tm.getOCDS().getId().equals(userId)).findFirst().orElseThrow();
+        .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
 
 
