@@ -7,7 +7,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
@@ -27,8 +26,8 @@ public class EventsController extends AbstractRestController {
   private final ProcurementEventService procurementEventService;
 
   @PostMapping
-  public EventSummary createProcurementEvent(@PathVariable("procID") Integer procId,
-      @RequestBody CreateEvent createEvent, JwtAuthenticationToken authentication) {
+  public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId,
+      @RequestBody final CreateEvent createEvent, final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
@@ -37,8 +36,8 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}")
-  public EventDetail getEvent(@PathVariable("procID") Integer procId,
-      @PathVariable("eventID") String eventId, JwtAuthenticationToken authentication) {
+  public EventDetail getEvent(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEvent invoked on behalf of principal: {}", principal);
@@ -47,15 +46,14 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}")
-  public String updateProcurementEvent(@PathVariable("procID") Integer procId,
-      @PathVariable("eventID") String eventId, @Valid @RequestBody UpdateEvent updateEvent,
-      JwtAuthenticationToken authentication) {
+  public EventSummary updateProcurementEvent(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @Valid @RequestBody final UpdateEvent updateEvent,
+      final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEvent invoked on behalf of principal: {}", principal);
 
-    procurementEventService.updateProcurementEvent(procId, eventId, updateEvent, principal);
-
-    return Constants.OK;
+    return procurementEventService.updateProcurementEvent(procId, eventId, updateEvent, principal);
   }
 }
