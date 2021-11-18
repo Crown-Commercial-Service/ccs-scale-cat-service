@@ -11,6 +11,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 @Repository
 public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, Integer> {
 
-  public Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
+  Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
 }

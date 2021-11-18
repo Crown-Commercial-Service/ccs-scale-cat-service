@@ -4,7 +4,10 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,9 +24,29 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Period1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroupNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDSOptions;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Requirement1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.RequirementGroup1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Value1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelope;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeParameter;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeParameterList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeQuestionType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeSection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -86,8 +109,9 @@ public class CriteriaService {
           .multiAnswer(r.getNonOCDS().getMultiAnswer())
           .answered(r.getNonOCDS().getAnswered())
           .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
-              new QuestionNonOCDSOptions().value(o.get("value"))
-                       .selected(Boolean.valueOf(o.get("select")))).collect(Collectors.toList()));
+              new QuestionNonOCDSOptions().value(o.getValue())
+                       .selected(Boolean.valueOf(o.getSelect()))
+                  .text(o.getText())).collect(Collectors.toList()));
 
       var questionOCDS = new Requirement1()
           .id(r.getOcds().getId())
@@ -126,10 +150,9 @@ public class CriteriaService {
     var options = question.getNonOCDS().getOptions();
     if (options != null && !options.isEmpty()) {
       requirement.getNonOCDS()
-          .updateOptions(options.stream()
-              .map(o -> Map.of("value", o.getValue(), "select",
-                  o.getSelected() == null ? "false" : o.getSelected().toString()))
-              .collect(Collectors.toList()));
+          .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
+              .select(questionNonOCDSOptions.getSelected()).value(questionNonOCDSOptions.getValue())
+              .text(questionNonOCDSOptions.getText()).build()).collect(Collectors.toList()));
     }
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
