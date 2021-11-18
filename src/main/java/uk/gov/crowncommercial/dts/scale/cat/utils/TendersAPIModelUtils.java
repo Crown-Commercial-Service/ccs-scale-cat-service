@@ -22,7 +22,7 @@ public class TendersAPIModelUtils {
       final AgreementDetails agreementDetails, final Integer procurementID, final String eventID,
       final String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
-    draftProcurementProject.setPocurementID(procurementID);
+    draftProcurementProject.setProcurementID(procurementID);
     draftProcurementProject.setEventId(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();

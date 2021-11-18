@@ -138,7 +138,7 @@ class ProcurementProjectServiceTest {
         procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL);
 
     // Assert
-    assertEquals(PROC_PROJECT_ID, draftProcurementProject.getPocurementID());
+    assertEquals(PROC_PROJECT_ID, draftProcurementProject.getProcurementID());
     assertEquals(EVENT_OCID, draftProcurementProject.getEventId());
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG,
         draftProcurementProject.getDefaultName().getName());
