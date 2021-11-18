@@ -95,7 +95,7 @@ class ProjectsControllerTest {
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
-        .andExpect(jsonPath("$.pocurementID").value(PROC_PROJECT_ID))
+        .andExpect(jsonPath("$.procurementID").value(PROC_PROJECT_ID))
         .andExpect(jsonPath("$.eventId").value(EVENT_OCID))
         .andExpect(jsonPath("$.defaultName.name").value(PROJ_NAME))
         .andExpect(jsonPath("$.defaultName.components.agreementId").value(CA_NUMBER))
