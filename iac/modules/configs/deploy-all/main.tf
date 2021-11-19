@@ -13,4 +13,5 @@ module "cat-service" {
   cf_password  = var.cf_password
   instances    = var.instances
   memory       = var.memory
+  dev_mode     = var.dev_mode
 }

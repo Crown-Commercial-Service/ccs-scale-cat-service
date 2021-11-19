@@ -32,3 +32,4 @@ variable "cf_password" {
   sensitive = true
 }
 
+variable "dev_mode" {}
