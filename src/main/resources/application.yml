@@ -109,7 +109,8 @@ config:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
-
+  #flags:
+    # devMode: "SET IN ENV"
 ---
 spring:
   config:

@@ -10,4 +10,5 @@ module "deploy-all" {
   cf_username = var.cf_username
   cf_password = var.cf_password
   instances   = 1
+  dev_mode    = true
 }
