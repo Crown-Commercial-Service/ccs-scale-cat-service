@@ -21,6 +21,7 @@ public class AgreementsServiceAPIConfig {
   private Map<String, String> getAgreementDetail;
   private Map<String, String> getLotDetailsForAgreement;
   private Map<String, String> getLotEventTypeDataTemplates;
+  private Map<String, String> getLotSuppliers;
   private Map<String, String> getEventTypesForAgreement;
 
 }

@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -80,6 +81,12 @@ public class ProcurementProjectService {
         userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
+    // TODO: Replace with Conclave lookup?
+    var organisationMapping = retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+        .orElseThrow(() -> new TendersDBDataException("No org mapping for external buyer org ID: '"
+            + jaggaerBuyerCompanyId + "' found in Tenders DB"));
+
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
         .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
@@ -112,9 +119,12 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
-    var procurementProject = retryableTendersDBDelegate
-        .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
-            createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
+    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.builder()
+        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
+        .externalProjectId(createProjectResponse.getTenderCode())
+        .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+        .organisationMapping(organisationMapping).projectName(projectTitle).createdBy(principal)
+        .createdAt(Instant.now()).updatedBy(principal).updatedAt(Instant.now()).build());
 
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
