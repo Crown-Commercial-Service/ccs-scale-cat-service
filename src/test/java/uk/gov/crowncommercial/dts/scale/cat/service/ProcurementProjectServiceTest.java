@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
@@ -67,14 +66,13 @@ class ProcurementProjectServiceTest {
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
-  private static final String BUYER_COMPANY_BRAVO_ID = "54321";
   private static final CreateEvent CREATE_EVENT = new CreateEvent();
   private static final OrganisationMapping ORG_MAPPING = new OrganisationMapping();
   private static final AgreementDetails AGREEMENT_DETAILS = new AgreementDetails();
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
   private static final ReturnCompanyInfo BUYER_COMPANY_INFO =
-      ReturnCompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
+      ReturnCompanyInfo.builder().bravoId(JAGGAER_BUYER_COMPANY_ID).build();
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -189,7 +187,6 @@ class ProcurementProjectServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-        .thenReturn(JAGGAER_BUYER_COMPANY_ID);
     when(organisationMappingRepo
         .findByExternalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
@@ -294,8 +291,17 @@ class ProcurementProjectServiceTest {
     // Verify
     verify(procurementProjectRepo).findById(PROC_PROJECT_ID);
 
-    assertTrue(Arrays.asList(ViewEventType.values()).containsAll(projectEventTypes),
-        "ViewEventType not superset of projectEventTypes");
+    // TODO : better way to compare ??
+    var defineEventTypes = projectEventTypes.stream()
+        .map(eventType -> eventType.getType().getValue()).collect(Collectors.joining(","));
+    var eventTypesDescription =
+        projectEventTypes.stream().map(EventType::getDescription).collect(Collectors.joining(","));
+    var expectedEventTypes = TestUtils.getEventTypes().stream()
+        .map(eventType -> eventType.getType().getValue()).collect(Collectors.joining(","));
+    var expectedEventTypesDescription = TestUtils.getEventTypes().stream()
+        .map(EventType::getDescription).collect(Collectors.joining(","));
+    assertEquals(defineEventTypes, expectedEventTypes);
+    assertEquals(eventTypesDescription, expectedEventTypesDescription);
   }
 
   @Test

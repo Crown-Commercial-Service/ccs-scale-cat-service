@@ -26,6 +26,7 @@ public class AgreementsService {
 
   private final WebClient agreementsServiceWebClient;
   private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
+  private final WebclientWrapper webclientWrapper;
 
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId,
       final String lotId, final ViewEventType eventType) {
@@ -50,13 +51,10 @@ public class AgreementsService {
   public Set<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
-    var lotSuppliers = ofNullable(agreementsServiceWebClient.get()
-        .uri(getLotSuppliersUri, agreementId, lotId).retrieve().bodyToMono(LotSupplier[].class)
-        .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new AgreementsServiceApplicationException(
-                "Unexpected error retrieving RFI template from AS"));
+    var lotSuppliers = webclientWrapper.getOptionalResource(LotSupplier[].class,
+        agreementsServiceWebClient, getLotSuppliersUri, agreementId, lotId);
 
-    return Set.of(lotSuppliers);
+    return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
   }
 
 }

@@ -18,7 +18,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -84,8 +83,12 @@ public class ProcurementProjectService {
     // TODO: Replace with Conclave lookup?
     var organisationMapping = retryableTendersDBDelegate
         .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-        .orElseThrow(() -> new TendersDBDataException("No org mapping for external buyer org ID: '"
-            + jaggaerBuyerCompanyId + "' found in Tenders DB"));
+        .orElse(null);
+
+    if (organisationMapping == null) {
+      log.warn("No org mapping for external buyer org ID: '{}' found in Tenders DB",
+          jaggaerBuyerCompanyId);
+    }
 
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
@@ -288,7 +291,7 @@ public class ProcurementProjectService {
         break;
       case EMAIL_RECIPIENT:
         log.debug("EMail Recipient update");
-        ProcurementEvent event = getCurrentEvent(dbProject);
+        var event = getCurrentEvent(dbProject);
         var emailRecipient = EmailRecipient.builder().user(user).build();
         var emailRecipients =
             EmailRecipientList.builder().emailRecipient(Arrays.asList(emailRecipient)).build();
@@ -305,7 +308,6 @@ public class ProcurementProjectService {
     return getProjectTeamMembers(projectId).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
-
 
   /**
    * Get a Team Member.

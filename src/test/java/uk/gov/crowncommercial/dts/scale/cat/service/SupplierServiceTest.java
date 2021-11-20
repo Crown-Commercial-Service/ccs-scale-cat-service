@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,8 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -85,12 +82,11 @@ class SupplierServiceTest {
   void testResolveSuppliersNonFoundInAS() throws Exception {
     when(agreementsService.getLotSuppliers(AGREEMENT_NUMBER, LOT_NUMBER)).thenReturn(Set.of());
 
-    var asAppEx = assertThrows(AgreementsServiceApplicationException.class,
-        () -> supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER));
-    assertEquals(
-        "Agreements Service application exception, Code: [N/A], Message: [No Lot Suppliers found in AS for CA: '"
-            + AGREEMENT_NUMBER + "', Lot: '" + LOT_NUMBER + "']",
-        asAppEx.getMessage());
+    var suppliers = supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
+
+    assertEquals(Set.of(), Set.copyOf(suppliers));
+
+    verify(agreementsService).getLotSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
   }
 
   @Test
@@ -102,11 +98,12 @@ class SupplierServiceTest {
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of());
 
-    var tendersDBDataException = assertThrows(TendersDBDataException.class,
-        () -> supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER));
+    var suppliers = supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
 
-    assertEquals("No supplier org mappings found in Tenders DB for CA: '" + AGREEMENT_NUMBER
-        + "', Lot: '" + LOT_NUMBER + "'", tendersDBDataException.getMessage());
+    assertEquals(Set.of(), Set.copyOf(suppliers));
+
+    verify(agreementsService).getLotSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
+    verify(retryableTendersDBDelegate).findOrganisationMappingByOrganisationIdIn(anySet());
   }
 
 }

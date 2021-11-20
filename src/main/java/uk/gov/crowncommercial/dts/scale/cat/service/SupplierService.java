@@ -1,10 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -17,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SupplierService {
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -37,8 +40,8 @@ public class SupplierService {
     // Retrieve and verify AS suppliers
     var lotSuppliers = agreementsService.getLotSuppliers(agreementId, lotId);
     if (isEmpty(lotSuppliers)) {
-      throw new AgreementsServiceApplicationException(
-          "No Lot Suppliers found in AS for CA: '" + agreementId + "', Lot: '" + lotId + "'");
+      log.warn("No Lot Suppliers found in AS for CA: '{}', Lot: '{}'", agreementId, lotId);
+      return Collections.emptyList();
     }
 
     var supplierOrgIds =
@@ -48,8 +51,9 @@ public class SupplierService {
     var supplierOrgMappings =
         retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
     if (isEmpty(supplierOrgMappings)) {
-      throw new TendersDBDataException("No supplier org mappings found in Tenders DB for CA: '"
-          + agreementId + "', Lot: '" + lotId + "'");
+      log.warn("No supplier org mappings found in Tenders DB for CA: '{}', Lot: '{}'", agreementId,
+          lotId);
+      return Collections.emptyList();
     }
 
     var supplierExternalIds =
