@@ -207,8 +207,15 @@ public class ProcurementEventService {
 
     // Update event type
     if (updateEvent.getEventType() != null) {
-      event.setEventType(updateEvent.getEventType().getValue());
-      updateDB = true;
+      var existingEventType = event.getEventType();
+      if (existingEventType == null || existingEventType.isBlank()
+          || event.getEventType().equals("TBD")) {
+        event.setEventType(updateEvent.getEventType().getValue());
+        updateDB = true;
+      } else {
+        throw new IllegalArgumentException(
+            "Cannot update an existing event type of '" + event.getEventType() + "'");
+      }
     }
 
     // Save to Jaggaer

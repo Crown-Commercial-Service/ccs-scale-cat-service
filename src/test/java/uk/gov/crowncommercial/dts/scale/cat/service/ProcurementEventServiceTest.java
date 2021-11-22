@@ -384,4 +384,27 @@ class ProcurementEventServiceTest {
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
 
+  @Test
+  void testUpdateProcurementEventTypeThrowsIllegalArgumentException() throws Exception {
+    // Stub some objects
+    var updateEvent = new UpdateEvent();
+    updateEvent.setEventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE));
+
+    var event = new ProcurementEvent();
+    event.setEventType("RFI"); // Not 'TBD', so rules state cannot update
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+
+    when(jaggaerService.createUpdateRfx(any()))
+        .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
+
+    // Invoke & assert
+    var ex = assertThrows(IllegalArgumentException.class, () -> procurementEventService
+        .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
+    assertEquals("Cannot update an existing event type of 'RFI'", ex.getMessage());
+  }
+
 }
