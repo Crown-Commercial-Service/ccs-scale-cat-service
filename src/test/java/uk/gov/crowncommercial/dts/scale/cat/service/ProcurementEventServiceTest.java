@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,7 +13,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,7 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -40,9 +37,10 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ValidationService.class,
-    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ApplicationFlagsConfig.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
 
@@ -58,10 +56,11 @@ class ProcurementEventServiceTest {
   private static final String LOT_NUMBER = "Lot1a";
   private static final String OCDS_AUTH_NAME = "ocds";
   private static final String OCID_PREFIX = "b5fd17";
+  private static final String ORIGINAL_EVENT_NAME = "Old Name";
   private static final String UPDATED_EVENT_NAME = "New Name";
-  private static final String UPDATED_EVENT_TYPE = "DA";
+  private static final String ORIGINAL_EVENT_TYPE = "TBD";
+  private static final String UPDATED_EVENT_TYPE = "RFI";
   private static final String BUYER_COMPANY_BRAVO_ID = "54321";
-  private static final DefineEventType EVENT_TYPE = DefineEventType.DA;
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
@@ -91,6 +90,12 @@ class ProcurementEventServiceTest {
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
+
+  @MockBean
+  private JaggaerService jaggaerService;
+
+  @MockBean
+  private ValidationService validationService;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -243,109 +248,115 @@ class ProcurementEventServiceTest {
   @Test
   void testUpdateProcurementEventNameAndType() throws Exception {
 
-    // Create test update object
+    // Create test update objects
     var updateEvent = new UpdateEvent();
     updateEvent.setName(UPDATED_EVENT_NAME);
-    updateEvent.setEventType(EVENT_TYPE);
+    updateEvent.setEventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE));
 
-    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).build();
-    var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
-    var updateRfx = new CreateUpdateRfx(OperationCode.UPDATE, rfx);
+    var rfxSetting =
+        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
 
-    // Validate Jaggaer update
-    var createUpdateRfxResponse = new CreateUpdateRfxResponse();
-    createUpdateRfxResponse.setReturnCode(0);
-    createUpdateRfxResponse.setReturnMessage("OK");
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
-        .bodyValue(argThat(new UpdateEventNameMatcher(updateRfx))).retrieve()
-        .bodyToMono(eq(CreateUpdateRfxResponse.class))
-        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-            .thenReturn(createUpdateRfxResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
 
-    // Validate Database update
-    var captor = updateEvent(updateEvent);
+    // Invoke
+    ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
+    ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
+
+    procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent,
+        PRINCIPAL);
+
+    // Verify
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_NAME, captor.getValue().getEventName());
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
+    verify(jaggaerService).createUpdateRfx(rfxCaptor.capture());
+    assertEquals(UPDATED_EVENT_NAME, rfxCaptor.getValue().getRfxSetting().getShortDescription());
   }
 
   @Test
   void testUpdateProcurementEventName() throws Exception {
 
-    // Stub some objects
+    // Create test update objects
     var updateEvent = new UpdateEvent();
     updateEvent.setName(UPDATED_EVENT_NAME);
 
-    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).build();
-    var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
-    var updateRfx = new CreateUpdateRfx(OperationCode.UPDATE, rfx);
+    var rfxSetting =
+        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
 
-    // Validate Jaggaer update
-    var createUpdateRfxResponse = new CreateUpdateRfxResponse();
-    createUpdateRfxResponse.setReturnCode(0);
-    createUpdateRfxResponse.setReturnMessage("OK");
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
-        .bodyValue(argThat(new UpdateEventNameMatcher(updateRfx))).retrieve()
-        .bodyToMono(eq(CreateUpdateRfxResponse.class))
-        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-            .thenReturn(createUpdateRfxResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
 
     // Invoke
-    var captor = updateEvent(updateEvent);
+    ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
+    ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
+    procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent,
+        PRINCIPAL);
+
+    // Assert
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_NAME, captor.getValue().getEventName());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
+    verify(jaggaerService).createUpdateRfx(rfxCaptor.capture());
+    assertEquals(UPDATED_EVENT_NAME, rfxCaptor.getValue().getRfxSetting().getShortDescription());
   }
 
   @Test
   void testUpdateProcurementEventType() throws Exception {
 
-    // Stub some objects
+    // Create test update objects
     var updateEvent = new UpdateEvent();
-    updateEvent.setEventType(EVENT_TYPE);
+    updateEvent.setEventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE));
+
+    var rfxSetting =
+        RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME).statusCode(100).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
+
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
 
     // Invoke
-    var captor = updateEvent(updateEvent);
+    ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
 
+    procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent,
+        PRINCIPAL);
+
+    // Verify
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
-  }
 
-  @Test
-  void testUpdateProcurementEventThrowsIllegalArgumentException2() throws Exception {
-
-    var updateEvent = new UpdateEvent();
-
-    // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-
-    // Invoke & assert
-    var ex = assertThrows(IllegalArgumentException.class, () -> procurementEventService
-        .updateProcurementEvent(PROC_PROJECT_ID, "EVENT-1", updateEvent, PRINCIPAL));
-    assertEquals("Event ID 'EVENT-1' is not in the expected format", ex.getMessage());
-  }
-
-  @Test
-  void testUpdateProcurementEventThrowsResourceNotFoundApplicationException() throws Exception {
-
-    var updateEvent = new UpdateEvent();
-
-    // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-
-    // Invoke & assert
-    var ex = assertThrows(ResourceNotFoundException.class, () -> procurementEventService
-        .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
-    assertEquals("Event 'ocds-b5fd17-2' not found", ex.getMessage());
+    verify(jaggaerService, times(0)).createUpdateRfx(any());
   }
 
   @Test
@@ -354,90 +365,23 @@ class ProcurementEventServiceTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setName(UPDATED_EVENT_NAME);
 
-    var jaggaerErrorResponse = new CreateUpdateRfxResponse();
-    jaggaerErrorResponse.setReturnCode(1);
-    jaggaerErrorResponse.setReturnMessage("NOT OK");
-    var procurementProject = new ProcurementProject();
-    var procurementEvent = ProcurementEvent.builder().build();
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get("endpoint"))
-        .bodyValue(any(CreateUpdateRfx.class)).retrieve()
-        .bodyToMono(eq(CreateUpdateRfxResponse.class))
-        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-            .thenReturn(jaggaerErrorResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
 
-    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
-      procurementProject.setId(PROC_PROJECT_ID);
-      procurementProject.setProjectName(PROJECT_NAME);
-      return Optional.of(procurementProject);
-    });
-
-    when(procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-        PROC_EVENT_DB_ID, OCDS_AUTH_NAME, OCID_PREFIX)).then(mock -> {
-          procurementProject.setId(PROC_PROJECT_ID);
-          procurementEvent.setProject(procurementProject);
-
-          return Optional.of(procurementEvent);
-        });
+    when(jaggaerService.createUpdateRfx(any()))
+        .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
     // Invoke & assert
     var jagEx = assertThrows(JaggaerApplicationException.class, () -> procurementEventService
         .updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent, PRINCIPAL));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
-  }
-
-  /**
-   * Custom matcher to verify the object sent to Jaggaer to update an event.
-   *
-   */
-  private class UpdateEventNameMatcher implements ArgumentMatcher<CreateUpdateRfx> {
-
-    private final CreateUpdateRfx left;
-
-    UpdateEventNameMatcher(final CreateUpdateRfx left) {
-      this.left = left;
-    }
-
-    @Override
-    public boolean matches(final CreateUpdateRfx right) {
-      return left.getRfx().getRfxSetting().getShortDescription()
-          .equals(right.getRfx().getRfxSetting().getShortDescription())
-          && right.getOperationCode() == OperationCode.UPDATE;
-    }
-  }
-
-  private ArgumentCaptor<ProcurementEvent> updateEvent(final UpdateEvent updateEvent)
-      throws Exception {
-
-    // Stub some objects
-    var procurementProject = new ProcurementProject();
-    var procurementEvent = ProcurementEvent.builder().build();
-
-    when(procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-        PROC_EVENT_DB_ID, OCDS_AUTH_NAME, OCID_PREFIX)).then(mock -> {
-          procurementProject.setId(PROC_PROJECT_ID);
-          procurementEvent.setProject(procurementProject);
-          procurementEvent.setId(PROC_EVENT_DB_ID);
-          procurementEvent.setExternalEventId(RFX_ID);
-          procurementEvent.setExternalReferenceId(RFX_REF_CODE);
-          return Optional.of(procurementEvent);
-        });
-
-    // Invoke
-    ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
-
-    procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent,
-        PRINCIPAL);
-
-    // Verify entity was retrieved as expected
-    verify(procurementEventRepo, times(1))
-        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(PROC_EVENT_DB_ID, OCDS_AUTH_NAME,
-            OCID_PREFIX);
-
-    return captor;
-
   }
 
 }
