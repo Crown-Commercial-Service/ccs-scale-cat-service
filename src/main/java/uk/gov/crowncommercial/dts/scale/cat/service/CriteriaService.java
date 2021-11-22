@@ -90,7 +90,7 @@ public class CriteriaService {
           .answered(r.getNonOCDS().getAnswered())
           .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
               new QuestionNonOCDSOptions().value(o.getValue())
-                       .selected(Boolean.valueOf(o.getSelect()))
+                       .selected(Boolean.valueOf(o.getSelect() == null? Boolean.FALSE:o.getSelect()))
                   .text(o.getText())).collect(Collectors.toList()));
 
       var questionOCDS = new Requirement1()
@@ -131,8 +131,10 @@ public class CriteriaService {
     if (options != null && !options.isEmpty()) {
       requirement.getNonOCDS()
           .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
-              .select(questionNonOCDSOptions.getSelected()).value(questionNonOCDSOptions.getValue())
-              .text(questionNonOCDSOptions.getText()).build()).collect(Collectors.toList()));
+              .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                  : questionNonOCDSOptions.getSelected())
+              .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+              .build()).collect(Collectors.toList()));
     }
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
