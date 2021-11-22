@@ -17,6 +17,7 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.transaction.CannotCreateTransactionException;
 import uk.gov.crowncommercial.dts.scale.cat.config.RetryConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -33,6 +34,9 @@ class RetryableTendersDBDelegateTest {
 
   @MockBean
   private ProcurementEventRepo procurementEventRepo;
+
+  @MockBean
+  private OrganisationMappingRepo organisationMappingRepo;
 
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -62,7 +66,7 @@ class RetryableTendersDBDelegateTest {
     when(procurementProjectRepo.save(procurementProject)).thenThrow(transactionException,
         queryTimeoutException, transactionException, queryTimeoutException, transactionException);
 
-    ExhaustedRetryException exhaustedRetryEx = assertThrows(ExhaustedRetryException.class,
+    var exhaustedRetryEx = assertThrows(ExhaustedRetryException.class,
         () -> retryableTendersDBDelegate.save(procurementProject));
 
     assertTrue(exhaustedRetryEx.getMessage().startsWith("Retries exhausted"));

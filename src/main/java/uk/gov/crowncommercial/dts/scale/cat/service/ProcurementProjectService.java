@@ -80,6 +80,16 @@ public class ProcurementProjectService {
         userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
     var projectTitle = getDefaultProjectTitle(agreementDetails, "CCS");
 
+    // TODO: Replace with Conclave lookup?
+    var organisationMapping = retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+        .orElse(null);
+
+    if (organisationMapping == null) {
+      log.warn("No org mapping for external buyer org ID: '{}' found in Tenders DB",
+          jaggaerBuyerCompanyId);
+    }
+
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
         .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
@@ -112,9 +122,12 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
-    var procurementProject = retryableTendersDBDelegate
-        .save(ProcurementProject.of(agreementDetails, createProjectResponse.getTenderCode(),
-            createProjectResponse.getTenderReferenceCode(), projectTitle, principal));
+    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.builder()
+        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
+        .externalProjectId(createProjectResponse.getTenderCode())
+        .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+        .organisationMapping(organisationMapping).projectName(projectTitle).createdBy(principal)
+        .createdAt(Instant.now()).updatedBy(principal).updatedAt(Instant.now()).build());
 
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
@@ -278,7 +291,7 @@ public class ProcurementProjectService {
         break;
       case EMAIL_RECIPIENT:
         log.debug("EMail Recipient update");
-        ProcurementEvent event = getCurrentEvent(dbProject);
+        var event = getCurrentEvent(dbProject);
         var emailRecipient = EmailRecipient.builder().user(user).build();
         var emailRecipients =
             EmailRecipientList.builder().emailRecipient(Arrays.asList(emailRecipient)).build();
@@ -295,7 +308,6 @@ public class ProcurementProjectService {
     return getProjectTeamMembers(projectId).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
-
 
   /**
    * Get a Team Member.

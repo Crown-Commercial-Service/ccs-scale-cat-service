@@ -93,6 +93,8 @@ config:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
+      getLotSuppliers:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/suppliers
       getLotEventTypeDataTemplates:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
       getEventTypesForAgreement:
@@ -109,7 +111,8 @@ config:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
-
+  #flags:
+    # devMode: "SET IN ENV"
 ---
 spring:
   config:

@@ -7,8 +7,6 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +33,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class ProcurementEventService {
 
-  // TODO: Single test-supplier (supplier org mappings pending)
-  private static final List<String> TEMP_SUPPLIER_IDS = Arrays.asList("53104");
-
   private static final Integer RFI_FLAG = 0;
   private static final String RFX_TYPE = "STANDARD_ITT";
   private static final String ADDITIONAL_INFO_FRAMEWORK_NAME = "Framework Name";
@@ -52,6 +47,7 @@ public class ProcurementEventService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ValidationService validationService;
+  private final SupplierService supplierService;
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -156,7 +152,8 @@ public class ProcurementEventService {
     var rfxAdditionalInfoList =
         new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
-    var suppliersList = new SuppliersList(getSuppliers());
+    var suppliersList = new SuppliersList(
+        supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()));
     var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
@@ -247,15 +244,6 @@ public class ProcurementEventService {
       retryableTendersDBDelegate.save(event);
     }
 
-  }
-
-  /**
-   * TODO: Placeholder for retrieving suppliers - ultimately needs to come from Agreements Service
-   * (pending further analysis/design from Nick).
-   */
-  private List<Supplier> getSuppliers() {
-    return TEMP_SUPPLIER_IDS.stream().map(id -> new Supplier(new CompanyData(id)))
-        .collect(Collectors.toList());
   }
 
   private String getDefaultEventTitle(final String projectName, final String eventType) {

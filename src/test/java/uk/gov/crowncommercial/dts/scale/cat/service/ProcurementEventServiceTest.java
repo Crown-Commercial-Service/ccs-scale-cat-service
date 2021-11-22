@@ -21,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -30,6 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -38,10 +40,9 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 /**
  * Service layer tests
  */
-@SpringBootTest(
-    classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ValidationService.class},
-    webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ValidationService.class,
+    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
 
@@ -79,6 +80,12 @@ class ProcurementEventServiceTest {
   @MockBean
   private ProcurementEventRepo procurementEventRepo;
 
+  @MockBean
+  private SupplierService supplierService;
+
+  @MockBean
+  private OrganisationMappingRepo organisationMappingRepo;
+
   @Autowired
   private ProcurementEventService procurementEventService;
 
@@ -101,7 +108,8 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxId(RFX_ID);
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
+    var procurementProject = ProcurementProject.builder()
+        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours
@@ -176,7 +184,8 @@ class ProcurementEventServiceTest {
     createUpdateRfxResponse.setRfxId(RFX_ID);
     createUpdateRfxResponse.setRfxReferenceCode(RFX_REF_CODE);
 
-    var procurementProject = ProcurementProject.of(agreementDetails, "", "", "", "");
+    var procurementProject = ProcurementProject.builder()
+        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
     // Mock behaviours

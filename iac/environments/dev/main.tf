@@ -9,4 +9,5 @@ module "deploy-all" {
   environment = "dev"
   cf_username = var.cf_username
   cf_password = var.cf_password
+  dev_mode    = true
 }
