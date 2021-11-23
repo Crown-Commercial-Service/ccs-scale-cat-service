@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -29,7 +28,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @SpringBootTest(classes = {CriteriaService.class, JaggaerAPIConfig.class, ObjectMapper.class},
     webEnvironment = WebEnvironment.NONE)
-@EnableConfigurationProperties(JaggaerAPIConfig.class)
 class CriteriaServiceTest {
 
   private static final String EVENT_OCID = "ocds-abc123-1";
