@@ -61,7 +61,7 @@ public class Requirement {
       if (selectionQuestionTypes.contains(questionType)) {
 
         // Deselect all options before applying the selection
-        // Caters for scenario where only the selected options is supplied
+        // Caters for scenario where only the selected options are supplied
         options.stream().forEach(o -> o.setSelect(Boolean.FALSE));
 
         updatedOptions.stream().forEach(updateOption -> {
