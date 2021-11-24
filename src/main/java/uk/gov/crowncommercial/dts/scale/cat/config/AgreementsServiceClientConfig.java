@@ -22,10 +22,15 @@ public class AgreementsServiceClientConfig {
   private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
 
   @Bean("agreementsServiceWebClient")
-  public WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
-    var client = new HttpClient(new SslContextFactory.Client(true));
+  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
 
-    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
+
+    ClientHttpConnector jettyHttpClientConnector =
+        new JettyClientHttpConnector(new HttpClient(sslContextFactory));
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .baseUrl(agreementsServiceAPIConfig.getBaseUrl())
