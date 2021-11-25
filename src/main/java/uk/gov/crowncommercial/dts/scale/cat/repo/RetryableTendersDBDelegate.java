@@ -61,6 +61,11 @@ public class RetryableTendersDBDelegate {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
   }
 
+  @TendersDBRetryable
+  public OrganisationMapping save(final OrganisationMapping organisationMapping) {
+    return organisationMappingRepo.save(organisationMapping);
+  }
+
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.

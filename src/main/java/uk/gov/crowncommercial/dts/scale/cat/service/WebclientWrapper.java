@@ -22,22 +22,23 @@ public class WebclientWrapper {
    * received.
    *
    * @param <T>
-   * @param type the class type
+   * @param resourceType the expected resource type
    * @param webclient
+   * @param timeoutDuration
    * @param uriTemplate
-   * @param args
-   * @return optional of type or empty if not found
+   * @param params
+   * @return optional of resourceType or empty if not found
    * @throws WebClientResponseException for all other errors
    */
-  public <T> Optional<T> getOptionalResource(final Class<T> type, final WebClient webclient,
-      final String uriTemplate, final Object... args) {
+  public <T> Optional<T> getOptionalResource(final Class<T> resourceType, final WebClient webclient,
+      final int timeoutDuration, final String uriTemplate, final Object... params) {
 
     Function<WebClientResponseException, Mono<T>> funcFallback404 =
         ex -> ex.getRawStatusCode() == 404 ? Mono.empty() : Mono.error(ex);
 
-    return ofNullable(webclient.get().uri(uriTemplate, args).retrieve().bodyToMono(type)
+    return ofNullable(webclient.get().uri(uriTemplate, params).retrieve().bodyToMono(resourceType)
         .onErrorResume(WebClientResponseException.class, funcFallback404)
-        .block(Duration.ofSeconds(5)));
+        .block(Duration.ofSeconds(timeoutDuration)));
   }
 
 }

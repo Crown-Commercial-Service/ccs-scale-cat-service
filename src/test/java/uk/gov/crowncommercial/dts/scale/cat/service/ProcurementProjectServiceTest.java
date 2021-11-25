@@ -30,6 +30,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
@@ -55,19 +58,22 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class ProcurementProjectServiceTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
+  private static final String CONCLAVE_ORG_ID = "654891633619851306";
+  private static final String CONCLAVE_ORG_NAME = "ACME Products Ltd";
   private static final String JAGGAER_USER_ID = "12345";
   private static final String JAGGAER_BUYER_COMPANY_ID = "2345678";
   private static final String TENDER_CODE = "tender_0001";
   private static final String TENDER_REF_CODE = "project_0001";
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
-  private static final String ORG = "CCS";
-  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG;
+  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME;
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
   private static final CreateEvent CREATE_EVENT = new CreateEvent();
-  private static final OrganisationMapping ORG_MAPPING = new OrganisationMapping();
+  private static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder()
+      .externalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID)).organisationId(CONCLAVE_ORG_ID)
+      .build();
   private static final AgreementDetails AGREEMENT_DETAILS = new AgreementDetails();
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
@@ -106,8 +112,6 @@ class ProcurementProjectServiceTest {
 
   @BeforeAll
   static void beforeAll() {
-    ORG_MAPPING.setExternalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID));
-
     AGREEMENT_DETAILS.setAgreementId(CA_NUMBER);
     AGREEMENT_DETAILS.setLotId(LOT_NUMBER);
   }
@@ -135,6 +139,12 @@ class ProcurementProjectServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
+
+    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+        .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
+
     when(organisationMappingRepo
         .findByExternalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
@@ -148,22 +158,23 @@ class ProcurementProjectServiceTest {
         .thenReturn(eventSummary);
 
     // Invoke
-    var draftProcurementProject =
-        procurementProjectService.createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL);
+    var draftProcurementProject = procurementProjectService
+        .createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL, CONCLAVE_ORG_ID);
 
     // Assert
     assertEquals(PROC_PROJECT_ID, draftProcurementProject.getProcurementID());
     assertEquals(EVENT_OCID, draftProcurementProject.getEventId());
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG,
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME,
         draftProcurementProject.getDefaultName().getName());
     assertEquals(CA_NUMBER,
         draftProcurementProject.getDefaultName().getComponents().getAgreementId());
     assertEquals(LOT_NUMBER, draftProcurementProject.getDefaultName().getComponents().getLotId());
-    assertEquals(ORG, draftProcurementProject.getDefaultName().getComponents().getOrg());
+    assertEquals(CONCLAVE_ORG_NAME, draftProcurementProject.getDefaultName().getComponents().getOrg());
 
     // Verify
     verify(userProfileService).resolveBuyerUserByEmail(PRINCIPAL);
     verify(userProfileService).resolveBuyerCompanyByEmail(PRINCIPAL);
+    verify(conclaveService).getOrganisation(CONCLAVE_ORG_ID);
 
     var captor = ArgumentCaptor.forClass(ProcurementProject.class);
     verify(procurementProjectRepo).save(captor.capture());
@@ -197,8 +208,8 @@ class ProcurementProjectServiceTest {
             .thenReturn(jaggaerErrorResponse);
 
     // Invoke & assert
-    var jagEx = assertThrows(JaggaerApplicationException.class,
-        () -> procurementProjectService.createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL));
+    var jagEx = assertThrows(JaggaerApplicationException.class, () -> procurementProjectService
+        .createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL, CONCLAVE_ORG_ID));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
 

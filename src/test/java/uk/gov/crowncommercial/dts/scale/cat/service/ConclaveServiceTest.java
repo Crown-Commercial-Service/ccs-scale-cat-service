@@ -48,8 +48,8 @@ class ConclaveServiceTest {
 
     // Mock behaviours
     when(webclientWrapper.getOptionalResource(UserProfileResponseInfo.class, conclaveWebClient,
-        conclaveAPIConfig.getGetUser().get("uriTemplate"), CONCLAVE_USER_ID))
-            .thenReturn(Optional.of(userProfileResponseInfo));
+        conclaveAPIConfig.getTimeoutDuration(), conclaveAPIConfig.getGetUser().get("uriTemplate"),
+        CONCLAVE_USER_ID)).thenReturn(Optional.of(userProfileResponseInfo));
 
     // Invoke
     var userProfile = conclaveService.getUserProfile(CONCLAVE_USER_ID);
@@ -63,6 +63,7 @@ class ConclaveServiceTest {
 
     // Mock behaviours
     when(webclientWrapper.getOptionalResource(UserContactInfoList.class, conclaveWebClient,
+        conclaveAPIConfig.getTimeoutDuration(),
         conclaveAPIConfig.getGetUserContacts().get("uriTemplate"), CONCLAVE_USER_ID))
             .thenReturn(Optional.of(userContactInfoList));
 

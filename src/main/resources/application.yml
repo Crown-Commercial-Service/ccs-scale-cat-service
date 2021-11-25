@@ -111,6 +111,8 @@ config:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
+      getOrganisation:
+        uriTemplate: /organisation-profiles/{org-id}        
   #flags:
     # devMode: "SET IN ENV"
 ---
