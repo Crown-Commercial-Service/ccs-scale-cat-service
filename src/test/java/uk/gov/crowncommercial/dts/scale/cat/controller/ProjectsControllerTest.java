@@ -21,6 +21,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -105,6 +108,23 @@ class ProjectsControllerTest {
 
     verify(procurementProjectService).createFromAgreementDetails(any(AgreementDetails.class),
         anyString());
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"RM 1234.a", " RM1234 .1", " ", "FOOBAR"})
+  void createProcurementProject_400_BadRequest_AgreementId_Missing(final String input)
+      throws Exception {
+    testCreateFromAgreement400BadRequestHelper(
+        new AgreementDetails().agreementId(input).lotId(LOT_NUMBER));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"_Lot 1", " Lot a", " ", "!"})
+  void createProcurementProject_400_BadRequest_LotId_Missing(final String input) throws Exception {
+    testCreateFromAgreement400BadRequestHelper(
+        new AgreementDetails().agreementId(CA_NUMBER).lotId(input));
   }
 
   @Test
@@ -215,7 +235,6 @@ class ProjectsControllerTest {
 
   @Test
   void getProjectUsers_200_OK() throws Exception {
-    ;
 
     when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
         .thenReturn(Arrays.asList(TestUtils.getTeamMember()));
@@ -271,7 +290,7 @@ class ProjectsControllerTest {
   @Test
   void addProjectUser_200_OK() throws Exception {
 
-    UpdateTeamMember updateTeamMember = new UpdateTeamMember();
+    var updateTeamMember = new UpdateTeamMember();
     updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
@@ -315,7 +334,7 @@ class ProjectsControllerTest {
   @Test
   void addProjectUser_500_ISE() throws Exception {
 
-    UpdateTeamMember updateTeamMember = new UpdateTeamMember();
+    var updateTeamMember = new UpdateTeamMember();
     updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
@@ -332,5 +351,16 @@ class ProjectsControllerTest {
             jsonPath("$.errors[0].title", is("An error occurred invoking an upstream service")));
   }
 
-}
+  private void testCreateFromAgreement400BadRequestHelper(final AgreementDetails invalidPayload)
+      throws Exception {
+    mockMvc
+        .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
+            .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(invalidPayload)))
+        .andDo(print()).andExpect(status().isBadRequest())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
+        .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
+  }
 
+}

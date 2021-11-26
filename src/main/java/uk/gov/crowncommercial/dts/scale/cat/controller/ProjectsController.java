@@ -2,7 +2,9 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Collection;
+import javax.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,13 +19,14 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 @RequestMapping(path = "/tenders/projects", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
-      @RequestBody final AgreementDetails agreementDetails,
+      @Valid @RequestBody final AgreementDetails agreementDetails,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
