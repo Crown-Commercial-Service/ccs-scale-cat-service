@@ -281,7 +281,7 @@ class ProcurementEventServiceTest {
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
-    verify(jaggaerService).createUpdateRfx(rfxCaptor.capture());
+    verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.CREATEUPDATE));
     assertEquals(UPDATED_EVENT_NAME, rfxCaptor.getValue().getRfxSetting().getShortDescription());
   }
 
@@ -319,7 +319,7 @@ class ProcurementEventServiceTest {
     assertEquals(UPDATED_EVENT_NAME, captor.getValue().getEventName());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
-    verify(jaggaerService).createUpdateRfx(rfxCaptor.capture());
+    verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.CREATEUPDATE));
     assertEquals(UPDATED_EVENT_NAME, rfxCaptor.getValue().getRfxSetting().getShortDescription());
   }
 
@@ -356,7 +356,7 @@ class ProcurementEventServiceTest {
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
-    verify(jaggaerService, times(0)).createUpdateRfx(any());
+    verify(jaggaerService, times(0)).createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE));
   }
 
   @Test
@@ -375,7 +375,7 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
-    when(jaggaerService.createUpdateRfx(any()))
+    when(jaggaerService.createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE)))
         .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
     // Invoke & assert
@@ -398,7 +398,7 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
-    when(jaggaerService.createUpdateRfx(any()))
+    when(jaggaerService.createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE)))
         .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
     // Invoke & assert

@@ -316,7 +316,7 @@ public class ProcurementProjectService {
         var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
             .rfxReferenceCode(event.getExternalReferenceId()).build();
         var rfx = Rfx.builder().rfxSetting(rfxSetting).emailRecipientList(emailRecipients).build();
-        jaggaerService.createUpdateRfx(rfx);
+        jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
         break;
       default:
         log.warn("No matching update team member type supplied");

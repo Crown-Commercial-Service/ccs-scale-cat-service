@@ -66,9 +66,14 @@ public class RetryableTendersDBDelegate {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
   }
 
-  @TendersDBRetryable
+
   public OrganisationMapping save(final OrganisationMapping organisationMapping) {
     return organisationMappingRepo.saveAndFlush(organisationMapping);
+  }
+
+  public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
+      final String organisationId) {
+    return organisationMappingRepo.findByOrganisationId(organisationId);
   }
 
   /**
