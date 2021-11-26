@@ -2,7 +2,9 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Collection;
+import javax.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,13 +19,14 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 @RequestMapping(path = "/tenders/projects", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
-      @RequestBody final AgreementDetails agreementDetails,
+      @Valid @RequestBody final AgreementDetails agreementDetails,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
@@ -55,4 +58,27 @@ public class ProjectsController extends AbstractRestController {
 
     return procurementProjectService.getProjectEventTypes(procId);
   }
+
+  @GetMapping("/{proc-id}/users")
+  public Collection<TeamMember> getProjectUsers(@PathVariable("proc-id") final Integer procId,
+      final JwtAuthenticationToken authentication) {
+
+    log.info("getProjectUsers invoked on behalf of principal: {}",
+        getPrincipalFromJwt(authentication));
+
+    return procurementProjectService.getProjectTeamMembers(procId);
+  }
+
+  @PutMapping("/{proc-id}/users/{user-id}")
+  public TeamMember addProjectUser(@PathVariable("proc-id") final Integer procId,
+      @PathVariable("user-id") final String userId,
+      @RequestBody final UpdateTeamMember updateTeamMember,
+      final JwtAuthenticationToken authentication) {
+
+    log.info("addProjectUser invoked on behalf of principal: {}",
+        getPrincipalFromJwt(authentication));
+
+    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember);
+  }
+
 }

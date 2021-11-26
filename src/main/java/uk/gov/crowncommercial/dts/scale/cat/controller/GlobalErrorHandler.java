@@ -1,9 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.*;
 import java.util.Arrays;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
@@ -20,11 +17,10 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.google.common.net.HttpHeaders;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
-import uk.gov.crowncommercial.dts.scale.cat.exception.MalformedJwtException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UpstreamServiceException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -41,12 +37,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class GlobalErrorHandler implements ErrorController {
 
-  private static final String ERR_MSG_DEFAULT = "An error occurred processing the request";
-  private static final String ERR_MSG_UPSTREAM = "An error occurred invoking an upstream service";
-  private static final String ERR_MSG_VALIDATION = "Validation error processing the request";
-  private static final String ERR_MSG_RESOURCE_NOT_FOUND = "Resource not found";
-
   private final TendersAPIModelUtils tendersAPIModelUtils;
+  private final ApplicationFlagsConfig appFlagsConfig;
 
   @RequestMapping("/error")
   public ResponseEntity<Errors> handleError(final HttpServletRequest request,
@@ -56,8 +48,9 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Unknown container/filter exception", exception);
 
-    return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(tendersAPIModelUtils.buildErrors(
-        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, ""))));
+    return ResponseEntity.status(INTERNAL_SERVER_ERROR)
+        .body(tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+            Constants.ERR_MSG_DEFAULT, exception.getMessage()));
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -66,8 +59,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Exhausted retries", exception);
 
-    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+        Constants.ERR_MSG_UPSTREAM, exception.getMessage());
   }
 
   @ResponseStatus(UNAUTHORIZED)
@@ -84,15 +77,38 @@ public class GlobalErrorHandler implements ErrorController {
         .body(tendersAPIModelUtils.buildErrors(Arrays.asList(apiError)));
   }
 
+  @ResponseStatus(FORBIDDEN)
+  @ExceptionHandler(AuthorisationFailureException.class)
+  public Errors handleUnauthorisedException(final AuthorisationFailureException exception) {
+
+    log.error("UnauthorisedException", exception);
+
+    var apiError = new ApiError(FORBIDDEN.toString(), exception.getMessage(),
+        appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? exception.getMessage()
+            : "");
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+  }
+
+  @ResponseStatus(CONFLICT)
+  @ExceptionHandler(UserRolesConflictException.class)
+  public Errors handleUserRolesConflictException(final UserRolesConflictException exception) {
+
+    log.error("UserRolesConflictException", exception);
+
+    var apiError = new ApiError(CONFLICT.toString(), exception.getMessage(),
+        appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? exception.getMessage()
+            : "");
+    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+  }
+
   @ResponseStatus(NOT_FOUND)
   @ExceptionHandler({ResourceNotFoundException.class})
   public Errors handleResourceNotFoundException(final ResourceNotFoundException exception) {
 
     log.info("Requested resource not found", exception);
 
-    var apiError =
-        new ApiError(NOT_FOUND.toString(), ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    return tendersAPIModelUtils.buildDefaultErrors(NOT_FOUND.toString(),
+        Constants.ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -101,8 +117,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Unknown application exception", exception);
 
-    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_DEFAULT, "");
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+        Constants.ERR_MSG_DEFAULT, exception.getMessage());
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -111,8 +127,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("Upstream application error", exception);
 
-    var apiError = new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "");
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+        Constants.ERR_MSG_UPSTREAM, exception.getMessage());
   }
 
   @ResponseStatus(BAD_REQUEST)
@@ -122,8 +138,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.trace("Request validation exception", exception);
 
-    var apiError = new ApiError(BAD_REQUEST.toString(), ERR_MSG_VALIDATION, exception.getMessage());
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
+        Constants.ERR_MSG_VALIDATION, exception.getMessage());
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -143,8 +159,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error(logErrorMsg, exception);
 
-    return tendersAPIModelUtils.buildErrors(
-        Arrays.asList(new ApiError(INTERNAL_SERVER_ERROR.toString(), ERR_MSG_UPSTREAM, "")));
+    return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+        Constants.ERR_MSG_UPSTREAM, exception.getMessage());
   }
 
 }

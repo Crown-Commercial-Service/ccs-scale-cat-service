@@ -70,10 +70,10 @@ public class JaggaerClientConfig {
 
   @Bean
   public OAuth2AuthorizedClientManager authorizedClientManager(
-      ClientRegistrationRepository clientRegistrationRepository,
-      OAuth2AuthorizedClientRepository authorizedClientRepository) {
+      final ClientRegistrationRepository clientRegistrationRepository,
+      final OAuth2AuthorizedClientRepository authorizedClientRepository) {
 
-    OAuth2AuthorizedClientProvider authorizedClientProvider =
+    var authorizedClientProvider =
         OAuth2AuthorizedClientProviderBuilder.builder()
             .clientCredentials(
                 configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
@@ -87,16 +87,21 @@ public class JaggaerClientConfig {
   }
 
   @Bean("jaggaerWebClient")
-  public WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
     var oauth2Client =
         new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
+
     // TODO: Refactor out / investigate why default netty library causes 30 second delay
-    var client = new HttpClient(new SslContextFactory.Client(true)) {
+    var client = new HttpClient(sslContextFactory) {
 
       @Override
-      public Request newRequest(URI uri) {
+      public Request newRequest(final URI uri) {
         return enhance(super.newRequest(uri));
       }
     };
@@ -152,7 +157,7 @@ public class JaggaerClientConfig {
    * @param inboundRequest
    * @return the enhanced request with logging events on request/response
    */
-  private Request enhance(Request inboundRequest) {
+  private Request enhance(final Request inboundRequest) {
     var sbLog = new StringBuilder();
     // Request Logging
     inboundRequest.onRequestBegin(request -> sbLog.append("Request: \n").append("URI: ")

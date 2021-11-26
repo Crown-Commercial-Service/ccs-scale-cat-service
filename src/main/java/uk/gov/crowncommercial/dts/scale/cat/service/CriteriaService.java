@@ -4,7 +4,10 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -86,8 +89,9 @@ public class CriteriaService {
           .multiAnswer(r.getNonOCDS().getMultiAnswer())
           .answered(r.getNonOCDS().getAnswered())
           .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
-              new QuestionNonOCDSOptions().value(o.get("value"))
-                       .selected(Boolean.valueOf(o.get("select")))).collect(Collectors.toList()));
+              new QuestionNonOCDSOptions().value(o.getValue())
+                       .selected(Boolean.valueOf(o.getSelect() == null? Boolean.FALSE:o.getSelect()))
+                  .text(o.getText())).collect(Collectors.toList()));
 
       var questionOCDS = new Requirement1()
           .id(r.getOcds().getId())
@@ -126,10 +130,11 @@ public class CriteriaService {
     var options = question.getNonOCDS().getOptions();
     if (options != null && !options.isEmpty()) {
       requirement.getNonOCDS()
-          .updateOptions(options.stream()
-              .map(o -> Map.of("value", o.getValue(), "select",
-                  o.getSelected() == null ? "false" : o.getSelected().toString()))
-              .collect(Collectors.toList()));
+          .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
+              .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                  : questionNonOCDSOptions.getSelected())
+              .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+              .build()).collect(Collectors.toList()));
     }
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)

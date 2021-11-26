@@ -1,0 +1,55 @@
+{
+   "id":"Criterion 1",
+   "title":"Test Criterion",
+   "source":"buyer",
+   "relatesTo":"buyer",
+   "description":"For Information Only",
+   "requirementGroups":[
+      {
+         "OCDS":{
+            "id":"Group 1",
+            "description":"Where the work will be done",
+            "requirements":[
+               {
+                  "OCDS":{
+                     "id":"Question 1",
+                     "title":"Where will the work be done",
+                     "period":null,
+                     "pattern":null,
+                     "dataType":"string",
+                     "maxValue":null,
+                     "minValue":null,
+                     "description":"Add another",
+                     "expectedValue":null
+                  },
+                  "nonOCDS":{
+                     "options":[
+                        {
+                           "value":"England",
+                           "select":true
+                        },
+                        {
+                           "value":"Scotland",
+                           "select":false
+                        },
+                        {
+                           "value":"Wales",
+                           "select":false
+                        }
+                     ],
+                     "answered":false,
+                     "mandatory":false,
+                     "multiAnswer":true,
+                     "questionType":"MultiSelect"
+                  }
+               }
+            ]
+         },
+         "nonOCDS":{
+            "task":"Where the work will be done",
+            "prompt":"Select the locations where you would expect the staff supplied to work. You can select multiple locations or if you do not need them to work in an office you can select ‘No specific location’.",
+            "mandatory":false
+         }
+      }
+   ]
+}

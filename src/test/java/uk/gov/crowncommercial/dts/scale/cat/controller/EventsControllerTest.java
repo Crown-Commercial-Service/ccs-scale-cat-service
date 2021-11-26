@@ -34,6 +34,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -44,7 +45,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  * Controller tests
  */
 @WebMvcTest(EventsController.class)
-@Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class})
+@Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class})
 @ActiveProfiles("test")
 class EventsControllerTest {
 
@@ -160,15 +161,21 @@ class EventsControllerTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setName("New name");
 
+    var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
+        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+
+    when(procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID, updateEvent,
+        PRINCIPAL)).thenReturn(eventSummary);
+
     mockMvc
         .perform(put(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(updateEvent)))
-        .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON));
-
-    verify(procurementEventService, times(1)).updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID,
-        updateEvent, PRINCIPAL);
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.title").value(EVENT_NAME))
+        .andExpect(jsonPath("$.eventSupportId").value(JAGGAER_ID))
+        .andExpect(jsonPath("$.eventType").value(EVENT_TYPE.getValue()))
+        .andExpect(jsonPath("$.eventStage").value(EVENT_STAGE.getValue()))
+        .andExpect(jsonPath("$.status").value(EVENT_STATUS.getValue()));
   }
 
   @Test

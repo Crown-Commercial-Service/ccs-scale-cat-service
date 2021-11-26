@@ -8,7 +8,7 @@ data "cloudfoundry_space" "space" {
 }
 
 data "cloudfoundry_domain" "domain" {
-  name = "apps.internal"
+  name = "london.cloudapps.digital"
 }
 
 data "cloudfoundry_service_instance" "tenders_database" {
@@ -77,8 +77,9 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.self-service-id" : data.aws_ssm_parameter.jaggaer_self_service_id.value
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
     "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
-    "config.external.conclave.wrapper-api-base-url" : data.aws_ssm_parameter.conclave_wrapper_api_base_url.value
-    "config.external.conclave.wrapper-api-key" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
+    "config.external.conclave-wrapper.baseUrl" : data.aws_ssm_parameter.conclave_wrapper_api_base_url.value
+    "config.external.conclave-wrapper.apiKey" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
+    "config.flags.devMode" : var.dev_mode
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"
@@ -111,4 +112,10 @@ resource "cloudfoundry_route" "cat_service" {
     app  = cloudfoundry_app.cat_service.id
     port = 8080
   }
+}
+
+# Bind to nginx IP Router UPS
+resource "cloudfoundry_route_service_binding" "cat_service" {
+  service_instance = data.cloudfoundry_user_provided_service.ip_router.id
+  route            = cloudfoundry_route.cat_service.id
 }

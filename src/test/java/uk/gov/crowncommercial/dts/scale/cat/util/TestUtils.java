@@ -2,10 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.util;
 
 import java.util.Arrays;
 import java.util.List;
-
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 public class TestUtils {
 
@@ -14,6 +12,9 @@ public class TestUtils {
   public static final String CAPABILITY_ASSESSMENT = "Capability Assessment";
   public static final String DIRECT_AWARD = "Direct Award";
   public static final String FURTHER_COMPETITION = "Further Competition";
+
+  public static final String USER_NAME = "Jim Beam";
+  public static final String USERID = "jbeam@ccs.org.uk";
 
   public static EventType getEventType(final DefineEventType defineEventType,
       final String description, final boolean preMarketActivity) {
@@ -49,5 +50,25 @@ public class TestUtils {
         getProjectEventType("CA", CAPABILITY_ASSESSMENT, true),
         getProjectEventType("DA", DIRECT_AWARD, false),
         getProjectEventType("FC", FURTHER_COMPETITION, false)};
+  }
+
+  public static TeamMember getTeamMember() {
+    TeamMember teamMember = new TeamMember();
+    ContactPoint1 contact = new ContactPoint1();
+    contact.setEmail(USERID);
+    contact.setName(USER_NAME);
+
+    TeamMemberOCDS tmOCDS = new TeamMemberOCDS();
+    tmOCDS.setId(USERID);
+    tmOCDS.setContact(contact);
+
+    TeamMemberNonOCDS tmNoNOCDS = new TeamMemberNonOCDS();
+    tmNoNOCDS.setTeamMember(true);
+    tmNoNOCDS.setEmailRecipient(false);
+    tmNoNOCDS.setProjectOwner(false);
+
+    teamMember.setOCDS(tmOCDS);
+    teamMember.setNonOCDS(tmNoNOCDS);
+    return teamMember;
   }
 }

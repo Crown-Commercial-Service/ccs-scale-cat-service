@@ -1,8 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -17,12 +19,13 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 public class TendersAPIModelUtils {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
+  private final ApplicationFlagsConfig appFlagsConfig;
 
   public DraftProcurementProject buildDraftProcurementProject(
       final AgreementDetails agreementDetails, final Integer procurementID, final String eventID,
       final String projectTitle) {
     var draftProcurementProject = new DraftProcurementProject();
-    draftProcurementProject.setPocurementID(procurementID);
+    draftProcurementProject.setProcurementID(procurementID);
     draftProcurementProject.setEventId(eventID);
 
     var defaultNameComponents = new DefaultNameComponents();
@@ -49,6 +52,12 @@ public class TendersAPIModelUtils {
     eventSummary.setEventType(type);
     eventSummary.setEventSupportId(supportID);
     return eventSummary;
+  }
+
+  public Errors buildDefaultErrors(final String status, final String title, final String details) {
+    var apiError = new ApiError(status, title,
+        (appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode()) ? details : "");
+    return buildErrors(Arrays.asList(apiError));
   }
 
   public Errors buildErrors(final List<ApiError> apiErrors) {

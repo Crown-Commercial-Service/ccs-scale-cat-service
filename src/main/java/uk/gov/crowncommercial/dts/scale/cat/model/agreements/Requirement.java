@@ -2,9 +2,13 @@ package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
@@ -36,42 +40,43 @@ public class Requirement {
   @Jacksonized
   public static class NonOCDS {
 
-    static final String KEY_VALUE = "value";
-    static final String KEY_SELECTED = "select";
-
     String questionType;
     Boolean answered;
     Boolean mandatory;
     Boolean multiAnswer;
 
     @NonFinal
-    List<Map<String, String>> options; // Maps to QuestionNonOCDSOptions
+    List<Option> options; // Maps to QuestionNonOCDSOptions
 
     /**
      * Updates the {@link #options} list (i.e. the answers provided by the buyer).
      *
      * @param updatedOptions
      */
-    public void updateOptions(final List<Map<String, String>> updatedOptions) {
+    public void updateOptions(final List<Option> updatedOptions) {
 
       var selectionQuestionTypes = Set.of("SingleSelect", "MultiSelect", "SingleSelectWithOptions",
           "MultiSelectWithOptions");
 
       if (selectionQuestionTypes.contains(questionType)) {
-        updatedOptions.stream().forEach(uo -> {
 
-          log.debug("updatedOption: " + uo);
+        // Deselect all options before applying the selection
+        // Caters for scenario where only the selected options are supplied
+        options.stream().forEach(o -> o.setSelect(Boolean.FALSE));
 
-          // Update the existing option's 'select' flag (user selecting / de-selecting one or more
-          // options in a single or multi-select, for example
-          var optionToUpdate =
-              options.stream().filter(o -> Objects.equals(o.get(KEY_VALUE), uo.get(KEY_VALUE)))
-                  .findFirst().orElseThrow(() -> new IllegalStateException(
-                      "Could not find option '" + uo.get(KEY_VALUE) + "' to update."));
+        updatedOptions.stream().forEach(updateOption -> {
 
-          log.debug("optionToUpdate: " + uo);
+          log.debug("updatedOption: " + updateOption);
 
-          optionToUpdate.replace(KEY_SELECTED, uo.get(KEY_SELECTED));
+          // Update the existing updateOption's 'select' flag (user selecting / de-selecting one or
+          // more options in a single or multi-select, for example
+          var optionToUpdate = options.stream()
+              .filter(option -> Objects.equals(option.getValue(), updateOption.getValue()))
+              .findFirst().orElseThrow(() -> new IllegalStateException(
+                  "Could not find updateOption '" + updateOption.getValue() + "' to " + "update."));
+
+          log.debug("optionToUpdate: " + updateOption);
+          optionToUpdate.setSelect(updateOption.getSelect());
         });
       } else {
         if (options == null) {
@@ -104,4 +109,13 @@ public class Requirement {
   @JsonProperty("OCDS")
   OCDS ocds;
 
+  @Data
+  @Builder
+  @Jacksonized
+  public static class Option {
+
+    String value;
+    Boolean select;
+    String text;
+  }
 }
