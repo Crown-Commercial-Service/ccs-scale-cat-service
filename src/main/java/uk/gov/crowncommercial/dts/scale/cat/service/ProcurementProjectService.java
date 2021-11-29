@@ -119,6 +119,13 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
+    var procurementProject = ProcurementProject.builder()
+        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
+        .externalProjectId(createProjectResponse.getTenderCode())
+        .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+        .projectName(projectTitle).createdBy(principal).createdAt(Instant.now())
+        .updatedBy(principal).updatedAt(Instant.now()).build();
+
     /*
      * Get existing buyer user org mapping or create as part of procurement project persistence.
      * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
@@ -126,13 +133,6 @@ public class ProcurementProjectService {
      */
     var organisationMapping =
         retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId);
-
-    var procurementProject = ProcurementProject.builder()
-        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
-        .externalProjectId(createProjectResponse.getTenderCode())
-        .externalReferenceId(createProjectResponse.getTenderReferenceCode())
-        .projectName(projectTitle).createdBy(principal).createdAt(Instant.now())
-        .updatedBy(principal).updatedAt(Instant.now()).build();
 
     // Adapt save strategy based on org mapping status (new/existing)
     if (organisationMapping.isEmpty()) {
