@@ -4,10 +4,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -100,14 +98,20 @@ public class CriteriaService {
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
     var options = question.getNonOCDS().getOptions();
+    // caters for case where no options property is submitted - we will reset
+    var updatedOptions = new ArrayList<Option>();
+
     if (options != null && !options.isEmpty()) {
-      requirement.getNonOCDS()
-          .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
+      updatedOptions.addAll(options.stream()
+          .map(questionNonOCDSOptions -> Requirement.Option.builder()
               .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                   : questionNonOCDSOptions.getSelected())
               .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-              .build()).collect(Collectors.toList()));
+              .build())
+          .collect(Collectors.toList()));
     }
+
+    requirement.getNonOCDS().updateOptions(updatedOptions);
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
