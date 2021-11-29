@@ -47,11 +47,15 @@ class TendersControllerTest {
 
   @MockBean
   private ProfileManagementService profileManagementService;
-  private JwtRequestPostProcessor validJwtReqPostProcessor;
+  private JwtRequestPostProcessor validCATJwtReqPostProcessor;
+  private JwtRequestPostProcessor validLDJwtReqPostProcessor;
 
   @BeforeEach
   void beforeEach() {
-    validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+    validCATJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.subject(PRINCIPAL));
+
+    validLDJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("JAEGGER_BUYER"))
         .jwt(jwt -> jwt.subject(PRINCIPAL));
   }
 
@@ -59,7 +63,7 @@ class TendersControllerTest {
   void listProcurementEventTypes_200_OK() throws Exception {
     mockMvc
         .perform(
-            get("/tenders/event-types").with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+            get("/tenders/event-types").with(validCATJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(6))
         .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "CA", "DA", "FC", "TBD")));
@@ -97,7 +101,7 @@ class TendersControllerTest {
   void getUser_200_OK() throws Exception {
     when(profileManagementService.getUserRoles(PRINCIPAL)).thenReturn(List.of(RolesEnum.BUYER));
     mockMvc
-        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validJwtReqPostProcessor)
+        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
@@ -109,7 +113,7 @@ class TendersControllerTest {
   void getUser_403_Forbidden() throws Exception {
     mockMvc
         .perform(get("/tenders/users/{user-id}", "ted.crilly@craggyisland.com")
-            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+            .with(validLDJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isForbidden())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
