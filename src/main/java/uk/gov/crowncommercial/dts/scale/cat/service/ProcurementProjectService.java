@@ -87,21 +87,6 @@ public class ProcurementProjectService {
     var projectTitle =
         getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
 
-    /*
-     * Get the buyer user org mapping or create if it doesn't exist. Should be unique per Conclave
-     * org. Buyer Jaggaer company ID WILL be repeated (e.g. for the Buyer self-service company)
-     */
-
-    log.debug(
-        "ORG iS: " + retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId));
-
-    var organisationMapping =
-        retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId)
-            .orElse(retryableTendersDBDelegate
-                .save(OrganisationMapping.builder().organisationId(conclaveOrgId)
-                    .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-                    .createdAt(Instant.now()).createdBy(principal).build()));
-
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
         .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
@@ -134,22 +119,39 @@ public class ProcurementProjectService {
     }
     log.info("Created project: {}", createProjectResponse);
 
-    var procurementProject = retryableTendersDBDelegate.save(ProcurementProject.builder()
+    /*
+     * Get existing buyer user org mapping or create as part of procurement project persistence.
+     * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
+     * self-service company).
+     */
+    var organisationMapping =
+        retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId);
+
+    var procurementProject = ProcurementProject.builder()
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
         .externalProjectId(createProjectResponse.getTenderCode())
         .externalReferenceId(createProjectResponse.getTenderReferenceCode())
         .projectName(projectTitle).createdBy(principal).createdAt(Instant.now())
-        .updatedBy(principal).updatedAt(Instant.now()).build());
+        .updatedBy(principal).updatedAt(Instant.now()).build();
 
-    // Avoid detached persist error
-    procurementProject.setOrganisationMapping(organisationMapping);
+    // Adapt save strategy based on org mapping status (new/existing)
+    if (organisationMapping.isEmpty()) {
+      procurementProject.setOrganisationMapping(retryableTendersDBDelegate
+          .save(OrganisationMapping.builder().organisationId(conclaveOrgId)
+              .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+              .createdAt(Instant.now()).createdBy(principal).build()));
+    } else {
+      procurementProject = retryableTendersDBDelegate.save(procurementProject);
+      procurementProject.setOrganisationMapping(organisationMapping.get());
+    }
     retryableTendersDBDelegate.save(procurementProject);
 
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
-        procurementProject.getId(), eventSummary.getId(), projectTitle, conclaveOrgId);
+        procurementProject.getId(), eventSummary.getId(), projectTitle,
+        conclaveUserOrg.getIdentifier().getLegalName());
   }
 
   String getDefaultProjectTitle(final AgreementDetails agreementDetails,

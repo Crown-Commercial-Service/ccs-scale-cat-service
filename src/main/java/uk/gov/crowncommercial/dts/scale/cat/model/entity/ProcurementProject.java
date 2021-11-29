@@ -43,7 +43,7 @@ public class ProcurementProject {
   @Column(name = "project_name")
   String projectName;
 
-  @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+  @ManyToOne
   @JoinColumn(name = "organisation_mapping_id")
   OrganisationMapping organisationMapping;
 
