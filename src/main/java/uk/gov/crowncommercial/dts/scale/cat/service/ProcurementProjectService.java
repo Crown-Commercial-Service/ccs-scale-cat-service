@@ -87,13 +87,20 @@ public class ProcurementProjectService {
     var projectTitle =
         getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
 
-    // Get the buyer user org mapping or create if it doesn't exist
-    var organisationMapping = retryableTendersDBDelegate
-        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-        .orElse(retryableTendersDBDelegate
-            .save(OrganisationMapping.builder().organisationId(conclaveOrgId)
-                .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-                .createdAt(Instant.now()).createdBy(principal).build()));
+    /*
+     * Get the buyer user org mapping or create if it doesn't exist. Should be unique per Conclave
+     * org. Buyer Jaggaer company ID WILL be repeated (e.g. for the Buyer self-service company)
+     */
+
+    log.debug(
+        "ORG iS: " + retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId));
+
+    var organisationMapping =
+        retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId)
+            .orElse(retryableTendersDBDelegate
+                .save(OrganisationMapping.builder().organisationId(conclaveOrgId)
+                    .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+                    .createdAt(Instant.now()).createdBy(principal).build()));
 
     var tender = Tender.builder().title(projectTitle)
         .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
@@ -131,8 +138,12 @@ public class ProcurementProjectService {
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
         .externalProjectId(createProjectResponse.getTenderCode())
         .externalReferenceId(createProjectResponse.getTenderReferenceCode())
-        .organisationMapping(organisationMapping).projectName(projectTitle).createdBy(principal)
-        .createdAt(Instant.now()).updatedBy(principal).updatedAt(Instant.now()).build());
+        .projectName(projectTitle).createdBy(principal).createdAt(Instant.now())
+        .updatedBy(principal).updatedAt(Instant.now()).build());
+
+    // Avoid detached persist error
+    procurementProject.setOrganisationMapping(organisationMapping);
+    retryableTendersDBDelegate.save(procurementProject);
 
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
