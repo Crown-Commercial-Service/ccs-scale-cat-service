@@ -9,6 +9,6 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class CompanyData {
 
-  String id;
+  Integer id;
   String name;
 }

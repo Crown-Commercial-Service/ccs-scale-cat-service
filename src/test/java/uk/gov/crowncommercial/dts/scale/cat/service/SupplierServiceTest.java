@@ -39,10 +39,10 @@ class SupplierServiceTest {
   static final OrganisationMapping ORG_MAPPING_1 = new OrganisationMapping();
   static final OrganisationMapping ORG_MAPPING_2 = new OrganisationMapping();
 
-  static final Supplier EXT_SUPPLIER_1 = Supplier.builder()
-      .companyData(CompanyData.builder().id(String.valueOf(EXT_ORG_ID_1)).build()).build();
-  static final Supplier EXT_SUPPLIER_2 = Supplier.builder()
-      .companyData(CompanyData.builder().id(String.valueOf(EXT_ORG_ID_2)).build()).build();
+  static final Supplier EXT_SUPPLIER_1 =
+      Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_1).build()).build();
+  static final Supplier EXT_SUPPLIER_2 =
+      Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_2).build()).build();
 
   @MockBean
   private AgreementsService agreementsService;
