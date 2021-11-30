@@ -31,7 +31,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-    log.info("createProcuremenProject invoked on bahelf of principal: {}", principal,
+    log.info("createProcuremenProject invoked on behalf of principal: {}", principal,
         conclaveOrgId);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal,
