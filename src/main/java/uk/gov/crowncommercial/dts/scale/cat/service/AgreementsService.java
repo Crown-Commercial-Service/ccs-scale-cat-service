@@ -51,8 +51,9 @@ public class AgreementsService {
   public Set<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
-    var lotSuppliers = webclientWrapper.getOptionalResource(LotSupplier[].class,
-        agreementsServiceWebClient, getLotSuppliersUri, agreementId, lotId);
+    var lotSuppliers =
+        webclientWrapper.getOptionalResource(LotSupplier[].class, agreementsServiceWebClient,
+            agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, lotId);
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
   }

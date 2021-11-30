@@ -2,8 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import javax.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 /**
@@ -12,6 +11,9 @@ import lombok.experimental.FieldDefaults;
 @Entity
 @Table(name = "organisation_mapping")
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class OrganisationMapping {
 

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
@@ -30,6 +31,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
@@ -38,9 +42,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
-import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -48,26 +49,30 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProcurementProjectService.class, JaggaerAPIConfig.class,
-    TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ModelMapper.class,
-    JaggaerService.class, ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class,
+        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
+  private static final String CONCLAVE_ORG_ID = "654891633619851306";
+  private static final String CONCLAVE_ORG_NAME = "ACME Products Ltd";
   private static final String JAGGAER_USER_ID = "12345";
   private static final String JAGGAER_BUYER_COMPANY_ID = "2345678";
   private static final String TENDER_CODE = "tender_0001";
   private static final String TENDER_REF_CODE = "project_0001";
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
-  private static final String ORG = "CCS";
-  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG;
+  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME;
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
   private static final CreateEvent CREATE_EVENT = new CreateEvent();
-  private static final OrganisationMapping ORG_MAPPING = new OrganisationMapping();
+  private static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder()
+      .externalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID))
+      .organisationId(CONCLAVE_ORG_ID).build();
   private static final AgreementDetails AGREEMENT_DETAILS = new AgreementDetails();
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
@@ -84,19 +89,13 @@ class ProcurementProjectServiceTest {
   private ConclaveService conclaveService;
 
   @MockBean
-  private ProcurementProjectRepo procurementProjectRepo;
-
-  @MockBean
-  private ProcurementEventRepo procurementEventRepo;
+  private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @MockBean
   private ProcurementEventService procurementEventService;
 
   @MockBean
   private AgreementsServiceAPIConfig agreementsServiceAPIConfig;
-
-  @MockBean
-  private OrganisationMappingRepo organisationMappingRepo;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
@@ -106,8 +105,6 @@ class ProcurementProjectServiceTest {
 
   @BeforeAll
   static void beforeAll() {
-    ORG_MAPPING.setExternalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID));
-
     AGREEMENT_DETAILS.setAgreementId(CA_NUMBER);
     AGREEMENT_DETAILS.setLotId(LOT_NUMBER);
   }
@@ -135,38 +132,46 @@ class ProcurementProjectServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-    when(organisationMappingRepo
-        .findByExternalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID)))
-            .thenReturn(Optional.of(ORG_MAPPING));
+
+    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+        .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
+
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrgId(CONCLAVE_ORG_ID))
+        .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
         .bodyToMono(eq(CreateUpdateProjectResponse.class))
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .thenReturn(createUpdateProjectResponse);
-    when(procurementProjectRepo.save(any(ProcurementProject.class))).thenReturn(procurementProject);
+    when(retryableTendersDBDelegate.save(any(ProcurementProject.class)))
+        .thenReturn(procurementProject);
     when(procurementEventService.createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL))
         .thenReturn(eventSummary);
 
     // Invoke
-    var draftProcurementProject =
-        procurementProjectService.createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL);
+    var draftProcurementProject = procurementProjectService
+        .createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL, CONCLAVE_ORG_ID);
 
     // Assert
     assertEquals(PROC_PROJECT_ID, draftProcurementProject.getProcurementID());
     assertEquals(EVENT_OCID, draftProcurementProject.getEventId());
-    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG,
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME,
         draftProcurementProject.getDefaultName().getName());
     assertEquals(CA_NUMBER,
         draftProcurementProject.getDefaultName().getComponents().getAgreementId());
     assertEquals(LOT_NUMBER, draftProcurementProject.getDefaultName().getComponents().getLotId());
-    assertEquals(ORG, draftProcurementProject.getDefaultName().getComponents().getOrg());
+    assertEquals(CONCLAVE_ORG_NAME,
+        draftProcurementProject.getDefaultName().getComponents().getOrg());
 
     // Verify
     verify(userProfileService).resolveBuyerUserByEmail(PRINCIPAL);
     verify(userProfileService).resolveBuyerCompanyByEmail(PRINCIPAL);
+    verify(conclaveService).getOrganisation(CONCLAVE_ORG_ID);
 
     var captor = ArgumentCaptor.forClass(ProcurementProject.class);
-    verify(procurementProjectRepo).save(captor.capture());
+    verify(retryableTendersDBDelegate, times(2)).save(captor.capture());
     var capturedProcProject = captor.getValue();
     assertEquals(CA_NUMBER, capturedProcProject.getCaNumber());
     assertEquals(LOT_NUMBER, capturedProcProject.getLotNumber());
@@ -187,9 +192,12 @@ class ProcurementProjectServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-    when(organisationMappingRepo
-        .findByExternalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID)))
-            .thenReturn(Optional.of(ORG_MAPPING));
+    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+        .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrgId(CONCLAVE_ORG_ID))
+        .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
         .bodyToMono(eq(CreateUpdateProjectResponse.class))
@@ -197,8 +205,8 @@ class ProcurementProjectServiceTest {
             .thenReturn(jaggaerErrorResponse);
 
     // Invoke & assert
-    var jagEx = assertThrows(JaggaerApplicationException.class,
-        () -> procurementProjectService.createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL));
+    var jagEx = assertThrows(JaggaerApplicationException.class, () -> procurementProjectService
+        .createFromAgreementDetails(AGREEMENT_DETAILS, PRINCIPAL, CONCLAVE_ORG_ID));
     assertEquals("Jaggaer application exception, Code: [1], Message: [NOT OK]", jagEx.getMessage());
   }
 
@@ -224,7 +232,7 @@ class ProcurementProjectServiceTest {
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .thenReturn(createUpdateProjectResponse);
 
-    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
+    when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID)).then(mock -> {
       procurementProject.setId(PROC_PROJECT_ID);
       return Optional.of(procurementProject);
     });
@@ -236,7 +244,7 @@ class ProcurementProjectServiceTest {
         PRINCIPAL);
 
     // Verify that entity was updated as expected
-    verify(procurementProjectRepo).save(captor.capture());
+    verify(retryableTendersDBDelegate).save(captor.capture());
     assertEquals(UPDATED_PROJECT_NAME, captor.getValue().getProjectName());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
@@ -271,7 +279,7 @@ class ProcurementProjectServiceTest {
 
     // Mock behaviours
     var procurementProject = new ProcurementProject();
-    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
+    when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID)).then(mock -> {
       procurementProject.setId(PROC_PROJECT_ID);
       procurementProject.setCaNumber(CA_NUMBER);
       procurementProject.setLotNumber(LOT_NUMBER);
@@ -289,7 +297,7 @@ class ProcurementProjectServiceTest {
     var projectEventTypes = procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID);
 
     // Verify
-    verify(procurementProjectRepo).findById(PROC_PROJECT_ID);
+    verify(retryableTendersDBDelegate).findProcurementProjectById(PROC_PROJECT_ID);
 
     // TODO : better way to compare ??
     var defineEventTypes = projectEventTypes.stream()
@@ -308,7 +316,8 @@ class ProcurementProjectServiceTest {
   void testGetProjectEventTypesThrowsResourceNotFoundApplicationException() throws Exception {
 
     // Mock behaviours
-    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> Optional.ofNullable(null));
+    when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID))
+        .then(mock -> Optional.ofNullable(null));
 
     // Invoke & assert
     var ex = assertThrows(ResourceNotFoundException.class,

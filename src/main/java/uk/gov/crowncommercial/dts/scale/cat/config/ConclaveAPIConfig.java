@@ -22,4 +22,5 @@ public class ConclaveAPIConfig {
   private String supplierRoleKey;
   private Map<String, String> getUser;
   private Map<String, String> getUserContacts;
+  private Map<String, String> getOrganisation;
 }

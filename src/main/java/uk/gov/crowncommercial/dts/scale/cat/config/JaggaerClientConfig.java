@@ -21,7 +21,6 @@ import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.endpoint.DefaultClientCredentialsTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
@@ -73,11 +72,10 @@ public class JaggaerClientConfig {
       final ClientRegistrationRepository clientRegistrationRepository,
       final OAuth2AuthorizedClientRepository authorizedClientRepository) {
 
-    var authorizedClientProvider =
-        OAuth2AuthorizedClientProviderBuilder.builder()
-            .clientCredentials(
-                configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
-            .build();
+    var authorizedClientProvider = OAuth2AuthorizedClientProviderBuilder.builder()
+        .clientCredentials(
+            configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
+        .build();
 
     var authorizedClientManager = new DefaultOAuth2AuthorizedClientManager(
         clientRegistrationRepository, authorizedClientRepository);
