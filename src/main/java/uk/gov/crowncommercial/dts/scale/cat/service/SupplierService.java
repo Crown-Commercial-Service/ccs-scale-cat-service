@@ -56,12 +56,13 @@ public class SupplierService {
       return Collections.emptyList();
     }
 
-    var supplierExternalIds =
-        supplierOrgMappings.stream().map(OrganisationMapping::getExternalOrganisationId)
-            .map(String::valueOf).collect(Collectors.toSet());
+    var supplierExternalIds = supplierOrgMappings.stream()
+        .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
 
-    return supplierExternalIds.stream().map(id -> new Supplier(new CompanyData(id)))
+    return supplierExternalIds.stream()
+        .map(id -> Supplier.builder().companyData((CompanyData.builder().id(id)).build()).build())
         .collect(Collectors.toList());
   }
+
 
 }
