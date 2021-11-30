@@ -265,19 +265,18 @@ public class ProcurementEventService {
     var orgs = new ArrayList<OrganizationReference>();
 
     if (existingRfx.getSuppliersList().getSupplier() != null) {
-      orgs = (ArrayList<OrganizationReference>) existingRfx.getSuppliersList().getSupplier()
-          .stream().map(s -> {
+      existingRfx.getSuppliersList().getSupplier().stream().map(s -> {
 
-            var om = retryableTendersDBDelegate
-                .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                    String.format(SUPPLIER_NOT_FOUND_MSG, s.getCompanyData().getId())));
+        var om = retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                String.format(SUPPLIER_NOT_FOUND_MSG, s.getCompanyData().getId())));
 
-            var org = new OrganizationReference();
-            org.setId(String.valueOf(om.getOrganisationId()));
-            org.setName(s.getCompanyData().getName());
-            return org;
-          }).collect(Collectors.toList());
+        var org = new OrganizationReference();
+        org.setId(String.valueOf(om.getOrganisationId()));
+        org.setName(s.getCompanyData().getName());
+        return org;
+      }).forEachOrdered(orgs::add);
     }
 
     return orgs;
