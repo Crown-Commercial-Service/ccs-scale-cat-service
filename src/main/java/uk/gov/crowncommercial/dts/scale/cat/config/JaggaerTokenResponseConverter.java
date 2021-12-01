@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class JaggaerTokenResponseConverter
-    implements Converter<Map<String, String>, OAuth2AccessTokenResponse> {
+    implements Converter<Map<String, Object>, OAuth2AccessTokenResponse> {
 
   static final String JAGGAER_TOKEN_PROPERTY = "token";
   static final String JAGGAER_EXPIRE_IN_MILLIS_PROPERTY = "expire_in";
@@ -24,13 +24,13 @@ public class JaggaerTokenResponseConverter
   private final JaggaerAPIConfig jaggaerAPIConfig;
 
   @Override
-  public OAuth2AccessTokenResponse convert(Map<String, String> tokenResponse) {
+  public OAuth2AccessTokenResponse convert(final Map<String, Object> tokenResponse) {
 
-    var tokenExpirySeconds = Optional.ofNullable(jaggaerAPIConfig.getTokenExpirySeconds())
-        .orElse(Long.parseLong(tokenResponse.get(JAGGAER_EXPIRE_IN_MILLIS_PROPERTY)) / 1000);
+    var tokenExpirySeconds = Optional.ofNullable(jaggaerAPIConfig.getTokenExpirySeconds()).orElse(
+        Long.parseLong(tokenResponse.get(JAGGAER_EXPIRE_IN_MILLIS_PROPERTY).toString()) / 1000);
     log.debug("Jaggaer token expiry set to [{}] seconds", tokenExpirySeconds);
 
-    return OAuth2AccessTokenResponse.withToken(tokenResponse.get(JAGGAER_TOKEN_PROPERTY))
+    return OAuth2AccessTokenResponse.withToken(tokenResponse.get(JAGGAER_TOKEN_PROPERTY).toString())
         .tokenType(OAuth2AccessToken.TokenType.BEARER).expiresIn(tokenExpirySeconds).build();
   }
 

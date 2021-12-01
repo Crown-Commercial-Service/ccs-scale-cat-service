@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 
 /**
  * Experimental - {@link WebClient} generic helper functions. Primarily to avoid having to mock the
@@ -37,6 +39,8 @@ public class WebclientWrapper {
         ex -> ex.getRawStatusCode() == 404 ? Mono.empty() : Mono.error(ex);
 
     return ofNullable(webclient.get().uri(uriTemplate, params).retrieve().bodyToMono(resourceType)
+        .retryWhen(Retry.fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
+            Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY)))
         .onErrorResume(WebClientResponseException.class, funcFallback404)
         .block(Duration.ofSeconds(timeoutDuration)));
   }
