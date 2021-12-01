@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,12 @@ class EventsControllerTest {
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
   private static final String SUPPLIER_ID = "US-DUNS-227015716";
+
+  private static final String FILE_ID = "YnV5ZXItNzYxMzg1MS1jYXQtamFnZ2Flci1maWxlLXRlc3QtMy50eHQ=";
+  private static final String FILE_NAME = "test_file.pdf";
+  private static final String FILE_DESCRIPTION = "Test file upload";
+  private static final Long FILE_SIZE = 12345L;
+  private static final DocumentAudienceType AUDIENCE = DocumentAudienceType.BUYER;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -243,4 +250,31 @@ class EventsControllerTest {
 
   }
 
+  @Test
+  void getDocuments_200_OK() throws Exception {
+
+    DocumentSummary doc = new DocumentSummary();
+    doc.setAudience(AUDIENCE);
+    doc.setId(FILE_ID);
+    doc.setFileName(FILE_NAME);
+    doc.setDescription(FILE_DESCRIPTION);
+    doc.setFileSize(FILE_SIZE);
+    List<DocumentSummary> documentSummaries = Arrays.asList(doc);
+
+    when(procurementEventService.getDocumentSummaries(PROC_PROJECT_ID, EVENT_ID))
+        .thenReturn(documentSummaries);
+
+    mockMvc
+        .perform(get(EVENTS_PATH + "/{eventID}/documents", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$[0].audience").value(AUDIENCE.getValue()))
+        .andExpect(jsonPath("$[0].id").value(FILE_ID))
+        .andExpect(jsonPath("$[0].fileName").value(FILE_NAME))
+        .andExpect(jsonPath("$[0].fileSize").value(FILE_SIZE))
+        .andExpect(jsonPath("$[0].description").value(FILE_DESCRIPTION));
+
+    verify(procurementEventService, times(1)).getDocumentSummaries(PROC_PROJECT_ID, EVENT_ID);
+  }
 }

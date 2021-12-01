@@ -2,16 +2,24 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
 /**
@@ -114,5 +122,52 @@ public class JaggaerService {
     }
     return createUpdateCompanyResponse;
 
+  }
+
+  /**
+   * Upload a document at the Rfx level.
+   *
+   * @param multipartFile
+   * @param rfx
+   */
+  public void uploadDocument(final MultipartFile multipartFile, final CreateUpdateRfx rfx) {
+
+    log.info("uploadDocument");
+
+    if (multipartFile.getOriginalFilename() == null) {
+      throw new IllegalArgumentException("No filename specified for upload document attachment");
+    }
+
+    MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+    parts.add("data", rfx);
+    parts.add(multipartFile.getOriginalFilename(), multipartFile.getResource());
+
+    jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+        .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
+        .retrieve().bodyToMono(String.class).block();
+  }
+
+  /**
+   * Retrieve a document attachment.
+   *
+   * @param fileId
+   * @param fileName
+   * @return
+   */
+  public DocumentAttachment getDocument(final Integer fileId, final String fileName) {
+
+    log.info("getDocument: {}, {}", fileId, fileName);
+
+    var getAttachmentUri = jaggaerAPIConfig.getGetAttachment().get(ENDPOINT);
+    ResponseEntity<byte[]> response = jaggaerWebClient.get().uri(getAttachmentUri, fileId, fileName)
+        .header(ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE).retrieve().toEntity(byte[].class)
+        .block();
+
+    if (response == null) {
+      throw new JaggaerApplicationException(
+          "Get attachment from Jaggaer returned a null response: fileId:" + fileId + ", fileName: "
+              + fileName);
+    }
+    return new DocumentAttachment(response.getBody(), response.getHeaders().getContentType());
   }
 }

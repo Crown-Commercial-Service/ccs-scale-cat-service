@@ -37,6 +37,28 @@ config:
     maxAttempts: 5
     multiplier: 2
     delay: 1000
+  document:
+    allowedExtentions: 
+      - csv
+      - doc
+      - docx
+      - jpg
+      - kml
+      - ods
+      - odt
+      - pdf
+      - png
+      - ppt
+      - pptx
+      - ref
+      - rtf
+      - txt
+      - xls
+      - xlsx
+      - xml
+      - zip
+    maxSize: 314572800 #300MB
+    maxTotalSize: 1073741824 #1GB
 
   external:
     jaggaer:
@@ -89,6 +111,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
       createUpdateCompany:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles
+      getAttachment:
+        endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
 
     agreementsService:
       # baseUrl: "SET IN ENV"

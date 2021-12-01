@@ -14,4 +14,6 @@ public class Rfx {
   SuppliersList suppliersList;
   TechEnvelope techEnvelope;
   EmailRecipientList emailRecipientList;
+  BuyerAttachmentsList buyerAttachmentsList;
+  SellerAttachmentsList sellerAttachmentsList;
 }
