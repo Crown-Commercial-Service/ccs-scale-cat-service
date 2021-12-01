@@ -100,13 +100,16 @@ public class CriteriaService {
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
     var options = question.getNonOCDS().getOptions();
-    if (options != null && !options.isEmpty()) {
+    if (options != null) {
       requirement.getNonOCDS()
           .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
               .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                   : questionNonOCDSOptions.getSelected())
               .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
               .build()).collect(Collectors.toList()));
+    } else {
+      log.error("'options' property not included in request for event {}", eventId);
+      throw new IllegalArgumentException("'options' property must be included in the request");
     }
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
