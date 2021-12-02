@@ -57,7 +57,8 @@ public class JaggaerClientConfig {
     var accessTokenResponseClient = new DefaultClientCredentialsTokenResponseClient();
 
     var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
-    tokenResponseHttpMessageConverter.setTokenResponseConverter(jaggaerTokenResponseConverter);
+    tokenResponseHttpMessageConverter
+        .setAccessTokenResponseConverter(jaggaerTokenResponseConverter);
 
     var restTemplate = new RestTemplate(
         Arrays.asList(new FormHttpMessageConverter(), tokenResponseHttpMessageConverter));
