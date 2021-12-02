@@ -25,7 +25,7 @@ public class AgreementsServiceClientConfig {
   public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
 
     // See https://github.com/reactor/reactor-netty/issues/1774
-    // Critical setting seems to be the maxIdelTime, which by default is not set meaning unlimieted.
+    // Critical setting seems to be the maxIdleTime, which by default is not set meaning unlimieted.
     var provider = ConnectionProvider.builder("custom-name").maxConnections(500)
         .pendingAcquireTimeout(Duration.ofSeconds(45)).maxIdleTime(Duration.ofSeconds(600))
         .evictInBackground(Duration.ofSeconds(120)).build();
