@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig.KEY_URI_TEMPLATE;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -43,8 +45,11 @@ public class AgreementsService {
     var dataTemplates = ofNullable(agreementsServiceWebClient.get()
         .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
         .bodyToMono(typeRefTemplateCriteria)
-        .retryWhen(Retry.fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
-            Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY)))
+        .onErrorMap(IOException.class, UncheckedIOException::new)
+        .retryWhen(Retry
+            .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
+                Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
+            .filter(WebclientWrapper::is5xxServerError))
         .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new AgreementsServiceApplicationException(
                 "Unexpected error retrieving RFI template from AS"));

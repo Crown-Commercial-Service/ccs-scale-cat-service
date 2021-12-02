@@ -1,12 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.util.Optional.ofNullable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -16,7 +19,13 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
  * webclient invocation chain in service class tests!
  */
 @Service
+@Slf4j
 public class WebclientWrapper {
+
+  static final boolean is5xxServerError(final Throwable throwable) {
+    return throwable instanceof WebClientResponseException
+        && ((WebClientResponseException) throwable).getStatusCode().is5xxServerError();
+  }
 
   /**
    * Uses the passed webclient, uri template and optional args to attempt retrieval of a remote
@@ -39,8 +48,11 @@ public class WebclientWrapper {
         ex -> ex.getRawStatusCode() == 404 ? Mono.empty() : Mono.error(ex);
 
     return ofNullable(webclient.get().uri(uriTemplate, params).retrieve().bodyToMono(resourceType)
-        .retryWhen(Retry.fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
-            Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY)))
+        .onErrorMap(IOException.class, UncheckedIOException::new)
+        .retryWhen(Retry
+            .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
+                Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
+            .filter(WebclientWrapper::is5xxServerError))
         .onErrorResume(WebClientResponseException.class, funcFallback404)
         .block(Duration.ofSeconds(timeoutDuration)));
   }
