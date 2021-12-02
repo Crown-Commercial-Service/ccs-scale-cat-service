@@ -27,8 +27,9 @@ public class AgreementsServiceClientConfig {
     // See https://github.com/reactor/reactor-netty/issues/1774
     // Critical setting seems to be the maxIdleTime, which by default is not set meaning unlimieted.
     var provider = ConnectionProvider.builder("custom-name").maxConnections(500)
-        .pendingAcquireTimeout(Duration.ofSeconds(45)).maxIdleTime(Duration.ofSeconds(600))
-        .evictInBackground(Duration.ofSeconds(120)).build();
+        .maxIdleTime(Duration.ofSeconds(20)).maxLifeTime(Duration.ofSeconds(60))
+        .pendingAcquireTimeout(Duration.ofSeconds(60)).evictInBackground(Duration.ofSeconds(120))
+        .build();
 
     var client = HttpClient.create(provider);
 
