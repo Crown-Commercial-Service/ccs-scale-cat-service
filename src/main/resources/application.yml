@@ -45,6 +45,8 @@ config:
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
+      defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
+      defaultSupplierRightsProfile: ""
 
       rfxStatusToTenderStatus:
         0: PLANNED
@@ -85,6 +87,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+      createUpdateCompany:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles
 
     agreementsService:
       # baseUrl: "SET IN ENV"
@@ -113,7 +117,7 @@ config:
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
       getOrganisation:
-        uriTemplate: /organisation-profiles/{org-id}        
+        uriTemplate: /organisation-profiles/{org-id}
   #flags:
     # devMode: "SET IN ENV"
 ---

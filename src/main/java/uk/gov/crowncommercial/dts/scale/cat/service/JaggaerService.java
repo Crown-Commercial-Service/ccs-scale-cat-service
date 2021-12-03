@@ -24,6 +24,7 @@ public class JaggaerService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
+  private final WebclientWrapper webclientWrapper;
 
   /**
    * Create or update a Project.
@@ -68,7 +69,7 @@ public class JaggaerService {
                     "Unexpected error updating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
-        || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
+        || !Constants.JAGGAER_GET_OK_MSG.equals(createRfxResponse.getReturnMessage())) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
           createRfxResponse.getReturnMessage());
@@ -91,5 +92,27 @@ public class JaggaerService {
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving rfx"));
+  }
+
+  /**
+   * Create or update a company and/or sub-users
+   *
+   * @param createUpdateCompanyRequest
+   * @return response containing code, message and bravoId of company
+   */
+  public CreateUpdateCompanyResponse createUpdateCompany(
+      final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
+    var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
+        CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+        jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+
+    log.debug("Create update company response: {}", createUpdateCompanyResponse);
+
+    if (!"0".equals(createUpdateCompanyResponse.getReturnCode())) {
+      throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+          createUpdateCompanyResponse.getReturnMessage());
+    }
+    return createUpdateCompanyResponse;
+
   }
 }

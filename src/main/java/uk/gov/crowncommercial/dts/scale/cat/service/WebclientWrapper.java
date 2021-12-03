@@ -57,4 +57,29 @@ public class WebclientWrapper {
         .block(Duration.ofSeconds(timeoutDuration)));
   }
 
+  /**
+   * Uses the passed webclient, uri template and optional params to post the given data to the
+   * remote service
+   *
+   * @param <T>
+   * @param postData
+   * @param responseType the expected response type
+   * @param webclient
+   * @param timeoutDuration
+   * @param uriTemplate
+   * @param params
+   * @return responseType object
+   * @throws JaggaerApplicationException if the response is null
+   * @throws WebClientResponseException for all other errors
+   */
+  public <T> T postData(final Object postData, final Class<T> responseType,
+      final WebClient webclient, final int timeoutDuration, final String uriTemplate,
+      final Object... params) {
+
+    return ofNullable(webclient.post().uri(uriTemplate, params).bodyValue(postData).retrieve()
+        .bodyToMono(responseType).block(Duration.ofSeconds(timeoutDuration)))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error posting data to " + uriTemplate));
+  }
+
 }

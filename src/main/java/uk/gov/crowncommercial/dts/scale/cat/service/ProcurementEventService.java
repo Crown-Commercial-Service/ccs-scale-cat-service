@@ -101,7 +101,7 @@ public class ProcurementEventService {
                     "Unexpected error creating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
-        || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
+        || !Constants.JAGGAER_GET_OK_MSG.equals(createRfxResponse.getReturnMessage())) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
           createRfxResponse.getReturnMessage());

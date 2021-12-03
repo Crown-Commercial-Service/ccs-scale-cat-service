@@ -30,7 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
@@ -67,8 +67,8 @@ class ProcurementEventServiceTest {
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
-  private static final ReturnCompanyInfo BUYER_COMPANY_INFO =
-      ReturnCompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
+  private static final CompanyInfo BUYER_COMPANY_INFO =
+      CompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
   private static final String SUPPLIER_ID = "US-DUNS-227015716";
   private static final Integer JAGGAER_SUPPLIER_ID = 21399;
 
