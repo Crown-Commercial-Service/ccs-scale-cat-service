@@ -12,7 +12,7 @@ logging:
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
     uk.gov.crowncommercial.dts.scale.cat: DEBUG
-    org.eclipse.jetty.client: DEBUG
+    # org.eclipse.jetty.client: DEBUG
 
 spring:
   jpa:
