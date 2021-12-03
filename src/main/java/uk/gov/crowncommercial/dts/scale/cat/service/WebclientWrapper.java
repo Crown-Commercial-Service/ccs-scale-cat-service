@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 
 /**
  * Experimental - {@link WebClient} generic helper functions. Primarily to avoid having to mock the
@@ -76,6 +78,7 @@ public class WebclientWrapper {
       final WebClient webclient, final int timeoutDuration, final String uriTemplate,
       final Object... params) {
 
+    // TODO: Make upstream service exeption generic
     return ofNullable(webclient.post().uri(uriTemplate, params).bodyValue(postData).retrieve()
         .bodyToMono(responseType).block(Duration.ofSeconds(timeoutDuration)))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
