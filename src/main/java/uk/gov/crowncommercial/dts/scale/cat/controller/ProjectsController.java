@@ -30,9 +30,12 @@ public class ProjectsController extends AbstractRestController {
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
-    log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
+    var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
+    log.info("createProcuremenProject invoked on behalf of principal: {}", principal,
+        conclaveOrgId);
 
-    return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
+    return procurementProjectService.createFromAgreementDetails(agreementDetails, principal,
+        conclaveOrgId);
   }
 
   @PutMapping("/{procID}/name")

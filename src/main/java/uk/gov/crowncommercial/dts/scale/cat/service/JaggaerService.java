@@ -57,11 +57,11 @@ public class JaggaerService {
    * @param rfx
    * @return
    */
-  public CreateUpdateRfxResponse createUpdateRfx(final Rfx rfx) {
+  public CreateUpdateRfxResponse createUpdateRfx(final Rfx rfx, final OperationCode operationCode) {
 
     var createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-            .bodyValue(new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx)).retrieve()
+            .bodyValue(new CreateUpdateRfx(operationCode, rfx)).retrieve()
             .bodyToMono(CreateUpdateRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),

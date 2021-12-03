@@ -23,7 +23,7 @@ public class TendersAPIModelUtils {
 
   public DraftProcurementProject buildDraftProcurementProject(
       final AgreementDetails agreementDetails, final Integer procurementID, final String eventID,
-      final String projectTitle) {
+      final String projectTitle, final String conclaveOrgId) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setProcurementID(procurementID);
     draftProcurementProject.setEventId(eventID);
@@ -31,7 +31,7 @@ public class TendersAPIModelUtils {
     var defaultNameComponents = new DefaultNameComponents();
     defaultNameComponents.setAgreementId(agreementDetails.getAgreementId());
     defaultNameComponents.setLotId(agreementDetails.getLotId());
-    defaultNameComponents.setOrg("CCS");
+    defaultNameComponents.setOrg(conclaveOrgId);
 
     var defaultName = new DefaultName();
     defaultName.setName(projectTitle);
@@ -56,7 +56,7 @@ public class TendersAPIModelUtils {
 
   public Errors buildDefaultErrors(final String status, final String title, final String details) {
     var apiError = new ApiError(status, title,
-        (appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode()) ? details : "");
+        appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? details : "");
     return buildErrors(Arrays.asList(apiError));
   }
 

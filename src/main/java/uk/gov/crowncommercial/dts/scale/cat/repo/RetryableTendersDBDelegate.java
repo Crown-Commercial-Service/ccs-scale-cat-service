@@ -24,7 +24,7 @@ public class RetryableTendersDBDelegate {
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
-    return procurementProjectRepo.save(procurementProject);
+    return procurementProjectRepo.saveAndFlush(procurementProject);
   }
 
   @TendersDBRetryable
@@ -56,9 +56,24 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+  public Optional<OrganisationMapping> findOrganisationMappingByOrgId(final String organisationId) {
+    return organisationMappingRepo.findByOrganisationId(organisationId);
+  }
+
+  @TendersDBRetryable
   public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
       final Integer externalOrganisationId) {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
+  }
+
+
+  public OrganisationMapping save(final OrganisationMapping organisationMapping) {
+    return organisationMappingRepo.saveAndFlush(organisationMapping);
+  }
+
+  public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
+      final String organisationId) {
+    return organisationMappingRepo.findByOrganisationId(organisationId);
   }
 
   /**

@@ -12,6 +12,7 @@ logging:
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
     uk.gov.crowncommercial.dts.scale.cat: DEBUG
+    org.eclipse.jetty.client: DEBUG
 
 spring:
   jpa:
@@ -40,7 +41,7 @@ config:
   external:
     jaggaer:
 #      baseUrl: "SET IN ENV"
-      timeoutDuration: 5
+      timeoutDuration: 10
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
@@ -88,7 +89,7 @@ config:
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
-      timeoutDuration: 5
+      timeoutDuration: 10
       getAgreementDetail:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
@@ -103,7 +104,7 @@ config:
     conclaveWrapper:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
-      timeoutDuration: 5
+      timeoutDuration: 10
       # Role keys are incorrectly spelt in Conclave
       buyerRoleKey: JAEGGER_BUYER
       supplierRoleKey: JAEGGER_SUPPLIER      
@@ -111,6 +112,8 @@ config:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
+      getOrganisation:
+        uriTemplate: /organisation-profiles/{org-id}        
   #flags:
     # devMode: "SET IN ENV"
 ---

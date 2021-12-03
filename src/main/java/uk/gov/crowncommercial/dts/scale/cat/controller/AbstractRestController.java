@@ -11,10 +11,17 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.MalformedJwtException;
  */
 public abstract class AbstractRestController {
 
-  protected String getPrincipalFromJwt(JwtAuthenticationToken authentication) {
+  protected String getPrincipalFromJwt(final JwtAuthenticationToken authentication) {
     return Optional.ofNullable(authentication.getTokenAttributes().get(JWT_CLAIM_SUBJECT))
         .map(Object::toString).orElseThrow(() -> new MalformedJwtException(
             "JWT did not contain mandatory '" + Constants.JWT_CLAIM_SUBJECT + "' claim"));
+  }
+
+  protected String getCiiOrgIdFromJwt(final JwtAuthenticationToken authentication) {
+    return Optional
+        .ofNullable(authentication.getTokenAttributes().get(Constants.JWT_CLAIM_CII_ORG_ID))
+        .map(Object::toString).orElseThrow(() -> new MalformedJwtException(
+            "JWT did not contain '" + Constants.JWT_CLAIM_CII_ORG_ID + "' claim"));
   }
 
 }

@@ -80,40 +80,12 @@ public class CriteriaService {
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
 
-    return group.getOcds().getRequirements().stream().map(r -> {
-      // TODO: Move to object mapper or similar
-      // @formatter:off
-      var questionNonOCDS = new QuestionNonOCDS()
-          .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
-          .mandatory(r.getNonOCDS().getMandatory())
-          .multiAnswer(r.getNonOCDS().getMultiAnswer())
-          .answered(r.getNonOCDS().getAnswered())
-          .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
-              new QuestionNonOCDSOptions().value(o.getValue())
-                       .selected(Boolean.valueOf(o.getSelect() == null? Boolean.FALSE:o.getSelect()))
-                  .text(o.getText())).collect(Collectors.toList()));
-
-      var questionOCDS = new Requirement1()
-          .id(r.getOcds().getId())
-          .title(r.getOcds().getTitle())
-          .description(r.getOcds().getDescription())
-          .dataType(DataType.fromValue(r.getOcds().getDataType()))
-          .pattern(r.getOcds().getPattern())
-          .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
-          .minValue(new Value1().amount(r.getOcds().getMinValue()))
-          .maxValue(new Value1().amount(r.getOcds().getMaxValue()))
-          .period(r.getOcds().getPeriod() != null ? new Period1()
-              .startDate(r.getOcds().getPeriod().getStartDate())
-              .endDate(r.getOcds().getPeriod().getEndDate())
-              .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
-              .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
-      // @formatter:on
-      return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
-    }).collect(Collectors.toSet());
+    return group.getOcds().getRequirements().stream().map(this::convertRequirementToQuestion)
+        .collect(Collectors.toSet());
 
   }
 
-  public void putQuestionOptionDetails(final Question question, final Integer projectId,
+  public Question putQuestionOptionDetails(final Question question, final Integer projectId,
       final String eventId, final String criterionId, final String groupId,
       final String questionId) {
 
@@ -128,13 +100,16 @@ public class CriteriaService {
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
     var options = question.getNonOCDS().getOptions();
-    if (options != null && !options.isEmpty()) {
+    if (options != null) {
       requirement.getNonOCDS()
           .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
               .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                   : questionNonOCDSOptions.getSelected())
               .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
               .build()).collect(Collectors.toList()));
+    } else {
+      log.error("'options' property not included in request for event {}", eventId);
+      throw new IllegalArgumentException("'options' property must be included in the request");
     }
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
@@ -161,6 +136,7 @@ public class CriteriaService {
     event.setProcurementTemplatePayload(dataTemplate);
     retryableTendersDBDelegate.save(event);
 
+    return convertRequirementToQuestion(requirement);
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
@@ -234,4 +210,37 @@ public class CriteriaService {
         + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
   }
 
+  private Question convertRequirementToQuestion(final Requirement r) {
+
+    // TODO: Move to object mapper or similar
+    // @formatter:off
+    var questionNonOCDS = new QuestionNonOCDS()
+        .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
+        .mandatory(r.getNonOCDS().getMandatory())
+        .multiAnswer(r.getNonOCDS().getMultiAnswer())
+        .answered(r.getNonOCDS().getAnswered())
+        .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
+            new QuestionNonOCDSOptions().value(o.getValue())
+                     .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())
+                .text(o.getText())).collect(Collectors.toList()));
+
+    var questionOCDS = new Requirement1()
+        .id(r.getOcds().getId())
+        .title(r.getOcds().getTitle())
+        .description(r.getOcds().getDescription())
+        .dataType(DataType.fromValue(r.getOcds().getDataType()))
+        .pattern(r.getOcds().getPattern())
+        .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
+        .minValue(new Value1().amount(r.getOcds().getMinValue()))
+        .maxValue(new Value1().amount(r.getOcds().getMaxValue()))
+        .period(r.getOcds().getPeriod() != null ? new Period1()
+            .startDate(r.getOcds().getPeriod().getStartDate())
+            .endDate(r.getOcds().getPeriod().getEndDate())
+            .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
+            .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
+    // @formatter:on
+
+    return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
+
+  }
 }

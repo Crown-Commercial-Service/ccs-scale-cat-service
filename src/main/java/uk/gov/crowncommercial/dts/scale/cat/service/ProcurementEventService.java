@@ -6,7 +6,11 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -39,6 +44,8 @@ public class ProcurementEventService {
   private static final String ADDITIONAL_INFO_LOT_NUMBER = "Lot Number";
   private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
+  private static final String SUPPLIER_NOT_FOUND_MSG =
+      "Organisation id '%s' not found in organisation mappings";
 
   private final UserProfileService userProfileService;
   private final OcdsConfig ocdsConfig;
@@ -155,8 +162,9 @@ public class ProcurementEventService {
     var rfxAdditionalInfoList =
         new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
-    var suppliersList = new SuppliersList(
-        supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()));
+    var suppliersList = SuppliersList.builder()
+        .supplier(supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
+        .build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
@@ -220,7 +228,7 @@ public class ProcurementEventService {
 
     // Save to Jaggaer
     if (updateJaggaer) {
-      jaggaerService.createUpdateRfx(rfx);
+      jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
     }
 
     // Save to Tenders DB
@@ -237,6 +245,115 @@ public class ProcurementEventService {
     return tendersAPIModelUtils.buildEventSummary(eventId, event.getEventName(),
         event.getExternalReferenceId(), ViewEventType.fromValue(event.getEventType()),
         TenderStatus.fromValue(status.toString()), EVENT_STAGE);
+
+  }
+
+  /**
+   * Get all suppliers on an event.
+   *
+   * @param procId
+   * @param eventId
+   * @return
+   */
+  public Collection<OrganizationReference> getSuppliers(final Integer procId,
+      final String eventId) {
+
+    log.debug("Get suppliers for event '{}'", eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    var orgs = new ArrayList<OrganizationReference>();
+
+    if (existingRfx.getSuppliersList().getSupplier() != null) {
+      existingRfx.getSuppliersList().getSupplier().stream().map(s -> {
+
+        var om = retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                String.format(SUPPLIER_NOT_FOUND_MSG, s.getCompanyData().getId())));
+
+        var org = new OrganizationReference();
+        org.setId(String.valueOf(om.getOrganisationId()));
+        org.setName(s.getCompanyData().getName());
+        return org;
+      }).forEachOrdered(orgs::add);
+    }
+
+    return orgs;
+  }
+
+  /**
+   * Add a supplier to an event.
+   *
+   * Jaggaer will add any suppliers it does not already have associated to the event, so only those
+   * suppliers need to be included.
+   *
+   * @param procId
+   * @param eventId
+   * @param organisationReference
+   * @return
+   */
+  public OrganizationReference addSupplier(final Integer procId, final String eventId,
+      final OrganizationReference organisationReference) {
+
+    log.debug("Add supplier '{}' to event '{}'", organisationReference, eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+    OrganisationMapping om = retryableTendersDBDelegate
+        .findOrganisationMappingByOrganisationId(organisationReference.getId())
+        .orElseThrow(() -> new IllegalArgumentException(
+            String.format(SUPPLIER_NOT_FOUND_MSG, organisationReference.getId())));
+
+    var companyData = CompanyData.builder().id(om.getExternalOrganisationId()).build();
+    var supplier = Supplier.builder().companyData(companyData).build();
+    var suppliersList = SuppliersList.builder().supplier(Arrays.asList(supplier)).build();
+
+    // Build Rfx and update
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).build();
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(suppliersList).build();
+    jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
+
+    return organisationReference;
+
+  }
+
+  /**
+   * Delete a supplier from an event.
+   *
+   * Jaggaer does not support a delete operation for suppliers, so the whole list needs to be
+   * updated as part of an 'UPDATE_RESET' operation.
+   *
+   * @param procId
+   * @param eventId
+   * @param organisationId
+   */
+  public void deleteSupplier(final Integer procId, final String eventId,
+      final String organisationId) {
+
+    log.debug("Delete supplier '{}' from event '{}'", organisationId, eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+    // Determine Jaggaer supplier id
+    OrganisationMapping om =
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                String.format(SUPPLIER_NOT_FOUND_MSG, organisationId)));
+
+    // Get all current suppliers on Rfx and remove the one we want to delete
+    ExportRfxResponse existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    List<Supplier> updatedSuppliersList = existingRfx.getSuppliersList().getSupplier().stream()
+        .filter(s -> !s.getCompanyData().getId().equals(om.getExternalOrganisationId()))
+        .collect(Collectors.toList());
+    var suppliersList = SuppliersList.builder().supplier(updatedSuppliersList).build();
+
+    // Build Rfx and update
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).build();
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(suppliersList).build();
+    jaggaerService.createUpdateRfx(rfx, OperationCode.UPDATE_RESET);
 
   }
 
