@@ -4,7 +4,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPICo
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ConclaveApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
@@ -21,6 +23,16 @@ public class ConclaveService {
   private final ConclaveAPIConfig conclaveAPIConfig;
   private final WebClient conclaveWebClient;
   private final WebclientWrapper webclientWrapper;
+
+  @Value
+  @Builder
+  public static class UserContactPoints {
+
+    String phone;
+    String fax;
+    String web;
+    String email;
+  }
 
   /**
    * Find and return a user profile from Conclave
@@ -77,5 +89,41 @@ public class ConclaveService {
       throw new ConclaveApplicationException(
           "Unexpected error retrieving org profile from Conclave");
     }
+  }
+
+  /**
+   * Extracts whatever user contact info is available (may be none in which case all fields are
+   * returned null)
+   *
+   * @param userContactInfoList
+   * @return
+   */
+  public UserContactPoints extractUserPersonalContacts(
+      final UserContactInfoList userContactInfoList) {
+    var personalContactInfo = userContactInfoList.getContactPoints().stream()
+        .filter(cpi -> "PERSONAL".equals(cpi.getContactPointReason())).findFirst();
+
+    final var userContactPoints = UserContactPoints.builder();
+
+    if (personalContactInfo.isPresent()) {
+
+      personalContactInfo.get().getContacts().stream()
+          .filter(crd -> "PHONE".equals(crd.getContactType())).findFirst()
+          .ifPresent(crd -> userContactPoints.phone(crd.getContactValue()));
+
+      personalContactInfo.get().getContacts().stream()
+          .filter(crd -> "FAX".equals(crd.getContactType())).findFirst()
+          .ifPresent(crd -> userContactPoints.fax(crd.getContactValue()));
+
+      personalContactInfo.get().getContacts().stream()
+          .filter(crd -> "EMAIL".equals(crd.getContactType())).findFirst()
+          .ifPresent(crd -> userContactPoints.email(crd.getContactValue()));
+
+      personalContactInfo.get().getContacts().stream()
+          .filter(crd -> "WEB_ADDRESS".equals(crd.getContactType())).findFirst()
+          .ifPresent(crd -> userContactPoints.web(crd.getContactValue()));
+
+    }
+    return userContactPoints.build();
   }
 }

@@ -8,8 +8,8 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class Constants {
 
-  // Controller response related
-  public static final String OK = "OK";
+  // Remote service response related
+  public static final String JAGGAER_GET_OK_MSG = "OK";
 
   // Security related
   public static final String JWT_CLAIM_SUBJECT = "sub";

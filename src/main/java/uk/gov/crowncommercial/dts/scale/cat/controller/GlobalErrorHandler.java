@@ -90,10 +90,11 @@ public class GlobalErrorHandler implements ErrorController {
   }
 
   @ResponseStatus(CONFLICT)
-  @ExceptionHandler(UserRolesConflictException.class)
+  @ExceptionHandler({UserRolesConflictException.class, UnmergedJaggaerUserException.class})
   public Errors handleUserRolesConflictException(final UserRolesConflictException exception) {
 
-    log.error("UserRolesConflictException", exception);
+    log.warn("Profile management conflict exception (" + exception.getClass().getName() + ")",
+        exception);
 
     var apiError = new ApiError(CONFLICT.toString(), exception.getMessage(),
         appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? exception.getMessage()
