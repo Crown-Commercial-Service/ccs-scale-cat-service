@@ -17,10 +17,7 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.transaction.CannotCreateTransactionException;
 import uk.gov.crowncommercial.dts.scale.cat.config.RetryConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 
 /**
  *
@@ -37,6 +34,9 @@ class RetryableTendersDBDelegateTest {
 
   @MockBean
   private OrganisationMappingRepo organisationMappingRepo;
+
+  @MockBean
+  private JourneyRepo journeyRepo;
 
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;

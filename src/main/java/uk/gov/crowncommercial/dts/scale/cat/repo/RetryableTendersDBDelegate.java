@@ -7,6 +7,7 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -21,6 +22,7 @@ public class RetryableTendersDBDelegate {
   private final ProcurementProjectRepo procurementProjectRepo;
   private final ProcurementEventRepo procurementEventRepo;
   private final OrganisationMappingRepo organisationMappingRepo;
+  private final JourneyRepo journeyRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -75,6 +77,16 @@ public class RetryableTendersDBDelegate {
   public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
       final String organisationId) {
     return organisationMappingRepo.findByOrganisationId(organisationId);
+  }
+
+  @TendersDBRetryable
+  public JourneyEntity save(final JourneyEntity journey) {
+    return journeyRepo.save(journey);
+  }
+
+  @TendersDBRetryable
+  public Optional<JourneyEntity> findJourneyByExternalId(final String externalId) {
+    return journeyRepo.findByExternalId(externalId);
   }
 
   /**
