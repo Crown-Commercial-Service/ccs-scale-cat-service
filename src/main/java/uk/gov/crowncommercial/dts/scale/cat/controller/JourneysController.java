@@ -6,6 +6,7 @@ import javax.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.Journey;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.JourneyStepState;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.StepState;
@@ -22,11 +23,11 @@ public class JourneysController extends AbstractRestController {
   private final JourneyService journeyService;
 
   @PostMapping
-  public String createJourney(@RequestBody @Valid final Journey journey,
+  public StringValueResponse createJourney(@RequestBody @Valid final Journey journey,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
-    return journeyService.createJourney(journey, principal);
+    return new StringValueResponse(journeyService.createJourney(journey, principal));
   }
 
   @GetMapping("/{journey-id}/steps")
@@ -36,12 +37,14 @@ public class JourneysController extends AbstractRestController {
   }
 
   @PutMapping("/{journey-id}/steps/{step-id}")
-  public void updateJourneyStepState(@PathVariable("journey-id") final String journeyId,
+  public StringValueResponse updateJourneyStepState(
+      @PathVariable("journey-id") final String journeyId,
       @PathVariable("step-id") final Integer stepId, @RequestBody @Valid final StepState stepState,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     journeyService.updateJourneyStepState(journeyId, stepId, stepState, principal);
+    return new StringValueResponse("OK");
   }
 
 }

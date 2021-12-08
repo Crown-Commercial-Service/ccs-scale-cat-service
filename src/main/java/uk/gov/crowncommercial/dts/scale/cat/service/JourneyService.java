@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.exception.DataConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.Journey;
@@ -24,6 +25,10 @@ public class JourneyService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   public String createJourney(final Journey journey, final String principal) {
+
+    if (retryableTendersDBDelegate.findJourneyByExternalId(journey.getJourneyId()).isPresent()) {
+      throw new DataConflictException("Journey [" + journey.getJourneyId() + "] already exists");
+    }
 
     var journeyEntity = JourneyEntity.builder().clientId(CLIENT_ID)
         .externalId(journey.getJourneyId()).journeyDetails(journey.getStates()).createdBy(principal)

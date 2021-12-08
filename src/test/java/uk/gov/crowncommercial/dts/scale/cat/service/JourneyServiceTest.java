@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import uk.gov.crowncommercial.dts.scale.cat.exception.DataConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.Journey;
@@ -55,6 +56,19 @@ class JourneyServiceTest {
     assertEquals(CLIENT_ID, capturedJourney.getClientId());
     assertEquals(PRINCIPAL, capturedJourney.getCreatedBy());
     assertEquals(journey.getStates(), capturedJourney.getJourneyDetails());
+  }
+
+  @Test
+  void testCreateJourneyAlreadyExists() {
+    var journeyEntity = JourneyEntity.builder().id(1).externalId(JOURNEY_ID).build();
+    var journey = new Journey().journeyId(JOURNEY_ID);
+    when(retryableTendersDBDelegate.findJourneyByExternalId(JOURNEY_ID))
+        .thenReturn(Optional.of(journeyEntity));
+
+    var ex = assertThrows(DataConflictException.class,
+        () -> journeyService.createJourney(journey, PRINCIPAL));
+
+    assertEquals("Journey [" + JOURNEY_ID + "] already exists", ex.getMessage());
   }
 
   @Test

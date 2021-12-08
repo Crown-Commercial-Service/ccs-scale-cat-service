@@ -102,6 +102,16 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
+  @ResponseStatus(CONFLICT)
+  @ExceptionHandler({DataConflictException.class})
+  public Errors handleDataConflictException(final DataConflictException exception) {
+
+    log.warn("Data conflict exception", exception);
+
+    return tendersAPIModelUtils.buildErrors(
+        Arrays.asList(new ApiError(CONFLICT.toString(), "Data conflict", exception.getMessage())));
+  }
+
   @ResponseStatus(NOT_FOUND)
   @ExceptionHandler({ResourceNotFoundException.class})
   public Errors handleResourceNotFoundException(final ResourceNotFoundException exception) {
