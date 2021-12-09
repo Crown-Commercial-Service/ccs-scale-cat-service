@@ -3,11 +3,16 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Collection;
 import javax.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
@@ -90,5 +95,51 @@ public class EventsController extends AbstractRestController {
     procurementEventService.deleteSupplier(procId, eventId, supplierId);
 
     return "OK";
+  }
+
+  @GetMapping("/{eventID}/documents")
+  public Collection<DocumentSummary> getDocumentSummaries(
+      @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getDocumentSummaries invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.getDocumentSummaries(procId, eventId);
+  }
+
+  @PutMapping("/{eventID}/documents")
+  public DocumentSummary uploadDocument(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @RequestParam("data") final MultipartFile multipartFile,
+      @RequestParam("audience") final String audience,
+      @RequestParam(value = "description", required = false) final String description,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("uploadDocument invoked on behalf of principal: {}", principal);
+
+    // passed in as string to allow for lower case
+    var audienceType = DocumentAudienceType.valueOf(audience.toUpperCase());
+    return procurementEventService.uploadDocument(procId, eventId, multipartFile, audienceType,
+        description);
+  }
+
+  @GetMapping(value = "/{eventID}/documents/{documentID}")
+  public ResponseEntity<byte[]> getDocument(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("documentID") final String documentId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getDocument invoked on behalf of principal: {}", principal);
+
+    DocumentAttachment document = procurementEventService.getDocument(procId, eventId, documentId);
+    var documentKey = DocumentKey.fromString(documentId);
+
+    return ResponseEntity.ok().contentType(document.getContentType())
+        .header(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + documentKey.getFileName() + "\"")
+        .body(document.getData());
   }
 }
