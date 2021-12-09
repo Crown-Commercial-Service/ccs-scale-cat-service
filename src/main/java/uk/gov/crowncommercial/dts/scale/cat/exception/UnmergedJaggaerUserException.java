@@ -5,7 +5,7 @@ package uk.gov.crowncommercial.dts.scale.cat.exception;
  * not been merged, i.e. no SSO data is present on their profile. Should result in a 409 being
  * returned.
  */
-public class UnmergedJaggaerUserException extends RuntimeException {
+public class UnmergedJaggaerUserException extends UserRolesConflictException {
 
   /**
    *
