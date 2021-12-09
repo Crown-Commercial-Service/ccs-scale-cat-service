@@ -381,13 +381,19 @@ public class ProcurementEventService {
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
     Collection<DocumentSummary> documents = new ArrayList<>();
 
-    var buyerAttachmentsList = exportRfxResponse.getBuyerAttachmentsList();
-    buyerAttachmentsList.getAttachment().stream()
+    if (exportRfxResponse.getBuyerAttachmentsList().getAttachment() == null) {
+      exportRfxResponse.setBuyerAttachmentsList(
+          BuyerAttachmentsList.builder().attachment(new ArrayList<>()).build());
+    }
+    exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream()
         .map(ba -> tendersAPIModelUtils.buildDocumentSummary(ba, DocumentAudienceType.BUYER))
         .forEachOrdered(documents::add);
 
-    var sellerAttachmentsList = exportRfxResponse.getSellerAttachmentsList();
-    sellerAttachmentsList.getAttachment().stream()
+    if (exportRfxResponse.getSellerAttachmentsList().getAttachment() == null) {
+      exportRfxResponse.setSellerAttachmentsList(
+          SellerAttachmentsList.builder().attachment(new ArrayList<>()).build());
+    }
+    exportRfxResponse.getSellerAttachmentsList().getAttachment().stream()
         .map(ba -> tendersAPIModelUtils.buildDocumentSummary(ba, DocumentAudienceType.SUPPLIER))
         .forEachOrdered(documents::add);
 
