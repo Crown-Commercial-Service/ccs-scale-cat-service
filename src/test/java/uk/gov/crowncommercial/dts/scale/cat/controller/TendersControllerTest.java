@@ -28,6 +28,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnmergedJaggaerUserException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
@@ -123,6 +125,43 @@ class TendersControllerTest {
         .andExpect(jsonPath("$.errors", hasSize(1)))
         .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN"))).andExpect(jsonPath(
             "$.errors[0].title", is("Authenticated user does not match requested user-id")));
+  }
+
+  @Test
+  void getUser_409_UserRolesConflict() throws Exception {
+    var errMsg = "User [" + PRINCIPAL
+        + "] has conflicting Conclave/Jaggaer roles (Conclave: SUPPLIER, Jaggaer: BUYER)";
+
+    when(profileManagementService.getUserRoles(PRINCIPAL))
+        .thenThrow(new UserRolesConflictException(errMsg));
+
+    mockMvc
+        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isConflict())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("409 CONFLICT")))
+        .andExpect(jsonPath("$.errors[0].title", is(errMsg)))
+        .andExpect(jsonPath("$.errors[0].detail", is("")));
+  }
+
+  @Test
+  void getUser_409_UnmergedJaggaerUser() throws Exception {
+    var errMsg = "User [" + PRINCIPAL + "] is not merged in Jaggaer (no SSO data)";
+
+    when(profileManagementService.getUserRoles(PRINCIPAL))
+        .thenThrow(new UnmergedJaggaerUserException(errMsg));
+
+    mockMvc
+        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isConflict())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("409 CONFLICT")))
+        .andExpect(jsonPath("$.errors[0].title", is(errMsg)))
+        .andExpect(jsonPath("$.errors[0].detail", is("")));
   }
 
   @Test
