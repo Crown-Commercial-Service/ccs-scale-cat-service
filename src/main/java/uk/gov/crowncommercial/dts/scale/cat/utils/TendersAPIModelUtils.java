@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
 /**
@@ -94,6 +96,20 @@ public class TendersAPIModelUtils {
     eventDetail.setOCDS(eventDetailOCDS);
 
     return eventDetail;
+  }
+
+  public DocumentSummary buildDocumentSummary(final Attachment attachment,
+      final DocumentAudienceType audienceType) {
+
+    var key = new DocumentKey(Integer.valueOf(attachment.getFileId()), attachment.getFileName(),
+        audienceType);
+    var doc = new DocumentSummary();
+    doc.setId(key.getDocumentId());
+    doc.setFileName(attachment.getFileName());
+    doc.setFileSize(attachment.getFileSize());
+    doc.setDescription(attachment.getFileDescription());
+    doc.setAudience(audienceType);
+    return doc;
   }
 
 }

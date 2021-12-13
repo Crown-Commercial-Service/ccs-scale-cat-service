@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -7,9 +8,7 @@ import lombok.extern.jackson.Jacksonized;
 @Value
 @Builder
 @Jacksonized
-public class ReturnCompanyData {
+public class BuyerAttachmentsList {
 
-  private CompanyInfo returnCompanyInfo;
-  private SubUsers returnSubUser;
-
+  List<Attachment> attachment;
 }

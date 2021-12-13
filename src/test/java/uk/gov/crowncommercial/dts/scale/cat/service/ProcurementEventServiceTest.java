@@ -22,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -30,20 +31,16 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
-import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Service layer tests
  */
-@SpringBootTest(
-    classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-        TendersAPIModelUtils.class, RetryableTendersDBDelegate.class, ApplicationFlagsConfig.class},
-    webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+    DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
+    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
 
@@ -67,8 +64,8 @@ class ProcurementEventServiceTest {
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
-  private static final ReturnCompanyInfo BUYER_COMPANY_INFO =
-      ReturnCompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
+  private static final CompanyInfo BUYER_COMPANY_INFO =
+      CompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
   private static final String SUPPLIER_ID = "US-DUNS-227015716";
   private static final Integer JAGGAER_SUPPLIER_ID = 21399;
 
@@ -101,6 +98,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private ValidationService validationService;
+
+  @MockBean
+  private JourneyRepo journeyRepo;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -418,13 +418,13 @@ class ProcurementEventServiceTest {
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
 
-    CompanyData companyData = CompanyData.builder().id(JAGGAER_SUPPLIER_ID).build();
-    Supplier supplier = Supplier.builder().companyData(companyData).build();
-    SuppliersList suppliersList = SuppliersList.builder().supplier(Arrays.asList(supplier)).build();
+    var companyData = CompanyData.builder().id(JAGGAER_SUPPLIER_ID).build();
+    var supplier = Supplier.builder().companyData(companyData).build();
+    var suppliersList = SuppliersList.builder().supplier(Arrays.asList(supplier)).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setSuppliersList(suppliersList);
 
-    OrganisationMapping orgMapping = new OrganisationMapping();
+    var orgMapping = new OrganisationMapping();
     orgMapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     orgMapping.setOrganisationId(SUPPLIER_ID);
 
@@ -435,7 +435,7 @@ class ProcurementEventServiceTest {
     when(organisationMappingRepo.findByExternalOrganisationId(JAGGAER_SUPPLIER_ID))
         .thenReturn(Optional.of(orgMapping));
 
-    Collection<OrganizationReference> response =
+    var response =
         procurementEventService.getSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
@@ -447,13 +447,13 @@ class ProcurementEventServiceTest {
   @Test
   void testAddSupplier() throws Exception {
 
-    OrganizationReference org = new OrganizationReference();
+    var org = new OrganizationReference();
     org.setId(SUPPLIER_ID);
 
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
 
-    OrganisationMapping mapping = new OrganisationMapping();
+    var mapping = new OrganisationMapping();
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     mapping.setOrganisationId(SUPPLIER_ID);
 
@@ -465,7 +465,7 @@ class ProcurementEventServiceTest {
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
-    OrganizationReference response =
+    var response =
         procurementEventService.addSupplier(PROC_PROJECT_ID, PROC_EVENT_ID, org);
 
     // Verify
@@ -483,13 +483,13 @@ class ProcurementEventServiceTest {
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
 
-    OrganisationMapping mapping = new OrganisationMapping();
+    var mapping = new OrganisationMapping();
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     mapping.setOrganisationId(SUPPLIER_ID);
 
-    CompanyData companyData = CompanyData.builder().id(JAGGAER_SUPPLIER_ID).build();
-    Supplier supplier = Supplier.builder().companyData(companyData).build();
-    SuppliersList suppliersList = SuppliersList.builder().supplier(Arrays.asList(supplier)).build();
+    var companyData = CompanyData.builder().id(JAGGAER_SUPPLIER_ID).build();
+    var supplier = Supplier.builder().companyData(companyData).build();
+    var suppliersList = SuppliersList.builder().supplier(Arrays.asList(supplier)).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setSuppliersList(suppliersList);
 

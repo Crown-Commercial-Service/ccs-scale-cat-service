@@ -7,9 +7,10 @@ import lombok.extern.jackson.Jacksonized;
 @Value
 @Builder
 @Jacksonized
-public class ReturnCompanyData {
+public class Attachment {
 
-  private CompanyInfo returnCompanyInfo;
-  private SubUsers returnSubUser;
-
+  String fileId;
+  String fileName;
+  String fileDescription;
+  Long fileSize;
 }

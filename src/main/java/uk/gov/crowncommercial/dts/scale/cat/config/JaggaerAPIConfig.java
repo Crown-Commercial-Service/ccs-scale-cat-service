@@ -16,10 +16,14 @@ public class JaggaerAPIConfig {
 
   public static final String ENDPOINT = "endpoint";
   public static final String PRINCIPAL_PLACEHOLDER = "{{PRINCIPAL}}";
+  public static final String SSO_CODE_VALUE = "OPEN_ID";
 
   private String baseUrl;
   private String headerValueWWWAuthenticate;
   private String headerValueInvalidContentType;
+  private String selfServiceId;
+  private String defaultBuyerRightsProfile;
+  private String defaultSupplierRightsProfile;
   private Integer timeoutDuration;
   private Map<Integer, TenderStatus> rfxStatusToTenderStatus;
   private Boolean addDivisionToProjectTeam;
@@ -31,5 +35,6 @@ public class JaggaerAPIConfig {
   private Map<String, String> exportRfx;
   private Map<String, String> getSupplierCompanyProfile;
   private Map<String, String> getSupplierSubUserProfile;
-
+  private Map<String, String> createUpdateCompany;
+  private Map<String, String> getAttachment;
 }

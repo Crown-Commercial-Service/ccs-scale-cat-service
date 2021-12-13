@@ -41,7 +41,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -76,8 +76,8 @@ class ProcurementProjectServiceTest {
   private static final AgreementDetails AGREEMENT_DETAILS = new AgreementDetails();
   private static final Optional<SubUser> JAGGAER_USER =
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
-  private static final ReturnCompanyInfo BUYER_COMPANY_INFO =
-      ReturnCompanyInfo.builder().bravoId(JAGGAER_BUYER_COMPANY_ID).build();
+  private static final CompanyInfo BUYER_COMPANY_INFO =
+      CompanyInfo.builder().bravoId(JAGGAER_BUYER_COMPANY_ID).build();
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -96,6 +96,9 @@ class ProcurementProjectServiceTest {
 
   @MockBean
   private AgreementsServiceAPIConfig agreementsServiceAPIConfig;
+
+  @MockBean
+  private WebclientWrapper webclientWrapper;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;

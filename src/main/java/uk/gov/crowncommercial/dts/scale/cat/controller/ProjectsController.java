@@ -49,7 +49,7 @@ public class ProjectsController extends AbstractRestController {
     procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
         principal);
 
-    return Constants.OK;
+    return Constants.JAGGAER_GET_OK_MSG;
   }
 
   @GetMapping("/{proc-id}/event-types")

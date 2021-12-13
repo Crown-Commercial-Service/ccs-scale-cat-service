@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 
 /**
  * Experimental - {@link WebClient} generic helper functions. Primarily to avoid having to mock the
@@ -55,6 +57,32 @@ public class WebclientWrapper {
             .filter(WebclientWrapper::is5xxServerError))
         .onErrorResume(WebClientResponseException.class, funcFallback404)
         .block(Duration.ofSeconds(timeoutDuration)));
+  }
+
+  /**
+   * Uses the passed webclient, uri template and optional params to post the given data to the
+   * remote service
+   *
+   * @param <T>
+   * @param postData
+   * @param responseType the expected response type
+   * @param webclient
+   * @param timeoutDuration
+   * @param uriTemplate
+   * @param params
+   * @return responseType object
+   * @throws JaggaerApplicationException if the response is null
+   * @throws WebClientResponseException for all other errors
+   */
+  public <T> T postData(final Object postData, final Class<T> responseType,
+      final WebClient webclient, final int timeoutDuration, final String uriTemplate,
+      final Object... params) {
+
+    // TODO: Make upstream service exeption generic
+    return ofNullable(webclient.post().uri(uriTemplate, params).bodyValue(postData).retrieve()
+        .bodyToMono(responseType).block(Duration.ofSeconds(timeoutDuration)))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error posting data to " + uriTemplate));
   }
 
 }

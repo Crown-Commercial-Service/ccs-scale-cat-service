@@ -36,8 +36,8 @@ class SupplierServiceTest {
 
   static final Integer EXT_ORG_ID_1 = 2345678;
   static final Integer EXT_ORG_ID_2 = 8765432;
-  static final OrganisationMapping ORG_MAPPING_1 = new OrganisationMapping();
-  static final OrganisationMapping ORG_MAPPING_2 = new OrganisationMapping();
+  static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
+  static final OrganisationMapping ORG_MAPPING_2 = OrganisationMapping.builder().build();
 
   static final Supplier EXT_SUPPLIER_1 =
       Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_1).build()).build();
