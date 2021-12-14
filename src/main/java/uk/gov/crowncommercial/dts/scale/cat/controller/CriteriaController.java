@@ -30,7 +30,7 @@ public class CriteriaController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriteria invoked on behalf of principal: {}", principal);
 
-    return criteriaService.getEvalCriteria(procId, eventId);
+    return criteriaService.getEvalCriteria(procId, eventId, false);
   }
 
   @GetMapping("/{criterion-id}/groups")
@@ -42,7 +42,7 @@ public class CriteriaController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriterionGroups invoked on behalf of principal: {}", principal);
 
-    return criteriaService.getEvalCriterionGroups(procId, eventId, criterionId);
+    return criteriaService.getEvalCriterionGroups(procId, eventId, criterionId, false);
   }
 
   @GetMapping("/{criterion-id}/groups/{group-id}/questions")

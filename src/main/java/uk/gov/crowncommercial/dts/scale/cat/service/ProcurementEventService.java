@@ -53,6 +53,7 @@ public class ProcurementEventService {
       "Organisation id '%s' not found in organisation mappings";
 
   private final UserProfileService userProfileService;
+  private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;
   private final WebClient jaggaerWebClient;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -186,7 +187,12 @@ public class ProcurementEventService {
   public EventDetail getEvent(final Integer projectId, final String eventId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event);
+
+    var buyerQuestions =
+        new ArrayList<EvalCriteria>(criteriaService.getEvalCriteria(projectId, eventId, true));
+
+    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
+        buyerQuestions);
   }
 
   /**
