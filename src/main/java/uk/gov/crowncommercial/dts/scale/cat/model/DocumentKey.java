@@ -19,7 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType
 public class DocumentKey {
 
   public static final Pattern pattern =
-      Pattern.compile("(?<audience>[A-Za-z]+)-(?<fileId>[0-9]+)-(?<fileName>\\S+)");
+      Pattern.compile("(?<audience>[A-Za-z]+)-(?<fileId>[0-9]+)-(?<fileName>[\\s\\S]+)");
 
   // The Jaggaer internal file id
   Integer fileId;
