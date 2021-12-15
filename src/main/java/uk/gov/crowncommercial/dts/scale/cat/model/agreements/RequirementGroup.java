@@ -22,6 +22,7 @@ public class RequirementGroup {
     String prompt;
     String task;
     Boolean mandatory;
+    Integer order;
   }
 
   @Value

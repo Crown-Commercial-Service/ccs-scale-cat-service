@@ -66,7 +66,8 @@ public class CriteriaService {
 
     return criteria.getRequirementGroups().stream().map(rg -> {
       var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
-          .prompt(rg.getNonOCDS().getPrompt()).mandatory(rg.getNonOCDS().getMandatory());
+          .order(rg.getNonOCDS().getOrder()).prompt(rg.getNonOCDS().getPrompt())
+          .mandatory(rg.getNonOCDS().getMandatory());
       var questionGroupOCDS = new RequirementGroup1().id(rg.getOcds().getId())
           .description(rg.getOcds().getDescription());
       return new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
@@ -100,17 +101,18 @@ public class CriteriaService {
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
     var options = question.getNonOCDS().getOptions();
-    if (options != null) {
-      requirement.getNonOCDS()
-          .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
-              .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
-                  : questionNonOCDSOptions.getSelected())
-              .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-              .build()).collect(Collectors.toList()));
-    } else {
+    if (options == null) {
       log.error("'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
+    requirement.getNonOCDS()
+        .updateOptions(options.stream()
+            .map(questionNonOCDSOptions -> Requirement.Option.builder()
+                .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                    : questionNonOCDSOptions.getSelected())
+                .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                .build())
+            .collect(Collectors.toList()));
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
@@ -218,7 +220,7 @@ public class CriteriaService {
         .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
         .mandatory(r.getNonOCDS().getMandatory())
         .multiAnswer(r.getNonOCDS().getMultiAnswer())
-        .answered(r.getNonOCDS().getAnswered())
+        .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
         .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
             new QuestionNonOCDSOptions().value(o.getValue())
                      .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())

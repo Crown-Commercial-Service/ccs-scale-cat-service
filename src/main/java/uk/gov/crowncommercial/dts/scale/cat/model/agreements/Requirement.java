@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.log;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ public class Requirement {
     Boolean answered;
     Boolean mandatory;
     Boolean multiAnswer;
+    Integer order;
 
     @NonFinal
     List<Option> options; // Maps to QuestionNonOCDSOptions
