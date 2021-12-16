@@ -14,6 +14,6 @@ import lombok.Data;
 public class DocumentConfig {
 
   private List<String> allowedExtentions;
-  private Long maxSize;
+  private Integer maxSize;
   private Long maxTotalSize;
 }
