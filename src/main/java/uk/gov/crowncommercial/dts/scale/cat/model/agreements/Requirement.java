@@ -44,6 +44,7 @@ public class Requirement {
     Boolean answered;
     Boolean mandatory;
     Boolean multiAnswer;
+    Integer order;
 
     @NonFinal
     List<Option> options; // Maps to QuestionNonOCDSOptions
