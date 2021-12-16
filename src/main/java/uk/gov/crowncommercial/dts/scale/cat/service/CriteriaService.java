@@ -4,7 +4,10 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -42,45 +45,31 @@ public class CriteriaService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
 
-  public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
-      final boolean populateGroups) {
+  public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
 
     // Convert to EvalCriteria and return
-    if (populateGroups) {
-      return dataTemplate.getCriteria().stream()
-          .map(tc -> new EvalCriteria().id(tc.getId()).description(tc.getDescription())
-              .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
-                  new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
-          .collect(Collectors.toSet());
-    } else {
-      return dataTemplate.getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
-          .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
-          .collect(Collectors.toSet());
-    }
+    return dataTemplate
+        .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
+            .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
+        .collect(Collectors.toSet());
   }
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
-      final String criterionId, final boolean populateRequirements) {
+      final String criterionId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
 
     return criteria.getRequirementGroups().stream().map(rg -> {
-      // NonOCDS
       var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
           .order(rg.getNonOCDS().getOrder()).prompt(rg.getNonOCDS().getPrompt())
           .mandatory(rg.getNonOCDS().getMandatory());
-      // OCDS
-      var requirements =
-          populateRequirements ? convertRequirementsToQuestions(rg.getOcds().getRequirements())
-              : null;
       var questionGroupOCDS = new QuestionGroupOCDS().id(rg.getOcds().getId())
-          .description(rg.getOcds().getDescription()).requirements(requirements);
-
+          .description(rg.getOcds().getDescription());
       return new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
     }).collect(Collectors.toSet());
   }
@@ -124,7 +113,6 @@ public class CriteriaService {
                 .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
                 .build())
             .collect(Collectors.toList()));
-
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
@@ -224,12 +212,7 @@ public class CriteriaService {
         + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
   }
 
-  public List<Question> convertRequirementsToQuestions(final Set<Requirement> requirements) {
-    return requirements.stream().map(this::convertRequirementToQuestion)
-        .collect(Collectors.toList());
-  }
-
-  public Question convertRequirementToQuestion(final Requirement r) {
+  private Question convertRequirementToQuestion(final Requirement r) {
 
     // TODO: Move to object mapper or similar
     // @formatter:off
