@@ -68,7 +68,7 @@ public class CriteriaService {
       var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
           .order(rg.getNonOCDS().getOrder()).prompt(rg.getNonOCDS().getPrompt())
           .mandatory(rg.getNonOCDS().getMandatory());
-      var questionGroupOCDS = new RequirementGroup1().id(rg.getOcds().getId())
+      var questionGroupOCDS = new QuestionGroupOCDS().id(rg.getOcds().getId())
           .description(rg.getOcds().getDescription());
       return new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
     }).collect(Collectors.toSet());
