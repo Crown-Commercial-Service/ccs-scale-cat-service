@@ -24,6 +24,10 @@ spring:
   datasource:
     hikari:
       connectionTimeout: 10000
+  servlet:
+    multipart:
+      max-file-size: 300MB # must match config.maxSize
+      max-request-size: 300MB # must match config.maxSize
 
 server:
   error:
