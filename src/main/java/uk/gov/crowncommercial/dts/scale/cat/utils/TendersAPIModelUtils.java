@@ -69,7 +69,7 @@ public class TendersAPIModelUtils {
   }
 
   public EventDetail buildEventDetail(final RfxSetting rfxSetting,
-      final ProcurementEvent procurementEvent) {
+      final ProcurementEvent procurementEvent, final List<EvalCriteria> buyerQuestions) {
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
@@ -81,7 +81,8 @@ public class TendersAPIModelUtils {
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
-    eventDetailNonOCDS.setEventSupportId(null);
+    eventDetailNonOCDS.setEventSupportId(procurementEvent.getExternalReferenceId());
+    eventDetailNonOCDS.setBuyerQuestions(buyerQuestions);
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
     // OCDS
