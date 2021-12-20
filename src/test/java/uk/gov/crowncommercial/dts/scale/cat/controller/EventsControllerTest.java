@@ -22,11 +22,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -208,7 +213,7 @@ class EventsControllerTest {
   @Test
   void getSuppliers_200_OK() throws Exception {
 
-    OrganizationReference org = new OrganizationReference();
+    var org = new OrganizationReference();
     org.setId(SUPPLIER_ID);
     Collection<OrganizationReference> orgs = Arrays.asList(org);
     when(procurementEventService.getSuppliers(PROC_PROJECT_ID, EVENT_ID)).thenReturn(orgs);
@@ -253,7 +258,7 @@ class EventsControllerTest {
   @Test
   void getDocuments_200_OK() throws Exception {
 
-    DocumentSummary doc = new DocumentSummary();
+    var doc = new DocumentSummary();
     doc.setAudience(AUDIENCE);
     doc.setId(FILE_ID);
     doc.setFileName(FILE_NAME);
@@ -276,5 +281,38 @@ class EventsControllerTest {
         .andExpect(jsonPath("$[0].description").value(FILE_DESCRIPTION));
 
     verify(procurementEventService, times(1)).getDocumentSummaries(PROC_PROJECT_ID, EVENT_ID);
+  }
+
+  @Test
+  void publishEvent_200_OK() throws Exception {
+
+    var publishDates = new PublishDates().endDate(OffsetDateTime.now());
+
+    mockMvc
+        .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(publishDates)))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
+
+    verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
+        PRINCIPAL);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"2021-12", "2021-12-25T-12:00:00Z", " ", "!"})
+  void publishEvent_400_BadRequest_EndDate(final String input) throws Exception {
+
+    var publishDates = Collections.singletonMap("endDate", input);
+
+    mockMvc
+        .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(publishDates)))
+        .andDo(print()).andExpect(status().isBadRequest())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
+        .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
   }
 }

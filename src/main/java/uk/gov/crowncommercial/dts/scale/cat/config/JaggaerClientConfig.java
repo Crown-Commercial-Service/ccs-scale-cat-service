@@ -175,8 +175,8 @@ public class JaggaerClientConfig {
         }
       }
     });
-    inboundRequest.onRequestContent(
-        (request, content) -> sbLog.append("Body: \n\t").append(content.toString()));
+    inboundRequest.onRequestContent((request, content) -> sbLog.append("Body: \n\t")
+        .append(StandardCharsets.UTF_8.decode(content).toString()));
     sbLog.append("\n");
 
     // Response Logging

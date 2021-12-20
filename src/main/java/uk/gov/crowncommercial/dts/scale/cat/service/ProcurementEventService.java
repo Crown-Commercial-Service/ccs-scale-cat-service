@@ -26,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -227,14 +226,13 @@ public class ProcurementEventService {
     // Update event type
     if (updateEvent.getEventType() != null) {
       var existingEventType = event.getEventType();
-      if (existingEventType == null || existingEventType.isBlank()
-          || event.getEventType().equals("TBD")) {
-        event.setEventType(updateEvent.getEventType().getValue());
-        updateDB = true;
-      } else {
+      if (existingEventType != null && !existingEventType.isBlank()
+          && !"TBD".equals(event.getEventType())) {
         throw new IllegalArgumentException(
             "Cannot update an existing event type of '" + event.getEventType() + "'");
       }
+      event.setEventType(updateEvent.getEventType().getValue());
+      updateDB = true;
     }
 
     // Save to Jaggaer
@@ -311,7 +309,7 @@ public class ProcurementEventService {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
-    OrganisationMapping om = retryableTendersDBDelegate
+    var om = retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationId(organisationReference.getId())
         .orElseThrow(() -> new IllegalArgumentException(
             String.format(SUPPLIER_NOT_FOUND_MSG, organisationReference.getId())));
@@ -348,13 +346,12 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
     // Determine Jaggaer supplier id
-    OrganisationMapping om =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
-            .orElseThrow(() -> new IllegalArgumentException(
-                String.format(SUPPLIER_NOT_FOUND_MSG, organisationId)));
+    var om = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            String.format(SUPPLIER_NOT_FOUND_MSG, organisationId)));
 
     // Get all current suppliers on Rfx and remove the one we want to delete
-    ExportRfxResponse existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
     List<Supplier> updatedSuppliersList = existingRfx.getSuppliersList().getSupplier().stream()
         .filter(s -> !s.getCompanyData().getId().equals(om.getExternalOrganisationId()))
         .collect(Collectors.toList());
@@ -422,8 +419,8 @@ public class ProcurementEventService {
 
     log.debug("Upload Document to event {}", eventId);
 
-    final String fileName = multipartFile.getOriginalFilename();
-    final String extension = FilenameUtils.getExtension(fileName);
+    final var fileName = multipartFile.getOriginalFilename();
+    final var extension = FilenameUtils.getExtension(fileName);
 
     // Validate file extension
     if (!documentConfig.getAllowedExtentions().contains(extension.toLowerCase())) {
@@ -438,8 +435,8 @@ public class ProcurementEventService {
     }
 
     // Validate total file size
-    Collection<DocumentSummary> currentDocuments = getDocumentSummaries(procId, eventId);
-    Long totalEventFileSize =
+    var currentDocuments = getDocumentSummaries(procId, eventId);
+    var totalEventFileSize =
         currentDocuments.stream().map(DocumentSummary::getFileSize).reduce(0L, Long::sum);
     if (Long.sum(totalEventFileSize, multipartFile.getSize()) > documentConfig.getMaxTotalSize()) {
       throw new IllegalArgumentException(
@@ -472,7 +469,7 @@ public class ProcurementEventService {
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
     jaggaerService.uploadDocument(multipartFile, update);
 
-    Collection<DocumentSummary> docs = getDocumentSummaries(procId, eventId);
+    var docs = getDocumentSummaries(procId, eventId);
     return docs.stream().filter(d -> d.getFileName().equals(fileName)).findFirst().orElseThrow(
         () -> new IllegalStateException("There was an unexpected error uploading the document"));
   }
@@ -494,6 +491,22 @@ public class ProcurementEventService {
     var documentKey = DocumentKey.fromString(documentId);
     log.debug("Retrieving Document {}", documentKey.getFileName());
     return jaggaerService.getDocument(documentKey.getFileId(), documentKey.getFileName());
+  }
+
+  /**
+   * Publish an Rfx in Jaggaer
+   *
+   * @param procId
+   * @param eventId
+   */
+  public void publishEvent(final Integer procId, final String eventId,
+      final PublishDates publishDates, final String principal) {
+
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
   }
 
 }
