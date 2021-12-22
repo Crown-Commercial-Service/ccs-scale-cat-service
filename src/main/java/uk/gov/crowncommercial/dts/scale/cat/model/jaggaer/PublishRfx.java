@@ -17,7 +17,7 @@ public class PublishRfx {
   String rfxReferenceCode;
   OwnerUser operatorUser;
 
-  @JsonFormat(shape = Shape.STRING, pattern = "yyyy-MM-dd'T'hh:mm:ss", timezone = "UTC")
+  @JsonFormat(shape = Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ", timezone = "UTC")
   Instant newClosingDate;
 
 }

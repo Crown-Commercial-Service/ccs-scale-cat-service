@@ -11,7 +11,7 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: DEBUG
+    uk.gov.crowncommercial.dts.scale.cat: TRACE
     # org.eclipse.jetty.client: DEBUG
 
 spring:
