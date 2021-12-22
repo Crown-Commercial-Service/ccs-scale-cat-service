@@ -19,6 +19,7 @@ public class TemplateCriteria {
   String description;
   Party source;
   Party relatesTo;
+  String relateItems;
   Set<RequirementGroup> requirementGroups;
 
 }

@@ -37,4 +37,5 @@ public class JaggaerAPIConfig {
   private Map<String, String> getSupplierSubUserProfile;
   private Map<String, String> createUpdateCompany;
   private Map<String, String> getAttachment;
+  private Map<String, String> publishRfx;
 }

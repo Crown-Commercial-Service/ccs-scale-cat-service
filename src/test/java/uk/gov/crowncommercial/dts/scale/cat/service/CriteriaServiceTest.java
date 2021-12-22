@@ -1,7 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import java.io.InputStream;
@@ -33,6 +35,7 @@ class CriteriaServiceTest {
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROJECT_ID = 1;
   private static final String CRITERION_ID = "Criterion 1";
+  private static final String CRITERION_TITLE = "Test Criterion";
   private static final String GROUP_ID = "Group 1";
   private static final String QUESTION_ID = "Question 1";
 
@@ -57,14 +60,9 @@ class CriteriaServiceTest {
   @Test
   void testPutQuestionOptionDetails_buyer_multiSelect() throws Exception {
 
-    // Load the existing Data Template - mimics what is in DB - only 'England' selected
-    ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-    InputStream is = classloader
-        .getResourceAsStream("criteria-service-test-data/criteria-buyer-multiselect.json");
-    TemplateCriteria criteria = objectMapper.readValue(is, TemplateCriteria.class);
     ProcurementEvent event = new ProcurementEvent();
     event.setProcurementTemplatePayload(
-        DataTemplate.builder().criteria(Arrays.asList(criteria)).build());
+        getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
 
     // Simulates answering the same question again - only 'Wales' selected
     Requirement1 questionOCDS = new Requirement1();
@@ -100,6 +98,50 @@ class CriteriaServiceTest {
     assertTrue(
         options.stream().filter(o -> o.getValue().equals("Wales")).findFirst().get().getSelect(),
         "Wales should be true");
+  }
 
+  @Test
+  void testGetEvalCriteriaWithoutBuyerQuestions() throws Exception {
+    ProcurementEvent event = new ProcurementEvent();
+    event.setProcurementTemplatePayload(
+        getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
+
+    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
+
+    var response = criteriaService.getEvalCriteria(PROJECT_ID, EVENT_OCID, false);
+    var criterion = response.stream().findFirst().get();
+
+    assertEquals(CRITERION_ID, criterion.getId());
+    assertEquals(CRITERION_TITLE, criterion.getTitle());
+    assertNull(criterion.getRequirementGroups());
+  }
+
+  @Test
+  void testGetEvalCriteriaWithBuyerQuestions() throws Exception {
+    ProcurementEvent event = new ProcurementEvent();
+    event.setProcurementTemplatePayload(
+        getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
+
+    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
+
+    var response = criteriaService.getEvalCriteria(PROJECT_ID, EVENT_OCID, true);
+    var criterion = response.stream().findFirst().get();
+    assertEquals(CRITERION_ID, criterion.getId());
+    assertEquals("Test Criterion", criterion.getTitle());
+    assertEquals(1, criterion.getRequirementGroups().size());
+
+    var group = criterion.getRequirementGroups().stream().findFirst().get();
+    assertEquals(GROUP_ID, group.getOCDS().getId());
+
+    var question = group.getOCDS().getRequirements().stream().findFirst().get();
+    assertEquals(QUESTION_ID, question.getOCDS().getId());
+  }
+
+  private DataTemplate getDataTemplate(final String filePath) throws Exception {
+    // Load the existing Data Template - mimics what is in DB - only 'England' selected
+    ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+    InputStream is = classloader.getResourceAsStream(filePath);
+    TemplateCriteria criteria = objectMapper.readValue(is, TemplateCriteria.class);
+    return DataTemplate.builder().criteria(Arrays.asList(criteria)).build();
   }
 }

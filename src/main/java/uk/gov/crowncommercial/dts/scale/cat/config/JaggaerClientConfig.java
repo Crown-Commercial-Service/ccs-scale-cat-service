@@ -50,6 +50,7 @@ public class JaggaerClientConfig {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerTokenResponseConverter jaggaerTokenResponseConverter;
+  private final DocumentConfig documentConfig;
 
   @Bean
   public OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> accessTokenResponseClient() {
@@ -109,7 +110,10 @@ public class JaggaerClientConfig {
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
-        .apply(oauth2Client.oauth2Configuration()).build();
+        .apply(oauth2Client.oauth2Configuration())
+        .codecs(
+            configurer -> configurer.defaultCodecs().maxInMemorySize(documentConfig.getMaxSize()))
+        .build();
   }
 
   /**
@@ -171,8 +175,8 @@ public class JaggaerClientConfig {
         }
       }
     });
-    inboundRequest.onRequestContent(
-        (request, content) -> sbLog.append("Body: \n\t").append(content.toString()));
+    inboundRequest.onRequestContent((request, content) -> sbLog.append("Body: \n\t")
+        .append(StandardCharsets.UTF_8.decode(content).toString()));
     sbLog.append("\n");
 
     // Response Logging

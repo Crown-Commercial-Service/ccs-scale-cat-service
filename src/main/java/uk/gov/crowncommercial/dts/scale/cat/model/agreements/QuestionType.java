@@ -38,5 +38,17 @@ public enum QuestionType {
   KEYVALUEPAIR,
 
   @JsonProperty("Text")
-  TEXT;
+  TEXT,
+
+  @JsonProperty("Monetary")
+  MONETARY,
+
+  @JsonProperty("Duration")
+  DURATION,
+
+  @JsonProperty("Date")
+  DATE,
+
+  @JsonProperty("DateTime")
+  DATETIME;
 }

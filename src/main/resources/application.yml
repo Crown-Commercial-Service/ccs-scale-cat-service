@@ -24,6 +24,10 @@ spring:
   datasource:
     hikari:
       connectionTimeout: 10000
+  servlet:
+    multipart:
+      max-file-size: 300MB # must match config.maxSize
+      max-request-size: 300MB # must match config.maxSize
 
 server:
   error:
@@ -113,6 +117,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles
       getAttachment:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
+      publishRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
 
     agreementsService:
       # baseUrl: "SET IN ENV"

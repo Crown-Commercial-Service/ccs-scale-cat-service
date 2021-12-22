@@ -6,20 +6,23 @@ import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
+import java.util.Objects;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
 /**
@@ -159,7 +162,7 @@ public class JaggaerService {
     log.info("getDocument: {}, {}", fileId, fileName);
 
     var getAttachmentUri = jaggaerAPIConfig.getGetAttachment().get(ENDPOINT);
-    ResponseEntity<byte[]> response = jaggaerWebClient.get().uri(getAttachmentUri, fileId, fileName)
+    var response = jaggaerWebClient.get().uri(getAttachmentUri, fileId, fileName)
         .header(ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE).retrieve().toEntity(byte[].class)
         .block();
 
@@ -170,4 +173,36 @@ public class JaggaerService {
     }
     return new DocumentAttachment(response.getBody(), response.getHeaders().getContentType());
   }
+
+  /**
+   * Transitions an existing Rfx to status "Running" via the Rfx workflow API
+   *
+   * @param procId
+   * @param eventId
+   * @throws JsonProcessingException
+   */
+  public void publishRfx(final ProcurementEvent event, final PublishDates publishDates,
+      final String jaggaerUserId) {
+
+    // TODO: What do we do with `publishDate.startDate`, if supplied?
+
+    var publishRfx = PublishRfx.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build())
+        .newClosingDate(publishDates.getEndDate().toInstant()).build();
+
+    var publishRfxEndpoint = jaggaerAPIConfig.getPublishRfx().get(ENDPOINT);
+
+    var publishRfxResponse = webclientWrapper.postData(publishRfx, PublishRfxResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), publishRfxEndpoint);
+
+    log.debug("Publish event response: {}", publishRfxResponse);
+
+    if (!Objects.equals(0, publishRfxResponse.getReturnCode())
+        || !Constants.JAGGAER_GET_OK_MSG.equals(publishRfxResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(publishRfxResponse.getReturnCode(),
+          publishRfxResponse.getReturnMessage());
+    }
+  }
+
 }

@@ -26,6 +26,15 @@ class DocumentKeyTest {
   }
 
   @Test
+  void testCreateKeySuccessWhitespaceFilename() {
+    // Decoded key is 'BUYER-1234-test file.txt'
+    DocumentKey key = DocumentKey.fromString("QlVZRVItMTIzNC10ZXN0IGZpbGUudHh0");
+    assertEquals(DocumentAudienceType.BUYER, key.getAudience());
+    assertEquals(1234, key.getFileId());
+    assertEquals("test file.txt", key.getFileName());
+  }
+
+  @Test
   void testCreateKeyFailNonMatchingPattern() {
 
     Exception exception = assertThrows(IllegalArgumentException.class, () -> {

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.HashSet;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -68,6 +68,8 @@ class ProcurementEventServiceTest {
       CompanyInfo.builder().bravoId(BUYER_COMPANY_BRAVO_ID).build();
   private static final String SUPPLIER_ID = "US-DUNS-227015716";
   private static final Integer JAGGAER_SUPPLIER_ID = 21399;
+  private static final String DESCRIPTION = "Description";
+  private static final String CRITERION_TITLE = "Criteria 1";
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -101,6 +103,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private JourneyRepo journeyRepo;
+
+  @MockBean
+  private CriteriaService criteriaService;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -435,8 +440,7 @@ class ProcurementEventServiceTest {
     when(organisationMappingRepo.findByExternalOrganisationId(JAGGAER_SUPPLIER_ID))
         .thenReturn(Optional.of(orgMapping));
 
-    var response =
-        procurementEventService.getSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID);
+    var response = procurementEventService.getSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
     assertEquals(1, response.size());
@@ -465,8 +469,7 @@ class ProcurementEventServiceTest {
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
-    var response =
-        procurementEventService.addSupplier(PROC_PROJECT_ID, PROC_EVENT_ID, org);
+    var response = procurementEventService.addSupplier(PROC_PROJECT_ID, PROC_EVENT_ID, org);
 
     // Verify
     verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.CREATEUPDATE));
@@ -508,6 +511,46 @@ class ProcurementEventServiceTest {
     verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.UPDATE_RESET));
     assertEquals(0, rfxCaptor.getValue().getSuppliersList().getSupplier().size());
 
+  }
+
+  @Test
+  void testGetEvent() throws Exception {
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
+        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    var criterion = new EvalCriteria();
+    criterion.setTitle(CRITERION_TITLE);
+    var buyerQuestions = new HashSet<EvalCriteria>();
+    buyerQuestions.add(criterion);
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(criteriaService.getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true))
+        .thenReturn(buyerQuestions);
+
+    var response = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
+
+    // Verify
+    assertEquals(CRITERION_TITLE,
+        response.getNonOCDS().getBuyerQuestions().stream().findFirst().get().getTitle());
+    assertEquals(ViewEventType.RFI, response.getNonOCDS().getEventType());
+    assertEquals(RFX_REF_CODE, response.getNonOCDS().getEventSupportId());
+
+    assertEquals(RFX_ID, response.getOCDS().getId());
+    assertEquals(ORIGINAL_EVENT_NAME, response.getOCDS().getTitle());
+    assertEquals(DESCRIPTION, response.getOCDS().getDescription());
+    assertEquals(TenderStatus.PLANNED, response.getOCDS().getStatus());
+    assertEquals(AwardCriteria.RATEDCRITERIA, response.getOCDS().getAwardCriteria());
   }
 
 }
