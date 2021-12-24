@@ -4,6 +4,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -148,6 +149,7 @@ public class CriteriaService {
 
     // Update Tenders DB
     event.setProcurementTemplatePayload(dataTemplate);
+    event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
 
     return convertRequirementToQuestion(requirement);
