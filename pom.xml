@@ -21,7 +21,7 @@
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
 		<hibernate-types.version>2.14.0</hibernate-types.version>
-		<modelmapper.version>2.4.4</modelmapper.version>
+		<modelmapper.version>2.4.5</modelmapper.version>
 	</properties>
 
 	<dependencies>
