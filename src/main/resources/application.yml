@@ -177,20 +177,6 @@ spring:
   config:
     activate:
       on-profile:
-        - local
-  datasource:
-    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
-  jpa:
-    database: h2
-    show-sql: true
-    hibernate:
-      ddl-auto: create-drop
-
----
-spring:
-  config:
-    activate:
-      on-profile:
         - cloud
         - local-pg
   jpa:

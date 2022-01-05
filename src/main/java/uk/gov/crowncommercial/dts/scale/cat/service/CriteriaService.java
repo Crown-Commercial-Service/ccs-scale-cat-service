@@ -239,6 +239,7 @@ public class CriteriaService {
         .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
         .mandatory(r.getNonOCDS().getMandatory())
         .multiAnswer(r.getNonOCDS().getMultiAnswer())
+        .length(r.getNonOCDS().getLength())
         .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
         .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
             new QuestionNonOCDSOptions().value(o.getValue())
