@@ -175,8 +175,10 @@ public class JaggaerClientConfig {
         }
       }
     });
-    inboundRequest.onRequestContent((request, content) -> sbLog.append("Body: \n\t")
-        .append(StandardCharsets.UTF_8.decode(content).toString()));
+    // TODO: Make request body logging configurable. Commented out for now as it causes java heap
+    // OOM when uploading large files.
+    // inboundRequest.onRequestContent((request, content) -> sbLog.append("Body: \n\t")
+    // .append(StandardCharsets.UTF_8.decode(content).toString()));
     sbLog.append("\n");
 
     // Response Logging
