@@ -47,6 +47,7 @@ config:
       - doc
       - docx
       - jpg
+      - jpeg
       - kml
       - ods
       - odt
@@ -54,7 +55,7 @@ config:
       - png
       - ppt
       - pptx
-      - ref
+      - rdf
       - rtf
       - txt
       - xls
