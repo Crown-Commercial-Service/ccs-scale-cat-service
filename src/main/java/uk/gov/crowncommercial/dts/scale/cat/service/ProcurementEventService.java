@@ -188,7 +188,7 @@ public class ProcurementEventService {
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
     var buyerQuestions =
-        new ArrayList<EvalCriteria>(criteriaService.getEvalCriteria(projectId, eventId, true));
+        new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
         buyerQuestions);
@@ -501,6 +501,8 @@ public class ProcurementEventService {
    */
   public void publishEvent(final Integer procId, final String eventId,
       final PublishDates publishDates, final String principal) {
+
+    validationService.validatePublishDates(publishDates);
 
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
