@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Collection;
 import javax.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +25,13 @@ public class JourneysController extends AbstractRestController {
   private final JourneyService journeyService;
 
   @PostMapping
-  public StringValueResponse createJourney(@RequestBody @Valid final Journey journey,
-      final JwtAuthenticationToken authentication) {
+  public ResponseEntity<StringValueResponse> createJourney(
+      @RequestBody @Valid final Journey journey, final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
-    return new StringValueResponse(journeyService.createJourney(journey, principal));
+
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(new StringValueResponse(journeyService.createJourney(journey, principal)));
   }
 
   @GetMapping("/{journey-id}/steps")
