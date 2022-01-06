@@ -1,10 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -15,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class ValidationService {
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final Clock clock;
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -49,13 +53,29 @@ public class ValidationService {
    * @param eventId
    * @return an OCID
    */
-  public OCID validateEventId(String eventId) {
+  public OCID validateEventId(final String eventId) {
     try {
       return OCID.fromString(eventId);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Event ID '" + eventId + "' is not in the expected format");
     }
+  }
+
+  /**
+   * Validates the publish event dates (Note: startDate currently ignored so not validated)
+   *
+   * @param publishDates
+   * @throws IllegalArgumentException if the endDate is not in the future
+   */
+  public void validatePublishDates(final PublishDates publishDates) {
+
+    var now = OffsetDateTime.now(clock);
+
+    if (!publishDates.getEndDate().isAfter(now)) {
+      throw new IllegalArgumentException("endDate must be in the future");
+    }
+
   }
 
 }
