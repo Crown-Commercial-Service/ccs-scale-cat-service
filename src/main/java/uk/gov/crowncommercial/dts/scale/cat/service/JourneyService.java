@@ -22,6 +22,7 @@ public class JourneyService {
 
   private static final String CLIENT_ID = "CAT_BUYER_UI";
   private static final String ERR_FMT_JOURNEY_NOT_FOUND = "Journey [%s] not found";
+  private static final String ERR_FMT_JOURNEY_STEP_NOT_FOUND = "Journey step [%s] not found";
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   public String createJourney(final Journey journey, final String principal) {
@@ -48,8 +49,10 @@ public class JourneyService {
     var journey = findJourney(journeyId);
     var journeyStepStates = journey.getJourneyDetails();
 
-    var journeyStepState = journeyStepStates.stream()
-        .filter(jss -> Objects.equals(stepId, jss.getStep())).findFirst().orElseThrow();
+    var journeyStepState =
+        journeyStepStates.stream().filter(jss -> Objects.equals(stepId, jss.getStep())).findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException(
+                String.format(ERR_FMT_JOURNEY_STEP_NOT_FOUND, stepId)));
     journeyStepState.setState(stepState);
     journey.setUpdatedBy(principal);
     journey.setUpdatedAt(Instant.now());
