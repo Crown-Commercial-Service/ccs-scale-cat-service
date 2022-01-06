@@ -142,7 +142,7 @@ public class GlobalErrorHandler implements ErrorController {
 
   @ResponseStatus(BAD_REQUEST)
   @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
-      IllegalArgumentException.class, MethodArgumentNotValidException.class})
+      IllegalArgumentException.class, MethodArgumentNotValidException.class,IllegalStateException.class})
   public Errors handleValidationException(final Exception exception) {
 
     log.trace("Request validation exception", exception);
