@@ -145,9 +145,17 @@ public class JaggaerService {
     parts.add("data", rfx);
     parts.add(multipartFile.getOriginalFilename(), multipartFile.getResource());
 
-    jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-        .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
-        .retrieve().bodyToMono(String.class).block();
+    var response =
+        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+            .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
+            .retrieve().bodyToMono(CreateUpdateRfxResponse.class).block())
+                .orElseThrow(() -> new JaggaerApplicationException(
+                    "Upload attachment from Jaggaer returned a null response: rfxId:"
+                        + rfx.getRfx().getRfxSetting().getRfxId()));
+
+    if (0 != response.getReturnCode()) {
+      throw new JaggaerApplicationException(response.getReturnCode(), response.getReturnMessage());
+    }
   }
 
   /**
