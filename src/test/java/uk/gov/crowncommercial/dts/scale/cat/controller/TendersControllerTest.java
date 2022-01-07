@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -27,7 +28,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnmergedJaggaerUserException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -47,11 +53,15 @@ class TendersControllerTest {
 
   @MockBean
   private ProfileManagementService profileManagementService;
-  private JwtRequestPostProcessor validJwtReqPostProcessor;
+  private JwtRequestPostProcessor validCATJwtReqPostProcessor;
+  private JwtRequestPostProcessor validLDJwtReqPostProcessor;
 
   @BeforeEach
   void beforeEach() {
-    validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+    validCATJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
+        .jwt(jwt -> jwt.subject(PRINCIPAL));
+
+    validLDJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("JAEGGER_BUYER"))
         .jwt(jwt -> jwt.subject(PRINCIPAL));
   }
 
@@ -59,7 +69,7 @@ class TendersControllerTest {
   void listProcurementEventTypes_200_OK() throws Exception {
     mockMvc
         .perform(
-            get("/tenders/event-types").with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+            get("/tenders/event-types").with(validCATJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(6))
         .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "CA", "DA", "FC", "TBD")));
@@ -97,7 +107,7 @@ class TendersControllerTest {
   void getUser_200_OK() throws Exception {
     when(profileManagementService.getUserRoles(PRINCIPAL)).thenReturn(List.of(RolesEnum.BUYER));
     mockMvc
-        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validJwtReqPostProcessor)
+        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
@@ -109,7 +119,88 @@ class TendersControllerTest {
   void getUser_403_Forbidden() throws Exception {
     mockMvc
         .perform(get("/tenders/users/{user-id}", "ted.crilly@craggyisland.com")
-            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+            .with(validLDJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isForbidden())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN"))).andExpect(jsonPath(
+            "$.errors[0].title", is("Authenticated user does not match requested user-id")));
+  }
+
+  @Test
+  void getUser_409_UserRolesConflict() throws Exception {
+    var errMsg = "User [" + PRINCIPAL
+        + "] has conflicting Conclave/Jaggaer roles (Conclave: SUPPLIER, Jaggaer: BUYER)";
+
+    when(profileManagementService.getUserRoles(PRINCIPAL))
+        .thenThrow(new UserRolesConflictException(errMsg));
+
+    mockMvc
+        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isConflict())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("409 CONFLICT")))
+        .andExpect(jsonPath("$.errors[0].title", is(errMsg)))
+        .andExpect(jsonPath("$.errors[0].detail", is("")));
+  }
+
+  @Test
+  void getUser_409_UnmergedJaggaerUser() throws Exception {
+    var errMsg = "User [" + PRINCIPAL + "] is not merged in Jaggaer (no SSO data)";
+
+    when(profileManagementService.getUserRoles(PRINCIPAL))
+        .thenThrow(new UnmergedJaggaerUserException(errMsg));
+
+    mockMvc
+        .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isConflict())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("409 CONFLICT")))
+        .andExpect(jsonPath("$.errors[0].title", is(errMsg)))
+        .andExpect(jsonPath("$.errors[0].detail", is("")));
+  }
+
+  @Test
+  void putUser_200_OK() throws Exception {
+    when(profileManagementService.registerUser(PRINCIPAL)).thenReturn(new RegisterUserResponse()
+        .userAction(UserActionEnum.EXISTED).organisationAction(OrganisationActionEnum.EXISTED)
+        .roles(List.of(
+            uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.BUYER)));
+    mockMvc
+        .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.userAction").value("existed"))
+        .andExpect(jsonPath("$.organisationAction").value("existed"))
+        .andExpect(jsonPath("$.roles[0]", is("buyer")));
+  }
+
+  @Test
+  void putUser_201_Created() throws Exception {
+    when(profileManagementService.registerUser(PRINCIPAL)).thenReturn(new RegisterUserResponse()
+        .userAction(UserActionEnum.CREATED).organisationAction(OrganisationActionEnum.EXISTED)
+        .roles(List.of(
+            uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.SUPPLIER)));
+    mockMvc
+        .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isCreated())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.userAction").value("created"))
+        .andExpect(jsonPath("$.organisationAction").value("existed"))
+        .andExpect(jsonPath("$.roles[0]", is("supplier")));
+  }
+
+  @Test
+  void putUser_403_Forbidden() throws Exception {
+    mockMvc
+        .perform(put("/tenders/users/{user-id}", "ted.crilly@craggyisland.com")
+            .with(validLDJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isForbidden())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))

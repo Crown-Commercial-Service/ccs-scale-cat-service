@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -21,8 +22,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
+import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -58,6 +67,13 @@ class EventsControllerTest {
   private static final ViewEventType EVENT_TYPE = ViewEventType.TBD;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
+  private static final String SUPPLIER_ID = "US-DUNS-227015716";
+
+  private static final String FILE_ID = "YnV5ZXItNzYxMzg1MS1jYXQtamFnZ2Flci1maWxlLXRlc3QtMy50eHQ=";
+  private static final String FILE_NAME = "test_file.pdf";
+  private static final String FILE_DESCRIPTION = "Test file upload";
+  private static final Long FILE_SIZE = 12345L;
+  private static final DocumentAudienceType AUDIENCE = DocumentAudienceType.BUYER;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -192,5 +208,111 @@ class EventsControllerTest {
     // TODO: Verify content
 
     verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID);
+  }
+
+  @Test
+  void getSuppliers_200_OK() throws Exception {
+
+    var org = new OrganizationReference();
+    org.setId(SUPPLIER_ID);
+    Collection<OrganizationReference> orgs = Arrays.asList(org);
+    when(procurementEventService.getSuppliers(PROC_PROJECT_ID, EVENT_ID)).thenReturn(orgs);
+
+    mockMvc
+        .perform(get(EVENTS_PATH + "/{eventID}/suppliers", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$[0].id").value(SUPPLIER_ID));
+
+    verify(procurementEventService, times(1)).getSuppliers(PROC_PROJECT_ID, EVENT_ID);
+  }
+
+  @Test
+  void addSupplier_200_OK() throws Exception {
+
+    var org = new OrganizationReference();
+    org.setId(SUPPLIER_ID);
+    when(procurementEventService.addSupplier(PROC_PROJECT_ID, EVENT_ID, org)).thenReturn(org);
+
+    mockMvc
+        .perform(post(EVENTS_PATH + "/{eventID}/suppliers", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(org)))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(SUPPLIER_ID));
+  }
+
+  @Test
+  void deleteSupplier_200_OK() throws Exception {
+
+    mockMvc
+        .perform(delete(EVENTS_PATH + "/{eventID}/suppliers/{suplierID}", PROC_PROJECT_ID, EVENT_ID,
+            SUPPLIER_ID).with(validJwtReqPostProcessor).contentType(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk()).andExpect(content().string("OK"));
+
+    verify(procurementEventService, times(1)).deleteSupplier(PROC_PROJECT_ID, EVENT_ID,
+        SUPPLIER_ID);
+
+  }
+
+  @Test
+  void getDocuments_200_OK() throws Exception {
+
+    var doc = new DocumentSummary();
+    doc.setAudience(AUDIENCE);
+    doc.setId(FILE_ID);
+    doc.setFileName(FILE_NAME);
+    doc.setDescription(FILE_DESCRIPTION);
+    doc.setFileSize(FILE_SIZE);
+    List<DocumentSummary> documentSummaries = Arrays.asList(doc);
+
+    when(procurementEventService.getDocumentSummaries(PROC_PROJECT_ID, EVENT_ID))
+        .thenReturn(documentSummaries);
+
+    mockMvc
+        .perform(get(EVENTS_PATH + "/{eventID}/documents", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$[0].audience").value(AUDIENCE.getValue()))
+        .andExpect(jsonPath("$[0].id").value(FILE_ID))
+        .andExpect(jsonPath("$[0].fileName").value(FILE_NAME))
+        .andExpect(jsonPath("$[0].fileSize").value(FILE_SIZE))
+        .andExpect(jsonPath("$[0].description").value(FILE_DESCRIPTION));
+
+    verify(procurementEventService, times(1)).getDocumentSummaries(PROC_PROJECT_ID, EVENT_ID);
+  }
+
+  @Test
+  void publishEvent_200_OK() throws Exception {
+
+    var publishDates = new PublishDates().endDate(OffsetDateTime.now());
+
+    mockMvc
+        .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(publishDates)))
+        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
+
+    verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
+        PRINCIPAL);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"2021-12", "2021-12-25T-12:00:00Z", " ", "!"})
+  void publishEvent_400_BadRequest_EndDate(final String input) throws Exception {
+
+    var publishDates = Collections.singletonMap("endDate", input);
+
+    mockMvc
+        .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(publishDates)))
+        .andDo(print()).andExpect(status().isBadRequest())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
+        .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
   }
 }

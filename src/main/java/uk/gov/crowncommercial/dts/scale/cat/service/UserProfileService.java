@@ -21,8 +21,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 
 /**
  * User profile service layer. Now utilises Guava's {@link LoadingCache} to provide a basic
@@ -43,7 +44,7 @@ public class UserProfileService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
-  private final LoadingCache<SubUserIdentity, Pair<ReturnCompanyInfo, Optional<SubUser>>> jaggaerBuyerUserCache =
+  private final LoadingCache<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerBuyerUserCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
 
@@ -71,7 +72,7 @@ public class UserProfileService {
   }
 
   @SneakyThrows
-  public ReturnCompanyInfo resolveBuyerCompanyByEmail(final String email) {
+  public CompanyInfo resolveBuyerCompanyByEmail(final String email) {
     return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
         .getFirst();
   }
@@ -82,11 +83,11 @@ public class UserProfileService {
         .getSecond();
   }
 
-  private CacheLoader<SubUserIdentity, Pair<ReturnCompanyInfo, Optional<SubUser>>> jaggaerSubUserProfileCacheLoader() {
+  private CacheLoader<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerSubUserProfileCacheLoader() {
     return new CacheLoader<>() {
 
       @Override
-      public Pair<ReturnCompanyInfo, Optional<SubUser>> load(final SubUserIdentity subUserIdentity)
+      public Pair<CompanyInfo, Optional<SubUser>> load(final SubUserIdentity subUserIdentity)
           throws Exception {
         var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
         var endpoint = getBuyerCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
@@ -124,7 +125,7 @@ public class UserProfileService {
   /**
    * Attempt to retrieve supplier company data, first by matching sub-users by email, falling back
    * to matching the super-user (company) by email. The matching user may be represented by either
-   * the company ({@link ReturnCompanyInfo} or a single {@link SubUser}. The client must determine
+   * the company ({@link CompanyInfo} or a single {@link SubUsers}. The client must determine
    * which.
    *
    * @param email

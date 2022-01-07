@@ -17,10 +17,7 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.transaction.CannotCreateTransactionException;
 import uk.gov.crowncommercial.dts.scale.cat.config.RetryConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 
 /**
  *
@@ -38,6 +35,9 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private OrganisationMappingRepo organisationMappingRepo;
 
+  @MockBean
+  private JourneyRepo journeyRepo;
+
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
@@ -47,13 +47,13 @@ class RetryableTendersDBDelegateTest {
     var procurementProject = new ProcurementProject();
 
     // Should retry 5 times, succeeding on final attempt
-    when(procurementProjectRepo.save(procurementProject)).thenThrow(transactionException,
+    when(procurementProjectRepo.saveAndFlush(procurementProject)).thenThrow(transactionException,
         transactionException, transactionException, transactionException)
         .thenReturn(procurementProject);
 
     retryableTendersDBDelegate.save(procurementProject);
 
-    verify(procurementProjectRepo, times(5)).save(any(ProcurementProject.class));
+    verify(procurementProjectRepo, times(5)).saveAndFlush(any(ProcurementProject.class));
   }
 
   @Test
@@ -63,7 +63,7 @@ class RetryableTendersDBDelegateTest {
     var procurementProject = new ProcurementProject();
 
     // Should fail 5 times
-    when(procurementProjectRepo.save(procurementProject)).thenThrow(transactionException,
+    when(procurementProjectRepo.saveAndFlush(procurementProject)).thenThrow(transactionException,
         queryTimeoutException, transactionException, queryTimeoutException, transactionException);
 
     var exhaustedRetryEx = assertThrows(ExhaustedRetryException.class,
@@ -71,7 +71,7 @@ class RetryableTendersDBDelegateTest {
 
     assertTrue(exhaustedRetryEx.getMessage().startsWith("Retries exhausted"));
     assertSame(transactionException, exhaustedRetryEx.getCause());
-    verify(procurementProjectRepo, times(5)).save(any(ProcurementProject.class));
+    verify(procurementProjectRepo, times(5)).saveAndFlush(any(ProcurementProject.class));
   }
 
 }

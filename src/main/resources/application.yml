@@ -11,7 +11,8 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: DEBUG
+    uk.gov.crowncommercial.dts.scale.cat: TRACE
+    # org.eclipse.jetty.client: DEBUG
 
 spring:
   jpa:
@@ -23,6 +24,10 @@ spring:
   datasource:
     hikari:
       connectionTimeout: 10000
+  servlet:
+    multipart:
+      max-file-size: 300MB # must match config.maxSize
+      max-request-size: 300MB # must match config.maxSize
 
 server:
   error:
@@ -36,14 +41,39 @@ config:
     maxAttempts: 5
     multiplier: 2
     delay: 1000
+  document:
+    allowedExtentions: 
+      - csv
+      - doc
+      - docx
+      - jpg
+      - jpeg
+      - kml
+      - ods
+      - odt
+      - pdf
+      - png
+      - ppt
+      - pptx
+      - rdf
+      - rtf
+      - txt
+      - xls
+      - xlsx
+      - xml
+      - zip
+    maxSize: 314572800 #300MB
+    maxTotalSize: 1073741824 #1GB
 
   external:
     jaggaer:
 #      baseUrl: "SET IN ENV"
-      timeoutDuration: 5
+      timeoutDuration: 10
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
+      defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
+      defaultSupplierRightsProfile: ""
 
       rfxStatusToTenderStatus:
         0: PLANNED
@@ -84,11 +114,17 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+      createUpdateCompany:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles
+      getAttachment:
+        endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
+      publishRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
 
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
-      timeoutDuration: 5
+      timeoutDuration: 10
       getAgreementDetail:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
@@ -103,7 +139,7 @@ config:
     conclaveWrapper:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
-      timeoutDuration: 5
+      timeoutDuration: 10
       # Role keys are incorrectly spelt in Conclave
       buyerRoleKey: JAEGGER_BUYER
       supplierRoleKey: JAEGGER_SUPPLIER      
@@ -111,6 +147,8 @@ config:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
+      getOrganisation:
+        uriTemplate: /organisation-profiles/{org-id}
   #flags:
     # devMode: "SET IN ENV"
 ---
@@ -134,20 +172,6 @@ spring:
             authorization-grant-type: client_credentials
 #            client-id: "SET IN ENV"
 #            client-secret: "SET IN ENV"
-
----
-spring:
-  config:
-    activate:
-      on-profile:
-        - local
-  datasource:
-    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
-  jpa:
-    database: h2
-    show-sql: true
-    hibernate:
-      ddl-auto: create-drop
 
 ---
 spring:

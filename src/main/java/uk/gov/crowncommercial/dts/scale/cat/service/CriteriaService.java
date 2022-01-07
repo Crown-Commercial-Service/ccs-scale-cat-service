@@ -4,10 +4,8 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -45,30 +43,45 @@ public class CriteriaService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
 
-  public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId) {
+  public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
+      final boolean populateGroups) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
 
     // Convert to EvalCriteria and return
-    return dataTemplate
-        .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
-            .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
-        .collect(Collectors.toSet());
+    if (populateGroups) {
+      return dataTemplate.getCriteria().stream()
+          .map(tc -> new EvalCriteria().id(tc.getId()).description(tc.getDescription())
+              .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
+                  new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
+          .collect(Collectors.toSet());
+    } else {
+      return dataTemplate.getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
+          .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
+          .collect(Collectors.toSet());
+    }
   }
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
-      final String criterionId) {
+      final String criterionId, final boolean populateRequirements) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
 
     return criteria.getRequirementGroups().stream().map(rg -> {
+      // NonOCDS
       var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
-          .prompt(rg.getNonOCDS().getPrompt()).mandatory(rg.getNonOCDS().getMandatory());
-      var questionGroupOCDS = new RequirementGroup1().id(rg.getOcds().getId())
-          .description(rg.getOcds().getDescription());
+          .order(rg.getNonOCDS().getOrder()).prompt(rg.getNonOCDS().getPrompt())
+          .mandatory(rg.getNonOCDS().getMandatory());
+      // OCDS
+      var requirements =
+          populateRequirements ? convertRequirementsToQuestions(rg.getOcds().getRequirements())
+              : null;
+      var questionGroupOCDS = new QuestionGroupOCDS().id(rg.getOcds().getId())
+          .description(rg.getOcds().getDescription()).requirements(requirements);
+
       return new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
     }).collect(Collectors.toSet());
   }
@@ -80,40 +93,12 @@ public class CriteriaService {
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
 
-    return group.getOcds().getRequirements().stream().map(r -> {
-      // TODO: Move to object mapper or similar
-      // @formatter:off
-      var questionNonOCDS = new QuestionNonOCDS()
-          .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
-          .mandatory(r.getNonOCDS().getMandatory())
-          .multiAnswer(r.getNonOCDS().getMultiAnswer())
-          .answered(r.getNonOCDS().getAnswered())
-          .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
-              new QuestionNonOCDSOptions().value(o.getValue())
-                       .selected(Boolean.valueOf(o.getSelect() == null? Boolean.FALSE:o.getSelect()))
-                  .text(o.getText())).collect(Collectors.toList()));
-
-      var questionOCDS = new Requirement1()
-          .id(r.getOcds().getId())
-          .title(r.getOcds().getTitle())
-          .description(r.getOcds().getDescription())
-          .dataType(DataType.fromValue(r.getOcds().getDataType()))
-          .pattern(r.getOcds().getPattern())
-          .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
-          .minValue(new Value1().amount(r.getOcds().getMinValue()))
-          .maxValue(new Value1().amount(r.getOcds().getMaxValue()))
-          .period(r.getOcds().getPeriod() != null ? new Period1()
-              .startDate(r.getOcds().getPeriod().getStartDate())
-              .endDate(r.getOcds().getPeriod().getEndDate())
-              .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
-              .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
-      // @formatter:on
-      return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
-    }).collect(Collectors.toSet());
+    return group.getOcds().getRequirements().stream().map(this::convertRequirementToQuestion)
+        .collect(Collectors.toSet());
 
   }
 
-  public void putQuestionOptionDetails(final Question question, final Integer projectId,
+  public Question putQuestionOptionDetails(final Question question, final Integer projectId,
       final String eventId, final String criterionId, final String groupId,
       final String questionId) {
 
@@ -128,14 +113,19 @@ public class CriteriaService {
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
     var options = question.getNonOCDS().getOptions();
-    if (options != null && !options.isEmpty()) {
-      requirement.getNonOCDS()
-          .updateOptions(options.stream().map(questionNonOCDSOptions -> Requirement.Option.builder()
-              .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
-                  : questionNonOCDSOptions.getSelected())
-              .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-              .build()).collect(Collectors.toList()));
+    if (options == null) {
+      log.error("'options' property not included in request for event {}", eventId);
+      throw new IllegalArgumentException("'options' property must be included in the request");
     }
+    requirement.getNonOCDS()
+        .updateOptions(options.stream()
+            .map(questionNonOCDSOptions -> Requirement.Option.builder()
+                .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                    : questionNonOCDSOptions.getSelected())
+                .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                .build())
+            .collect(Collectors.toList()));
+
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
@@ -149,7 +139,7 @@ public class CriteriaService {
                       "Unexpected error updating Rfx"));
 
       if (createRfxResponse.getReturnCode() != 0
-          || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
+          || !Constants.JAGGAER_GET_OK_MSG.equals(createRfxResponse.getReturnMessage())) {
         log.error(createRfxResponse.toString());
         throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
             createRfxResponse.getReturnMessage());
@@ -159,8 +149,10 @@ public class CriteriaService {
 
     // Update Tenders DB
     event.setProcurementTemplatePayload(dataTemplate);
+    event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
 
+    return convertRequirementToQuestion(requirement);
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
@@ -234,4 +226,43 @@ public class CriteriaService {
         + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
   }
 
+  public List<Question> convertRequirementsToQuestions(final Set<Requirement> requirements) {
+    return requirements.stream().map(this::convertRequirementToQuestion)
+        .collect(Collectors.toList());
+  }
+
+  public Question convertRequirementToQuestion(final Requirement r) {
+
+    // TODO: Move to object mapper or similar
+    // @formatter:off
+    var questionNonOCDS = new QuestionNonOCDS()
+        .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
+        .mandatory(r.getNonOCDS().getMandatory())
+        .multiAnswer(r.getNonOCDS().getMultiAnswer())
+        .length(r.getNonOCDS().getLength())
+        .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
+        .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
+            new QuestionNonOCDSOptions().value(o.getValue())
+                     .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())
+                .text(o.getText())).collect(Collectors.toList()));
+
+    var questionOCDS = new Requirement1()
+        .id(r.getOcds().getId())
+        .title(r.getOcds().getTitle())
+        .description(r.getOcds().getDescription())
+        .dataType(DataType.fromValue(r.getOcds().getDataType()))
+        .pattern(r.getOcds().getPattern())
+        .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
+        .minValue(new Value1().amount(r.getOcds().getMinValue()))
+        .maxValue(new Value1().amount(r.getOcds().getMaxValue()))
+        .period(r.getOcds().getPeriod() != null ? new Period1()
+            .startDate(r.getOcds().getPeriod().getStartDate())
+            .endDate(r.getOcds().getPeriod().getEndDate())
+            .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
+            .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
+    // @formatter:on
+
+    return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
+
+  }
 }

@@ -30,7 +30,7 @@ public class CriteriaController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriteria invoked on behalf of principal: {}", principal);
 
-    return criteriaService.getEvalCriteria(procId, eventId);
+    return criteriaService.getEvalCriteria(procId, eventId, false);
   }
 
   @GetMapping("/{criterion-id}/groups")
@@ -42,7 +42,7 @@ public class CriteriaController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEventEvaluationCriterionGroups invoked on behalf of principal: {}", principal);
 
-    return criteriaService.getEvalCriterionGroups(procId, eventId, criterionId);
+    return criteriaService.getEvalCriterionGroups(procId, eventId, criterionId, false);
   }
 
   @GetMapping("/{criterion-id}/groups/{group-id}/questions")
@@ -59,7 +59,7 @@ public class CriteriaController extends AbstractRestController {
   }
 
   @PutMapping("/{criterion-id}/groups/{group-id}/questions/{question-id}")
-  public void putQuestionOptionDetails(@RequestBody final Question question,
+  public Question putQuestionOptionDetails(@RequestBody final Question question,
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("criterion-id") final String criterionId,
       @PathVariable("group-id") final String groupId,
@@ -69,7 +69,7 @@ public class CriteriaController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("putQuestionOptionDetails invoked on behalf of principal: {}", principal);
 
-    criteriaService.putQuestionOptionDetails(question, procId, eventId, criterionId, groupId,
+    return criteriaService.putQuestionOptionDetails(question, procId, eventId, criterionId, groupId,
         questionId);
   }
 

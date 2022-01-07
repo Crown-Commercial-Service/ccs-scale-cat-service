@@ -35,6 +35,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
@@ -54,10 +55,11 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class ProjectsControllerTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
+  private static final String CII_ORG_ID = "654891633619851306";
+  private static final String CONCLAVE_ORG_NAME = "ACME Products Ltd";
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
-  private static final String ORG = "CCS";
-  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + ORG;
+  private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME;
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
 
@@ -82,16 +84,16 @@ class ProjectsControllerTest {
     agreementDetails.setLotId(LOT_NUMBER);
 
     validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
-        .jwt(jwt -> jwt.subject(PRINCIPAL));
+        .jwt(jwt -> jwt.subject(PRINCIPAL).claim(Constants.JWT_CLAIM_CII_ORG_ID, CII_ORG_ID));
   }
 
   @Test
   void createProcurementProject_200_OK() throws Exception {
-    var draftProcurementProject = tendersAPIModelUtils
-        .buildDraftProcurementProject(agreementDetails, PROC_PROJECT_ID, EVENT_OCID, PROJ_NAME);
+    var draftProcurementProject = tendersAPIModelUtils.buildDraftProcurementProject(
+        agreementDetails, PROC_PROJECT_ID, EVENT_OCID, PROJ_NAME, CONCLAVE_ORG_NAME);
 
-    when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL))
-        .thenReturn(draftProcurementProject);
+    when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL,
+        CII_ORG_ID)).thenReturn(draftProcurementProject);
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
@@ -104,10 +106,10 @@ class ProjectsControllerTest {
         .andExpect(jsonPath("$.defaultName.name").value(PROJ_NAME))
         .andExpect(jsonPath("$.defaultName.components.agreementId").value(CA_NUMBER))
         .andExpect(jsonPath("$.defaultName.components.lotId").value(LOT_NUMBER))
-        .andExpect(jsonPath("$.defaultName.components.org").value(ORG));
+        .andExpect(jsonPath("$.defaultName.components.org").value(CONCLAVE_ORG_NAME));
 
     verify(procurementProjectService).createFromAgreementDetails(any(AgreementDetails.class),
-        anyString());
+        anyString(), anyString());
   }
 
   @ParameterizedTest
@@ -177,8 +179,8 @@ class ProjectsControllerTest {
   @Test
   void createProcurementProject_500_ISE() throws Exception {
 
-    when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL))
-        .thenThrow(new JaggaerApplicationException("1", "BANG"));
+    when(procurementProjectService.createFromAgreementDetails(agreementDetails, PRINCIPAL,
+        CII_ORG_ID)).thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)

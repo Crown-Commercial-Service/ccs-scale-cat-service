@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
 /**
@@ -23,7 +25,7 @@ public class TendersAPIModelUtils {
 
   public DraftProcurementProject buildDraftProcurementProject(
       final AgreementDetails agreementDetails, final Integer procurementID, final String eventID,
-      final String projectTitle) {
+      final String projectTitle, final String conclaveOrgId) {
     var draftProcurementProject = new DraftProcurementProject();
     draftProcurementProject.setProcurementID(procurementID);
     draftProcurementProject.setEventId(eventID);
@@ -31,7 +33,7 @@ public class TendersAPIModelUtils {
     var defaultNameComponents = new DefaultNameComponents();
     defaultNameComponents.setAgreementId(agreementDetails.getAgreementId());
     defaultNameComponents.setLotId(agreementDetails.getLotId());
-    defaultNameComponents.setOrg("CCS");
+    defaultNameComponents.setOrg(conclaveOrgId);
 
     var defaultName = new DefaultName();
     defaultName.setName(projectTitle);
@@ -56,7 +58,7 @@ public class TendersAPIModelUtils {
 
   public Errors buildDefaultErrors(final String status, final String title, final String details) {
     var apiError = new ApiError(status, title,
-        (appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode()) ? details : "");
+        appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? details : "");
     return buildErrors(Arrays.asList(apiError));
   }
 
@@ -67,7 +69,7 @@ public class TendersAPIModelUtils {
   }
 
   public EventDetail buildEventDetail(final RfxSetting rfxSetting,
-      final ProcurementEvent procurementEvent) {
+      final ProcurementEvent procurementEvent, final List<EvalCriteria> buyerQuestions) {
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
@@ -79,7 +81,8 @@ public class TendersAPIModelUtils {
     // Non-OCDS
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
-    eventDetailNonOCDS.setEventSupportId(null);
+    eventDetailNonOCDS.setEventSupportId(procurementEvent.getExternalReferenceId());
+    eventDetailNonOCDS.setBuyerQuestions(buyerQuestions);
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
     // OCDS
@@ -94,6 +97,20 @@ public class TendersAPIModelUtils {
     eventDetail.setOCDS(eventDetailOCDS);
 
     return eventDetail;
+  }
+
+  public DocumentSummary buildDocumentSummary(final Attachment attachment,
+      final DocumentAudienceType audienceType) {
+
+    var key = new DocumentKey(Integer.valueOf(attachment.getFileId()), attachment.getFileName(),
+        audienceType);
+    var doc = new DocumentSummary();
+    doc.setId(key.getDocumentId());
+    doc.setFileName(attachment.getFileName());
+    doc.setFileSize(attachment.getFileSize());
+    doc.setDescription(attachment.getFileDescription());
+    doc.setAudience(audienceType);
+    return doc;
   }
 
 }

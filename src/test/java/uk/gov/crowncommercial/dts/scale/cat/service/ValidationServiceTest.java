@@ -3,6 +3,10 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,14 +14,17 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.util.ReflectionTestUtils;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
-@SpringBootTest(classes = {ValidationService.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(classes = {ValidationService.class, ApplicationConfig.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ValidationServiceTest {
 
@@ -33,10 +40,9 @@ class ValidationServiceTest {
   @MockBean
   RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-
   @Test
   void testValidateEventId_success() {
-    OCID ocid = validationService.validateEventId(PROC_EVENT_ID);
+    var ocid = validationService.validateEventId(PROC_EVENT_ID);
     assertEquals(PROC_EVENT_AUTHORITY, ocid.getAuthority());
     assertEquals(PROC_EVENT_PREFIX, ocid.getPublisherPrefix());
     assertEquals(PROC_EVENT_INTERNAL_ID, ocid.getInternalId());
@@ -51,9 +57,9 @@ class ValidationServiceTest {
 
   @Test
   void testValidateProjectAndEventIds_success() {
-    ProcurementProject project = new ProcurementProject();
+    var project = new ProcurementProject();
     project.setId(PROC_PROJECT_ID);
-    ProcurementEvent event = new ProcurementEvent();
+    var event = new ProcurementEvent();
     event.setProject(project);
 
     when(retryableTendersDBDelegate.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
@@ -65,10 +71,10 @@ class ValidationServiceTest {
 
   @Test
   void testValidateProjectAndEventIds_projectMismatch() {
-    ProcurementProject project = new ProcurementProject();
+    var project = new ProcurementProject();
     // Project in DB does not match Project in Event ID
     project.setId(2);
-    ProcurementEvent event = new ProcurementEvent();
+    var event = new ProcurementEvent();
     event.setProject(project);
 
     when(retryableTendersDBDelegate.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
@@ -85,5 +91,33 @@ class ValidationServiceTest {
             .thenReturn(Optional.empty());
     assertThrows(ResourceNotFoundException.class,
         () -> validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID));
+  }
+
+  @Test
+  void testValidatePublishDates_valid() {
+    var fixedInstant = Instant.parse("2022-01-06T13:00:00.00Z");
+
+    ReflectionTestUtils.setField(validationService, "clock",
+        Clock.fixed(fixedInstant, ZoneOffset.UTC));
+
+    var endDate = OffsetDateTime.parse("2022-01-06T13:01:00.00Z");
+    var publishDates = new PublishDates().endDate(endDate);
+    validationService.validatePublishDates(publishDates);
+  }
+
+  @Test
+  void testValidatePublishDates_endDate_invalid() {
+    var fixedInstant = Instant.parse("2022-01-06T13:00:00.00Z");
+
+    ReflectionTestUtils.setField(validationService, "clock",
+        Clock.fixed(fixedInstant, ZoneOffset.UTC));
+
+    var endDate = OffsetDateTime.parse("2022-01-06T12:59:59.999Z");
+    var publishDates = new PublishDates().endDate(endDate);
+
+    var ex = assertThrows(IllegalArgumentException.class,
+        () -> validationService.validatePublishDates(publishDates));
+
+    assertEquals("endDate must be in the future", ex.getMessage());
   }
 }

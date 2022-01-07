@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,19 +16,27 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnmergedJaggaerUserException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserResponseDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnSubUser.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  *
  */
-@SpringBootTest(classes = {ProfileManagementService.class, ConclaveAPIConfig.class},
+@SpringBootTest(
+    classes = {ProfileManagementService.class, ConclaveAPIConfig.class, JaggaerAPIConfig.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(ConclaveAPIConfig.class)
 class ProfileManagementServiceTest {
@@ -34,12 +44,28 @@ class ProfileManagementServiceTest {
   private static final String USERID = "john.smith@example.com";
   private static final String ROLEKEY_BUYER = "JAEGGER_BUYER";
   private static final String ROLEKEY_SUPPLIER = "JAEGGER_SUPPLIER";
+  private static final RolePermissionInfo ROLE_PERMISSION_INFO_BUYER =
+      new RolePermissionInfo().roleKey(ROLEKEY_BUYER);
+  private static final RolePermissionInfo ROLE_PERMISSION_INFO_SUPPLIER =
+      new RolePermissionInfo().roleKey(ROLEKEY_SUPPLIER);
+
+  private static final SSOCodeData SSO_CODE_DATA = SSOCodeData.builder()
+      .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(USERID).build();
 
   @MockBean
   private ConclaveService conclaveService;
 
   @MockBean
   private UserProfileService userProfileService;
+
+  @MockBean
+  private WebclientWrapper webclientWrapper;
+
+  @MockBean
+  private JaggaerService jaggaerService;
+
+  @MockBean
+  private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @Autowired
   private ProfileManagementService profileManagementService;
@@ -50,13 +76,12 @@ class ProfileManagementServiceTest {
   @Test
   void testGetUserRolesConclaveBuyerJaggaerBuyer() {
 
-    var rolePermissionInfo = new RolePermissionInfo().roleKey(ROLEKEY_BUYER);
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
-        .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfo)));
+        .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID))
-        .thenReturn(Optional.of(SubUser.builder().build()));
+        .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
 
     var userRoles = profileManagementService.getUserRoles(USERID);
 
@@ -70,13 +95,13 @@ class ProfileManagementServiceTest {
   @Test
   void testGetUserRolesConclaveSupplierJaggaerSupplier() {
 
-    var rolePermissionInfo = new RolePermissionInfo().roleKey(ROLEKEY_SUPPLIER);
-    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
-        .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfo)));
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID).detail(
+        new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveSupplierData(USERID))
-        .thenReturn(Optional.of(new ReturnCompanyData()));
+        .thenReturn(Optional.of(ReturnCompanyData.builder()
+            .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));
 
     var userRoles = profileManagementService.getUserRoles(USERID);
 
@@ -104,9 +129,8 @@ class ProfileManagementServiceTest {
   @Test
   void testGetUserRolesNoJaggaerUserThrowsResourceNotFound() {
 
-    var rolePermissionInfo = new RolePermissionInfo().roleKey(ROLEKEY_BUYER);
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
-        .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfo)));
+        .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
@@ -142,9 +166,8 @@ class ProfileManagementServiceTest {
   @Test
   void testGetUserRolesConclaveSupplierJaggaerBuyer() {
 
-    var rolePermissionInfoSupplier = new RolePermissionInfo().roleKey(ROLEKEY_SUPPLIER);
-    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
-        .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfoSupplier)));
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID).detail(
+        new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID))
@@ -166,14 +189,14 @@ class ProfileManagementServiceTest {
   @Test
   void testGetUserRolesConclaveBuyerJaggaerSupplier() {
 
-    var rolePermissionInfoSupplier = new RolePermissionInfo().roleKey(ROLEKEY_BUYER);
     var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
-        .detail(new UserResponseDetail().rolePermissionInfo(List.of(rolePermissionInfoSupplier)));
+        .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID))
-        .thenReturn(Optional.of(new ReturnCompanyData()));
+        .thenReturn(Optional.of(ReturnCompanyData.builder()
+            .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));
 
     var ex = assertThrows(UserRolesConflictException.class,
         () -> profileManagementService.getUserRoles(USERID));
@@ -185,28 +208,100 @@ class ProfileManagementServiceTest {
   }
 
   /*
-   * CON-1680-AC17
+   * CON-1680-AC7
    */
   @Test
   void testGetUserRolesConclaveBothJaggaerBoth() {
 
-    var rolePermissionInfoBuyer = new RolePermissionInfo().roleKey(ROLEKEY_BUYER);
-    var rolePermissionInfoSupplier = new RolePermissionInfo().roleKey(ROLEKEY_SUPPLIER);
-    var userProfileResponseInfo =
-        new UserProfileResponseInfo().userName(USERID).detail(new UserResponseDetail()
-            .rolePermissionInfo(List.of(rolePermissionInfoBuyer, rolePermissionInfoSupplier)));
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
+        .detail(new UserResponseDetail().rolePermissionInfo(
+            List.of(ROLE_PERMISSION_INFO_BUYER, ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(userProfileService.resolveBuyerUserByEmail(USERID))
-        .thenReturn(Optional.of(SubUser.builder().build()));
+        .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
     when(userProfileService.resolveSupplierData(USERID))
-        .thenReturn(Optional.of(new ReturnCompanyData()));
+        .thenReturn(Optional.of(ReturnCompanyData.builder()
+            .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));
 
     var userRoles = profileManagementService.getUserRoles(USERID);
 
     assertEquals(2, userRoles.size());
     assertTrue(userRoles.stream().anyMatch(re -> RolesEnum.BUYER == re));
     assertTrue(userRoles.stream().anyMatch(re -> RolesEnum.SUPPLIER == re));
+  }
+
+  /*
+   * CON-1680-AC8(a)
+   */
+  @Test
+  void testGetUserRolesConclaveBuyerJaggaerBuyerUnmerged() {
+
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
+        .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(userProfileService.resolveBuyerUserByEmail(USERID))
+        .thenReturn(Optional.of(SubUser.builder().build()));
+
+    var ex = assertThrows(UnmergedJaggaerUserException.class,
+        () -> profileManagementService.getUserRoles(USERID));
+
+    assertEquals("User [" + USERID + "] is not merged in Jaggaer (no SSO data)", ex.getMessage());
+  }
+
+  /*
+   * CON-1680-AC8(b)
+   */
+  @Test
+  void testGetUserRolesConclaveSupplierJaggaerSupplierSuperUserUnmerged() {
+
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID).detail(
+        new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(userProfileService.resolveSupplierData(USERID)).thenReturn(Optional
+        .of(ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().build()).build()));
+
+    var ex = assertThrows(UnmergedJaggaerUserException.class,
+        () -> profileManagementService.getUserRoles(USERID));
+
+    assertEquals("User [" + USERID + "] is not merged in Jaggaer (no SSO data)", ex.getMessage());
+  }
+
+  /*
+   * CON-1680-AC8(c)
+   */
+  @Test
+  void testGetUserRolesConclaveSupplierJaggaerSupplierSubUserUnmerged() {
+
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID).detail(
+        new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(userProfileService.resolveSupplierData(USERID))
+        .thenReturn(Optional.of(ReturnCompanyData.builder()
+            .returnSubUser(SubUsers.builder().subUsers(Set.of(SubUser.builder().build())).build())
+            .build()));
+
+    var ex = assertThrows(UnmergedJaggaerUserException.class,
+        () -> profileManagementService.getUserRoles(USERID));
+
+    assertEquals("User [" + USERID + "] is not merged in Jaggaer (no SSO data)", ex.getMessage());
+  }
+
+  /*
+   * CON-1682-AC1 (a)
+   */
+  @Test
+  @Disabled
+  void testRegisterUserUpdateJaggaerBuyerOrgExisted() {
+
+    var registerUserResponse = profileManagementService.registerUser(USERID);
+
+    assertEquals(RegisterUserResponse.UserActionEnum.EXISTED, registerUserResponse.getUserAction());
+    assertEquals(RegisterUserResponse.UserActionEnum.EXISTED, registerUserResponse.getUserAction());
+
   }
 
 }

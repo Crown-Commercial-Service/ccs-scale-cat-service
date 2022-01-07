@@ -6,17 +6,26 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -39,14 +48,18 @@ public class ProcurementEventService {
   private static final String ADDITIONAL_INFO_LOT_NUMBER = "Lot Number";
   private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
+  private static final String SUPPLIER_NOT_FOUND_MSG =
+      "Organisation id '%s' not found in organisation mappings";
 
   private final UserProfileService userProfileService;
+  private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;
   private final WebClient jaggaerWebClient;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ValidationService validationService;
   private final SupplierService supplierService;
+  private final DocumentConfig documentConfig;
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -80,7 +93,6 @@ public class ProcurementEventService {
 
     downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
 
-    // TODO: Updated default event name to '###-TBD' - confirm correct (after removal of RFP)
     var eventName = requireNonNullElse(createEventOCDS.getTitle(),
         getDefaultEventTitle(project.getProjectName(), eventTypeValue));
 
@@ -94,7 +106,7 @@ public class ProcurementEventService {
                     "Unexpected error creating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
-        || !Constants.OK.equals(createRfxResponse.getReturnMessage())) {
+        || !Constants.JAGGAER_GET_OK_MSG.equals(createRfxResponse.getReturnMessage())) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
           createRfxResponse.getReturnMessage());
@@ -155,8 +167,9 @@ public class ProcurementEventService {
     var rfxAdditionalInfoList =
         new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
-    var suppliersList = new SuppliersList(
-        supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()));
+    var suppliersList = SuppliersList.builder()
+        .supplier(supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
+        .build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
@@ -173,7 +186,12 @@ public class ProcurementEventService {
   public EventDetail getEvent(final Integer projectId, final String eventId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event);
+
+    var buyerQuestions =
+        new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+
+    return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
+        buyerQuestions);
   }
 
   /**
@@ -208,19 +226,18 @@ public class ProcurementEventService {
     // Update event type
     if (updateEvent.getEventType() != null) {
       var existingEventType = event.getEventType();
-      if (existingEventType == null || existingEventType.isBlank()
-          || event.getEventType().equals("TBD")) {
-        event.setEventType(updateEvent.getEventType().getValue());
-        updateDB = true;
-      } else {
+      if (existingEventType != null && !existingEventType.isBlank()
+          && !"TBD".equals(event.getEventType())) {
         throw new IllegalArgumentException(
             "Cannot update an existing event type of '" + event.getEventType() + "'");
       }
+      event.setEventType(updateEvent.getEventType().getValue());
+      updateDB = true;
     }
 
     // Save to Jaggaer
     if (updateJaggaer) {
-      jaggaerService.createUpdateRfx(rfx);
+      jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
     }
 
     // Save to Tenders DB
@@ -240,9 +257,258 @@ public class ProcurementEventService {
 
   }
 
+  /**
+   * Get all suppliers on an event.
+   *
+   * @param procId
+   * @param eventId
+   * @return
+   */
+  public Collection<OrganizationReference> getSuppliers(final Integer procId,
+      final String eventId) {
+
+    log.debug("Get suppliers for event '{}'", eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    var orgs = new ArrayList<OrganizationReference>();
+
+    if (existingRfx.getSuppliersList().getSupplier() != null) {
+      existingRfx.getSuppliersList().getSupplier().stream().map(s -> {
+
+        var om = retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                String.format(SUPPLIER_NOT_FOUND_MSG, s.getCompanyData().getId())));
+
+        var org = new OrganizationReference();
+        org.setId(String.valueOf(om.getOrganisationId()));
+        org.setName(s.getCompanyData().getName());
+        return org;
+      }).forEachOrdered(orgs::add);
+    }
+
+    return orgs;
+  }
+
+  /**
+   * Add a supplier to an event.
+   *
+   * Jaggaer will add any suppliers it does not already have associated to the event, so only those
+   * suppliers need to be included.
+   *
+   * @param procId
+   * @param eventId
+   * @param organisationReference
+   * @return
+   */
+  public OrganizationReference addSupplier(final Integer procId, final String eventId,
+      final OrganizationReference organisationReference) {
+
+    log.debug("Add supplier '{}' to event '{}'", organisationReference, eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+    var om = retryableTendersDBDelegate
+        .findOrganisationMappingByOrganisationId(organisationReference.getId())
+        .orElseThrow(() -> new IllegalArgumentException(
+            String.format(SUPPLIER_NOT_FOUND_MSG, organisationReference.getId())));
+
+    var companyData = CompanyData.builder().id(om.getExternalOrganisationId()).build();
+    var supplier = Supplier.builder().companyData(companyData).build();
+    var suppliersList = SuppliersList.builder().supplier(Arrays.asList(supplier)).build();
+
+    // Build Rfx and update
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).build();
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(suppliersList).build();
+    jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
+
+    return organisationReference;
+
+  }
+
+  /**
+   * Delete a supplier from an event.
+   *
+   * Jaggaer does not support a delete operation for suppliers, so the whole list needs to be
+   * updated as part of an 'UPDATE_RESET' operation.
+   *
+   * @param procId
+   * @param eventId
+   * @param organisationId
+   */
+  public void deleteSupplier(final Integer procId, final String eventId,
+      final String organisationId) {
+
+    log.debug("Delete supplier '{}' from event '{}'", organisationId, eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+    // Determine Jaggaer supplier id
+    var om = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            String.format(SUPPLIER_NOT_FOUND_MSG, organisationId)));
+
+    // Get all current suppliers on Rfx and remove the one we want to delete
+    var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    List<Supplier> updatedSuppliersList = existingRfx.getSuppliersList().getSupplier().stream()
+        .filter(s -> !s.getCompanyData().getId().equals(om.getExternalOrganisationId()))
+        .collect(Collectors.toList());
+    var suppliersList = SuppliersList.builder().supplier(updatedSuppliersList).build();
+
+    // Build Rfx and update
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).build();
+    var rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(suppliersList).build();
+    jaggaerService.createUpdateRfx(rfx, OperationCode.UPDATE_RESET);
+
+  }
+
   private String getDefaultEventTitle(final String projectName, final String eventType) {
     return String.format(jaggaerAPIConfig.getCreateRfx().get("defaultTitleFormat"), projectName,
         eventType);
+  }
+
+  /**
+   * Returns a list of document attachments at the event level.
+   *
+   * @param procId
+   * @param eventId
+   * @return
+   */
+  public Collection<DocumentSummary> getDocumentSummaries(final Integer procId,
+      final String eventId) {
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    Collection<DocumentSummary> documents = new ArrayList<>();
+
+    if (exportRfxResponse.getBuyerAttachmentsList().getAttachment() == null) {
+      exportRfxResponse.setBuyerAttachmentsList(
+          BuyerAttachmentsList.builder().attachment(new ArrayList<>()).build());
+    }
+    exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream()
+        .map(ba -> tendersAPIModelUtils.buildDocumentSummary(ba, DocumentAudienceType.BUYER))
+        .forEachOrdered(documents::add);
+
+    if (exportRfxResponse.getSellerAttachmentsList().getAttachment() == null) {
+      exportRfxResponse.setSellerAttachmentsList(
+          SellerAttachmentsList.builder().attachment(new ArrayList<>()).build());
+    }
+    exportRfxResponse.getSellerAttachmentsList().getAttachment().stream()
+        .map(ba -> tendersAPIModelUtils.buildDocumentSummary(ba, DocumentAudienceType.SUPPLIER))
+        .forEachOrdered(documents::add);
+
+    return documents;
+  }
+
+  /**
+   * Uploads a document to a Jaggaer Rfx.
+   *
+   * @param procId
+   * @param eventId
+   * @param multipartFile
+   * @param audience
+   * @param fileDescription
+   * @return
+   */
+  public DocumentSummary uploadDocument(final Integer procId, final String eventId,
+      final MultipartFile multipartFile, final DocumentAudienceType audience,
+      final String fileDescription) {
+
+    log.debug("Upload Document to event {}", eventId);
+
+    final var fileName = multipartFile.getOriginalFilename();
+    final var extension = FilenameUtils.getExtension(fileName);
+
+    // Validate file extension
+    if (!documentConfig.getAllowedExtentions().contains(extension.toLowerCase())) {
+      throw new IllegalArgumentException("File is not one of the allowed types: "
+          + documentConfig.getAllowedExtentions().toString());
+    }
+
+    // Validate file size
+    if (multipartFile.getSize() > documentConfig.getMaxSize()) {
+      throw new IllegalArgumentException("File is too large: " + multipartFile.getSize()
+          + " bytes. Maximum allowed upload size is: " + documentConfig.getMaxSize() + " bytes");
+    }
+
+    // Validate total file size
+    var currentDocuments = getDocumentSummaries(procId, eventId);
+    var totalEventFileSize =
+        currentDocuments.stream().map(DocumentSummary::getFileSize).reduce(0L, Long::sum);
+    if (Long.sum(totalEventFileSize, multipartFile.getSize()) > documentConfig.getMaxTotalSize()) {
+      throw new IllegalArgumentException(
+          "Uploading file will exceed the maximum allowed total limit of "
+              + documentConfig.getMaxTotalSize() + " bytes for event " + eventId
+              + " (current total size is " + totalEventFileSize + " bytes, across "
+              + currentDocuments.size() + " files)");
+    }
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).build();
+    var attachment =
+        Attachment.builder().fileName(fileName).fileDescription(fileDescription).build();
+    Rfx rfx;
+
+    switch (audience) {
+      case BUYER:
+        var bal = BuyerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
+        rfx = Rfx.builder().rfxSetting(rfxSetting).buyerAttachmentsList(bal).build();
+        break;
+      case SUPPLIER:
+        var sal = SellerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
+        rfx = Rfx.builder().rfxSetting(rfxSetting).sellerAttachmentsList(sal).build();
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported audience for document upload");
+    }
+
+    var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
+    jaggaerService.uploadDocument(multipartFile, update);
+
+    var docs = getDocumentSummaries(procId, eventId);
+    return docs.stream().filter(d -> d.getFileName().equals(fileName)).findFirst().orElseThrow(
+        () -> new IllegalStateException("There was an unexpected error uploading the document"));
+  }
+
+  /**
+   * Retrieve a document attached to an Rfx in Jaggaer.
+   *
+   * @param procId
+   * @param eventId
+   * @param documentId
+   * @return
+   */
+  public DocumentAttachment getDocument(final Integer procId, final String eventId,
+      final String documentId) {
+
+    log.debug("Get Document {} from Event {}", documentId, eventId);
+
+    validationService.validateProjectAndEventIds(procId, eventId);
+    var documentKey = DocumentKey.fromString(documentId);
+    log.debug("Retrieving Document {}", documentKey.getFileName());
+    return jaggaerService.getDocument(documentKey.getFileId(), documentKey.getFileName());
+  }
+
+  /**
+   * Publish an Rfx in Jaggaer
+   *
+   * @param procId
+   * @param eventId
+   */
+  public void publishEvent(final Integer procId, final String eventId,
+      final PublishDates publishDates, final String principal) {
+
+    validationService.validatePublishDates(publishDates);
+
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
   }
 
 }

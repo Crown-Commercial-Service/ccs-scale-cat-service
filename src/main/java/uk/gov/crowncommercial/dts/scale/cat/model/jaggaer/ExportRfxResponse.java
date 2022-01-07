@@ -13,5 +13,7 @@ public class ExportRfxResponse {
 
   RfxSetting rfxSetting;
   EmailRecipientList emailRecipientList;
-
+  SuppliersList suppliersList;
+  BuyerAttachmentsList buyerAttachmentsList;
+  SellerAttachmentsList sellerAttachmentsList;
 }
