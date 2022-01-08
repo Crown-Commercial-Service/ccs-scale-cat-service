@@ -5,14 +5,15 @@
 #        jwt:
 #          jwk-set-uri: "SET IN ENV"
 
-          
+
 logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: INFO
-        
+    uk.gov.crowncommercial.dts.scale.cat: TRACE
+    # org.eclipse.jetty.client: DEBUG
+
 spring:
   jpa:
     open-in-view: false
@@ -23,11 +24,15 @@ spring:
   datasource:
     hikari:
       connectionTimeout: 10000
+  servlet:
+    multipart:
+      max-file-size: 300MB # must match config.maxSize
+      max-request-size: 300MB # must match config.maxSize
 
 server:
   error:
     path: "/error"
-      
+
 config:
   ocds:
     authority: ocds
@@ -36,15 +41,40 @@ config:
     maxAttempts: 5
     multiplier: 2
     delay: 1000
-        
+  document:
+    allowedExtentions: 
+      - csv
+      - doc
+      - docx
+      - jpg
+      - jpeg
+      - kml
+      - ods
+      - odt
+      - pdf
+      - png
+      - ppt
+      - pptx
+      - rdf
+      - rtf
+      - txt
+      - xls
+      - xlsx
+      - xml
+      - zip
+    maxSize: 314572800 #300MB
+    maxTotalSize: 1073741824 #1GB
+
   external:
     jaggaer:
-      baseUrl: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
-      timeoutDuration: 5
+#      baseUrl: "SET IN ENV"
+      timeoutDuration: 10
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
-      
+      defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
+      defaultSupplierRightsProfile: ""
+
       rfxStatusToTenderStatus:
         0: PLANNED
         100: PLANNED
@@ -61,34 +91,66 @@ config:
         950: COMPLETE
         1400: COMPLETE
         1100: WITHDRAWN
-        1500: CANCELLED      
-      
+        1500: CANCELLED
+
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
-        templateId: project_609
+        templateId: tender_49
+      getProject:
+        endpoint: /esop/jint/api/public/ja/v1/projects/{id}
       createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_543
+        templateId: itt_445
       getBuyerCompanyProfile:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
-        principalPlaceholder: "{{PRINCIPAL}}"
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+      getSupplierCompanyProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;userEmail=={{PRINCIPAL}}        
+      getSupplierSubUserProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
-        
+      createUpdateCompany:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles
+      getAttachment:
+        endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
+      publishRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
+
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
+      timeoutDuration: 10
       getAgreementDetail:
         uriTemplate: /agreements/{agreement-id}
       getLotDetailsForAgreement:
         uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
+      getLotSuppliers:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/suppliers
+      getLotEventTypeDataTemplates:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+      getEventTypesForAgreement:
+        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
 
-    
+    conclaveWrapper:
+      # baseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      timeoutDuration: 10
+      # Role keys are incorrectly spelt in Conclave
+      buyerRoleKey: JAEGGER_BUYER
+      supplierRoleKey: JAEGGER_SUPPLIER      
+      getUser:
+        uriTemplate: /user-profiles?user-id={user-id}
+      getUserContacts:
+        uriTemplate: /user-profiles/contacts?user-id={email}
+      getOrganisation:
+        uriTemplate: /organisation-profiles/{org-id}
+  #flags:
+    # devMode: "SET IN ENV"
 ---
 spring:
   config:
@@ -102,28 +164,14 @@ spring:
   security:
     oauth2:
       client:
-        provider:
-          jaggaer:
-            token-uri: https://crowncommercialservice-ws02-prep.bravosolution.co.uk/esop/jint/api/public/v1/tokens 
+#        provider:
+#          jaggaer:
+#            token-uri: "SET IN ENV"
         registration:
           jaggaer:
             authorization-grant-type: client_credentials
 #            client-id: "SET IN ENV"
 #            client-secret: "SET IN ENV"
-    
----
-spring:
-  config:
-    activate:
-      on-profile:
-        - local
-  datasource: 
-    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
-  jpa:
-    database: h2
-    show-sql: true
-    hibernate:
-      ddl-auto: create-drop
 
 ---
 spring:
@@ -136,13 +184,13 @@ spring:
     database: postgresql
     show-sql: true
     hibernate:
-      ddl-auto: validate      
-      
+      ddl-auto: validate
+
 ---
 spring:
   config:
     activate:
       on-profile:
         - local-pg
-  datasource: 
+  datasource:
     url: jdbc:postgresql://127.0.0.1:5432/cat

@@ -2,15 +2,15 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.util.ssl.SslContextFactory;
+import java.time.Duration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.reactive.ClientHttpConnector;
-import org.springframework.http.client.reactive.JettyClientHttpConnector;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
 
 /**
  *
@@ -22,12 +22,18 @@ public class AgreementsServiceClientConfig {
   private final AgreementsServiceAPIConfig agreementsServiceAPIConfig;
 
   @Bean("agreementsServiceWebClient")
-  public WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
-    var client = new HttpClient(new SslContextFactory.Client(true));
+  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
 
-    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
+    // See https://github.com/reactor/reactor-netty/issues/1774
+    // Critical setting seems to be the maxIdleTime, which by default is not set meaning unlimieted.
+    var provider = ConnectionProvider.builder("custom-name").maxConnections(500)
+        .maxIdleTime(Duration.ofSeconds(20)).maxLifeTime(Duration.ofSeconds(60))
+        .pendingAcquireTimeout(Duration.ofSeconds(60)).evictInBackground(Duration.ofSeconds(120))
+        .build();
 
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
+    var client = HttpClient.create(provider);
+
+    return WebClient.builder().clientConnector(new ReactorClientHttpConnector(client))
         .baseUrl(agreementsServiceAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
         .defaultHeader("x-api-key", agreementsServiceAPIConfig.getApiKey()).build();

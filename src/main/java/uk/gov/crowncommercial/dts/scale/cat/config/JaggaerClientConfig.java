@@ -21,7 +21,6 @@ import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.endpoint.DefaultClientCredentialsTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
@@ -51,6 +50,7 @@ public class JaggaerClientConfig {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerTokenResponseConverter jaggaerTokenResponseConverter;
+  private final DocumentConfig documentConfig;
 
   @Bean
   public OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> accessTokenResponseClient() {
@@ -58,7 +58,8 @@ public class JaggaerClientConfig {
     var accessTokenResponseClient = new DefaultClientCredentialsTokenResponseClient();
 
     var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
-    tokenResponseHttpMessageConverter.setTokenResponseConverter(jaggaerTokenResponseConverter);
+    tokenResponseHttpMessageConverter
+        .setAccessTokenResponseConverter(jaggaerTokenResponseConverter);
 
     var restTemplate = new RestTemplate(
         Arrays.asList(new FormHttpMessageConverter(), tokenResponseHttpMessageConverter));
@@ -70,14 +71,13 @@ public class JaggaerClientConfig {
 
   @Bean
   public OAuth2AuthorizedClientManager authorizedClientManager(
-      ClientRegistrationRepository clientRegistrationRepository,
-      OAuth2AuthorizedClientRepository authorizedClientRepository) {
+      final ClientRegistrationRepository clientRegistrationRepository,
+      final OAuth2AuthorizedClientRepository authorizedClientRepository) {
 
-    OAuth2AuthorizedClientProvider authorizedClientProvider =
-        OAuth2AuthorizedClientProviderBuilder.builder()
-            .clientCredentials(
-                configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
-            .build();
+    var authorizedClientProvider = OAuth2AuthorizedClientProviderBuilder.builder()
+        .clientCredentials(
+            configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
+        .build();
 
     var authorizedClientManager = new DefaultOAuth2AuthorizedClientManager(
         clientRegistrationRepository, authorizedClientRepository);
@@ -87,16 +87,21 @@ public class JaggaerClientConfig {
   }
 
   @Bean("jaggaerWebClient")
-  public WebClient webClient(OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
     var oauth2Client =
         new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
+
     // TODO: Refactor out / investigate why default netty library causes 30 second delay
-    var client = new HttpClient(new SslContextFactory.Client(true)) {
+    var client = new HttpClient(sslContextFactory) {
 
       @Override
-      public Request newRequest(URI uri) {
+      public Request newRequest(final URI uri) {
         return enhance(super.newRequest(uri));
       }
     };
@@ -105,7 +110,10 @@ public class JaggaerClientConfig {
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
-        .apply(oauth2Client.oauth2Configuration()).build();
+        .apply(oauth2Client.oauth2Configuration())
+        .codecs(
+            configurer -> configurer.defaultCodecs().maxInMemorySize(documentConfig.getMaxSize()))
+        .build();
   }
 
   /**
@@ -152,7 +160,7 @@ public class JaggaerClientConfig {
    * @param inboundRequest
    * @return the enhanced request with logging events on request/response
    */
-  private Request enhance(Request inboundRequest) {
+  private Request enhance(final Request inboundRequest) {
     var sbLog = new StringBuilder();
     // Request Logging
     inboundRequest.onRequestBegin(request -> sbLog.append("Request: \n").append("URI: ")
@@ -167,8 +175,10 @@ public class JaggaerClientConfig {
         }
       }
     });
-    inboundRequest.onRequestContent(
-        (request, content) -> sbLog.append("Body: \n\t").append(content.toString()));
+    // TODO: Make request body logging configurable. Commented out for now as it causes java heap
+    // OOM when uploading large files.
+    // inboundRequest.onRequestContent((request, content) -> sbLog.append("Body: \n\t")
+    // .append(StandardCharsets.UTF_8.decode(content).toString()));
     sbLog.append("\n");
 
     // Response Logging

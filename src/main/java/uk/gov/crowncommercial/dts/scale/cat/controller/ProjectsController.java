@@ -1,17 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.util.Arrays;
 import java.util.Collection;
+import javax.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 /**
@@ -21,23 +19,29 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 @RequestMapping(path = "/tenders/projects", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
-      @RequestBody AgreementDetails agreementDetails, JwtAuthenticationToken authentication) {
+      @Valid @RequestBody final AgreementDetails agreementDetails,
+      final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
-    log.info("createProcuremenProject invoked on bahelf of principal: {}", principal);
+    var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
+    log.info("createProcuremenProject invoked on behalf of principal: {}", principal,
+        conclaveOrgId);
 
-    return procurementProjectService.createFromAgreementDetails(agreementDetails, principal);
+    return procurementProjectService.createFromAgreementDetails(agreementDetails, principal,
+        conclaveOrgId);
   }
 
   @PutMapping("/{procID}/name")
-  public String updateProcurementProjectName(@PathVariable("procID") Integer procId,
-      @RequestBody ProcurementProjectName projectName, JwtAuthenticationToken authentication) {
+  public String updateProcurementProjectName(@PathVariable("procID") final Integer procId,
+      @RequestBody final ProcurementProjectName projectName,
+      final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
@@ -45,17 +49,39 @@ public class ProjectsController extends AbstractRestController {
     procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
         principal);
 
-    return Constants.OK;
+    return Constants.JAGGAER_GET_OK_MSG;
   }
 
-  @GetMapping("/{procID}/event-types")
-  public Collection<DefineEventType> listProcurementEventTypes(
-      JwtAuthenticationToken authentication) {
+  @GetMapping("/{proc-id}/event-types")
+  public Collection<EventType> listProcurementEventTypes(
+      @PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
 
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
         getPrincipalFromJwt(authentication));
 
-    // TODO: This will be refactored to filter those applicable to the current project
-    return Arrays.asList(DefineEventType.values());
+    return procurementProjectService.getProjectEventTypes(procId);
   }
+
+  @GetMapping("/{proc-id}/users")
+  public Collection<TeamMember> getProjectUsers(@PathVariable("proc-id") final Integer procId,
+      final JwtAuthenticationToken authentication) {
+
+    log.info("getProjectUsers invoked on behalf of principal: {}",
+        getPrincipalFromJwt(authentication));
+
+    return procurementProjectService.getProjectTeamMembers(procId);
+  }
+
+  @PutMapping("/{proc-id}/users/{user-id}")
+  public TeamMember addProjectUser(@PathVariable("proc-id") final Integer procId,
+      @PathVariable("user-id") final String userId,
+      @RequestBody final UpdateTeamMember updateTeamMember,
+      final JwtAuthenticationToken authentication) {
+
+    log.info("addProjectUser invoked on behalf of principal: {}",
+        getPrincipalFromJwt(authentication));
+
+    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember);
+  }
+
 }

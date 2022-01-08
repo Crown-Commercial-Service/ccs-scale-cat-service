@@ -1,14 +1,14 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
 import java.util.Optional;
-import org.springframework.dao.TransientDataAccessException;
+import java.util.Set;
 import org.springframework.retry.ExhaustedRetryException;
-import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.TransactionException;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 
@@ -21,47 +21,72 @@ public class RetryableTendersDBDelegate {
 
   private final ProcurementProjectRepo procurementProjectRepo;
   private final ProcurementEventRepo procurementEventRepo;
+  private final OrganisationMappingRepo organisationMappingRepo;
+  private final JourneyRepo journeyRepo;
 
-  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
-      maxAttemptsExpression = "${config.retry.maxAttempts}",
-      backoff = @Backoff(delayExpression = "${config.retry.delay}",
-          multiplierExpression = "${config.retry.multiplier}"))
-  public ProcurementProject save(ProcurementProject procurementProject) {
-    return procurementProjectRepo.save(procurementProject);
+  @TendersDBRetryable
+  public ProcurementProject save(final ProcurementProject procurementProject) {
+    return procurementProjectRepo.saveAndFlush(procurementProject);
   }
 
-  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
-      maxAttemptsExpression = "${config.retry.maxAttempts}",
-      backoff = @Backoff(delayExpression = "${config.retry.delay}",
-          multiplierExpression = "${config.retry.multiplier}"))
-  public ProcurementEvent save(ProcurementEvent procurementevent) {
+  @TendersDBRetryable
+  public ProcurementEvent save(final ProcurementEvent procurementevent) {
     return procurementEventRepo.save(procurementevent);
   }
 
-  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
-      maxAttemptsExpression = "${config.retry.maxAttempts}",
-      backoff = @Backoff(delayExpression = "${config.retry.delay}",
-          multiplierExpression = "${config.retry.multiplier}"))
-  public Optional<ProcurementProject> findProcurementProjectById(Integer id) {
+  @TendersDBRetryable
+  public Optional<ProcurementProject> findProcurementProjectById(final Integer id) {
     return procurementProjectRepo.findById(id);
   }
 
-  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
-      maxAttemptsExpression = "${config.retry.maxAttempts}",
-      backoff = @Backoff(delayExpression = "${config.retry.delay}",
-          multiplierExpression = "${config.retry.multiplier}"))
-  public Optional<ProcurementEvent> findProcurementEventById(Integer id) {
+  @TendersDBRetryable
+  public Optional<ProcurementEvent> findProcurementEventById(final Integer id) {
     return procurementEventRepo.findById(id);
   }
 
-  @Retryable(include = {TransientDataAccessException.class, TransactionException.class},
-      maxAttemptsExpression = "${config.retry.maxAttempts}",
-      backoff = @Backoff(delayExpression = "${config.retry.delay}",
-          multiplierExpression = "${config.retry.multiplier}"))
+  @TendersDBRetryable
   public Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-      Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix) {
+      final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
     return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
         eventIdKey, ocdsAuthorityName, ocidPrefix);
+  }
+
+  @TendersDBRetryable
+  public Set<OrganisationMapping> findOrganisationMappingByOrganisationIdIn(
+      final Set<String> organisationIds) {
+    return organisationMappingRepo.findByOrganisationIdIn(organisationIds);
+  }
+
+  @TendersDBRetryable
+  public Optional<OrganisationMapping> findOrganisationMappingByOrgId(final String organisationId) {
+    return organisationMappingRepo.findByOrganisationId(organisationId);
+  }
+
+  @TendersDBRetryable
+  public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
+      final Integer externalOrganisationId) {
+    return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
+  }
+
+  @TendersDBRetryable
+  public OrganisationMapping save(final OrganisationMapping organisationMapping) {
+    return organisationMappingRepo.saveAndFlush(organisationMapping);
+  }
+
+  @TendersDBRetryable
+  public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
+      final String organisationId) {
+    return organisationMappingRepo.findByOrganisationId(organisationId);
+  }
+
+  @TendersDBRetryable
+  public JourneyEntity save(final JourneyEntity journey) {
+    return journeyRepo.save(journey);
+  }
+
+  @TendersDBRetryable
+  public Optional<JourneyEntity> findJourneyByExternalId(final String externalId) {
+    return journeyRepo.findByExternalId(externalId);
   }
 
   /**
@@ -73,7 +98,7 @@ public class RetryableTendersDBDelegate {
    * @return object same return type as retried method
    */
   @Recover
-  public Object retriesExhausted(Throwable e, Object arg) {
+  public Object retriesExhausted(final Throwable e, final Object arg) {
     throw new ExhaustedRetryException("Retries exhausted", e);
   }
 

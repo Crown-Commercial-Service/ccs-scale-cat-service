@@ -2,8 +2,12 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import javax.persistence.*;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 
 /**
  * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
@@ -17,6 +21,7 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(exclude = "project")
+@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 public class ProcurementEvent {
 
   @Id
@@ -60,6 +65,10 @@ public class ProcurementEvent {
 
   @Column(name = "updated_at")
   Instant updatedAt;
+
+  @Type(type = "jsonb")
+  @Column(name = "procurement_template_payload")
+  DataTemplate procurementTemplatePayload;
 
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
