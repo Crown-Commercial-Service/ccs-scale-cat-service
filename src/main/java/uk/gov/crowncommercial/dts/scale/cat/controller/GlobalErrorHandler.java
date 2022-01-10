@@ -2,10 +2,11 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.HttpStatus.*;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.bind.ValidationException;
+import javax.validation.ValidationException;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
@@ -50,7 +51,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     return ResponseEntity.status(INTERNAL_SERVER_ERROR)
         .body(tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
-            Constants.ERR_MSG_DEFAULT, exception.getMessage()));
+            Constants.ERR_MSG_DEFAULT, Objects.isNull(exception)? "":  exception.getMessage()));
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
