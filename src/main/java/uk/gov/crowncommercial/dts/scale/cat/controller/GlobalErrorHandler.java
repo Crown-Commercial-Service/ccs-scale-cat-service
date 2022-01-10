@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.bind.ValidationException;
+import javax.validation.ValidationException;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +14,6 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import com.google.common.net.HttpHeaders;
 import lombok.RequiredArgsConstructor;
@@ -144,7 +143,7 @@ public class GlobalErrorHandler implements ErrorController {
 
   @ResponseStatus(BAD_REQUEST)
   @ExceptionHandler({ValidationException.class, HttpMessageNotReadableException.class,
-      IllegalArgumentException.class, MethodArgumentNotValidException.class,ValidationException.class})
+      IllegalArgumentException.class, MethodArgumentNotValidException.class})
   public Errors handleValidationException(final Exception exception) {
 
     log.trace("Request validation exception", exception);
