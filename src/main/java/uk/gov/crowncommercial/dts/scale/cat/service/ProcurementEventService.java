@@ -502,13 +502,19 @@ public class ProcurementEventService {
   public void publishEvent(final Integer procId, final String eventId,
       final PublishDates publishDates, final String principal) {
 
-    validationService.validatePublishDates(publishDates);
-
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+    var event = getEvent(procId, eventId);
+
+    if (TenderStatus.PLANNED == event.getOCDS().getStatus()) {
+      validationService.validatePublishDates(publishDates);
+      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+      jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+    } else {
+      throw new IllegalArgumentException(
+          "You cannot publish an event unless it is in a 'planned' state");
+    }
   }
 
 }
