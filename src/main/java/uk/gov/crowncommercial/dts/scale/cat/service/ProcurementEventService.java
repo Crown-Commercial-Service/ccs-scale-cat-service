@@ -187,8 +187,7 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var buyerQuestions =
-        new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
         buyerQuestions);
@@ -505,11 +504,13 @@ public class ProcurementEventService {
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    var event = getEvent(procId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-    if (TenderStatus.PLANNED == event.getOCDS().getStatus()) {
+    if (TenderStatus.PLANNED == status) {
       validationService.validatePublishDates(publishDates);
-      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
       jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
     } else {
       throw new IllegalArgumentException(
