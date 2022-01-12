@@ -5,8 +5,6 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -18,11 +16,15 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -57,11 +59,11 @@ public class CriteriaService {
               .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
                   new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
           .collect(Collectors.toSet());
-    } else {
-      return dataTemplate.getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
-          .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
-          .collect(Collectors.toSet());
     }
+    return dataTemplate
+        .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
+            .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
+        .collect(Collectors.toSet());
   }
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
@@ -77,7 +79,9 @@ public class CriteriaService {
           .mandatory(rg.getNonOCDS().getMandatory());
       // OCDS
       var requirements =
-          populateRequirements ? convertRequirementsToQuestions(rg.getOcds().getRequirements(),event.getProject().getCaNumber())
+          populateRequirements
+              ? convertRequirementsToQuestions(rg.getOcds().getRequirements(),
+                  event.getProject().getCaNumber())
               : null;
       var questionGroupOCDS = new QuestionGroupOCDS().id(rg.getOcds().getId())
           .description(rg.getOcds().getDescription()).requirements(requirements);
@@ -92,8 +96,8 @@ public class CriteriaService {
     var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
-    return group.getOcds().getRequirements().stream()
-            .map((Requirement r) -> convertRequirementToQuestion(r,event.getProject().getCaNumber()))
+    return group.getOcds().getRequirements().stream().map(
+        (final Requirement r) -> convertRequirementToQuestion(r, event.getProject().getCaNumber()))
         .collect(Collectors.toSet());
 
   }
@@ -126,7 +130,6 @@ public class CriteriaService {
                 .build())
             .collect(Collectors.toList()));
 
-
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
       var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
@@ -152,7 +155,7 @@ public class CriteriaService {
     event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
 
-    return convertRequirementToQuestion(requirement,event.getProject().getCaNumber());
+    return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
@@ -189,9 +192,8 @@ public class CriteriaService {
   }
 
   private AgreementDetail getAgreementDetails(final String agreementNumber) {
-      return  agreementsService.getAgreementDetails(agreementNumber);
+    return agreementsService.getAgreementDetails(agreementNumber);
   }
-
 
   /**
    * Rough first cut of code that adds Technical Envelope questions into Jaggaer. This will build an
@@ -232,13 +234,14 @@ public class CriteriaService {
   }
 
   public List<Question> convertRequirementsToQuestions(final Set<Requirement> requirements,
-                                                       final String agreementNumber) {
+      final String agreementNumber) {
     return requirements.stream()
-            .map((Requirement requirement) -> convertRequirementToQuestion(requirement,agreementNumber))
+        .map((final Requirement requirement) -> convertRequirementToQuestion(requirement,
+            agreementNumber))
         .collect(Collectors.toList());
   }
 
-  public Question convertRequirementToQuestion(final Requirement requirement,final String agreementNumber) {
+  public Question convertRequirementToQuestion(final Requirement r, final String agreementNumber) {
 
     // TODO: Move to object mapper or similar
     // @formatter:off
@@ -253,26 +256,20 @@ public class CriteriaService {
                      .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())
                 .text(o.getText())).collect(Collectors.toList()));
 
-    String description = requirement.getOcds().getDescription();
-    if (Objects.nonNull(description) && description.contains(END_DATE)) {
-      AgreementDetail agreementDetails = getAgreementDetails(agreementNumber);
-      description = description.replace(END_DATE,
-              DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(agreementDetails.getEndDate()));
-    }
     var questionOCDS = new Requirement1()
-        .id(requirement.getOcds().getId())
-        .title(requirement.getOcds().getTitle())
-        .description(description)
-        .dataType(DataType.fromValue(requirement.getOcds().getDataType()))
-        .pattern(requirement.getOcds().getPattern())
-        .expectedValue(new Value1().amount(requirement.getOcds().getExpectedValue()))
-        .minValue(new Value1().amount(requirement.getOcds().getMinValue()))
-        .maxValue(new Value1().amount(requirement.getOcds().getMaxValue()))
-        .period(requirement.getOcds().getPeriod() != null ? new Period1()
-            .startDate(requirement.getOcds().getPeriod().getStartDate())
-            .endDate(requirement.getOcds().getPeriod().getEndDate())
-            .maxExtentDate(requirement.getOcds().getPeriod().getMaxExtentDate())
-            .durationInDays(requirement.getOcds().getPeriod().getDurationInDays()) : null);
+        .id(r.getOcds().getId())
+        .title(r.getOcds().getTitle())
+        .description(r.getOcds().getDescription())
+        .dataType(DataType.fromValue(r.getOcds().getDataType()))
+        .pattern(r.getOcds().getPattern())
+        .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
+        .minValue(new Value1().amount(r.getOcds().getMinValue()))
+        .maxValue(new Value1().amount(r.getOcds().getMaxValue()))
+        .period(r.getOcds().getPeriod() != null ? new Period1()
+            .startDate(r.getOcds().getPeriod().getStartDate())
+            .endDate(r.getOcds().getPeriod().getEndDate())
+            .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
+            .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
     // @formatter:on
 
     return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
