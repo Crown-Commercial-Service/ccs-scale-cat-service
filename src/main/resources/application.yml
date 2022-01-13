@@ -100,6 +100,8 @@ config:
         templateId: tender_49
       getProject:
         endpoint: /esop/jint/api/public/ja/v1/projects/{id}
+      getProjectList:
+        endpoint: /esop/jint/api/public/ja/v1/projects?flt={filters}
       createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"

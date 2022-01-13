@@ -4,12 +4,13 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
+import java.util.List;
+
 @Value
 @Builder
 @Jacksonized
-public class Project {
+public class ProjectList {
 
-  private Tender tender;
-  private ProjectTeam projectTeam;
+  private List<Project> project;
 
 }

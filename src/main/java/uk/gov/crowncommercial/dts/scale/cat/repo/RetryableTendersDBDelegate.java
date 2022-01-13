@@ -38,6 +38,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+  public Optional<ProcurementProject> findProcurementExternalProjectById(final String externalProjectId) {
+    return procurementProjectRepo.findByExternalProjectId(externalProjectId);
+  }
+
+  @TendersDBRetryable
   public Optional<ProcurementEvent> findProcurementEventById(final Integer id) {
     return procurementEventRepo.findById(id);
   }

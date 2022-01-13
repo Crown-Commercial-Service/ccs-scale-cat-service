@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -325,6 +326,58 @@ public class ProcurementProjectService {
 
     return getProjectTeamMembers(projectId).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
+  }
+
+  /**
+   * Get Projects
+   * @return Collection of projects
+   * @param principal
+   */
+  public Collection<ProjectPackageSummary> getProjects(final String principal) {
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+            .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+    ProjectListResponse projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
+    if (!CollectionUtils.isEmpty(projectListResponse.getProjectList().getProject())) {
+      return projectListResponse.getProjectList().getProject().stream()
+              .map(this::convertProjectToProjectPackageSummary)
+              .filter(projectPackageSummary -> projectPackageSummary != null) // TODO any better?
+              .collect(Collectors.toList());
+    }
+    return Collections.EMPTY_LIST;
+  }
+
+  /**
+   * convert project top project package summary
+   * @param project the project
+   * @return ProjectPackageSummary
+   */
+  private ProjectPackageSummary convertProjectToProjectPackageSummary(Project project) {
+	  // Get Project from database
+	  var dbProject = retryableTendersDBDelegate
+			  .findProcurementExternalProjectById(project.getTender().getTenderCode());
+	  var projectPackageSummary = new ProjectPackageSummary();
+	  if (dbProject.isPresent()) {
+		  var dbEvent = getCurrentEvent(dbProject.get());
+
+		  //TODO no value for Uri
+		  //projectPackageSummary.setUri(getProjectUri);
+		  projectPackageSummary.setProjectId(dbProject.get().getId());
+		  projectPackageSummary.setProjectName(dbProject.get().getProjectName());
+		  var eventSummary = new EventSummary();
+		  eventSummary.setId(dbEvent.getEventID());
+		  eventSummary.setTitle(dbEvent.getEventName());
+		  //TODO No value for event stage
+		  //eventSummary.setEventStage(ReleaseTag.fromValue(dbEvent.getEventStage()));
+		  eventSummary.setEventType(ViewEventType.fromValue(dbEvent.getEventType()));
+		  projectPackageSummary.activeEvent(eventSummary);
+		  return projectPackageSummary;
+	  } else {
+		  // TODO ignoring at the moment. What to do with these?
+		  log.warn("Unable to project details in database for project id  {}, so ignoring.",
+				  project.getTender().getTenderCode());
+	  }
+	  return null;
   }
 
   /**

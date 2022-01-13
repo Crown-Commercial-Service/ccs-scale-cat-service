@@ -329,6 +329,19 @@ class ProcurementProjectServiceTest {
 
   }
 
+  @Test
+  void testGetProjectsFromJaggaer() {
+    // Mock behaviours
+    var subUser =  SubUser.builder()
+            .email("test.ccs.gov.uk")
+            .userId("12345")
+            .build();
+
+    when(userProfileService.resolveBuyerUserByEmail(any(String.class))).thenReturn(Optional.of(subUser));
+
+
+    // TODO finish test
+  }
   /**
    * Custom matcher to verify the object sent to Jaggaer to update a project.
    *
