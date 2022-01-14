@@ -7,13 +7,9 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;<<<<<<<Upstream,based on origin/feature/capability_assessment
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;=======
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;>>>>>>>0665 c15(RFI)Document generation and upload to Jaggaer rfx(#143)
+import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -26,6 +22,7 @@ public class RetryableTendersDBDelegate {
   private final ProcurementEventRepo procurementEventRepo;
   private final OrganisationMappingRepo organisationMappingRepo;
   private final JourneyRepo journeyRepo;
+  private final DocumentTemplateRepo documentTemplateRepo;
   private final AssessmentRepo assessmentRepo;
   private final AssessmentToolRepo assessmentToolRepo;
   private final AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
@@ -33,7 +30,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentSelectionRepo assessmentSelectionRepo;
   private final RequirementTaxonRepo requirementTaxonRepo;
   private final SubmissionTypeRepo submissionTypeRepo;
-  private final DocumentTemplateRepo documentTemplateRepo;
+  private final AssessmentTaxonRepo assessmentTaxonRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -51,7 +48,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public List<ProcurementProject> findByExternalProjectIdIn(Set<String> externalProjectIds) {
+  public List<ProcurementProject> findByExternalProjectIdIn(final Set<String> externalProjectIds) {
     return procurementProjectRepo.findByExternalProjectIdIn(externalProjectIds);
   }
 
@@ -106,8 +103,16 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-<<<<<<< Upstream, based on origin/feature/capability_assessment
+  public Optional<DocumentTemplate> findByEventType(final String eventType) {
+    return documentTemplateRepo.findByEventType(eventType);
+  }
 
+  @TendersDBRetryable
+  public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
+    return procurementEventRepo.findByProjectId(projectId);
+  }
+
+  @TendersDBRetryable
   public Set<AssessmentEntity> findAssessmentsForUser(final String userId) {
     return assessmentRepo.findByTimestampsCreatedBy(userId);
   }
@@ -129,6 +134,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+  public Optional<AssessmentTool> findAssessmentToolById(final Integer toolId) {
+    return assessmentToolRepo.findById(toolId);
+  }
+
+  @TendersDBRetryable
   public Optional<AssessmentTool> findAssessmentToolByExternalToolId(final String externalToolId) {
     return assessmentToolRepo.findByExternalToolId(externalToolId);
   }
@@ -144,9 +154,9 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
+  public Optional<RequirementTaxon> findRequirementTaxon(final String requirementName,
       final Integer toolId) {
-    return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
+    return requirementTaxonRepo.findByRequirementNameAndTaxonToolId(requirementName, toolId);
   }
 
   @TendersDBRetryable
@@ -160,14 +170,8 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<DocumentTemplate> findByEventType(final String eventType) {
-    return documentTemplateRepo.findByEventType(eventType);
-
-  }
-
-  @TendersDBRetryable
-  public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
-    return procurementEventRepo.findByProjectId(projectId);
+  public Optional<AssessmentTaxon> findAssessmentTaxonById(final Integer assessmentTaxonId) {
+    return assessmentTaxonRepo.findById(assessmentTaxonId);
   }
 
   /**

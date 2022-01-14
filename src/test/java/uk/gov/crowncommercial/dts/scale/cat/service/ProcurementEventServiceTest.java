@@ -112,6 +112,30 @@ class ProcurementEventServiceTest {
   @MockBean
   private CriteriaService criteriaService;
 
+  @MockBean
+  private AssessmentRepo assessmentRepo;
+
+  @MockBean
+  private AssessmentToolRepo assessmentToolRepo;
+
+  @MockBean
+  private AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
+
+  @MockBean
+  private DimensionRepo dimensionRepo;
+
+  @MockBean
+  private AssessmentSelectionRepo assessmentSelectionRepo;
+
+  @MockBean
+  private RequirementTaxonRepo requirementTaxonRepo;
+
+  @MockBean
+  private SubmissionTypeRepo submissionTypeRepo;
+
+  @MockBean
+  private AssessmentTaxonRepo assessmentTaxonRepo;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test

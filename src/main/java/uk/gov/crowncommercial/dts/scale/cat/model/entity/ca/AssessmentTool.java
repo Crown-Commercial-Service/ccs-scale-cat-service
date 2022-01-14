@@ -31,6 +31,13 @@ public class AssessmentTool {
   @Column(name = "assessment_tool_descr")
   private String description;
 
+  // @EqualsAndHashCode.Exclude
+  // @ManyToMany(fetch = FetchType.EAGER)
+  // @JoinTable(name = "assessment_submission_types",
+  // joinColumns = @JoinColumn(name = "assessment_tool_id"),
+  // inverseJoinColumns = @JoinColumn(name = "submission_type_code"))
+  // Set<SubmissionType> submissionTypes;
+
   @Embedded
   private Timestamps timestamps;
 }
