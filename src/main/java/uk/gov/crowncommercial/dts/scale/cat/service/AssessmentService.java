@@ -4,9 +4,9 @@ import java.util.List;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
 
-public class CapabilityService {
+public class AssessmentService {
 
-  public Integer createCapabilityAssessment(final Assessment assessment) {
+  public Integer createAssessment(final Assessment assessment) {
 
     return 0;
   }

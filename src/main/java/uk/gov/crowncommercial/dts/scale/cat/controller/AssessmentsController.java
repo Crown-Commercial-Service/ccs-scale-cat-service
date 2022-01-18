@@ -9,17 +9,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.service.CapabilityService;
+import uk.gov.crowncommercial.dts.scale.cat.service.AssessmentService;
 
 
 @RestController
-@RequestMapping(path = "/capabilities/assessments", produces = APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/assessments", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
 @Validated
-public class CapabilityController extends AbstractRestController {
+public class AssessmentsController extends AbstractRestController {
 
-  private final CapabilityService capabilityService;
+  private final AssessmentService assessmentService;
 
   @PostMapping
   public Integer createAssessment(@RequestBody final Assessment assessment,
@@ -28,7 +28,7 @@ public class CapabilityController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createAssessment invoked on behalf of principal: {}", principal);
 
-    return capabilityService.createCapabilityAssessment(assessment);
+    return assessmentService.createAssessment(assessment);
   }
 
 
@@ -39,7 +39,7 @@ public class CapabilityController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getAssessmentsForUser invoked on behalf of principal: {}", principal);
 
-    return capabilityService.getAssessmentsForUser(principal);
+    return assessmentService.getAssessmentsForUser(principal);
   }
 
 }
