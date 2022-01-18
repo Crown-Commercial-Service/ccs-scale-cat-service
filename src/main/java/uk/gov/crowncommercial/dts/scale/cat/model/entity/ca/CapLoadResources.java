@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -11,18 +10,18 @@ import lombok.experimental.FieldDefaults;
 *
 */
 @Entity
-@Table(name = "cap_submission_types")
+@Table(name = "cap_load_resources")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CapSubmissionType {
+public class CapLoadResources {
 
-  @Id
-  @Column(name = "submission_type_code")
-  private String code;
+  @Column(name = "resource_cluster")
+  private String resourceCluster;
 
-  @Column(name = "submission_type_name")
-  private String name;
+  @Column(name = "resource_family")
+  private String resourceFamily;
+
 }

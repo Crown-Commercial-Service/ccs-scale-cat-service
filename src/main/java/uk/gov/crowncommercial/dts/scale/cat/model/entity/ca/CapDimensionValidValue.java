@@ -1,8 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,12 +19,8 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CapDimensionValidValue {
 
-  @Id
-  @Column(name = "dimension_name")
-  private String name;
-
-  @Column(name = "valid_value_code")
-  private String valueCode;
+  @EmbeddedId
+  CapDimensionValidValueKey key;
 
   @Column(name = "valid_value_name")
   private String valueName;
