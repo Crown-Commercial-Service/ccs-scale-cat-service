@@ -17,6 +17,7 @@ import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
@@ -66,6 +67,16 @@ public class AgreementsService {
             agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, lotId);
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
+  }
+
+  public AgreementDetail getAgreementDetails(final String agreementId) {
+    var agreementDetailsUri = agreementServiceAPIConfig.getGetAgreementDetail().get(KEY_URI_TEMPLATE);
+
+    var agreementDetail =
+        webclientWrapper.getOptionalResource(AgreementDetail.class, agreementsServiceWebClient,
+            agreementServiceAPIConfig.getTimeoutDuration(), agreementDetailsUri, agreementId);
+
+    return agreementDetail.orElseThrow();
   }
 
 }
