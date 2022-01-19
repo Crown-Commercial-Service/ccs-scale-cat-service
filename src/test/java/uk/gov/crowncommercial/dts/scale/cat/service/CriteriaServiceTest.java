@@ -22,7 +22,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -72,7 +71,7 @@ class CriteriaServiceTest {
     option.setValue("Wales");
     option.setSelected(true);
     QuestionNonOCDS questionNonOCDS = new QuestionNonOCDS();
-    questionNonOCDS.setQuestionType(QuestionTypeEnum.MULTISELECT);
+    questionNonOCDS.setQuestionType(QuestionType.MULTISELECT);
     questionNonOCDS.setMultiAnswer(true);
     questionNonOCDS.setOptions(Arrays.asList(option));
     Question question = new Question();

@@ -15,7 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Assessment {
+public class AssessmentEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

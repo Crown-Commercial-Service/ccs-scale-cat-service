@@ -23,7 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -236,7 +235,7 @@ public class CriteriaService {
     // TODO: Move to object mapper or similar
     // @formatter:off
     var questionNonOCDS = new QuestionNonOCDS()
-        .questionType(QuestionTypeEnum.fromValue(r.getNonOCDS().getQuestionType()))
+        .questionType(QuestionType.fromValue(r.getNonOCDS().getQuestionType()))
         .mandatory(r.getNonOCDS().getMandatory())
         .multiAnswer(r.getNonOCDS().getMultiAnswer())
         .length(r.getNonOCDS().getLength())

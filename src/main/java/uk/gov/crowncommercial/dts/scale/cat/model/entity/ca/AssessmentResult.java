@@ -26,7 +26,7 @@ public class AssessmentResult {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_id")
-  Assessment assessment;
+  AssessmentEntity assessment;
 
   @Column(name = "supplier_organisation_id")
   private Integer supplierOrganisationId;

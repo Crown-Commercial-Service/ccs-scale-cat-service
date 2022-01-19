@@ -25,7 +25,7 @@ public class AssessmentSelection {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_id")
-  Assessment assessment;
+  AssessmentEntity assessment;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "requirement_taxon_id")
