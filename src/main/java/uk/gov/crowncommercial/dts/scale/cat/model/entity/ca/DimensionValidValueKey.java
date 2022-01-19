@@ -1,8 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.io.Serializable;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
-import javax.persistence.Id;
 import lombok.Data;
 
 /**
@@ -10,9 +10,13 @@ import lombok.Data;
  */
 @Data
 @Embeddable
-public class CapDimensionValidValueKey {
+public class DimensionValidValueKey implements Serializable {
 
-  @Id
+  /**
+   *
+   */
+  private static final long serialVersionUID = 1L;
+
   @Column(name = "dimension_name")
   private String name;
 

@@ -65,6 +65,8 @@ public class ProcurementEventService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerService jaggaerService;
 
+  private final S3StorageService storageService;
+
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -187,8 +189,7 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var buyerQuestions =
-        new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
         buyerQuestions);
@@ -379,6 +380,12 @@ public class ProcurementEventService {
    */
   public Collection<DocumentSummary> getDocumentSummaries(final Integer procId,
       final String eventId) {
+
+    // TODO - TEST
+
+    storageService.test();
+
+    // TODO - END TEST
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());

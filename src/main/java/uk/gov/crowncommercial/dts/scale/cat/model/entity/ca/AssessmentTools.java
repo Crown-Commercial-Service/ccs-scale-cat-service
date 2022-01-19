@@ -3,27 +3,30 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
 /**
 *
 */
 @Entity
-@Table(name = "cap_products")
+@Table(name = "assessment_tools")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CapProduct {
+public class AssessmentTools {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "product_id")
+  @Column(name = "assessment_tool_id")
   Integer id;
 
-  @Column(name = "product_name")
+  @Column(name = "assessment_tool_name")
   private String name;
 
-  @Column(name = "product_descr")
+  @Column(name = "assessment_tool_descr")
   private String description;
+
+  @Embedded
+  private Timestamps timestamps;
 }

@@ -1,26 +1,24 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
-import javax.persistence.Column;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
 /**
 *
 */
 @Entity
-@Table(name = "cap_dimension_valid_values")
+@Table(name = "dimension_valid_values")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CapDimensionValidValue {
+public class DimensionValidValue {
 
   @EmbeddedId
-  CapDimensionValidValueKey key;
+  DimensionValidValueKey key;
 
   @Column(name = "valid_value_name")
   private String valueName;
@@ -28,4 +26,6 @@ public class CapDimensionValidValue {
   @Column(name = "valid_value_descr")
   private String valueDescription;
 
+  @Embedded
+  private Timestamps timestamps;
 }

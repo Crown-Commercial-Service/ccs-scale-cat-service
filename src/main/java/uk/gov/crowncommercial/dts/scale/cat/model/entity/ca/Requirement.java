@@ -3,28 +3,31 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
 /**
 *
 */
 @Entity
-@Table(name = "cap_taxon_dimensions")
+@Table(name = "requirements")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CapTaxonDimension {
+public class Requirement {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "taxon_dimension_id")
+  @Column(name = "requirement_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "taxon_id")
-  CapTaxon taxon;
-
-  @Column(name = "dimension_name")
+  @Column(name = "requirement_name")
   private String name;
+
+  @Column(name = "requirement_descr")
+  private String description;
+
+  @Embedded
+  private Timestamps timestamps;
 }

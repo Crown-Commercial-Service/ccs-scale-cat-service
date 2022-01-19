@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,6 +19,8 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CapLoadServiceCapability {
 
+  // TODO - needs ID - this is temp
+  @Id
   @Column(name = "service_capability_hdr")
   private String serviceCapabilityHdr;
 
