@@ -52,7 +52,7 @@ public class AgreementsService {
             .filter(WebclientWrapper::is5xxServerError))
         .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new AgreementsServiceApplicationException(
-                "Unexpected error retrieving RFI template from AS"));
+                String.format("Unexpected error retrieving {} template from AS",eventType.name())));
 
     return dataTemplates.stream().map(tcs -> DataTemplate.builder().criteria(tcs).build())
         .collect(Collectors.toList());
