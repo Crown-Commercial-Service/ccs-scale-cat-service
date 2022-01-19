@@ -46,7 +46,7 @@ public class ConclaveService {
 
     try {
       return webclientWrapper.getOptionalResource(UserProfileResponseInfo.class, conclaveWebClient,
-          conclaveAPIConfig.getTimeoutDuration(), templateURI, email);
+          conclaveAPIConfig.getTimeoutDuration(), templateURI, email.toLowerCase());
     } catch (Exception e) {
       throw new ConclaveApplicationException(
           "Unexpected error retrieving User profile from Conclave");
@@ -64,8 +64,10 @@ public class ConclaveService {
     final var templateURI = conclaveAPIConfig.getGetUserContacts().get(KEY_URI_TEMPLATE);
 
     try {
-      return webclientWrapper.getOptionalResource(UserContactInfoList.class, conclaveWebClient,
-          conclaveAPIConfig.getTimeoutDuration(), templateURI, userId).orElseThrow();
+      return webclientWrapper
+          .getOptionalResource(UserContactInfoList.class, conclaveWebClient,
+              conclaveAPIConfig.getTimeoutDuration(), templateURI, userId.toLowerCase())
+          .orElseThrow();
     } catch (Exception e) {
       throw new ConclaveApplicationException(
           "Unexpected error retrieving User contacts from Conclave");
