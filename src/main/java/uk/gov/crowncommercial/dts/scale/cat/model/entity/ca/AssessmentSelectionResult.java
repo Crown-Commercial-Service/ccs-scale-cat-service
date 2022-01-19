@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.math.BigDecimal;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -26,11 +27,11 @@ public class AssessmentSelectionResult {
   @JoinColumn(name = "assessment_selection_id")
   AssessmentSelection assessmentSelection;
 
-  @Column(name = "assessment_result_value")
-  private Double assessmentResultValue;
+  @Column(name = "assessment_selection_result_value")
+  private BigDecimal value;
 
   @Column(name = "assessment_selection_result_reference")
-  private Integer assessmentSelectionResultReference;
+  private String reference;
 
   @Embedded
   private Timestamps timestamps;

@@ -23,7 +23,7 @@ public class LotRequirementTaxon {
   Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "product_taxon_id")
+  @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon productTaxon;
 
   // TODO ??...

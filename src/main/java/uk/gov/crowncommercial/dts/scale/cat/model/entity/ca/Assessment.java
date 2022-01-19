@@ -25,7 +25,8 @@ public class Assessment {
   @Column(name = "buyer_organisation_id")
   private Integer buyerOrganisationId;
 
-  @Column(name = "assessment_name")
+  // TODO - typo
+  @Column(name = "assesment_name")
   private String name;
 
   @Column(name = "assessment_descr")

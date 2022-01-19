@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.math.BigDecimal;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -25,19 +26,19 @@ public class Dimension {
   private String description;
 
   @Column(name = "min_weighting_pct")
-  private Double minWeightingPercentage;
+  private BigDecimal minWeightingPercentage;
 
   @Column(name = "max_weighting_pct")
-  private Double maxWeightingPercentage;
+  private BigDecimal maxWeightingPercentage;
 
   @Column(name = "allow_multiple_selection_ind")
   private Boolean allowMultipleSelection;
 
   @Column(name = "min_allowed_value")
-  private Double minAllowedValue;
+  private BigDecimal minAllowedValue;
 
   @Column(name = "max_allowed_value")
-  private Double maxAllowedValue;
+  private BigDecimal maxAllowedValue;
 
   @Embedded
   private Timestamps timestamps;

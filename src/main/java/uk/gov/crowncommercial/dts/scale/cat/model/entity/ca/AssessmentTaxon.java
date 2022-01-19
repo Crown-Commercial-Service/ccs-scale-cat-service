@@ -27,7 +27,7 @@ public class AssessmentTaxon {
   AssessmentTool tool;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "parent_tool_id")
+  @JoinColumn(name = "parent_assessment_taxon_id")
   AssessmentTool parentTool;
 
   @Column(name = "assessment_taxon_name")

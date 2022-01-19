@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.math.BigDecimal;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -34,7 +35,7 @@ public class AssessmentSelection {
   private String dimensionName;
 
   @Column(name = "weighting_pct")
-  private Double weightingPercentage;
+  private BigDecimal weightingPercentage;
 
   @Embedded
   private Timestamps timestamps;
