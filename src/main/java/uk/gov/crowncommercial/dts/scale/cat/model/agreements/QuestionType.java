@@ -1,10 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
 
 /**
- * Mirror type of {@link QuestionTypeEnum}
+ * Mirror type of {@link QuestionType}
  */
 public enum QuestionType {
   @JsonProperty("Value")
@@ -50,5 +49,14 @@ public enum QuestionType {
   DATE,
 
   @JsonProperty("DateTime")
-  DATETIME;
+  DATETIME,
+
+  @JsonProperty("Integer")
+  INTEGER,
+
+  @JsonProperty("ReadMe")
+  README,
+
+  @JsonProperty("Percentage")
+  PERCENTAGE;
 }
