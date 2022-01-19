@@ -96,6 +96,11 @@ public class RetryableTendersDBDelegate {
     return assessmentRepo.findByCreatedBy(userId);
   }
 
+  @TendersDBRetryable
+  public AssessmentEntity save(final AssessmentEntity assessment) {
+    return assessmentRepo.saveAndFlush(assessment);
+  }
+
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.
