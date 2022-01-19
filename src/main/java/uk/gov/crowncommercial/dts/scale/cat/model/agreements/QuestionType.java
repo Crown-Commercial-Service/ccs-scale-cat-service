@@ -49,5 +49,14 @@ public enum QuestionType {
   DATE,
 
   @JsonProperty("DateTime")
-  DATETIME;
+  DATETIME,
+
+  @JsonProperty("Integer")
+  INTEGER,
+
+  @JsonProperty("ReadMe")
+  README,
+
+  @JsonProperty("Percentage")
+  PERCENTAGE;
 }
