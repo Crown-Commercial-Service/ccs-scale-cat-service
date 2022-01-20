@@ -103,6 +103,9 @@ class ProcurementEventServiceTest {
   private ValidationService validationService;
 
   @MockBean
+  private DocumentTemplateRepo documentTemplateRepo;
+
+  @MockBean
   private JourneyRepo journeyRepo;
 
   @MockBean

@@ -16,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
@@ -23,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -35,6 +37,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
+  private static final String END_DATE = "##END_DATE##";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -56,11 +59,11 @@ public class CriteriaService {
               .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
                   new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
           .collect(Collectors.toSet());
-    } else {
-      return dataTemplate.getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
-          .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
-          .collect(Collectors.toSet());
     }
+    return dataTemplate
+        .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
+            .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
+        .collect(Collectors.toSet());
   }
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
@@ -76,7 +79,9 @@ public class CriteriaService {
           .mandatory(rg.getNonOCDS().getMandatory());
       // OCDS
       var requirements =
-          populateRequirements ? convertRequirementsToQuestions(rg.getOcds().getRequirements())
+          populateRequirements
+              ? convertRequirementsToQuestions(rg.getOcds().getRequirements(),
+                  event.getProject().getCaNumber())
               : null;
       var questionGroupOCDS = new QuestionGroupOCDS().id(rg.getOcds().getId())
           .description(rg.getOcds().getDescription()).requirements(requirements);
@@ -91,8 +96,8 @@ public class CriteriaService {
     var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
-
-    return group.getOcds().getRequirements().stream().map(this::convertRequirementToQuestion)
+    return group.getOcds().getRequirements().stream().map(
+        (final Requirement r) -> convertRequirementToQuestion(r, event.getProject().getCaNumber()))
         .collect(Collectors.toSet());
 
   }
@@ -125,7 +130,6 @@ public class CriteriaService {
                 .build())
             .collect(Collectors.toList()));
 
-
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
       var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
@@ -151,7 +155,7 @@ public class CriteriaService {
     event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
 
-    return convertRequirementToQuestion(requirement);
+    return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
@@ -185,6 +189,10 @@ public class CriteriaService {
         .filter(rg -> Objects.equals(rg.getOcds().getId(), groupId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Criterion group '" + groupId + "' not found"));
 
+  }
+
+  private AgreementDetail getAgreementDetails(final String agreementNumber) {
+    return agreementsService.getAgreementDetails(agreementNumber);
   }
 
   /**
@@ -225,12 +233,15 @@ public class CriteriaService {
         + requirement.getNonOCDS().getQuestionType() + "' is not currently supported");
   }
 
-  public List<Question> convertRequirementsToQuestions(final Set<Requirement> requirements) {
-    return requirements.stream().map(this::convertRequirementToQuestion)
+  public List<Question> convertRequirementsToQuestions(final Set<Requirement> requirements,
+      final String agreementNumber) {
+    return requirements.stream()
+        .map((final Requirement requirement) -> convertRequirementToQuestion(requirement,
+            agreementNumber))
         .collect(Collectors.toList());
   }
 
-  public Question convertRequirementToQuestion(final Requirement r) {
+  public Question convertRequirementToQuestion(final Requirement r, final String agreementNumber) {
 
     // TODO: Move to object mapper or similar
     // @formatter:off

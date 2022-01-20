@@ -17,9 +17,7 @@ import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
 /**
@@ -66,6 +64,29 @@ public class AgreementsService {
             agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, lotId);
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
+  }
+
+  public AgreementDetail getAgreementDetails(final String agreementId) {
+    var agreementDetailsUri =
+        agreementServiceAPIConfig.getGetAgreementDetail().get(KEY_URI_TEMPLATE);
+
+    var agreementDetail =
+        webclientWrapper.getOptionalResource(AgreementDetail.class, agreementsServiceWebClient,
+            agreementServiceAPIConfig.getTimeoutDuration(), agreementDetailsUri, agreementId);
+
+    return agreementDetail.orElseThrow();
+  }
+
+  public LotDetail getLotDetails(final String agreementId, final String lotId) {
+    var lotDetailUri =
+        agreementServiceAPIConfig.getGetLotDetailsForAgreement().get(KEY_URI_TEMPLATE);
+
+    var lotDetail =
+        webclientWrapper.getOptionalResource(LotDetail.class, agreementsServiceWebClient,
+            agreementServiceAPIConfig.getTimeoutDuration(), lotDetailUri, agreementId, lotId);
+
+    return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
+        "Lot with ID: [" + lotId + "] for CA: [" + agreementId + "] not found in AS"));
   }
 
 }
