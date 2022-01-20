@@ -16,7 +16,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
@@ -37,7 +36,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
-  private static final String END_DATE = "##END_DATE##";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -189,10 +187,6 @@ public class CriteriaService {
         .filter(rg -> Objects.equals(rg.getOcds().getId(), groupId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Criterion group '" + groupId + "' not found"));
 
-  }
-
-  private AgreementDetail getAgreementDetails(final String agreementNumber) {
-    return agreementsService.getAgreementDetails(agreementNumber);
   }
 
   /**
