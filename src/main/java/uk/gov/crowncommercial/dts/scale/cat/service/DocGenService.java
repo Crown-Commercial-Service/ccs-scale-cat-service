@@ -32,10 +32,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.TargetType;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
@@ -64,17 +61,21 @@ public class DocGenService {
   @Value("classpath:rfi_proforma_template.odt")
   private Resource rfiODT;
 
+  @Value("classpath:eoi_proforma_template.odt")
+  private Resource eoiODT;
+
   @SneakyThrows
   public void generateProformaDocument(final Integer projectId, final String eventId) {
 
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var eventType = procurementEvent.getEventType();
+    var template = "RFI".equalsIgnoreCase(eventType) ? rfiODT : eoiODT;
 
     var documentTemplate = retryableTendersDBDelegate.findByEventType(eventType)
         .orElseThrow(() -> new TendersDBDataException(
             "Document template for event type [" + eventType + "] not found in DB"));
 
-    final var textODT = TextDocument.loadDocument(rfiODT.getInputStream());
+    final var textODT = TextDocument.loadDocument(template.getInputStream());
     final var requestCache = new ConcurrentHashMap<String, Object>();
 
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
@@ -176,25 +177,29 @@ public class DocGenService {
     log.trace("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
         + "] to replace with: [" + dataReplacement + "]");
 
-    switch (documentTemplateSource.getTargetType()) {
-      case SIMPLE:
-        replaceText(documentTemplateSource, dataReplacement, textODT);
-        break;
+    try {
+      switch (documentTemplateSource.getTargetType()) {
+        case SIMPLE:
+          replaceText(documentTemplateSource, dataReplacement, textODT);
+          break;
 
-      case DATETIME:
-        var formattedDatetime = DATE_FMT.format(OffsetDateTime.parse((String) dataReplacement));
-        replaceText(documentTemplateSource, formattedDatetime, textODT);
-        break;
+        case DATETIME:
+          var formattedDatetime = DATE_FMT.format(OffsetDateTime.parse((String) dataReplacement));
+          replaceText(documentTemplateSource, formattedDatetime, textODT);
+          break;
 
-      case TABLE:
-        // TODO: How do we handle this?
-        break;
+        case TABLE:
+          populateTableColumn(documentTemplateSource, dataReplacement, textODT);
+          break;
 
-      case LIST:
-        replaceList(documentTemplateSource, dataReplacement, textODT);
-        break;
-      default:
-        log.warn("Unrecognised target type - assume simple text");
+        case LIST:
+          replaceList(documentTemplateSource, dataReplacement, textODT);
+          break;
+        default:
+          log.warn("Unrecognised target type - assume simple text");
+      }
+    } catch (Exception ex) {
+      log.error("Error in doc gen placeholder replacement", new DocGenValueException(ex));
     }
 
   }
@@ -229,6 +234,45 @@ public class DocGenService {
         list.removeItem(0);
         ((Collection<Option>) dataReplacement).stream().forEach(o -> list.addItem(o.getValue()));
       }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  void populateTableColumn(final DocumentTemplateSource documentTemplateSource,
+      final Object dataReplacement, final TextDocument textODT) {
+    var table = textODT.getTableByName(documentTemplateSource.getTableName());
+    if (table != null) {
+      var options = (List<Option>) dataReplacement;
+      // Append rows if necessary (assume header row present)
+      if (table.getRowCount() - 1 < options.size()) {
+        table.appendRows(options.size() - table.getRowCount());
+      }
+
+      var columnIndex = -1;
+      for (var r = 1; r <= options.size(); r++) {
+        var row = table.getRowByIndex(r);
+
+        if (columnIndex == -1) {
+          // Find the right column..
+          for (var c = 0; c < row.getCellCount(); c++) {
+            var checkCell = table.getCellByPosition(c, r);
+            if (StringUtils.hasText(checkCell.getDisplayText())
+                && checkCell.getDisplayText().matches(documentTemplateSource.getPlaceholder())) {
+              columnIndex = c;
+              break;
+            }
+          }
+        }
+        if (columnIndex > -1) {
+          var cell = table.getCellByPosition(columnIndex, r);
+          var option = options.get(r - 1);
+          cell.setDisplayText(documentTemplateSource.getOptionsProperty() == OptionsProperty.VALUE
+              ? option.getValue()
+              : option.getText());
+        }
+      }
+    } else {
+      log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
     }
   }
 

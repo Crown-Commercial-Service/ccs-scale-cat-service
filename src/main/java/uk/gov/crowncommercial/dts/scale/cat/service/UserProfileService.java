@@ -19,9 +19,9 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 
@@ -105,7 +105,6 @@ public class UserProfileService {
           throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(),
               getCompanyDataResponse.getReturnMessage());
         }
-        log.trace("Retrieved company profile record: {}", getCompanyDataResponse);
 
         if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
           throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
@@ -125,8 +124,7 @@ public class UserProfileService {
   /**
    * Attempt to retrieve supplier company data, first by matching sub-users by email, falling back
    * to matching the super-user (company) by email. The matching user may be represented by either
-   * the company ({@link CompanyInfo} or a single {@link SubUsers}. The client must determine
-   * which.
+   * the company ({@link CompanyInfo} or a single {@link SubUsers}. The client must determine which.
    *
    * @param email
    * @return company / sub-user pair (sub-user may be empty)

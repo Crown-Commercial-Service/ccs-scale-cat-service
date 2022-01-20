@@ -25,3 +25,7 @@ variable "memory" {
 variable "dev_mode" {
   default = false
 }
+
+variable "log_level" {
+  default = "DEBUG"
+}
