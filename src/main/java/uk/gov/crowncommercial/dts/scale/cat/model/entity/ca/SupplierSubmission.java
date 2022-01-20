@@ -23,13 +23,11 @@ public class SupplierSubmission {
   Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  // TODO - should this be lot_requirement_taxon_id
-  @JoinColumn(name = "lot_product_taxon_id")
+  @JoinColumn(name = "lot_requirement_taxon_id")
   LotRequirementTaxon lotRequirementTaxon;
 
-  // TODO - typo
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "assesment_submission_type_id")
+  @JoinColumn(name = "assessment_submission_type_id")
   AssessmentSubmissionType assessmentSubmissionType;
 
   @Column(name = "submission_reference")

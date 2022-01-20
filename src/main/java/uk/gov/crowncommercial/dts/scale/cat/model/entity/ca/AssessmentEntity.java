@@ -20,7 +20,7 @@ public class AssessmentEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "assessment_id")
-  Integer id;
+  Long id;
 
   @Column(name = "buyer_organisation_id")
   private Integer buyerOrganisationId;

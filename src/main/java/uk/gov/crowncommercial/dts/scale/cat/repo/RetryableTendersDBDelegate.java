@@ -12,6 +12,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -25,6 +26,7 @@ public class RetryableTendersDBDelegate {
   private final OrganisationMappingRepo organisationMappingRepo;
   private final JourneyRepo journeyRepo;
   private final AssessmentRepo assessmentRepo;
+  private final AssessmentToolRepo assessmentToolRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -99,6 +101,11 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public AssessmentEntity save(final AssessmentEntity assessment) {
     return assessmentRepo.saveAndFlush(assessment);
+  }
+
+  @TendersDBRetryable
+  public Optional<AssessmentTool> findAssessmentToolById(final Integer id) {
+    return assessmentToolRepo.findById(id);
   }
 
   /**

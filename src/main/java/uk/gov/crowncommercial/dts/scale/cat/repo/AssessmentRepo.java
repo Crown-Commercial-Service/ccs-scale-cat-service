@@ -6,6 +6,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 
 public interface AssessmentRepo extends JpaRepository<AssessmentEntity, Integer> {
 
-  Set<AssessmentEntity> findByCreatedBy(final String userId);
+  Set<AssessmentEntity> findByTimestampsCreatedBy(final String userId);
 
 }

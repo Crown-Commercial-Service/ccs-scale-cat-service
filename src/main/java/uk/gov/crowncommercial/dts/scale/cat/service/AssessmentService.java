@@ -10,6 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessmen
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -20,17 +21,19 @@ public class AssessmentService {
 
   public Integer createAssessment(final Assessment assessment, final String principal) {
 
+    AssessmentTool tool =
+        retryableTendersDBDelegate.findAssessmentToolById(assessment.getToolId()).get();
     AssessmentEntity entity = new AssessmentEntity();
 
     // TODO - WIP
-    // entity.setId(1);
-    entity.setName("Name");
+    entity.setTool(tool);
+    entity.setName(assessment.getRequirements().get(0).getName()); // ??
     entity.setDescription("Description");
-    entity.setStatus("Status");
+    entity.setStatus("Status"); // ?
     entity.setBuyerOrganisationId(123);
     entity.setTimestamps(createTimestamps(principal));
 
-    return retryableTendersDBDelegate.save(entity).getId();
+    return retryableTendersDBDelegate.save(entity).getId().intValue();
   }
 
   public List<AssessmentSummary> getAssessmentsForUser(final String principal) {
@@ -40,7 +43,7 @@ public class AssessmentService {
 
     return assessments.stream().map(a -> {
       AssessmentSummary summary = new AssessmentSummary();
-      summary.setAssessmentId(a.getId());
+      summary.setAssessmentId(a.getId().intValue());
       summary.setToolId(a.getTool().getId());
       return summary;
     }).collect(Collectors.toList());
