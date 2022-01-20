@@ -17,11 +17,11 @@
 
 	<properties>
 		<java.version>11</java.version>
-		<swagger-parser.version>2.0.28</swagger-parser.version>
+		<swagger-parser.version>2.0.29</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
 		<hibernate-types.version>2.14.0</hibernate-types.version>
-		<modelmapper.version>2.4.4</modelmapper.version>
+		<modelmapper.version>2.4.5</modelmapper.version>
 		<simple-odf.version>0.9.0</simple-odf.version>
 		<jena-core.version>4.2.0</jena-core.version>
 	</properties>
