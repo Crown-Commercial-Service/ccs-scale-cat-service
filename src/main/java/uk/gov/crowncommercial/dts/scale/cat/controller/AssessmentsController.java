@@ -28,7 +28,7 @@ public class AssessmentsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createAssessment invoked on behalf of principal: {}", principal);
 
-    return assessmentService.createAssessment(assessment);
+    return assessmentService.createAssessment(assessment, principal);
   }
 
 

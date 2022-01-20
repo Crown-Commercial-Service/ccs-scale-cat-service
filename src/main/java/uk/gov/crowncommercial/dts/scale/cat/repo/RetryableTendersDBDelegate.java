@@ -93,7 +93,7 @@ public class RetryableTendersDBDelegate {
 
   @TendersDBRetryable
   public Set<AssessmentEntity> findAssessmentsForUser(final String userId) {
-    return assessmentRepo.findByCreatedBy(userId);
+    return assessmentRepo.findByTimestampsCreatedBy(userId);
   }
 
   @TendersDBRetryable

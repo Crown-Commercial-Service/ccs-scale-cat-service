@@ -41,6 +41,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
         .antMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/tenders/users/**").hasAnyAuthority(LD_ROLES)
         .antMatchers("/tenders/orgs/**").hasAnyAuthority(LD_ROLES)
         .antMatchers("/error/**").hasAnyAuthority(

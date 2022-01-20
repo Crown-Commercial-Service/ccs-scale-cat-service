@@ -23,6 +23,7 @@ public class AssessmentService {
     AssessmentEntity entity = new AssessmentEntity();
 
     // TODO - WIP
+    // entity.setId(1);
     entity.setName("Name");
     entity.setDescription("Description");
     entity.setStatus("Status");
