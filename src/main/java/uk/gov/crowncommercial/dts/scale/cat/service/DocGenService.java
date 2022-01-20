@@ -13,9 +13,6 @@ import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
-import org.odftoolkit.simple.style.Border;
-import org.odftoolkit.simple.style.StyleTypeDefinitions.CellBordersType;
-import org.odftoolkit.simple.table.Table;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
@@ -33,7 +30,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
@@ -55,7 +51,7 @@ public class DocGenService {
   static final String PLACEHOLDER_ERROR = "«ERROR»";
   static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
   static final String MEDIA_TYPE_OPEN_DOC_TEXT = "application/vnd.oasis.opendocument.text";
-  static final String PROFORMA_FILENAME_FMT = "%s_%s.odt";
+  static final String PROFORMA_FILENAME_FMT = "%s-%s-%s.odt";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
   private final ApplicationContext applicationContext;
@@ -83,25 +79,15 @@ public class DocGenService {
 
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
 
-      var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
-      Object dataReplacement =
+      var dataReplacement =
           getDataReplacement(procurementEvent, documentTemplateSource, requestCache);
-
-      log.debug("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
-          + "] to replace with: [" + dataReplacement + "]");
-
-      while (textNavigation.hasNext()) {
-        var item = (TextSelection) textNavigation.nextSelection();
-        log.debug("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
-
-        replacePlaceholder(documentTemplateSource, item, dataReplacement, textODT);
-      }
+      replacePlaceholder(documentTemplateSource, dataReplacement, textODT);
     }
 
     var outputStream = new ByteArrayOutputStream();
     textODT.save(outputStream);
-    var fileName = String.format(PROFORMA_FILENAME_FMT, procurementEvent.getEventType(),
-        procurementEvent.getEventID());
+    var fileName = String.format(PROFORMA_FILENAME_FMT, procurementEvent.getEventID(),
+        procurementEvent.getEventType(), procurementEvent.getProject().getProjectName());
 
     ByteArrayMultipartFile multipartFile =
         new ByteArrayMultipartFile(outputStream.toByteArray(), fileName, MEDIA_TYPE_OPEN_DOC_TEXT);
@@ -184,17 +170,20 @@ public class DocGenService {
     return (String) ReflectionUtils.invokeMethod(getter, event);
   }
 
-  @SuppressWarnings("unchecked")
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
-      final TextSelection item, final Object dataReplacement, final TextDocument textODT)
-      throws InvalidNavigationException {
+      final Object dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+
+    log.trace("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
+        + "] to replace with: [" + dataReplacement + "]");
+
     switch (documentTemplateSource.getTargetType()) {
       case SIMPLE:
-        item.replaceWith((String) dataReplacement);
+        replaceText(documentTemplateSource, dataReplacement, textODT);
         break;
 
       case DATETIME:
-        item.replaceWith(DATE_FMT.format(OffsetDateTime.parse((String) dataReplacement)));
+        var formattedDatetime = DATE_FMT.format(OffsetDateTime.parse((String) dataReplacement));
+        replaceText(documentTemplateSource, formattedDatetime, textODT);
         break;
 
       case TABLE:
@@ -202,23 +191,44 @@ public class DocGenService {
         break;
 
       case LIST:
-        /*
-         * Table seems to be the only viable container for a list. Probably a better way to do this
-         * but docs not revealing.
-         */
-        var table = Table.newTable(textODT, 1, 1);
-        var cell = table.getCellByPosition(0, 0);
-        cell.setBorders(CellBordersType.NONE, Border.NONE);
-        var list = cell.addList();
-        for (Requirement.Option option : (Collection<Option>) dataReplacement) {
-          list.addItem(option.getValue());
-        }
-        item.replaceWith(table);
-        // Removes the 'original' table from the end of the document..
-        table.remove();
+        replaceList(documentTemplateSource, dataReplacement, textODT);
         break;
       default:
         log.warn("Unrecognised target type - assume simple text");
+    }
+
+  }
+
+  void replaceText(final DocumentTemplateSource documentTemplateSource,
+      final Object dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+
+    var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+    while (textNavigation.hasNext()) {
+      var item = (TextSelection) textNavigation.nextSelection();
+      log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
+      item.replaceWith((String) dataReplacement);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  void replaceList(final DocumentTemplateSource documentTemplateSource,
+      final Object dataReplacement, final TextDocument textODT) {
+
+    var listIterator = textODT.getListIterator();
+    while (listIterator.hasNext()) {
+      var list = listIterator.next();
+      var foundList = false;
+      for (var li : list.getItems()) {
+        if (StringUtils.hasText(li.getTextContent())
+            && li.getTextContent().matches(documentTemplateSource.getPlaceholder())) {
+          foundList = true;
+          break;
+        }
+      }
+      if (foundList) {
+        list.removeItem(0);
+        ((Collection<Option>) dataReplacement).stream().forEach(o -> list.addItem(o.getValue()));
+      }
     }
   }
 
