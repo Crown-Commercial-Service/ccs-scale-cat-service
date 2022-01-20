@@ -7,12 +7,13 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
+import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;<<<<<<<Upstream,based on origin/feature/capability_assessment
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;=======
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;>>>>>>>0665 c15(RFI)Document generation and upload to Jaggaer rfx(#143)
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -32,6 +33,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentSelectionRepo assessmentSelectionRepo;
   private final RequirementTaxonRepo requirementTaxonRepo;
   private final SubmissionTypeRepo submissionTypeRepo;
+  private final DocumentTemplateRepo documentTemplateRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -99,6 +101,8 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+<<<<<<< Upstream, based on origin/feature/capability_assessment
+
   public Set<AssessmentEntity> findAssessmentsForUser(final String userId) {
     return assessmentRepo.findByTimestampsCreatedBy(userId);
   }
@@ -148,6 +152,12 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public List<SubmissionType> findAllSubmissionTypes() {
     return submissionTypeRepo.findAll();
+  }
+
+  @TendersDBRetryable
+  public Optional<DocumentTemplate> findByEventType(final String eventType) {
+    return documentTemplateRepo.findByEventType(eventType);
+
   }
 
   /**

@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
 /**
@@ -27,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
+  private final DocGenService docGenService;
 
   @PostMapping
   public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId,
@@ -152,8 +154,10 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
+    docGenService.generateProformaDocument(procId, eventId);
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
 
     return new StringValueResponse("OK");
   }
+
 }
