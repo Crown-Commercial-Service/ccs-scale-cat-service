@@ -298,6 +298,7 @@ class EventsControllerTest {
             .content(objectMapper.writeValueAsString(publishDates)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
 
+    verify(docGenService).generateProformaDocument(PROC_PROJECT_ID, EVENT_ID);
     verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
         PRINCIPAL);
   }
