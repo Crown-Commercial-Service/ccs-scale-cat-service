@@ -6,10 +6,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
@@ -516,6 +513,29 @@ public class ProcurementEventService {
       throw new IllegalArgumentException(
           "You cannot publish an event unless it is in a 'planned' state");
     }
+  }
+
+  /**
+   * Get Summaries of all Events on a Project.
+   *
+   * @param projectId
+   * @return
+   */
+  public List<EventSummary> getEventsForProject(final Integer projectId) {
+
+    Set<ProcurementEvent> events =
+        retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+
+    return events.stream().map(event -> {
+
+      var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+
+      return tendersAPIModelUtils.buildEventSummary(
+          event.getEventID(), event.getEventName(), event.getExternalEventId(),
+          ViewEventType.fromValue(event.getEventType()), jaggaerAPIConfig
+              .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
+          EVENT_STAGE);
+    }).collect(Collectors.toList());
   }
 
 }
