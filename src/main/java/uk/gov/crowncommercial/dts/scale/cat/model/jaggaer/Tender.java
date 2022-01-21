@@ -15,5 +15,6 @@ public class Tender {
   BuyerCompany buyerCompany;
   ProjectOwner projectOwner;
   String sourceTemplateReferenceCode;
+  String tenderStatusLabel;
 
 }

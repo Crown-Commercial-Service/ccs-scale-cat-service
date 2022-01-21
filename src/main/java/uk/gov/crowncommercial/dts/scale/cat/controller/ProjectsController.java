@@ -24,9 +24,9 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
-  @GetMapping("/")
+  @GetMapping
   public Collection<ProjectPackageSummary> getProjects(final JwtAuthenticationToken authentication){
-    String principal = getPrincipalFromJwt(authentication);
+    var principal = getPrincipalFromJwt(authentication);
     log.info("getProjects invoked on behalf of principal: {}", principal);
     return procurementProjectService.getProjects(principal);
   }

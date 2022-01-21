@@ -50,6 +50,7 @@ public class ProcurementProjectService {
   private final WebClient agreementsServiceWebClient;
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
+  private final String PROJECT_STATE = "project.state.";
 
   /**
    * SCC-440/441
@@ -340,11 +341,12 @@ public class ProcurementProjectService {
     ProjectListResponse projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
     if (!CollectionUtils.isEmpty(projectListResponse.getProjectList().getProject())) {
       return projectListResponse.getProjectList().getProject().stream()
-              .map(this::convertProjectToProjectPackageSummary)
-              .filter(projectPackageSummary -> projectPackageSummary != null) // TODO any better?
+              .map((Project project) -> convertProjectToProjectPackageSummary(project,jaggaerUserId))
+              .filter(Optional::isPresent)
+              .map(Optional::get)
               .collect(Collectors.toList());
     }
-    return Collections.EMPTY_LIST;
+    return Collections.emptyList();
   }
 
   /**
@@ -352,7 +354,7 @@ public class ProcurementProjectService {
    * @param project the project
    * @return ProjectPackageSummary
    */
-  private ProjectPackageSummary convertProjectToProjectPackageSummary(Project project) {
+  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(Project project, String jaggaerUserId) {
 	  // Get Project from database
 	  var dbProject = retryableTendersDBDelegate
 			  .findProcurementExternalProjectById(project.getTender().getTenderCode());
@@ -364,20 +366,22 @@ public class ProcurementProjectService {
 		  //projectPackageSummary.setUri(getProjectUri);
 		  projectPackageSummary.setProjectId(dbProject.get().getId());
 		  projectPackageSummary.setProjectName(dbProject.get().getProjectName());
-		  var eventSummary = new EventSummary();
-		  eventSummary.setId(dbEvent.getEventID());
-		  eventSummary.setTitle(dbEvent.getEventName());
-		  //TODO No value for event stage
-		  //eventSummary.setEventStage(ReleaseTag.fromValue(dbEvent.getEventStage()));
-		  eventSummary.setEventType(ViewEventType.fromValue(dbEvent.getEventType()));
+
+        var eventSummary = tendersAPIModelUtils.buildEventSummary(
+                dbEvent.getEventID(),
+                dbEvent.getEventName(),
+                jaggaerUserId,
+                ViewEventType.fromValue(dbEvent.getEventType()),
+                TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.length())),
+                ReleaseTag.TENDER);
 		  projectPackageSummary.activeEvent(eventSummary);
-		  return projectPackageSummary;
+		  return Optional.of(projectPackageSummary);
 	  } else {
 		  // TODO ignoring at the moment. What to do with these?
 		  log.warn("Unable to project details in database for project id  {}, so ignoring.",
 				  project.getTender().getTenderCode());
 	  }
-	  return null;
+	  return Optional.empty();
   }
 
   /**

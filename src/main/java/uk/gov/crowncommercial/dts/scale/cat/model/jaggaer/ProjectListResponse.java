@@ -8,17 +8,17 @@ import lombok.extern.jackson.Jacksonized;
 @Builder
 @Jacksonized
 public class ProjectListResponse {
-  private Integer returnCode;
+  Integer returnCode;
 
-  private String returnMessage;
+  String returnMessage;
 
-  private Integer totRecords;
+  Integer totRecords;
 
-  private Integer returnedRecords;
+  Integer returnedRecords;
 
-  private Integer startAt;
+  Integer startAt;
 
-  private ProjectList projectList;
+  ProjectList projectList;
 
 }
 

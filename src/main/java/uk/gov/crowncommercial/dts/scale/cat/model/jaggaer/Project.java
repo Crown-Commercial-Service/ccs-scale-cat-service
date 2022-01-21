@@ -9,7 +9,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class Project {
 
-  private Tender tender;
-  private ProjectTeam projectTeam;
+  Tender tender;
+  ProjectTeam projectTeam;
 
 }

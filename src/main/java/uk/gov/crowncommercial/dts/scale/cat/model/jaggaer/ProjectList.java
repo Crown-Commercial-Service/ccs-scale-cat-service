@@ -11,6 +11,6 @@ import java.util.List;
 @Jacksonized
 public class ProjectList {
 
-  private List<Project> project;
+  List<Project> project;
 
 }
