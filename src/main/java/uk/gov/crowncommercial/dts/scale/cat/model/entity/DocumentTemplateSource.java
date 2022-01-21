@@ -34,4 +34,11 @@ public class DocumentTemplateSource {
   @Column(name = "target_type")
   @Enumerated(EnumType.STRING)
   TargetType targetType;
+
+  @Column(name = "table_name")
+  String tableName;
+
+  @Column(name = "options_property")
+  @Enumerated(EnumType.STRING)
+  OptionsProperty optionsProperty;
 }
