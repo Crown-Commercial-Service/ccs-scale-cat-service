@@ -320,4 +320,16 @@ class EventsControllerTest {
         .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
         .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
   }
+
+  @Test
+  void getEvents_200_OK() throws Exception {
+
+    mockMvc
+        .perform(get(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON));
+
+    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID);
+  }
 }
