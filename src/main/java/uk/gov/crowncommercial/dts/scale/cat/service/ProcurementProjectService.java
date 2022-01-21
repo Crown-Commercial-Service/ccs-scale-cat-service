@@ -335,10 +335,12 @@ public class ProcurementProjectService {
    * @param principal
    */
   public Collection<ProjectPackageSummary> getProjects(final String principal) {
+
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
             .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
-    ProjectListResponse projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
+
+    var projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
     if (!CollectionUtils.isEmpty(projectListResponse.getProjectList().getProject())) {
       return projectListResponse.getProjectList().getProject().stream()
               .map((Project project) -> convertProjectToProjectPackageSummary(project,jaggaerUserId))
@@ -372,7 +374,8 @@ public class ProcurementProjectService {
                 dbEvent.getEventName(),
                 jaggaerUserId,
                 ViewEventType.fromValue(dbEvent.getEventType()),
-                TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.length())),
+               null, //TODO which field from Jaaggaer
+               // TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.length())),
                 ReleaseTag.TENDER);
 		  projectPackageSummary.activeEvent(eventSummary);
 		  return Optional.of(projectPackageSummary);
