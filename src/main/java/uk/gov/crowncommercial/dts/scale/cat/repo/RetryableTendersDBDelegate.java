@@ -97,6 +97,11 @@ public class RetryableTendersDBDelegate {
     return documentTemplateRepo.findByEventType(eventType);
   }
 
+  @TendersDBRetryable
+  public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
+    return procurementEventRepo.findByProjectId(projectId);
+  }
+
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.

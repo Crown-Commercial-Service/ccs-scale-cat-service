@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -13,4 +14,6 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
 
   Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
+
+  Set<ProcurementEvent> findByProjectId(Integer projectId);
 }
