@@ -21,6 +21,10 @@ public class AssessmentTools {
   @Column(name = "assessment_tool_id")
   Integer id;
 
+  // Unique key used as reference in Agreements Service
+  @Column(name = "internal_tool_name")
+  private String internalName;
+
   @Column(name = "assessment_tool_name")
   private String name;
 
