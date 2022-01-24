@@ -30,6 +30,8 @@ public class SubUsers {
     String businessUnit;
     String rightsProfile;
     String language;
+    String timezoneCode;
+    String timezone;
     SSOCodeData ssoCodeData;
   }
 

@@ -1,0 +1,24 @@
+<soapenv:Envelope
+	xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+	xmlns:prof="http://host.bs.com/common/webservice/ProfileManagement/">
+	<soapenv:Header />
+	<soapenv:Body>
+		<prof:ImportProfilesRequest>
+			<companyData>
+				<company>
+					<operationCode>UPDATE</operationCode>
+					<companyInfo>
+						<bravoId>${COMPANY_BRAVO_ID}</bravoId>
+						<ssoCodeData>
+							<ssoCode>
+								<ssoCodeValue>OPEN_ID</ssoCodeValue>
+								<ssoUserLogin>${SUPER_USER_SSO_LOGIN}</ssoUserLogin>
+							</ssoCode>
+						</ssoCodeData>
+					</companyInfo>
+				</company>
+
+			</companyData>
+		</prof:ImportProfilesRequest>
+	</soapenv:Body>
+</soapenv:Envelope>
