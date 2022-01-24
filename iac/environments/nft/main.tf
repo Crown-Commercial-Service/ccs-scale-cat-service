@@ -11,4 +11,5 @@ module "deploy-all" {
   cf_password = var.cf_password
   memory      = 2048
   instances   = 3
+  log_level   = "INFO"
 }

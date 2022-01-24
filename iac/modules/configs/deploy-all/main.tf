@@ -14,4 +14,5 @@ module "cat-service" {
   instances    = var.instances
   memory       = var.memory
   dev_mode     = var.dev_mode
+  log_level    = var.log_level
 }
