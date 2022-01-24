@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.retry.ExhaustedRetryException;
@@ -38,8 +39,8 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<ProcurementProject> findProcurementExternalProjectById(final String externalProjectId) {
-    return procurementProjectRepo.findByExternalProjectId(externalProjectId);
+  public List<ProcurementProject> findByExternalProjectIdIn(Set<String> externalProjectIds) {
+    return procurementProjectRepo.findByExternalProjectIdIn(externalProjectIds);
   }
 
   @TendersDBRetryable

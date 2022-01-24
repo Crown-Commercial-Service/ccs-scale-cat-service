@@ -351,12 +351,13 @@ class ProcurementProjectServiceTest {
     var project = ProcurementProject.builder()
             .id(PROC_PROJECT_ID)
             .projectName(PROJ_NAME)
+            .externalProjectId("Test")
             .procurementEvents(events)
             .build();
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.getProjectList(JAGGAER_USER_ID)).thenReturn(TestUtils.getProjectListResponse());
-    when(retryableTendersDBDelegate.findProcurementExternalProjectById(any(String.class)))
-            .thenReturn(Optional.of(project));
+    when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
+            .thenReturn(Arrays.asList(project));
 
     var response = procurementProjectService.getProjects(PRINCIPAL);
 

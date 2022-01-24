@@ -342,8 +342,15 @@ public class ProcurementProjectService {
 
     var projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
     if (!CollectionUtils.isEmpty(projectListResponse.getProjectList().getProject())) {
+      // get list of project ids and query database once
+      Set<String> projectsFromJaggaer = projectListResponse.getProjectList().getProject().stream()
+              .map(project -> project.getTender().getTenderCode()).collect(Collectors.toSet());
+
+      var dbProjects = retryableTendersDBDelegate
+              .findByExternalProjectIdIn(projectsFromJaggaer);
+
       return projectListResponse.getProjectList().getProject().stream()
-              .map((Project project) -> convertProjectToProjectPackageSummary(project,jaggaerUserId))
+              .map((Project project) -> convertProjectToProjectPackageSummary(project,dbProjects, jaggaerUserId))
               .filter(Optional::isPresent)
               .map(Optional::get)
               .collect(Collectors.toList());
@@ -356,10 +363,10 @@ public class ProcurementProjectService {
    * @param project the project
    * @return ProjectPackageSummary
    */
-  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(Project project, String jaggaerUserId) {
+  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
+          final Project project, final List<ProcurementProject> projects, final String jaggaerUserId) {
 	  // Get Project from database
-	  var dbProject = retryableTendersDBDelegate
-			  .findProcurementExternalProjectById(project.getTender().getTenderCode());
+	  var dbProject = getProject(projects,project.getTender().getTenderCode());
 	  var projectPackageSummary = new ProjectPackageSummary();
 	  if (dbProject.isPresent()) {
 		  var dbEvent = getCurrentEvent(dbProject.get());
@@ -387,6 +394,10 @@ public class ProcurementProjectService {
 	  return Optional.empty();
   }
 
+  private Optional<ProcurementProject> getProject(final List<ProcurementProject> projects, final String externalReferenceId) {
+   return projects.stream().filter(procurementProject -> procurementProject.getExternalProjectId().equals(externalReferenceId))
+           .findFirst();
+  }
   /**
    * Get a Team Member.
    *
