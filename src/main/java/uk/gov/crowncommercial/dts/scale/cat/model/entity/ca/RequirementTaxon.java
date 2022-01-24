@@ -24,7 +24,7 @@ public class RequirementTaxon {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "requirement_id")
-  Requirement product;
+  Requirement requirement;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_taxon_id")

@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -31,6 +32,10 @@ public class AssessmentEntity {
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
+
+  @OneToMany(fetch = FetchType.EAGER)
+  @JoinColumn(name = "assessment_id")
+  Set<AssessmentDimensionWeighting> dimensionWeightings;
 
   @Embedded
   private Timestamps timestamps;

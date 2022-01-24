@@ -42,4 +42,14 @@ public class AssessmentsController extends AbstractRestController {
     return assessmentService.getAssessmentsForUser(principal);
   }
 
+  @GetMapping("/{assessment-id}")
+  public Assessment getAssessment(final @PathVariable("assessment-id") Integer assessmentId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getAssessmentsForUser invoked on behalf of principal: {}", principal);
+
+    return assessmentService.getAssessment(assessmentId, principal);
+  }
+
 }

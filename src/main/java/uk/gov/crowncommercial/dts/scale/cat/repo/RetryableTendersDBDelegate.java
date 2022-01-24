@@ -11,6 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 
@@ -27,6 +28,7 @@ public class RetryableTendersDBDelegate {
   private final JourneyRepo journeyRepo;
   private final AssessmentRepo assessmentRepo;
   private final AssessmentToolRepo assessmentToolRepo;
+  private final AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -101,6 +103,17 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public AssessmentEntity save(final AssessmentEntity assessment) {
     return assessmentRepo.saveAndFlush(assessment);
+  }
+
+  @TendersDBRetryable
+  public Optional<AssessmentEntity> findAssessmentById(final Integer id) {
+    return assessmentRepo.findById(id);
+  }
+
+  @TendersDBRetryable
+  public AssessmentDimensionWeighting save(
+      final AssessmentDimensionWeighting assessmentDimensionWeighting) {
+    return assessmentDimensionWeightingRepo.saveAndFlush(assessmentDimensionWeighting);
   }
 
   @TendersDBRetryable
