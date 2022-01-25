@@ -8,14 +8,17 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.Dimension;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -28,6 +31,28 @@ public class AssessmentService {
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
+  /**
+   *
+   * @param toolId
+   * @return
+   */
+  public Set<DimensionDefinition> getDimensions(final Integer toolId) {
+
+    Set<Dimension> dimensions = retryableTendersDBDelegate.findDimensionsByToolId(toolId);
+
+    return dimensions.stream().map(d -> {
+      var dd = new DimensionDefinition();
+      dd.setName(d.getName());
+      return dd;
+    }).collect(Collectors.toSet());
+  }
+
+  /**
+   *
+   * @param assessment
+   * @param principal
+   * @return
+   */
   public Integer createAssessment(final Assessment assessment, final String principal) {
 
     // TODO - can we change 'internalName' to internalId/externalId/key or something maybe? Do we
@@ -46,6 +71,7 @@ public class AssessmentService {
     var assessmentId = retryableTendersDBDelegate.save(entity).getId().intValue();
 
     // Save dimension weightings
+    // TODO: needs some validation that Dimensions are valid for that Tool
     assessment.getRequirements().forEach(r -> {
       var selection = new AssessmentDimensionWeighting();
       selection.setAssessmentId(assessmentId);
@@ -58,6 +84,11 @@ public class AssessmentService {
     return assessmentId;
   }
 
+  /**
+   *
+   * @param principal
+   * @return
+   */
   public List<AssessmentSummary> getAssessmentsForUser(final String principal) {
     Set<AssessmentEntity> assessments =
         retryableTendersDBDelegate.findAssessmentsForUser(principal);
@@ -70,16 +101,24 @@ public class AssessmentService {
     }).collect(Collectors.toList());
   }
 
+  /**
+   *
+   * @param assessmentId
+   * @param principal
+   * @return
+   */
   public Assessment getAssessment(final Integer assessmentId, final String principal) {
-
-    // TODO - security validation check
 
     AssessmentEntity assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
         .orElseThrow(() -> new ResourceNotFoundException(
-            String.format(ERR_FMT_TOOL_NOT_FOUND, assessmentId)));
+            String.format(ERR_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+    if (assessment.getTimestamps().getCreatedBy().equals(principal)) {
+      throw new AuthorisationFailureException("User is not authorised to view that Assessment");
+    }
 
     var dimensions = assessment.getDimensionWeightings().stream().map(dw -> {
-      DimensionRequirement req = new DimensionRequirement();
+      var req = new DimensionRequirement();
       req.setName(dw.getDimensionName());
       req.setWeighting(dw.getWeightingPercentage().intValue());
       return req;
@@ -93,12 +132,16 @@ public class AssessmentService {
     return response;
   }
 
+  /**
+   * TEMP
+   */
   private Timestamps createTimestamps(final String userId) {
     var ts = new Timestamps();
     ts.setCreatedAt(Instant.now());
-    ts.setUpdatedAt(Instant.now());
+    // ts.setUpdatedAt(Instant.now());
     ts.setCreatedBy(userId);
-    ts.setUpdatedBy(userId);
+    // ts.setUpdatedBy(userId);
     return ts;
   }
+
 }

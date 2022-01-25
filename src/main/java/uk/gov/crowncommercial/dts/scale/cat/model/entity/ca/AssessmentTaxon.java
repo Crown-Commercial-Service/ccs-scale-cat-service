@@ -22,7 +22,7 @@ public class AssessmentTaxon {
   @Column(name = "assessment_taxon_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
 

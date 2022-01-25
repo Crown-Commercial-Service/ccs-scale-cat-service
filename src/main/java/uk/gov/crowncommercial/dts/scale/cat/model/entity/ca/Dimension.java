@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -21,6 +22,13 @@ public class Dimension {
   @Id
   @Column(name = "dimension_name")
   private String name;
+
+  // @ManyToMany(mappedBy = "dimensions", fetch = FetchType.EAGER)
+  @ManyToMany(fetch = FetchType.EAGER)
+  @JoinTable(name = "assessment_taxon_dimensions",
+      joinColumns = @JoinColumn(name = "dimension_name"),
+      inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
+  Set<AssessmentTaxon> assessmentTaxons;
 
   @Column(name = "dimension_descr")
   private String description;
