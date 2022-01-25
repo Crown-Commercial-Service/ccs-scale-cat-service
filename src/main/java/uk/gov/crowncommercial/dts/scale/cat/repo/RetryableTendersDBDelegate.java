@@ -11,10 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.Dimension;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -31,6 +28,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentToolRepo assessmentToolRepo;
   private final AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
   private final DimensionRepo dimensionRepo;
+  private final AssessmentSelectionRepo assessmentSelectionRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -126,6 +124,11 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public Set<Dimension> findDimensionsByToolId(final Integer toolId) {
     return dimensionRepo.findByAssessmentTaxonsToolId(toolId);
+  }
+
+  @TendersDBRetryable
+  public AssessmentSelection save(final AssessmentSelection journey) {
+    return assessmentSelectionRepo.save(journey);
   }
 
   /**
