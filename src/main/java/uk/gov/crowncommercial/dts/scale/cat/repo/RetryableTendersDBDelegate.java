@@ -51,6 +51,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+  public List<ProcurementProject> findByExternalProjectIdIn(Set<String> externalProjectIds) {
+    return procurementProjectRepo.findByExternalProjectIdIn(externalProjectIds);
+  }
+
+  @TendersDBRetryable
   public Optional<ProcurementEvent> findProcurementEventById(final Integer id) {
     return procurementEventRepo.findById(id);
   }
