@@ -15,10 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessmen
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.Dimension;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -72,14 +69,27 @@ public class AssessmentService {
 
     // Save dimension weightings
     // TODO: needs some validation that Dimensions are valid for that Tool
-    assessment.getRequirements().forEach(r -> {
+    assessment.getDimensionRequirements().forEach(dr -> {
       var selection = new AssessmentDimensionWeighting();
       selection.setAssessmentId(assessmentId);
-      selection.setDimensionName(r.getName());
-      selection.setWeightingPercentage(new BigDecimal(r.getWeighting()));
+      selection.setDimensionName(dr.getName());
+      selection.setWeightingPercentage(new BigDecimal(dr.getWeighting()));
       selection.setTimestamps(createTimestamps(principal));
       retryableTendersDBDelegate.save(selection);
+
+      dr.getRequirements().forEach(r -> {
+
+        r.get
+        var as = new AssessmentSelection();
+        as.setDimensionName(dr.getName());
+        as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
+        as.setTimestamps(createTimestamps(principal));
+        as.setRequirementTaxon(null)
+        retryableTendersDBDelegate.save(as);
+      });
+
     });
+
 
     return assessmentId;
   }
@@ -127,7 +137,7 @@ public class AssessmentService {
     var response = new Assessment();
     response.setToolId(assessment.getTool().getInternalName());
     response.setAssesmentId(assessmentId);
-    response.setRequirements(dimensions);
+    response.setDimensionRequirements(dimensions);
 
     return response;
   }
