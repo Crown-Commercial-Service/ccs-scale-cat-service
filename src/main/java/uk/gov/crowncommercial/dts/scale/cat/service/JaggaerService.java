@@ -14,7 +14,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -183,11 +182,10 @@ public class JaggaerService {
   }
 
   /**
-   * Transitions an existing Rfx to status "Running" via the Rfx workflow API
-   *
-   * @param procId
-   * @param eventId
-   * @throws JsonProcessingException
+   * publish Rfx
+   * @param event
+   * @param publishDates
+   * @param jaggaerUserId
    */
   public void publishRfx(final ProcurementEvent event, final PublishDates publishDates,
       final String jaggaerUserId) {
@@ -213,4 +211,20 @@ public class JaggaerService {
     }
   }
 
+  /**
+   * Get projects list from Jaggaer
+   * @return ProjectList
+   * @param jaggaerUserId
+   */
+  public uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectListResponse getProjectList(final String jaggaerUserId) {
+    var projectListUri = jaggaerAPIConfig.getGetProjectList().get(ENDPOINT);
+    String filters = "projectOwnerId=="+jaggaerUserId;
+
+    return ofNullable(jaggaerWebClient.get().uri(projectListUri,filters)
+            .retrieve()
+            .bodyToMono(ProjectListResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving projects"));
+  }
 }
