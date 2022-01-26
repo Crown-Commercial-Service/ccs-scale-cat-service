@@ -47,6 +47,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -88,6 +89,9 @@ class EventsControllerTest {
 
   @MockBean
   private ProcurementEventService procurementEventService;
+
+  @MockBean
+  private DocGenService docGenService;
 
   @MockBean
   private Principal principal;
@@ -294,6 +298,7 @@ class EventsControllerTest {
             .content(objectMapper.writeValueAsString(publishDates)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
 
+    verify(docGenService).generateProformaDocument(PROC_PROJECT_ID, EVENT_ID);
     verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
         PRINCIPAL);
   }
@@ -314,5 +319,17 @@ class EventsControllerTest {
         .andExpect(jsonPath("$.errors", hasSize(1)))
         .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
         .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
+  }
+
+  @Test
+  void getEvents_200_OK() throws Exception {
+
+    mockMvc
+        .perform(get(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON));
+
+    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID);
   }
 }

@@ -6,10 +6,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
@@ -187,8 +184,7 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var buyerQuestions =
-        new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
         buyerQuestions);
@@ -502,13 +498,44 @@ public class ProcurementEventService {
   public void publishEvent(final Integer procId, final String eventId,
       final PublishDates publishDates, final String principal) {
 
-    validationService.validatePublishDates(publishDates);
-
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+    if (TenderStatus.PLANNED == status) {
+      validationService.validatePublishDates(publishDates);
+      jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+    } else {
+      throw new IllegalArgumentException(
+          "You cannot publish an event unless it is in a 'planned' state");
+    }
+  }
+
+  /**
+   * Get Summaries of all Events on a Project.
+   *
+   * @param projectId
+   * @return
+   */
+  public List<EventSummary> getEventsForProject(final Integer projectId) {
+
+    Set<ProcurementEvent> events =
+        retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+
+    return events.stream().map(event -> {
+
+      var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+
+      return tendersAPIModelUtils.buildEventSummary(
+          event.getEventID(), event.getEventName(), event.getExternalEventId(),
+          ViewEventType.fromValue(event.getEventType()), jaggaerAPIConfig
+              .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
+          EVENT_STAGE);
+    }).collect(Collectors.toList());
   }
 
 }

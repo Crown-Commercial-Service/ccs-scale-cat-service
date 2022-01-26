@@ -4,6 +4,10 @@ import java.util.Arrays;
 import java.util.List;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectListResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 
 public class TestUtils {
 
@@ -70,5 +74,25 @@ public class TestUtils {
     teamMember.setOCDS(tmOCDS);
     teamMember.setNonOCDS(tmNoNOCDS);
     return teamMember;
+  }
+
+  public static ProjectListResponse getProjectListResponse() {
+    var test = "Test";
+    var projectListResponse = ProjectListResponse.builder()
+            .projectList(ProjectList.builder()
+                    .project(Arrays.asList(
+                            Project.builder()
+                                    .tender(Tender.builder()
+                                            .tenderReferenceCode(test)
+                                            .tenderStatusLabel("project.state.running")
+                                            .tenderCode(test)
+                                            .title(test)
+                                            .build())
+                                    .build()
+                    ))
+                    .build())
+            .build();
+
+    return projectListResponse;
   }
 }

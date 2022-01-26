@@ -38,6 +38,9 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private JourneyRepo journeyRepo;
 
+  @MockBean
+  private DocumentTemplateRepo documentTemplateRepo;
+
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 

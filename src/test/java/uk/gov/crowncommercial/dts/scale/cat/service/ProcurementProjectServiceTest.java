@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -10,7 +9,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,13 +37,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Org
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -67,6 +68,8 @@ class ProcurementProjectServiceTest {
   private static final String LOT_NUMBER = "Lot1a";
   private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME;
   private static final String EVENT_OCID = "ocds-abc123-1";
+  private static final String EVENT_NAME = "Test Event";
+  private static final Integer EVENT_ID = 1;
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String UPDATED_PROJECT_NAME = "New name";
   private static final CreateEvent CREATE_EVENT = new CreateEvent();
@@ -105,6 +108,9 @@ class ProcurementProjectServiceTest {
 
   @Autowired
   private ProcurementProjectService procurementProjectService;
+
+  @MockBean
+  private JaggaerService jaggaerService;
 
   @BeforeAll
   static void beforeAll() {
@@ -329,6 +335,36 @@ class ProcurementProjectServiceTest {
 
   }
 
+  @Test
+  void testGetProjectsFromJaggaer() {
+
+    // Mock behaviours
+    var event = new ProcurementEvent();
+    event.setId(EVENT_ID);
+    event.setExternalEventId("rfq_0001");
+    event.setEventName(EVENT_NAME);
+    event.setEventType("RFI");
+    event.setOcdsAuthorityName("ocds");
+    event.setOcidPrefix("b5fd17");
+    Set<ProcurementEvent> events = new HashSet<>();
+    events.add(event);
+    var project = ProcurementProject.builder()
+            .id(PROC_PROJECT_ID)
+            .projectName(PROJ_NAME)
+            .externalProjectId("Test")
+            .procurementEvents(events)
+            .build();
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(jaggaerService.getProjectList(JAGGAER_USER_ID)).thenReturn(TestUtils.getProjectListResponse());
+    when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
+            .thenReturn(Arrays.asList(project));
+
+    var response = procurementProjectService.getProjects(PRINCIPAL);
+
+    assertNotNull(response);
+    assertEquals(1, response.size());
+
+  }
   /**
    * Custom matcher to verify the object sent to Jaggaer to update a project.
    *

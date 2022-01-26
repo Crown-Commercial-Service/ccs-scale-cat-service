@@ -24,6 +24,13 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
+  @GetMapping
+  public Collection<ProjectPackageSummary> getProjects(final JwtAuthenticationToken authentication){
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getProjects invoked on behalf of principal: {}", principal);
+    return procurementProjectService.getProjects(principal);
+  }
+
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
       @Valid @RequestBody final AgreementDetails agreementDetails,
@@ -31,7 +38,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-    log.info("createProcuremenProject invoked on behalf of principal: {}", principal,
+    log.info("createProcurementProject invoked on behalf of principal: {}", principal,
         conclaveOrgId);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal,

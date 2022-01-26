@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
@@ -100,6 +102,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private ValidationService validationService;
+
+  @MockBean
+  private DocumentTemplateRepo documentTemplateRepo;
 
   @MockBean
   private JourneyRepo journeyRepo;
@@ -551,6 +556,90 @@ class ProcurementEventServiceTest {
     assertEquals(DESCRIPTION, response.getOCDS().getDescription());
     assertEquals(TenderStatus.PLANNED, response.getOCDS().getStatus());
     assertEquals(AwardCriteria.RATEDCRITERIA, response.getOCDS().getAwardCriteria());
+  }
+
+  @Test
+  void testPublishEvent() throws Exception {
+
+    PublishDates publishDates = mock(PublishDates.class);
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
+        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+
+    // Invoke & assert
+    procurementEventService.publishEvent(PROC_PROJECT_ID, PROC_EVENT_ID, publishDates, PRINCIPAL);
+    verify(jaggaerService).publishRfx(procurementEvent, publishDates, JAGGAER_USER_ID);
+
+  }
+
+  @Test
+  void testPublishEventAlreadyPublished() throws Exception {
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID)
+        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+
+    // Invoke & assert
+    var ex = assertThrows(IllegalArgumentException.class, () -> procurementEventService
+        .publishEvent(PROC_PROJECT_ID, PROC_EVENT_ID, null, PRINCIPAL));
+    assertEquals("You cannot publish an event unless it is in a 'planned' state", ex.getMessage());
+  }
+
+  @Test
+  void testGetEventsForProject() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(RFX_ID);
+    event.setEventName("NAME");
+    event.setEventType("RFI");
+    event.setOcdsAuthorityName(OCDS_AUTH_NAME);
+    event.setOcidPrefix(OCID_PREFIX);
+    Set<ProcurementEvent> events = new HashSet<>();
+    events.add(event);
+
+    var rfxResponse = new ExportRfxResponse();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    // Mock behaviours
+    when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+
+    var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID);
+
+    // Verify
+    assertEquals(1, response.size());
+    assertEquals("NAME", response.stream().findFirst().get().getTitle());
+    assertEquals(ViewEventType.RFI, response.stream().findFirst().get().getEventType());
+    assertEquals(TenderStatus.ACTIVE, response.stream().findFirst().get().getStatus());
+    assertEquals(RFX_ID, response.stream().findFirst().get().getEventSupportId());
+    assertEquals("ocds-b5fd17-2", response.stream().findFirst().get().getId());
   }
 
 }

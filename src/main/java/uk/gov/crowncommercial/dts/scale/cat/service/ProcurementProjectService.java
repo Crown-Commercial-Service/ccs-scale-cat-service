@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,7 @@ public class ProcurementProjectService {
   private final WebClient agreementsServiceWebClient;
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
+  private final String PROJECT_STATE = "project.state.";
 
   /**
    * SCC-440/441
@@ -327,6 +329,75 @@ public class ProcurementProjectService {
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
 
+  /**
+   * Get Projects
+   * @return Collection of projects
+   * @param principal
+   */
+  public Collection<ProjectPackageSummary> getProjects(final String principal) {
+
+    // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+            .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+
+    var projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
+    if (!CollectionUtils.isEmpty(projectListResponse.getProjectList().getProject())) {
+      // get list of project ids and query database once
+      Set<String> projectsFromJaggaer = projectListResponse.getProjectList().getProject().stream()
+              .map(project -> project.getTender().getTenderCode()).collect(Collectors.toSet());
+
+      var dbProjects = retryableTendersDBDelegate
+              .findByExternalProjectIdIn(projectsFromJaggaer);
+
+      return projectListResponse.getProjectList().getProject().stream()
+              .map((Project project) -> convertProjectToProjectPackageSummary(project,dbProjects, jaggaerUserId))
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .collect(Collectors.toList());
+    }
+    return Collections.emptyList();
+  }
+
+  /**
+   * convert project top project package summary
+   * @param project the project
+   * @return ProjectPackageSummary
+   */
+  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
+          final Project project, final List<ProcurementProject> projects, final String jaggaerUserId) {
+	  // Get Project from database
+	  var dbProject = getProject(projects,project.getTender().getTenderCode());
+	  var projectPackageSummary = new ProjectPackageSummary();
+	  if (dbProject.isPresent()) {
+		  var dbEvent = getCurrentEvent(dbProject.get());
+
+		  //TODO no value for Uri
+		  //projectPackageSummary.setUri(getProjectUri);
+		  projectPackageSummary.setProjectId(dbProject.get().getId());
+		  projectPackageSummary.setProjectName(dbProject.get().getProjectName());
+
+        var eventSummary = tendersAPIModelUtils.buildEventSummary(
+                dbEvent.getEventID(),
+                dbEvent.getEventName(),
+                jaggaerUserId,
+                ViewEventType.fromValue(dbEvent.getEventType()),
+               null, //TODO which field from Jaaggaer
+               // TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.length())),
+                ReleaseTag.TENDER);
+		  projectPackageSummary.activeEvent(eventSummary);
+		  return Optional.of(projectPackageSummary);
+	  } else {
+		  // TODO ignoring at the moment. What to do with these?
+		  log.warn("Unable to project details in database for project id  {}, so ignoring.",
+				  project.getTender().getTenderCode());
+	  }
+	  return Optional.empty();
+  }
+
+  private Optional<ProcurementProject> getProject(final List<ProcurementProject> projects, final String externalReferenceId) {
+   return projects.stream().filter(procurementProject -> procurementProject.getExternalProjectId().equals(externalReferenceId))
+           .findFirst();
+  }
   /**
    * Get a Team Member.
    *
