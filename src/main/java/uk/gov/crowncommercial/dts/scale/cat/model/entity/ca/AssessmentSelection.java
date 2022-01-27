@@ -11,6 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 */
 @Entity
 @Table(name = "assessment_selections")
+@EqualsAndHashCode(exclude = "dimension")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,16 +24,17 @@ public class AssessmentSelection {
   @Column(name = "assessment_selection_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "assessment_id")
-  AssessmentEntity assessment;
+  // @ManyToOne(fetch = FetchType.LAZY)
+  // @JoinColumn(name = "assessment_id")
+  // AssessmentEntity assessment;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "dimension_name")
+  DimensionEntity dimension;
+
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon requirementTaxon;
-
-  @Column(name = "dimension_name")
-  private String dimensionName;
 
   @Column(name = "weighting_pct")
   private BigDecimal weightingPercentage;

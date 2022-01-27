@@ -15,7 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Requirement {
+public class RequirementEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -23,15 +23,12 @@ public class AssessmentDimensionWeighting {
   @Column(name = "assessment_dimension_weighting_id")
   Integer id;
 
-  // @ManyToOne(fetch = FetchType.EAGER)
-  // @JoinColumn(name = "assessment_id")
-  // AssessmentEntity assessment;
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "dimension_name")
+  DimensionEntity dimension;
 
   @Column(name = "assessment_id")
   private Integer assessmentId;
-
-  @Column(name = "dimension_name")
-  private String dimensionName;
 
   @Column(name = "weighting_pct")
   private BigDecimal weightingPercentage;

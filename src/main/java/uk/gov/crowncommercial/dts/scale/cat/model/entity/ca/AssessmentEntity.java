@@ -33,9 +33,13 @@ public class AssessmentEntity {
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
 
-  @OneToMany(fetch = FetchType.EAGER)
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
   @JoinColumn(name = "assessment_id")
   Set<AssessmentDimensionWeighting> dimensionWeightings;
+
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @JoinColumn(name = "assessment_id")
+  Set<AssessmentSelection> assessmentSelections;
 
   @Embedded
   private Timestamps timestamps;

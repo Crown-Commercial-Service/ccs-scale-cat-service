@@ -22,11 +22,11 @@ public class RequirementTaxon {
   @Column(name = "requirement_taxon_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "requirement_id")
-  Requirement requirement;
+  RequirementEntity requirement;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_taxon_id")
   AssessmentTaxon taxon;
 

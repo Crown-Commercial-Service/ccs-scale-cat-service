@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -28,7 +29,14 @@ public class AssessmentTaxon {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "parent_assessment_taxon_id")
-  AssessmentTool parentTool;
+  AssessmentTaxon parentTaxon;
+
+  @EqualsAndHashCode.Exclude
+  @ManyToMany(fetch = FetchType.EAGER)
+  @JoinTable(name = "assessment_taxon_dimensions",
+      joinColumns = @JoinColumn(name = "assessment_taxon_id"),
+      inverseJoinColumns = @JoinColumn(name = "dimension_name"))
+  Set<DimensionEntity> dimensions;
 
   @Column(name = "assessment_taxon_name")
   private String name;

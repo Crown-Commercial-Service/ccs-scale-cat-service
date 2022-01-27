@@ -1,11 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
-import java.util.Set;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.Dimension;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.DimensionEntity;
 
-public interface DimensionRepo extends JpaRepository<Dimension, String> {
+public interface DimensionRepo extends JpaRepository<DimensionEntity, String> {
 
-  Set<Dimension> findByAssessmentTaxonsToolId(final Integer toolId);
+  Optional<DimensionEntity> findByName(final String name);
+
+  // Set<DimensionEntity> findByAssessmentTaxonsToolId(final Integer toolId);
 
 }
