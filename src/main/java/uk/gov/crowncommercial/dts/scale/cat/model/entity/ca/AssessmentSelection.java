@@ -29,7 +29,7 @@ public class AssessmentSelection {
   AssessmentEntity assessment;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "dimension_name")
+  @JoinColumn(name = "dimension_id")
   DimensionEntity dimension;
 
   @ManyToOne(fetch = FetchType.EAGER)

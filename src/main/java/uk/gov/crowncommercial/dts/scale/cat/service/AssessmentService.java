@@ -40,7 +40,7 @@ public class AssessmentService {
     return dimensions.stream().map(d -> {
       var dd = new DimensionDefinition();
       dd.setName(d.getName());
-      dd.setType(TypeEnum.INTEGER);
+      dd.setType(TypeEnum.INTEGER); // TODO
 
       var wr = new WeightingRange();
       wr.setMin(d.getMinWeightingPercentage().intValue());
@@ -75,10 +75,8 @@ public class AssessmentService {
    */
   public Integer createAssessment(final Assessment assessment, final String principal) {
 
-    // TODO - can we change 'internalName' to internalId/externalId/key or something maybe? Do we
-    // need to change API reference? Have we a ticket to add this to Agreements Service?
     AssessmentTool tool =
-        retryableTendersDBDelegate.findAssessmentToolByInternalName(assessment.getToolId())
+        retryableTendersDBDelegate.findAssessmentToolByExternalToolId(assessment.getToolId())
             .orElseThrow(() -> new ResourceNotFoundException(
                 String.format(ERR_FMT_TOOL_NOT_FOUND, assessment.getToolId())));
 
@@ -150,7 +148,7 @@ public class AssessmentService {
     return assessments.stream().map(a -> {
       var summary = new AssessmentSummary();
       summary.setAssessmentId(a.getId());
-      summary.setToolId(a.getTool().getInternalName());
+      summary.setToolId(a.getTool().getExternalToolId());
       return summary;
     }).collect(Collectors.toList());
   }
@@ -189,7 +187,7 @@ public class AssessmentService {
     }).collect(Collectors.toList());
 
     var response = new Assessment();
-    response.setToolId(assessment.getTool().getInternalName());
+    response.setToolId(assessment.getTool().getExternalToolId());
     response.setAssesmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
 

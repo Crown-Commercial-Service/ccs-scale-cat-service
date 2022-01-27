@@ -30,9 +30,6 @@ public class AssessmentSelectionResult {
   @Column(name = "assessment_selection_result_value")
   private BigDecimal value;
 
-  @Column(name = "assessment_selection_result_reference")
-  private String reference;
-
   @Embedded
   private Timestamps timestamps;
 }

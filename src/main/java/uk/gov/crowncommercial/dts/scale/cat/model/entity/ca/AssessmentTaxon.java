@@ -35,7 +35,7 @@ public class AssessmentTaxon {
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "assessment_taxon_dimensions",
       joinColumns = @JoinColumn(name = "assessment_taxon_id"),
-      inverseJoinColumns = @JoinColumn(name = "dimension_name"))
+      inverseJoinColumns = @JoinColumn(name = "dimension_id"))
   Set<DimensionEntity> dimensions;
 
   @EqualsAndHashCode.Exclude

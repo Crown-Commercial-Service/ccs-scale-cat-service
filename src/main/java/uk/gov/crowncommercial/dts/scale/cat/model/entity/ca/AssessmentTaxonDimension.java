@@ -25,8 +25,8 @@ public class AssessmentTaxonDimension {
   @Column(name = "assessment_taxon_id")
   private Integer assessmentTaxonId;
 
-  @Column(name = "dimension_name")
-  private String dimensionName;
+  @Column(name = "dimension_id")
+  private Integer dimensionId;
 
   @Embedded
   private Timestamps timestamps;

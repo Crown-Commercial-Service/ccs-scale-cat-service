@@ -25,7 +25,7 @@ public class AssessmentDimensionWeighting {
   Integer id;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "dimension_name")
+  @JoinColumn(name = "dimension_id")
   DimensionEntity dimension;
 
   @ManyToOne(fetch = FetchType.EAGER)

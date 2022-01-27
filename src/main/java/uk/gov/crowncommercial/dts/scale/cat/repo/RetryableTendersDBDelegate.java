@@ -118,8 +118,8 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<AssessmentTool> findAssessmentToolByInternalName(final String internalName) {
-    return assessmentToolRepo.findByInternalName(internalName);
+  public Optional<AssessmentTool> findAssessmentToolByExternalToolId(final String externalToolId) {
+    return assessmentToolRepo.findByExternalToolId(externalToolId);
   }
 
   @TendersDBRetryable
