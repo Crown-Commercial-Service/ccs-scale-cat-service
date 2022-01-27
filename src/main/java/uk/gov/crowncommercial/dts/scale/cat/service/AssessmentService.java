@@ -70,10 +70,8 @@ public class AssessmentService {
     entity.setBuyerOrganisationId(1); // ?
     entity.setTimestamps(createTimestamps(principal));
 
-
     Set<AssessmentSelection> assessmentSelections = new HashSet<>();
 
-    // Save dimension weightings
     // TODO: needs some validation that Dimensions are valid for that Tool
     Set<AssessmentDimensionWeighting> dimensionWeightings =
         assessment.getDimensionRequirements().stream().map(dr -> {
@@ -84,11 +82,10 @@ public class AssessmentService {
 
           // Create Dimension Weightings
           var dimensionWeighting = new AssessmentDimensionWeighting();
-          dimensionWeighting.setAssessmentId(assessment.getAssesmentId());
+          dimensionWeighting.setAssessment(entity);
           dimensionWeighting.setDimension(dimension);
           dimensionWeighting.setWeightingPercentage(new BigDecimal(dr.getWeighting()));
           dimensionWeighting.setTimestamps(createTimestamps(principal));
-          // retryableTendersDBDelegate.save(selection);
 
           if (dr.getRequirements() != null) {
             assessmentSelections.addAll(dr.getRequirements().stream().map(r -> {
@@ -103,12 +100,11 @@ public class AssessmentService {
                               tool.getId())));
 
               var as = new AssessmentSelection();
-              // as.setAssessment(entity);
+              as.setAssessment(entity);
               as.setDimension(dimension);
               as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
               as.setTimestamps(createTimestamps(principal));
               as.setRequirementTaxon(requirementTaxon);
-              // retryableTendersDBDelegate.save(as);
               return as;
             }).collect(Collectors.toSet()));
           }

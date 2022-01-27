@@ -11,12 +11,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 */
 @Entity
 @Table(name = "assessment_selections")
-@EqualsAndHashCode(exclude = "dimension")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "assessment")
 public class AssessmentSelection {
 
   @Id
@@ -24,9 +24,9 @@ public class AssessmentSelection {
   @Column(name = "assessment_selection_id")
   Integer id;
 
-  // @ManyToOne(fetch = FetchType.LAZY)
-  // @JoinColumn(name = "assessment_id")
-  // AssessmentEntity assessment;
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "assessment_id")
+  AssessmentEntity assessment;
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "dimension_name")

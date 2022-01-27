@@ -16,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "assessment")
 public class AssessmentDimensionWeighting {
 
   @Id
@@ -27,8 +28,9 @@ public class AssessmentDimensionWeighting {
   @JoinColumn(name = "dimension_name")
   DimensionEntity dimension;
 
-  @Column(name = "assessment_id")
-  private Integer assessmentId;
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "assessment_id")
+  AssessmentEntity assessment;
 
   @Column(name = "weighting_pct")
   private BigDecimal weightingPercentage;

@@ -17,13 +17,14 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "assessmentTaxons")
 public class DimensionEntity {
 
   @Id
   @Column(name = "dimension_name")
   private String name;
 
-  @EqualsAndHashCode.Exclude
+  // @EqualsAndHashCode.Exclude
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "assessment_taxon_dimensions",
       joinColumns = @JoinColumn(name = "dimension_name"),

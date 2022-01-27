@@ -16,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "dimensions")
 public class AssessmentTaxon {
 
   @Id
@@ -31,7 +32,7 @@ public class AssessmentTaxon {
   @JoinColumn(name = "parent_assessment_taxon_id")
   AssessmentTaxon parentTaxon;
 
-  @EqualsAndHashCode.Exclude
+  // @EqualsAndHashCode.Exclude
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "assessment_taxon_dimensions",
       joinColumns = @JoinColumn(name = "assessment_taxon_id"),
