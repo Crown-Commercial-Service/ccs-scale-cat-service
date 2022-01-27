@@ -2,9 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition.TypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentSelection;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -39,14 +35,36 @@ public class AssessmentService {
    */
   public Set<DimensionDefinition> getDimensions(final Integer toolId) {
 
-    // Set<DimensionEntity> dimensions = retryableTendersDBDelegate.findDimensionsByToolId(toolId);
+    Set<DimensionEntity> dimensions = retryableTendersDBDelegate.findDimensionsByToolId(toolId);
 
-    // return dimensions.stream().map(d -> {
-    // var dd = new DimensionDefinition();
-    // dd.setName(d.getName());
-    // return dd;
-    // }).collect(Collectors.toSet());
-    return new HashSet<DimensionDefinition>();
+    return dimensions.stream().map(d -> {
+      var dd = new DimensionDefinition();
+      dd.setName(d.getName());
+      dd.setType(TypeEnum.INTEGER);
+
+      var wr = new WeightingRange();
+      wr.setMin(d.getMinWeightingPercentage().intValue());
+      wr.setMax(d.getMaxWeightingPercentage().intValue());
+      dd.setWeightingRange(wr);
+
+      List<DimensionOption> options = new ArrayList<>();
+
+      d.getAssessmentTaxons().stream()
+          .forEach(at -> at.getRequirementTaxons().stream().forEach(rt -> {
+            var dopt = new DimensionOption();
+            dopt.setName(rt.getRequirement().getName());
+            var doptg = new DimensionOptionGroups();
+            doptg.setName(at.getName());
+            doptg.setLevel(1); // TODO - may need to expand this?
+            dopt.setGroups(Arrays.asList(doptg));
+            options.add(dopt);
+          }));
+
+      dd.setOptions(options);
+
+
+      return dd;
+    }).collect(Collectors.toSet());
   }
 
   /**

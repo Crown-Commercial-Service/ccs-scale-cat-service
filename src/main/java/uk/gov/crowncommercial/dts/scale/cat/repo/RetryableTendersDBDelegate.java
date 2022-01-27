@@ -122,10 +122,10 @@ public class RetryableTendersDBDelegate {
     return assessmentToolRepo.findByInternalName(internalName);
   }
 
-  // @TendersDBRetryable
-  // public Set<DimensionEntity> findDimensionsByToolId(final Integer toolId) {
-  // return dimensionRepo.findByAssessmentTaxonsToolId(toolId);
-  // }
+  @TendersDBRetryable
+  public Set<DimensionEntity> findDimensionsByToolId(final Integer toolId) {
+    return dimensionRepo.findByAssessmentTaxonsToolId(toolId);
+  }
 
   @TendersDBRetryable
   public AssessmentSelection save(final AssessmentSelection journey) {
