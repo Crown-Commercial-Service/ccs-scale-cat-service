@@ -70,6 +70,9 @@ public class ProcurementEvent {
   @Column(name = "procurement_template_payload")
   DataTemplate procurementTemplatePayload;
 
+  @Column(name = "procurement_template_payload", insertable = false, updatable = false)
+  String procurementTemplatePayloadRaw;
+
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
   }

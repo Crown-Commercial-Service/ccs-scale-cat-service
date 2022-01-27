@@ -80,6 +80,7 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.conclave-wrapper.baseUrl" : data.aws_ssm_parameter.conclave_wrapper_api_base_url.value
     "config.external.conclave-wrapper.apiKey" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
     "config.flags.devMode" : var.dev_mode
+    "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"

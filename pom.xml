@@ -17,11 +17,13 @@
 
 	<properties>
 		<java.version>11</java.version>
-		<swagger-parser.version>2.0.28</swagger-parser.version>
+		<swagger-parser.version>2.0.29</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
 		<hibernate-types.version>2.14.0</hibernate-types.version>
-		<modelmapper.version>2.4.4</modelmapper.version>
+		<modelmapper.version>2.4.5</modelmapper.version>
+		<simple-odf.version>0.9.0</simple-odf.version>
+		<jena-core.version>4.3.2</jena-core.version>
 	</properties>
 
 	<dependencies>
@@ -117,6 +119,31 @@
 			<version>${modelmapper.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>org.odftoolkit</groupId>
+			<artifactId>simple-odf</artifactId>
+			<version>${simple-odf.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.jena</groupId>
+					<artifactId>jena-core</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<!-- Snyk recommended -->
+		<dependency>
+			<groupId>org.apache.jena</groupId>
+			<artifactId>jena-core</artifactId>
+			<version>${jena-core.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.jayway.jsonpath</groupId>
+			<artifactId>json-path</artifactId>
+		</dependency>
+
+		<!-- Test dependencies -->
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
@@ -165,8 +192,8 @@
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.generated</modelPackage>
 							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>true</strictSpec>
-							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1</languageSpecificPrimitives>
-							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus</typeMappings>
+							<languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1,OneOfdateintegerboolean</languageSpecificPrimitives>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus,OneOfdateintegerboolean=String</typeMappings>
 							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>
