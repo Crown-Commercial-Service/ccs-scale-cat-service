@@ -39,16 +39,18 @@ public class AssessmentService {
 
     return dimensions.stream().map(d -> {
       var dd = new DimensionDefinition();
+
+      dd.setDimensionId(d.getId());
       dd.setName(d.getName());
-      dd.setType(TypeEnum.INTEGER); // TODO
+      dd.setType(TypeEnum.fromValue(d.getSelectionType().toLowerCase()));
 
       var wr = new WeightingRange();
       wr.setMin(d.getMinWeightingPercentage().intValue());
       wr.setMax(d.getMaxWeightingPercentage().intValue());
       dd.setWeightingRange(wr);
 
+      // Options
       List<DimensionOption> options = new ArrayList<>();
-
       d.getAssessmentTaxons().stream()
           .forEach(at -> at.getRequirementTaxons().stream().forEach(rt -> {
             var dopt = new DimensionOption();
@@ -62,6 +64,19 @@ public class AssessmentService {
 
       dd.setOptions(options);
 
+      // Evaluation Criteria
+      var submissionTypes = retryableTendersDBDelegate.findAllSubmissionTypes();
+      List<CriterionDefinition> criteria = new ArrayList<>();
+
+      submissionTypes.stream().forEach(st -> {
+        var criterion = new CriterionDefinition();
+        criterion.setName(st.getName());
+        criterion.setType(null);
+        criterion.setOptions(
+            d.getValidValues().stream().map(vv -> vv.getValueName()).collect(Collectors.toList()));
+        criteria.add(criterion);
+      });
+      dd.setEvaluationCriteria(criteria);
 
       return dd;
     }).collect(Collectors.toSet());

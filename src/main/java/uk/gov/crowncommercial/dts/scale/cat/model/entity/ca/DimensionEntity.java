@@ -33,6 +33,10 @@ public class DimensionEntity {
       inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
   Set<AssessmentTaxon> assessmentTaxons;
 
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @JoinColumn(name = "dimension_id")
+  Set<DimensionValidValue> validValues;
+
   @Column(name = "dimension_descr")
   private String description;
 
