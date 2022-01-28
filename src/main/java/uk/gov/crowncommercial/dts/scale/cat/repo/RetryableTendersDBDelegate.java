@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.retry.ExhaustedRetryException;
@@ -29,6 +30,8 @@ public class RetryableTendersDBDelegate {
   private final AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
   private final DimensionRepo dimensionRepo;
   private final AssessmentSelectionRepo assessmentSelectionRepo;
+  private final RequirementTaxonRepo requirementTaxonRepo;
+  private final SubmissionTypeRepo submissionTypeRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -117,18 +120,34 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<AssessmentTool> findAssessmentToolByInternalName(final String internalName) {
-    return assessmentToolRepo.findByInternalName(internalName);
+  public Optional<AssessmentTool> findAssessmentToolByExternalToolId(final String externalToolId) {
+    return assessmentToolRepo.findByExternalToolId(externalToolId);
   }
 
   @TendersDBRetryable
-  public Set<Dimension> findDimensionsByToolId(final Integer toolId) {
+  public Set<DimensionEntity> findDimensionsByToolId(final Integer toolId) {
     return dimensionRepo.findByAssessmentTaxonsToolId(toolId);
   }
 
   @TendersDBRetryable
   public AssessmentSelection save(final AssessmentSelection journey) {
     return assessmentSelectionRepo.save(journey);
+  }
+
+  @TendersDBRetryable
+  public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
+      final Integer toolId) {
+    return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
+  }
+
+  @TendersDBRetryable
+  public Optional<DimensionEntity> findDimensionByName(final String name) {
+    return dimensionRepo.findByName(name);
+  }
+
+  @TendersDBRetryable
+  public List<SubmissionType> findAllSubmissionTypes() {
+    return submissionTypeRepo.findAll();
   }
 
   /**

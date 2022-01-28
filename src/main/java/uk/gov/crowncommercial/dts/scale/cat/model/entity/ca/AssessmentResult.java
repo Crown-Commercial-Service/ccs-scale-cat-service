@@ -10,8 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 *
 */
 @Entity
-// TODO - should be 'assessment_results'?
-@Table(name = "assessment_result")
+@Table(name = "assessment_results")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -33,9 +32,6 @@ public class AssessmentResult {
 
   @Column(name = "assessment_result_value")
   private BigDecimal assessmentResultValue;
-
-  @Column(name = "assessment_selection_result_reference")
-  private String assessmentSelectionResultReference;
 
   @Embedded
   private Timestamps timestamps;

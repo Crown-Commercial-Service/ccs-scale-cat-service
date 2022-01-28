@@ -22,12 +22,11 @@ public class AssessmentTaxonDimension {
   @Column(name = "assessment_taxon_dimension_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "assessment_taxon_id")
-  AssessmentTaxon taxon;
+  @Column(name = "assessment_taxon_id")
+  private Integer assessmentTaxonId;
 
-  @Column(name = "dimension_name")
-  private String name;
+  @Column(name = "dimension_id")
+  private Integer dimensionId;
 
   @Embedded
   private Timestamps timestamps;

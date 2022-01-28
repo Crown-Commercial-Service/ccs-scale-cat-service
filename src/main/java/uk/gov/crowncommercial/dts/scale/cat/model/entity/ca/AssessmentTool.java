@@ -22,8 +22,8 @@ public class AssessmentTool {
   @Column(name = "assessment_tool_id")
   Integer id;
 
-  @Column(name = "internal_tool_name")
-  private String internalName;
+  @Column(name = "external_assessment_tool_id")
+  private String externalToolId;
 
   @Column(name = "assessment_tool_name")
   private String name;

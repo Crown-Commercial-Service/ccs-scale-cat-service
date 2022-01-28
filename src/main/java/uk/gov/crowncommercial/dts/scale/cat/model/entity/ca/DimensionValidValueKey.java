@@ -17,8 +17,8 @@ public class DimensionValidValueKey implements Serializable {
    */
   private static final long serialVersionUID = 1L;
 
-  @Column(name = "dimension_name")
-  private String name;
+  @Column(name = "dimension_id")
+  private Integer dimensionId;
 
   @Column(name = "valid_value_code")
   private String valueCode;

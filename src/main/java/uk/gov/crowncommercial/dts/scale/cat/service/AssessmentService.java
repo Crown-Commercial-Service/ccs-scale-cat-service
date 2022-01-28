@@ -2,18 +2,15 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition.TypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -25,6 +22,9 @@ public class AssessmentService {
 
   private static final String ERR_FMT_TOOL_NOT_FOUND = "Assessment Tool [%s] not found";
   private static final String ERR_FMT_ASSESSMENT_NOT_FOUND = "Assessment [%s] not found";
+  private static final String ERR_FMT_DIMENSION_NOT_FOUND = "Dimension [%s] not found";
+  private static final String ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND =
+      "Requirement Taxon for Requirement [%s] and Tool [%s] not found";
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
@@ -35,11 +35,49 @@ public class AssessmentService {
    */
   public Set<DimensionDefinition> getDimensions(final Integer toolId) {
 
-    Set<Dimension> dimensions = retryableTendersDBDelegate.findDimensionsByToolId(toolId);
+    Set<DimensionEntity> dimensions = retryableTendersDBDelegate.findDimensionsByToolId(toolId);
 
     return dimensions.stream().map(d -> {
       var dd = new DimensionDefinition();
+
+      dd.setDimensionId(d.getId());
       dd.setName(d.getName());
+      dd.setType(TypeEnum.fromValue(d.getSelectionType().toLowerCase()));
+
+      var wr = new WeightingRange();
+      wr.setMin(d.getMinWeightingPercentage().intValue());
+      wr.setMax(d.getMaxWeightingPercentage().intValue());
+      dd.setWeightingRange(wr);
+
+      // Options
+      List<DimensionOption> options = new ArrayList<>();
+      d.getAssessmentTaxons().stream()
+          .forEach(at -> at.getRequirementTaxons().stream().forEach(rt -> {
+            var dopt = new DimensionOption();
+            dopt.setName(rt.getRequirement().getName());
+            var doptg = new DimensionOptionGroups();
+            doptg.setName(at.getName());
+            doptg.setLevel(1); // TODO - may need to expand this?
+            dopt.setGroups(Arrays.asList(doptg));
+            options.add(dopt);
+          }));
+
+      dd.setOptions(options);
+
+      // Evaluation Criteria
+      var submissionTypes = retryableTendersDBDelegate.findAllSubmissionTypes();
+      List<CriterionDefinition> criteria = new ArrayList<>();
+
+      submissionTypes.stream().forEach(st -> {
+        var criterion = new CriterionDefinition();
+        criterion.setName(st.getName());
+        criterion.setType(null);
+        criterion.setOptions(
+            d.getValidValues().stream().map(vv -> vv.getValueName()).collect(Collectors.toList()));
+        criteria.add(criterion);
+      });
+      dd.setEvaluationCriteria(criteria);
+
       return dd;
     }).collect(Collectors.toSet());
   }
@@ -52,10 +90,8 @@ public class AssessmentService {
    */
   public Integer createAssessment(final Assessment assessment, final String principal) {
 
-    // TODO - can we change 'internalName' to internalId/externalId/key or something maybe? Do we
-    // need to change API reference? Have we a ticket to add this to Agreements Service?
     AssessmentTool tool =
-        retryableTendersDBDelegate.findAssessmentToolByInternalName(assessment.getToolId())
+        retryableTendersDBDelegate.findAssessmentToolByExternalToolId(assessment.getToolId())
             .orElseThrow(() -> new ResourceNotFoundException(
                 String.format(ERR_FMT_TOOL_NOT_FOUND, assessment.getToolId())));
 
@@ -65,33 +101,54 @@ public class AssessmentService {
     entity.setBuyerOrganisationId(1); // ?
     entity.setTimestamps(createTimestamps(principal));
 
-    var assessmentId = retryableTendersDBDelegate.save(entity).getId().intValue();
+    Set<AssessmentSelection> assessmentSelections = new HashSet<>();
 
-    // Save dimension weightings
     // TODO: needs some validation that Dimensions are valid for that Tool
-    assessment.getDimensionRequirements().forEach(dr -> {
-      var selection = new AssessmentDimensionWeighting();
-      selection.setAssessmentId(assessmentId);
-      selection.setDimensionName(dr.getName());
-      selection.setWeightingPercentage(new BigDecimal(dr.getWeighting()));
-      selection.setTimestamps(createTimestamps(principal));
-      retryableTendersDBDelegate.save(selection);
+    Set<AssessmentDimensionWeighting> dimensionWeightings =
+        assessment.getDimensionRequirements().stream().map(dr -> {
 
-      dr.getRequirements().forEach(r -> {
+          var dimension = retryableTendersDBDelegate.findDimensionByName(dr.getName())
+              .orElseThrow(() -> new ResourceNotFoundException(
+                  String.format(ERR_FMT_DIMENSION_NOT_FOUND, dr.getName())));
 
-        r.get
-        var as = new AssessmentSelection();
-        as.setDimensionName(dr.getName());
-        as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
-        as.setTimestamps(createTimestamps(principal));
-        as.setRequirementTaxon(null)
-        retryableTendersDBDelegate.save(as);
-      });
+          // Create Dimension Weightings
+          var dimensionWeighting = new AssessmentDimensionWeighting();
+          dimensionWeighting.setAssessment(entity);
+          dimensionWeighting.setDimension(dimension);
+          dimensionWeighting.setWeightingPercentage(new BigDecimal(dr.getWeighting()));
+          dimensionWeighting.setTimestamps(createTimestamps(principal));
 
-    });
+          if (dr.getRequirements() != null) {
+            assessmentSelections.addAll(dr.getRequirements().stream().map(r -> {
 
+              log.info("Find Requirement");
 
-    return assessmentId;
+              var requirementTaxon =
+                  retryableTendersDBDelegate
+                      .findRequirementTaxon(r.getRequirementId(), tool.getId())
+                      .orElseThrow(() -> new ResourceNotFoundException(
+                          String.format(ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND, r.getRequirementId(),
+                              tool.getId())));
+
+              var as = new AssessmentSelection();
+              as.setAssessment(entity);
+              as.setDimension(dimension);
+              as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
+              as.setTimestamps(createTimestamps(principal));
+              as.setRequirementTaxon(requirementTaxon);
+              return as;
+            }).collect(Collectors.toSet()));
+          }
+
+          return dimensionWeighting;
+        }
+
+        ).collect(Collectors.toSet());
+
+    entity.setAssessmentSelections(assessmentSelections);
+    entity.setDimensionWeightings(dimensionWeightings);
+
+    return retryableTendersDBDelegate.save(entity).getId().intValue();
   }
 
   /**
@@ -106,7 +163,7 @@ public class AssessmentService {
     return assessments.stream().map(a -> {
       var summary = new AssessmentSummary();
       summary.setAssessmentId(a.getId());
-      summary.setToolId(a.getTool().getInternalName());
+      summary.setToolId(a.getTool().getExternalToolId());
       return summary;
     }).collect(Collectors.toList());
   }
@@ -123,19 +180,29 @@ public class AssessmentService {
         .orElseThrow(() -> new ResourceNotFoundException(
             String.format(ERR_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
 
-    if (assessment.getTimestamps().getCreatedBy().equals(principal)) {
+    if (!assessment.getTimestamps().getCreatedBy().equals(principal)) {
       throw new AuthorisationFailureException("User is not authorised to view that Assessment");
     }
 
     var dimensions = assessment.getDimensionWeightings().stream().map(dw -> {
       var req = new DimensionRequirement();
-      req.setName(dw.getDimensionName());
+      req.setName(dw.getDimension().getName());
       req.setWeighting(dw.getWeightingPercentage().intValue());
+
+      var requirements = assessment.getAssessmentSelections().stream()
+          .filter(s -> s.getDimension().getName().equals(dw.getDimension().getName())).map(s -> {
+            var requirement = new Requirement();
+            requirement.setName(s.getRequirementTaxon().getRequirement().getName());
+            return requirement;
+          }).collect(Collectors.toList());
+
+      req.setRequirements(requirements);
       return req;
+
     }).collect(Collectors.toList());
 
     var response = new Assessment();
-    response.setToolId(assessment.getTool().getInternalName());
+    response.setToolId(assessment.getTool().getExternalToolId());
     response.setAssesmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
 
@@ -148,9 +215,7 @@ public class AssessmentService {
   private Timestamps createTimestamps(final String userId) {
     var ts = new Timestamps();
     ts.setCreatedAt(Instant.now());
-    // ts.setUpdatedAt(Instant.now());
     ts.setCreatedBy(userId);
-    // ts.setUpdatedBy(userId);
     return ts;
   }
 

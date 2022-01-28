@@ -17,18 +17,25 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Dimension {
+public class DimensionEntity {
 
   @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "dimension_id")
+  Integer id;
+
   @Column(name = "dimension_name")
   private String name;
 
-  // @ManyToMany(mappedBy = "dimensions", fetch = FetchType.EAGER)
+  @EqualsAndHashCode.Exclude
   @ManyToMany(fetch = FetchType.EAGER)
-  @JoinTable(name = "assessment_taxon_dimensions",
-      joinColumns = @JoinColumn(name = "dimension_name"),
+  @JoinTable(name = "assessment_taxon_dimensions", joinColumns = @JoinColumn(name = "dimension_id"),
       inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
   Set<AssessmentTaxon> assessmentTaxons;
+
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @JoinColumn(name = "dimension_id")
+  Set<DimensionValidValue> validValues;
 
   @Column(name = "dimension_descr")
   private String description;
@@ -39,8 +46,8 @@ public class Dimension {
   @Column(name = "max_weighting_pct")
   private BigDecimal maxWeightingPercentage;
 
-  @Column(name = "allow_multiple_selection_ind")
-  private Boolean allowMultipleSelection;
+  @Column(name = "selection_type")
+  private String selectionType;
 
   @Column(name = "min_allowed_value")
   private BigDecimal minAllowedValue;
