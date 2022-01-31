@@ -102,10 +102,34 @@ class ProcurementEventServiceTest {
   private ValidationService validationService;
 
   @MockBean
+  private CriteriaService criteriaService;
+
+  @MockBean
   private JourneyRepo journeyRepo;
 
   @MockBean
-  private CriteriaService criteriaService;
+  private AssessmentRepo assessmentRepo;
+
+  @MockBean
+  private AssessmentToolRepo assessmentToolRepo;
+
+  @MockBean
+  private AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
+
+  @MockBean
+  private DimensionRepo dimensionRepo;
+
+  @MockBean
+  private AssessmentSelectionRepo assessmentSelectionRepo;
+
+  @MockBean
+  private RequirementTaxonRepo requirementTaxonRepo;
+
+  @MockBean
+  private SubmissionTypeRepo submissionTypeRepo;
+
+  @MockBean
+  private AssessmentTaxonRepo assessmentTaxonRepo;
 
   private final CreateEvent createEvent = new CreateEvent();
 

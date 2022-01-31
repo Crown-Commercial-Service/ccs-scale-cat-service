@@ -27,6 +27,13 @@ public class SubmissionType {
   @Column(name = "submission_type_descr")
   private String description;
 
+  // @EqualsAndHashCode.Exclude
+  // @ManyToMany(fetch = FetchType.EAGER)
+  // @JoinTable(name = "assessment_submission_types",
+  // joinColumns = @JoinColumn(name = "submission_type_code"),
+  // inverseJoinColumns = @JoinColumn(name = "assessment_tool_id"))
+  // Set<AssessmentTool> assessmentTools;
+
   @Embedded
   private Timestamps timestamps;
 }

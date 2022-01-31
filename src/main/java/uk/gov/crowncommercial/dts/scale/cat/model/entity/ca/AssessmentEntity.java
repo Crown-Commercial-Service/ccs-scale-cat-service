@@ -24,7 +24,7 @@ public class AssessmentEntity {
   Integer id;
 
   @Column(name = "buyer_organisation_id")
-  private Integer buyerOrganisationId;
+  private String buyerOrganisationId;
 
   @Column(name = "status")
   private String status;
