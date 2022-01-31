@@ -41,6 +41,7 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private DocumentTemplateRepo documentTemplateRepo;
 
+  @MockBean
   private AssessmentRepo assessmentRepo;
 
   @MockBean
