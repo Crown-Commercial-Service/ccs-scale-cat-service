@@ -38,6 +38,30 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private JourneyRepo journeyRepo;
 
+  @MockBean
+  private AssessmentRepo assessmentRepo;
+
+  @MockBean
+  private AssessmentToolRepo assessmentToolRepo;
+
+  @MockBean
+  private AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
+
+  @MockBean
+  private DimensionRepo dimensionRepo;
+
+  @MockBean
+  private AssessmentSelectionRepo assessmentSelectionRepo;
+
+  @MockBean
+  private RequirementTaxonRepo requirementTaxonRepo;
+
+  @MockBean
+  private SubmissionTypeRepo submissionTypeRepo;
+
+  @MockBean
+  private AssessmentTaxonRepo assessmentTaxonRepo;
+
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 

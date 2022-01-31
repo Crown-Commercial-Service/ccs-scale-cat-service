@@ -32,6 +32,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentSelectionRepo assessmentSelectionRepo;
   private final RequirementTaxonRepo requirementTaxonRepo;
   private final SubmissionTypeRepo submissionTypeRepo;
+  private final AssessmentTaxonRepo assessmentTaxonRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -120,6 +121,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+  public Optional<AssessmentTool> findAssessmentToolById(final Integer toolId) {
+    return assessmentToolRepo.findById(toolId);
+  }
+
+  @TendersDBRetryable
   public Optional<AssessmentTool> findAssessmentToolByExternalToolId(final String externalToolId) {
     return assessmentToolRepo.findByExternalToolId(externalToolId);
   }
@@ -135,9 +141,9 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
+  public Optional<RequirementTaxon> findRequirementTaxon(final String requirementName,
       final Integer toolId) {
-    return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
+    return requirementTaxonRepo.findByRequirementNameAndTaxonToolId(requirementName, toolId);
   }
 
   @TendersDBRetryable
@@ -148,6 +154,11 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public List<SubmissionType> findAllSubmissionTypes() {
     return submissionTypeRepo.findAll();
+  }
+
+  @TendersDBRetryable
+  public Optional<AssessmentTaxon> findAssessmentTaxonById(final Integer assessmentTaxonId) {
+    return assessmentTaxonRepo.findById(assessmentTaxonId);
   }
 
   /**
