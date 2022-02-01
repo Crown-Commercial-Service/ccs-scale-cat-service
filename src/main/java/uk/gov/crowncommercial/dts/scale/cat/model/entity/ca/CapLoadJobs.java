@@ -19,7 +19,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CapLoadJobs {
 
-  // TODO - needs ID - this is temp
   @Id
   @Column(name = "role_cluster")
   private String roleCluster;

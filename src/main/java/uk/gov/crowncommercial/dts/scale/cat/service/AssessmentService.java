@@ -30,14 +30,16 @@ public class AssessmentService {
   private static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
   private static final String ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND =
       "A valid value matching [%s] not found for dimension [%s]";
+  private static final String ERR_FMT_SUBMISSION_TYPE_NOT_FOUND =
+      "Submission Type for Criterion [%s] not found";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   /**
-   * Get Dimensions for Assessment Tool.
+   * Get the Dimensions for an Assessment Tool.
    *
-   * @param toolId internal database AssessmentTool id
+   * @param toolId internal database Assessment Tool id
    * @return
    */
   public Set<DimensionDefinition> getDimensions(final Integer toolId) {
@@ -50,13 +52,13 @@ public class AssessmentService {
         retryableTendersDBDelegate.findDimensionsByToolId(tool.getId());
 
     return dimensions.stream().map(d -> {
-
       // Build DimensionDefinition
       var dd = new DimensionDefinition();
       dd.setDimensionId(d.getId());
       dd.setName(d.getName());
       dd.setType(TypeEnum.fromValue(d.getSelectionType().toLowerCase()));
 
+      // Build WeightingRange
       var wr = new WeightingRange();
       wr.setMin(d.getMinWeightingPercentage().intValue());
       wr.setMax(d.getMaxWeightingPercentage().intValue());
@@ -77,26 +79,7 @@ public class AssessmentService {
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
-      List<CriterionDefinition> criteria = new ArrayList<>();
-
-      /*
-       * This will return the same list for each submission type - which is redundant as the
-       * database does not support this currently, but Nick wanted to keep the option in the API for
-       * these to be different in future if required (will require a change to the database and
-       * either a different DB call, or filtering of this list).
-       */
-      var options = d.getValidValues().stream().map(DimensionValidValue::getValueName)
-          .collect(Collectors.toList());
-
-      tool.getAssessmentSubmissionType().stream().forEach(st -> {
-        var criterion = new CriterionDefinition();
-        criterion.setName(st.getSubmissionType().getName());
-        criterion
-            .setType(CriterionDefinition.TypeEnum.fromValue(d.getSelectionType().toLowerCase()));
-        criterion.setOptions(options);
-        criteria.add(criterion);
-      });
-      dd.setEvaluationCriteria(criteria);
+      dd.setEvaluationCriteria(getCriteriaForDimension(d, tool));
 
       return dd;
 
@@ -119,7 +102,6 @@ public class AssessmentService {
 
     var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
-
 
     var entity = new AssessmentEntity();
     entity.setTool(tool);
@@ -146,7 +128,7 @@ public class AssessmentService {
             throw new ValidationException("Invalid requirement - XXX - TODO");
           }
 
-          // Create Dimension Weightings
+          // Build Dimension Weightings
           var dimensionWeighting = new AssessmentDimensionWeighting();
           dimensionWeighting.setAssessment(entity);
           dimensionWeighting.setDimension(dimension);
@@ -156,7 +138,7 @@ public class AssessmentService {
           if (dr.getRequirements() != null) {
             assessmentSelections.addAll(dr.getRequirements().stream().map(r -> {
 
-              log.info("Find Requirement");
+              log.trace("Find RequirementTaxon");
 
               var requirementTaxon =
                   retryableTendersDBDelegate.findRequirementTaxon(r.getName(), tool.getId())
@@ -164,7 +146,7 @@ public class AssessmentService {
                           format(ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND, r.getRequirementId(),
                               tool.getId())));
 
-              // Create AssessmentSelection
+              // Build AssessmentSelection
               var as = new AssessmentSelection();
               as.setAssessment(entity);
               as.setDimension(dimension);
@@ -172,16 +154,17 @@ public class AssessmentService {
               as.setTimestamps(createTimestamps(principal));
               as.setRequirementTaxon(requirementTaxon);
 
-              // Create AssessmentSelectionDetails
-              Set<AssessmentSelectionDetail> assessmentSelectionDetails = new HashSet<>();
-
+              // Build AssessmentSelectionDetails
               if (r.getValues() != null) {
-                assessmentSelectionDetails.addAll(r.getValues().stream().map(c -> {
+                as.setAssessmentSelectionDetails(r.getValues().stream().map(c -> {
                   var asd = new AssessmentSelectionDetail();
                   asd.setAssessmentSelection(as);
-
-                  // ****
-                  asd.setAssessmentSubmissionType(null);
+                  var assessmentSubmissionType = tool.getAssessmentSubmissionTypes().stream()
+                      .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId()))
+                      .findFirst().orElseThrow(() -> new ValidationException(
+                          format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
+                  asd.setAssessmentSubmissionType(assessmentSubmissionType);
+                  asd.setTimestamps(createTimestamps(principal));
 
                   var dimensionSelectionType =
                       TypeEnum.fromValue(dimension.getSelectionType().toLowerCase());
@@ -189,19 +172,13 @@ public class AssessmentService {
                   switch (dimensionSelectionType) {
                     case SELECT:
                     case MULTISELECT:
-                      var validValue = dimension.getValidValues().stream()
-                          .filter(vv -> vv.getValueName().equals(c.getValue())).findFirst()
-                          .orElseThrow(() -> new ValidationException(
-                              format(ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND, c.getValue(),
-                                  dimension.getName())));
-                      // TODO - change to String
-                      asd.setRequirementValue(new BigDecimal(validValue.getKey().getValueCode()));
+                      var validValue = getValidValueByName(dimension, c.getValue());
+                      asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
                       break;
                     case INTEGER:
                       asd.setRequirementValue(new BigDecimal(c.getValue()));
                       break;
                   }
-
                   return asd;
                 }).collect(Collectors.toSet()));
               }
@@ -257,47 +234,68 @@ public class AssessmentService {
       throw new AuthorisationFailureException("User is not authorised to view that Assessment");
     }
 
+    // Build DimensionRequirements
     var dimensions = assessment.getDimensionWeightings().stream().map(dw -> {
+
       var req = new DimensionRequirement();
+      req.setDimensionId(dw.getDimension().getId());
       req.setName(dw.getDimension().getName());
       req.setType(dw.getDimension().getSelectionType());
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
+      // Build Criteria for Dimension (includedCriteria)
+      req.setIncludedCriterion(getCriteriaForDimension(dw.getDimension(), assessment.getTool()));
+
+      // Build Requirements
       var requirements = assessment.getAssessmentSelections().stream()
           .filter(s -> s.getDimension().getName().equals(dw.getDimension().getName())).map(s -> {
             var requirement = new Requirement();
             requirement.setName(s.getRequirementTaxon().getRequirement().getName());
             requirement.setWeighting(s.getWeightingPercentage().intValue());
+            requirement.setRequirementId(s.getId());
 
-
+            // Build Criteria for Requirement (values)
             requirement.setValues(s.getAssessmentSelectionDetails().stream().map(asd -> {
               var criterion = new Criterion();
-              // criterion.setCriterionId(assessmentId)
-              // criterion.setName(principal)
-              // criterion.setValue(asd.getRequirementValidValueId());
+              criterion
+                  .setCriterionId(asd.getAssessmentSubmissionType().getSubmissionType().getCode());
+              criterion.setName(asd.getAssessmentSubmissionType().getSubmissionType().getName());
+
+              if (asd.getRequirementValidValueCode() != null) {
+                var validValue =
+                    getValidValueByCode(dw.getDimension(), asd.getRequirementValidValueCode());
+                criterion.setValue(validValue.getValueName());
+              } else {
+                if (asd.getRequirementValue() != null) {
+                  criterion.setValue(asd.getRequirementValue().toString());
+                }
+              }
               return criterion;
             }).collect(Collectors.toList()));
-
-
 
             return requirement;
           }).collect(Collectors.toList());
 
       req.setRequirements(requirements);
+
       return req;
 
     }).collect(Collectors.toList());
+
+    // TODO: Calculate Scores
+    List<SupplierScores> scores = new ArrayList<>();
 
     var response = new Assessment();
     response.setExternalToolId(assessment.getTool().getExternalToolId());
     response.setAssesmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
+    response.setScores(scores);
 
     return response;
   }
 
   /**
-   * Create entity date/times.
+   * Create entity time stamps.
    */
   private Timestamps createTimestamps(final String userId) {
     var ts = new Timestamps();
@@ -324,5 +322,68 @@ public class AssessmentService {
         return calculateLevel(taxon.getParentTaxon(), ++level);
       }
     }
+  }
+
+  /**
+   * Get Dimension Valid Values by Name (for incoming requests from the API).
+   *
+   * @param dimension Dimension
+   * @param valueName Valid Value Name
+   * @return
+   */
+  private DimensionValidValue getValidValueByName(final DimensionEntity dimension,
+      final String valueName) {
+    return dimension.getValidValues().stream().filter(vv -> vv.getValueName().equals(valueName))
+        .findFirst().orElseThrow(() -> new ValidationException(
+            format(ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND, valueName, dimension.getName())));
+  }
+
+  /**
+   * Get Dimension Valid Values by Code (for outgoing responses from the database).
+   *
+   * @param dimension Dimension
+   * @param valueCode Valid Value Code
+   * @return
+   */
+  private DimensionValidValue getValidValueByCode(final DimensionEntity dimension,
+      final String valueCode) {
+    return dimension.getValidValues().stream()
+        .filter(vv -> vv.getKey().getValueCode().equals(valueCode)).findFirst()
+        .orElseThrow(() -> new ValidationException(
+            format(ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND, valueCode, dimension.getName())));
+  }
+
+
+  /**
+   * Get the Criteria for a Dimension.
+   *
+   * This will return the same list for each submission type - which is redundant as the database
+   * does not support this currently, but Nick wanted to keep the option in the API for these to be
+   * different in future if required (will require a change to the database and either a different
+   * DB call, or filtering of this list).
+   *
+   * @param dimension
+   * @param tool
+   * @return
+   */
+  private List<CriterionDefinition> getCriteriaForDimension(final DimensionEntity dimension,
+      final AssessmentTool tool) {
+
+    List<CriterionDefinition> criteria = new ArrayList<>();
+
+    var options = dimension.getValidValues().stream().map(DimensionValidValue::getValueName)
+        .collect(Collectors.toList());
+
+    tool.getAssessmentSubmissionTypes().stream().forEach(st -> {
+      var criterion = new CriterionDefinition();
+      criterion.setCriterionId(st.getSubmissionType().getCode());
+      criterion.setName(st.getSubmissionType().getName());
+      criterion.setType(
+          CriterionDefinition.TypeEnum.fromValue(dimension.getSelectionType().toLowerCase()));
+      criterion.setOptions(options);
+      criteria.add(criterion);
+    });
+
+    return criteria;
   }
 }

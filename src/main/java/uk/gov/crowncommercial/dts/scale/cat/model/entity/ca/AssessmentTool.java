@@ -34,7 +34,7 @@ public class AssessmentTool {
 
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
-  Set<AssessmentSubmissionType> assessmentSubmissionType;
+  Set<AssessmentSubmissionType> assessmentSubmissionTypes;
 
   @Embedded
   private Timestamps timestamps;

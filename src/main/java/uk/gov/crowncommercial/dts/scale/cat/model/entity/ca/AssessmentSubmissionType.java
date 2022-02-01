@@ -15,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "assessmentTool")
 public class AssessmentSubmissionType {
 
   @Id
@@ -26,11 +27,9 @@ public class AssessmentSubmissionType {
   @JoinColumn(name = "submission_type_code")
   SubmissionType submissionType;
 
-  // @ManyToOne(fetch = FetchType.EAGER)
-  // @JoinColumn(name = "assessment_tool_id")
-  // AssessmentTool assessmentTool;
-  @Column(name = "assessment_tool_id")
-  private Integer assessmentTool;
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "assessment_tool_id")
+  AssessmentTool assessmentTool;
 
   @Embedded
   private Timestamps timestamps;

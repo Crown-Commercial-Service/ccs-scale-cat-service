@@ -32,14 +32,11 @@ public class AssessmentSelectionDetail {
   @JoinColumn(name = "assessment_submission_type_id")
   AssessmentSubmissionType assessmentSubmissionType;
 
-  @Column(name = "requirement_quantity")
-  private Integer requirementQuantity;
-
   @Column(name = "requirement_value")
   private BigDecimal requirementValue;
 
-  @Column(name = "requirement_valid_value_id")
-  private Integer requirementValidValueId;
+  @Column(name = "requirement_valid_value_code")
+  private String requirementValidValueCode;
 
   @Embedded
   private Timestamps timestamps;

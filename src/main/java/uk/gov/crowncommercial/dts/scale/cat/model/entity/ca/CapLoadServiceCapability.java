@@ -19,7 +19,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CapLoadServiceCapability {
 
-  // TODO - needs ID - this is temp
   @Id
   @Column(name = "service_capability_hdr")
   private String serviceCapabilityHdr;
