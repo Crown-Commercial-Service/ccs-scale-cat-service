@@ -10,30 +10,33 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 *
 */
 @Entity
-@Table(name = "assessment_dimension_weighting")
+@Table(name = "assessment_selection_details")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@EqualsAndHashCode(exclude = "assessment")
-public class AssessmentDimensionWeighting {
+@EqualsAndHashCode(exclude = "assessmentSelection")
+public class AssessmentSelectionDetail {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "assessment_dimension_weighting_id")
+  @Column(name = "assessment_selection_detail_id")
   Integer id;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "dimension_id")
-  DimensionEntity dimension;
+  @JoinColumn(name = "assessment_selection_id")
+  AssessmentSelection assessmentSelection;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "assessment_id")
-  AssessmentEntity assessment;
+  @JoinColumn(name = "assessment_submission_type_id")
+  AssessmentSubmissionType assessmentSubmissionType;
 
-  @Column(name = "weighting_pct")
-  private BigDecimal weightingPercentage;
+  @Column(name = "requirement_value")
+  private BigDecimal requirementValue;
+
+  @Column(name = "requirement_valid_value_code")
+  private String requirementValidValueCode;
 
   @Embedded
   private Timestamps timestamps;

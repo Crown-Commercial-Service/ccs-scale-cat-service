@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -35,6 +36,10 @@ public class AssessmentSelection {
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon requirementTaxon;
+
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @JoinColumn(name = "assessment_selection_id")
+  Set<AssessmentSelectionDetail> assessmentSelectionDetails;
 
   @Column(name = "weighting_pct")
   private BigDecimal weightingPercentage;

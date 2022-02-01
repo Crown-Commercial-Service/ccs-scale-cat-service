@@ -18,7 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 public class DimensionValidValue {
 
   @EmbeddedId
-  DimensionValidValueKey key;
+  private DimensionValidValueKey key;
 
   @Column(name = "valid_value_name")
   private String valueName;

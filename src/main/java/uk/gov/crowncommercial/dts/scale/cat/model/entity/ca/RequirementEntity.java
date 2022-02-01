@@ -24,13 +24,6 @@ public class RequirementEntity {
   @Column(name = "requirement_id")
   Integer id;
 
-  // @EqualsAndHashCode.Exclude
-  // @ManyToMany(fetch = FetchType.EAGER)
-  // @JoinTable(name = "requirement_taxons", joinColumns = @JoinColumn(name =
-  // "requirement_taxon_id"),
-  // inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
-  // Set<RequirementEntity> dimensions;
-
   @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
   @JoinColumn(name = "requirement_taxon_id")
   Set<RequirementTaxon> requirementTaxons;

@@ -19,7 +19,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CapLoadResources {
 
-  // TODO - needs ID - this is temp
   @Id
   @Column(name = "resource_cluster")
   private String resourceCluster;

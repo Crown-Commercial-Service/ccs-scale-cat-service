@@ -24,8 +24,8 @@ public class AssessmentSelectionResult {
   Integer id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "assessment_selection_id")
-  AssessmentSelection assessmentSelection;
+  @JoinColumn(name = "assessment_selection_detail_id")
+  AssessmentSelectionDetail assessmentSelectionDetail;
 
   @Column(name = "assessment_selection_result_value")
   private BigDecimal value;

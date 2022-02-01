@@ -126,9 +126,6 @@ class ProcurementEventServiceTest {
   private RequirementTaxonRepo requirementTaxonRepo;
 
   @MockBean
-  private SubmissionTypeRepo submissionTypeRepo;
-
-  @MockBean
   private AssessmentTaxonRepo assessmentTaxonRepo;
 
   private final CreateEvent createEvent = new CreateEvent();

@@ -26,7 +26,6 @@ public class LotRequirementTaxon {
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon productTaxon;
 
-  // TODO ??...
   @Column(name = "lot_id")
   private Integer lotId;
 
