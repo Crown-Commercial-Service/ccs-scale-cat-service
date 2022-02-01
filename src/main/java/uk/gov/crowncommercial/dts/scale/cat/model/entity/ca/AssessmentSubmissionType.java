@@ -24,11 +24,13 @@ public class AssessmentSubmissionType {
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "submission_type_code")
-  SubmissionType submissionTyoe;
+  SubmissionType submissionType;
 
-  @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "assessment_tool_id")
-  AssessmentTool tool;
+  // @ManyToOne(fetch = FetchType.EAGER)
+  // @JoinColumn(name = "assessment_tool_id")
+  // AssessmentTool assessmentTool;
+  @Column(name = "assessment_tool_id")
+  private Integer assessmentTool;
 
   @Embedded
   private Timestamps timestamps;

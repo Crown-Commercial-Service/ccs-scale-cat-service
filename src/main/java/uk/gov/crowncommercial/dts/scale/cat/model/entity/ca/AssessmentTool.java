@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
+import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -31,12 +32,9 @@ public class AssessmentTool {
   @Column(name = "assessment_tool_descr")
   private String description;
 
-  // @EqualsAndHashCode.Exclude
-  // @ManyToMany(fetch = FetchType.EAGER)
-  // @JoinTable(name = "assessment_submission_types",
-  // joinColumns = @JoinColumn(name = "assessment_tool_id"),
-  // inverseJoinColumns = @JoinColumn(name = "submission_type_code"))
-  // Set<SubmissionType> submissionTypes;
+  @OneToMany(fetch = FetchType.EAGER)
+  @JoinColumn(name = "assessment_tool_id")
+  Set<AssessmentSubmissionType> assessmentSubmissionType;
 
   @Embedded
   private Timestamps timestamps;

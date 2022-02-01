@@ -57,9 +57,6 @@ class RetryableTendersDBDelegateTest {
   private RequirementTaxonRepo requirementTaxonRepo;
 
   @MockBean
-  private SubmissionTypeRepo submissionTypeRepo;
-
-  @MockBean
   private AssessmentTaxonRepo assessmentTaxonRepo;
 
   @Autowired

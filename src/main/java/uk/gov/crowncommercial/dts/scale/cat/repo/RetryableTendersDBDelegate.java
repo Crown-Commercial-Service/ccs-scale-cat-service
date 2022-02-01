@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.retry.ExhaustedRetryException;
@@ -31,7 +30,6 @@ public class RetryableTendersDBDelegate {
   private final DimensionRepo dimensionRepo;
   private final AssessmentSelectionRepo assessmentSelectionRepo;
   private final RequirementTaxonRepo requirementTaxonRepo;
-  private final SubmissionTypeRepo submissionTypeRepo;
   private final AssessmentTaxonRepo assessmentTaxonRepo;
 
   @TendersDBRetryable
@@ -149,11 +147,6 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public Optional<DimensionEntity> findDimensionByName(final String name) {
     return dimensionRepo.findByName(name);
-  }
-
-  @TendersDBRetryable
-  public List<SubmissionType> findAllSubmissionTypes() {
-    return submissionTypeRepo.findAll();
   }
 
   @TendersDBRetryable

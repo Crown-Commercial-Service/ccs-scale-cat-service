@@ -27,7 +27,9 @@ public class AssessmentService {
   private static final String ERR_FMT_DIMENSION_NOT_FOUND = "Dimension [%s] not found";
   private static final String ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND =
       "Requirement Taxon for Requirement [%s] and Tool [%s] not found";
-  static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
+  private static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
+  private static final String ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND =
+      "A valid value matching [%s] not found for dimension [%s]";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -75,7 +77,6 @@ public class AssessmentService {
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
-      var submissionTypes = retryableTendersDBDelegate.findAllSubmissionTypes();
       List<CriterionDefinition> criteria = new ArrayList<>();
 
       /*
@@ -87,10 +88,11 @@ public class AssessmentService {
       var options = d.getValidValues().stream().map(DimensionValidValue::getValueName)
           .collect(Collectors.toList());
 
-      submissionTypes.stream().forEach(st -> {
+      tool.getAssessmentSubmissionType().stream().forEach(st -> {
         var criterion = new CriterionDefinition();
-        criterion.setName(st.getName());
-        criterion.setType(null);
+        criterion.setName(st.getSubmissionType().getName());
+        criterion
+            .setType(CriterionDefinition.TypeEnum.fromValue(d.getSelectionType().toLowerCase()));
         criterion.setOptions(options);
         criteria.add(criterion);
       });
@@ -162,12 +164,48 @@ public class AssessmentService {
                           format(ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND, r.getRequirementId(),
                               tool.getId())));
 
+              // Create AssessmentSelection
               var as = new AssessmentSelection();
               as.setAssessment(entity);
               as.setDimension(dimension);
               as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
               as.setTimestamps(createTimestamps(principal));
               as.setRequirementTaxon(requirementTaxon);
+
+              // Create AssessmentSelectionDetails
+              Set<AssessmentSelectionDetail> assessmentSelectionDetails = new HashSet<>();
+
+              if (r.getValues() != null) {
+                assessmentSelectionDetails.addAll(r.getValues().stream().map(c -> {
+                  var asd = new AssessmentSelectionDetail();
+                  asd.setAssessmentSelection(as);
+
+                  // ****
+                  asd.setAssessmentSubmissionType(null);
+
+                  var dimensionSelectionType =
+                      TypeEnum.fromValue(dimension.getSelectionType().toLowerCase());
+
+                  switch (dimensionSelectionType) {
+                    case SELECT:
+                    case MULTISELECT:
+                      var validValue = dimension.getValidValues().stream()
+                          .filter(vv -> vv.getValueName().equals(c.getValue())).findFirst()
+                          .orElseThrow(() -> new ValidationException(
+                              format(ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND, c.getValue(),
+                                  dimension.getName())));
+                      // TODO - change to String
+                      asd.setRequirementValue(new BigDecimal(validValue.getKey().getValueCode()));
+                      break;
+                    case INTEGER:
+                      asd.setRequirementValue(new BigDecimal(c.getValue()));
+                      break;
+                  }
+
+                  return asd;
+                }).collect(Collectors.toSet()));
+              }
+
               return as;
             }).collect(Collectors.toSet()));
           }
@@ -231,8 +269,16 @@ public class AssessmentService {
             requirement.setName(s.getRequirementTaxon().getRequirement().getName());
             requirement.setWeighting(s.getWeightingPercentage().intValue());
 
-            // TODO - ? what are the values
-            // requirement.setValues(null);
+
+            requirement.setValues(s.getAssessmentSelectionDetails().stream().map(asd -> {
+              var criterion = new Criterion();
+              // criterion.setCriterionId(assessmentId)
+              // criterion.setName(principal)
+              // criterion.setValue(asd.getRequirementValidValueId());
+              return criterion;
+            }).collect(Collectors.toList()));
+
+
 
             return requirement;
           }).collect(Collectors.toList());
