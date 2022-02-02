@@ -54,6 +54,9 @@ public class ProcurementEvent {
   @Column(name = "down_selected_suppliers_ind")
   Boolean downSelectedSuppliers;
 
+  @Column(name = "assessment_supplier_target")
+  Integer assessmentSupplierTarget;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 

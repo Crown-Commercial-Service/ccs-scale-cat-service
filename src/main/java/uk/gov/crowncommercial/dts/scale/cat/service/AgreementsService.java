@@ -6,6 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPICo
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -18,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
@@ -58,7 +60,7 @@ public class AgreementsService {
         .collect(Collectors.toList());
   }
 
-  public Set<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
+  public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
     var lotSuppliers =
@@ -66,6 +68,18 @@ public class AgreementsService {
             agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, lotId);
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
+  }
+
+  public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
+    var getLotEventTypesUri =
+        agreementServiceAPIConfig.getGetEventTypesForAgreement().get(KEY_URI_TEMPLATE);
+
+    var lotEventTypes = webclientWrapper.getOptionalResource(LotEventType[].class,
+        agreementsServiceWebClient, agreementServiceAPIConfig.getTimeoutDuration(),
+        getLotEventTypesUri, agreementId, lotId);
+
+    return lotEventTypes.isPresent() ? Set.of(lotEventTypes.get()) : Set.of();
+
   }
 
 }
