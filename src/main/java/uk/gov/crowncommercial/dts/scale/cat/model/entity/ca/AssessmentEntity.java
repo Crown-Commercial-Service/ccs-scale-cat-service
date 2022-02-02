@@ -27,7 +27,8 @@ public class AssessmentEntity {
   private String buyerOrganisationId;
 
   @Column(name = "status")
-  private String status;
+  @Enumerated(EnumType.STRING)
+  private AssessmentStatus status;
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
