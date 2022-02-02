@@ -3,10 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.lang.String.format;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
@@ -145,72 +142,73 @@ public class AssessmentService {
                   .orElseThrow(() -> new ResourceNotFoundException(
                       String.format(ERR_FMT_DIMENSION_NOT_FOUND, dr.getName())));
 
-          // Build Dimension Weightings
-          var dimensionWeighting = new AssessmentDimensionWeighting();
-          dimensionWeighting.setAssessment(entity);
-          dimensionWeighting.setDimension(dimension);
-          dimensionWeighting.setWeightingPercentage(new BigDecimal(dr.getWeighting()));
-          dimensionWeighting.setTimestamps(createTimestamps(principal));
+              // Build Dimension Weightings
+              var dimensionWeighting = new AssessmentDimensionWeighting();
+              dimensionWeighting.setAssessment(entity);
+              dimensionWeighting.setDimension(dimension);
+              dimensionWeighting.setWeightingPercentage(new BigDecimal(dr.getWeighting()));
+              dimensionWeighting.setTimestamps(createTimestamps(principal));
 
-          if (dr.getRequirements() != null) {
-            assessmentSelections.addAll(dr.getRequirements().stream().map(r -> {
+              if (dr.getRequirements() != null) {
+                assessmentSelections.addAll(dr.getRequirements().stream().map(r -> {
 
-              log.trace("Find RequirementTaxon");
+                  log.trace("Find RequirementTaxon");
 
-              var requirementTaxon =
-                  retryableTendersDBDelegate.findRequirementTaxon(r.getName(), tool.getId())
-                      .orElseThrow(() -> new ResourceNotFoundException(
-                          format(ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND, r.getRequirementId(),
-                              tool.getId())));
+                  var requirementTaxon =
+                      retryableTendersDBDelegate.findRequirementTaxon(r.getName(), tool.getId())
+                          .orElseThrow(() -> new ResourceNotFoundException(
+                              format(ERR_FMT_REQUIREMENT_TAXON_NOT_FOUND, r.getRequirementId(),
+                                  tool.getId())));
 
-              // Build AssessmentSelection
-              var as = new AssessmentSelection();
-              as.setAssessment(entity);
-              as.setDimension(dimension);
-              as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
-              as.setTimestamps(createTimestamps(principal));
-              as.setRequirementTaxon(requirementTaxon);
+                  // Build AssessmentSelection
+                  var as = new AssessmentSelection();
+                  as.setAssessment(entity);
+                  as.setDimension(dimension);
+                  as.setWeightingPercentage(new BigDecimal(r.getWeighting()));
+                  as.setTimestamps(createTimestamps(principal));
+                  as.setRequirementTaxon(requirementTaxon);
 
-              // Build AssessmentSelectionDetails
-              if (r.getValues() != null) {
-                as.setAssessmentSelectionDetails(r.getValues().stream().map(c -> {
-                  var asd = new AssessmentSelectionDetail();
-                  asd.setAssessmentSelection(as);
-                  var assessmentSubmissionType = tool.getAssessmentSubmissionTypes().stream()
-                      .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId()))
-                      .findFirst().orElseThrow(() -> new ValidationException(
-                          format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
-                  asd.setAssessmentSubmissionType(assessmentSubmissionType);
-                  asd.setTimestamps(createTimestamps(principal));
+                  // Build AssessmentSelectionDetails
+                  if (r.getValues() != null) {
+                    as.setAssessmentSelectionDetails(r.getValues().stream().map(c -> {
+                      var asd = new AssessmentSelectionDetail();
+                      asd.setAssessmentSelection(as);
+                      var assessmentSubmissionType = tool.getAssessmentSubmissionTypes().stream()
+                          .filter(
+                              ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId()))
+                          .findFirst().orElseThrow(() -> new ValidationException(
+                              format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
+                      asd.setAssessmentSubmissionType(assessmentSubmissionType);
+                      asd.setTimestamps(createTimestamps(principal));
 
-                  var dimensionSelectionType =
-                      DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase());
+                      var dimensionSelectionType = DimensionSelectionType
+                          .fromValue(dimension.getSelectionType().toLowerCase());
 
-                  switch (dimensionSelectionType) {
-                    case SELECT:
-                    case MULTISELECT:
-                      var validValue = getValidValueByName(dimension, c.getValue());
-                      asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
-                      break;
-                    case INTEGER:
-                      asd.setRequirementValue(new BigDecimal(c.getValue()));
-                      break;
-                    default:
-                      throw new ValidationException(format(
-                          ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, dimensionSelectionType));
+                      switch (dimensionSelectionType) {
+                        case SELECT:
+                        case MULTISELECT:
+                          var validValue = getValidValueByName(dimension, c.getValue());
+                          asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
+                          break;
+                        case INTEGER:
+                          asd.setRequirementValue(new BigDecimal(c.getValue()));
+                          break;
+                        default:
+                          throw new ValidationException(format(
+                              ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, dimensionSelectionType));
+                      }
+                      return asd;
+                    }).collect(Collectors.toSet()));
                   }
-                  return asd;
+
+                  return as;
                 }).collect(Collectors.toSet()));
               }
 
-              return as;
-            }).collect(Collectors.toSet()));
-          }
+              return dimensionWeighting;
+            }
 
-          return dimensionWeighting;
-        }
-
-        ).collect(Collectors.toSet());
+            ).collect(Collectors.toSet());
 
     entity.setAssessmentSelections(assessmentSelections);
     entity.setDimensionWeightings(dimensionWeightings);
@@ -368,7 +366,6 @@ public class AssessmentService {
         .orElseThrow(() -> new ValidationException(
             format(ERR_MSG_FMT_DIMENSION_VALID_VALUE_NOT_FOUND, valueCode, dimension.getName())));
   }
-
 
   /**
    * Get the Criteria for a Dimension.
