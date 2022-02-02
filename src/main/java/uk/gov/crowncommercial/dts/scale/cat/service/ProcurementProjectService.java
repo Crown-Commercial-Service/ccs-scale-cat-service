@@ -376,7 +376,7 @@ public class ProcurementProjectService {
                                                                                     // field from
                                                                                     // Jaaggaer
               // TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.length())),
-              ReleaseTag.TENDER);
+              ReleaseTag.TENDER, Optional.empty());
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
     } else {

@@ -564,7 +564,7 @@ public class ProcurementEventService {
           event.getEventID(), event.getEventName(), event.getExternalEventId(),
           ViewEventType.fromValue(event.getEventType()), jaggaerAPIConfig
               .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
-          EVENT_STAGE);
+          EVENT_STAGE, Optional.empty());
     }).collect(Collectors.toList());
   }
 

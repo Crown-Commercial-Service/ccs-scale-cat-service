@@ -7,13 +7,9 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;<<<<<<<Upstream,based on origin/develop
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;=======
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;>>>>>>>2f 54e03 SCAT-2918-Capability Assessment development
+import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}

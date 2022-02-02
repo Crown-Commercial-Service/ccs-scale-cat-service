@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.util;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
@@ -77,19 +78,11 @@ public class TestUtils {
   public static ProjectListResponse getProjectListResponse() {
     var test = "Test";
     var projectListResponse = ProjectListResponse.builder()
-            .projectList(ProjectList.builder()
-                    .project(Arrays.asList(
-                            Project.builder()
-                                    .tender(Tender.builder()
-                                            .tenderReferenceCode(test)
-                                            .tenderStatusLabel("project.state.running")
-                                            .tenderCode(test)
-                                            .title(test)
-                                            .build())
-                                    .build()
-                    ))
-                    .build())
-            .build();
+        .projectList(ProjectList.builder().project(Arrays.asList(Project.builder()
+            .tender(Tender.builder().tenderReferenceCode(test)
+                .tenderStatusLabel("project.state.running").tenderCode(test).title(test).build())
+            .build())).build())
+        .build();
 
     return projectListResponse;
   }
