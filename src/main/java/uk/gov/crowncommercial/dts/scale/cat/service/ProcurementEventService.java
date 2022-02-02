@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class ProcurementEventService {
   private final ValidationService validationService;
   private final SupplierService supplierService;
   private final DocumentConfig documentConfig;
+  private final AssessmentService assessmentService;
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -125,7 +127,7 @@ public class ProcurementEventService {
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         createRfxResponse.getRfxReferenceCode(), ViewEventType.fromValue(eventTypeValue),
-        TenderStatus.PLANNING, EVENT_STAGE);
+        TenderStatus.PLANNING, EVENT_STAGE, Optional.empty());
   }
 
   /**
@@ -205,30 +207,56 @@ public class ProcurementEventService {
     log.debug("Update Event {}", updateEvent);
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
+    validationService.validateUpdateEventAssessment(updateEvent, event, principal);
+
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
         .rfxReferenceCode(event.getExternalReferenceId()).build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
     var updateJaggaer = false;
     var updateDB = false;
+    var createAssessment = false;
+    Integer returnAssessmentId = null;
 
     // Update event name
-    if (updateEvent.getName() != null && !updateEvent.getName().isEmpty()) {
+    if (StringUtils.hasText(updateEvent.getName())) {
       rfx.getRfxSetting().setShortDescription(updateEvent.getName());
       event.setEventName(updateEvent.getName());
+
+      // TODO: Should pre-existing DAA/FCA events have corresponding Jaggaer Rfx? (confirm
+      // via SCAT-2501)
       updateJaggaer = true;
       updateDB = true;
     }
 
     // Update event type
     if (updateEvent.getEventType() != null) {
-      var existingEventType = event.getEventType();
-      if (existingEventType != null && !existingEventType.isBlank()
-          && !"TBD".equals(event.getEventType())) {
+      if (!ViewEventType.TBD.name().equals(event.getEventType())) {
         throw new IllegalArgumentException(
             "Cannot update an existing event type of '" + event.getEventType() + "'");
       }
+
+      if (Set.of(DefineEventType.FCA, DefineEventType.DAA).contains(updateEvent.getEventType())
+          && updateEvent.getAssessmentId() == null) {
+        createAssessment = true;
+      }
+
       event.setEventType(updateEvent.getEventType().getValue());
       updateDB = true;
+    }
+
+    // Valid to supply this for an existing event
+    if (updateEvent.getAssessmentSupplierTarget() != null) {
+      event.setAssessmentSupplierTarget(updateEvent.getAssessmentSupplierTarget());
+      updateDB = true;
+    }
+
+    // Create a new empty assessment
+    if (createAssessment) {
+      returnAssessmentId = assessmentService.createEmptyAssessment(event.getProject().getCaNumber(),
+          event.getProject().getLotNumber(), updateEvent.getEventType(), principal);
+    } else if (updateEvent.getAssessmentId() != null) {
+      // Return the existing (validated) assessmentId
+      returnAssessmentId = updateEvent.getAssessmentId();
     }
 
     // Save to Jaggaer
@@ -240,6 +268,7 @@ public class ProcurementEventService {
     if (updateDB) {
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
+
       retryableTendersDBDelegate.save(event);
     }
 
@@ -249,7 +278,8 @@ public class ProcurementEventService {
         .get(exportRfxResponse.getRfxSetting().getStatusCode());
     return tendersAPIModelUtils.buildEventSummary(eventId, event.getEventName(),
         event.getExternalReferenceId(), ViewEventType.fromValue(event.getEventType()),
-        TenderStatus.fromValue(status.toString()), EVENT_STAGE);
+        TenderStatus.fromValue(status.toString()), EVENT_STAGE,
+        Optional.ofNullable(returnAssessmentId));
 
   }
 

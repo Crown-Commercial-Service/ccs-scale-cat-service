@@ -5,10 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -62,6 +59,7 @@ class ProcurementEventServiceTest {
   private static final String UPDATED_EVENT_NAME = "New Name";
   private static final String ORIGINAL_EVENT_TYPE = "TBD";
   private static final String UPDATED_EVENT_TYPE = "RFI";
+  private static final String UPDATED_EVENT_TYPE_CAP_ASS = "FCA";
   private static final String BUYER_COMPANY_BRAVO_ID = "54321";
   private static final Boolean DOWNSELECTED_SUPPLIERS = true;
   private static final Optional<SubUser> JAGGAER_USER =
@@ -72,6 +70,7 @@ class ProcurementEventServiceTest {
   private static final Integer JAGGAER_SUPPLIER_ID = 21399;
   private static final String DESCRIPTION = "Description";
   private static final String CRITERION_TITLE = "Criteria 1";
+  private static final Integer ASSESSMENT_ID = 1;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -108,6 +107,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private CriteriaService criteriaService;
+
+  @MockBean
+  private AssessmentService assessmentService;
 
   @MockBean
   private JourneyRepo journeyRepo;
@@ -392,6 +394,99 @@ class ProcurementEventServiceTest {
     assertEquals(UPDATED_EVENT_TYPE, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
 
+    verify(jaggaerService, times(0)).createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE));
+  }
+
+  @Test
+  void testUpdateProcurementEventTypeCreateAssessment() throws Exception {
+
+    // Create test update objects
+    var updateEvent =
+        new UpdateEvent().eventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS));
+
+    var rfxSetting =
+        RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME).statusCode(100).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    var project = new ProcurementProject();
+    project.setCaNumber(CA_NUMBER);
+    project.setLotNumber(LOT_NUMBER);
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
+    event.setProject(project);
+
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER,
+        DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS), PRINCIPAL))
+            .thenReturn(ASSESSMENT_ID);
+
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+
+    // Invoke
+    var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
+
+    procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent,
+        PRINCIPAL);
+
+    // Verify
+    verify(validationService).validateUpdateEventAssessment(updateEvent, event, PRINCIPAL);
+    verify(assessmentService).createEmptyAssessment(CA_NUMBER, LOT_NUMBER,
+        DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS), PRINCIPAL);
+    verify(procurementEventRepo).save(captor.capture());
+    assertEquals(UPDATED_EVENT_TYPE_CAP_ASS, captor.getValue().getEventType());
+    assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
+    verify(jaggaerService, times(0)).createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE));
+  }
+
+  @Test
+  void testUpdateProcurementEventTypeUpdateAssessment() throws Exception {
+
+    // Create test update objects
+    var updateEvent =
+        new UpdateEvent().eventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS))
+            .assessmentId(ASSESSMENT_ID).assessmentSupplierTarget(10);
+
+    var rfxSetting =
+        RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME).statusCode(100).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    var project = new ProcurementProject();
+    project.setCaNumber(CA_NUMBER);
+    project.setLotNumber(LOT_NUMBER);
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
+    event.setProject(project);
+
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+
+    // Invoke
+    var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
+
+    procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, PROC_EVENT_ID, updateEvent,
+        PRINCIPAL);
+
+    // Verify
+    verify(validationService).validateUpdateEventAssessment(updateEvent, event, PRINCIPAL);
+    verify(assessmentService, never()).createEmptyAssessment(CA_NUMBER, LOT_NUMBER,
+        DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS), PRINCIPAL);
+    verify(procurementEventRepo).save(captor.capture());
+    assertEquals(UPDATED_EVENT_TYPE_CAP_ASS, captor.getValue().getEventType());
+    assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
+    assertEquals(10, captor.getValue().getAssessmentSupplierTarget());
     verify(jaggaerService, times(0)).createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE));
   }
 
