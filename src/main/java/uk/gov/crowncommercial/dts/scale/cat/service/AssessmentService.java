@@ -3,7 +3,10 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.lang.String.format;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
@@ -12,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition.TypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -32,6 +34,8 @@ public class AssessmentService {
       "A valid value matching [%s] not found for dimension [%s]";
   private static final String ERR_FMT_SUBMISSION_TYPE_NOT_FOUND =
       "Submission Type for Criterion [%s] not found";
+  private static final String ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND =
+      "Dimension Select Type [%s] not found";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -42,7 +46,7 @@ public class AssessmentService {
    * @param toolId internal database Assessment Tool id
    * @return
    */
-  public Set<DimensionDefinition> getDimensions(final Integer toolId) {
+  public List<DimensionDefinition> getDimensions(final Integer toolId) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
     AssessmentTool tool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
@@ -56,7 +60,7 @@ public class AssessmentService {
       var dd = new DimensionDefinition();
       dd.setDimensionId(d.getId());
       dd.setName(d.getName());
-      dd.setType(TypeEnum.fromValue(d.getSelectionType().toLowerCase()));
+      dd.setType(DimensionSelectionType.fromValue(d.getSelectionType().toLowerCase()));
 
       // Build WeightingRange
       var wr = new WeightingRange();
@@ -73,7 +77,7 @@ public class AssessmentService {
             var doptg = new DimensionOptionGroups();
             doptg.setName(at.getName());
             doptg.setLevel(calculateLevel(at, 0));
-            dopt.setGroups(Arrays.asList(doptg));
+            dopt.setGroups(List.of(doptg));
             dimensionOptions.add(dopt);
           }));
       dd.setOptions(dimensionOptions);
@@ -83,7 +87,7 @@ public class AssessmentService {
 
       return dd;
 
-    }).collect(Collectors.toSet());
+    }).collect(Collectors.toList());
   }
 
   /**
@@ -105,7 +109,7 @@ public class AssessmentService {
 
     var entity = new AssessmentEntity();
     entity.setTool(tool);
-    entity.setStatus("TODO"); // TODO: Outstanding question on SCAT-2918
+    entity.setStatus(AssessmentStatus.ACTIVE);
     entity.setBuyerOrganisationId(conclaveUser.getOrganisationId());
     entity.setTimestamps(createTimestamps(principal));
 
@@ -167,7 +171,7 @@ public class AssessmentService {
                   asd.setTimestamps(createTimestamps(principal));
 
                   var dimensionSelectionType =
-                      TypeEnum.fromValue(dimension.getSelectionType().toLowerCase());
+                      DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase());
 
                   switch (dimensionSelectionType) {
                     case SELECT:
@@ -178,6 +182,9 @@ public class AssessmentService {
                     case INTEGER:
                       asd.setRequirementValue(new BigDecimal(c.getValue()));
                       break;
+                    default:
+                      throw new ValidationException(format(
+                          ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, dimensionSelectionType));
                   }
                   return asd;
                 }).collect(Collectors.toSet()));
@@ -287,7 +294,7 @@ public class AssessmentService {
 
     var response = new Assessment();
     response.setExternalToolId(assessment.getTool().getExternalToolId());
-    response.setAssesmentId(assessmentId);
+    response.setAssessmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
     response.setScores(scores);
 
@@ -378,8 +385,8 @@ public class AssessmentService {
       var criterion = new CriterionDefinition();
       criterion.setCriterionId(st.getSubmissionType().getCode());
       criterion.setName(st.getSubmissionType().getName());
-      criterion.setType(
-          CriterionDefinition.TypeEnum.fromValue(dimension.getSelectionType().toLowerCase()));
+      criterion
+          .setType(DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase()));
       criterion.setOptions(options);
       criteria.add(criterion);
     });

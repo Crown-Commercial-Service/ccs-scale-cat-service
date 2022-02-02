@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.List;
-import java.util.Set;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +22,7 @@ public class AssessmentsController extends AbstractRestController {
   private final AssessmentService assessmentService;
 
   @GetMapping("/tools/{tool-id}/dimensions")
-  public Set<DimensionDefinition> getDimensions(final @PathVariable("tool-id") Integer toolId,
+  public List<DimensionDefinition> getDimensions(final @PathVariable("tool-id") Integer toolId,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
