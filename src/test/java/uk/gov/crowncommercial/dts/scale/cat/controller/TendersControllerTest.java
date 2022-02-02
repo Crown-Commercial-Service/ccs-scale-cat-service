@@ -71,8 +71,8 @@ class TendersControllerTest {
         .perform(
             get("/tenders/event-types").with(validCATJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(6))
-        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "CA", "DA", "FC", "TBD")));
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(7))
+        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "DA", "FC", "FCA", "DAA", "TBD")));
   }
 
   /*

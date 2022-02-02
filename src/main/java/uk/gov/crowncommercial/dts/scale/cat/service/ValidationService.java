@@ -2,12 +2,16 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Set;
+import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -18,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class ValidationService {
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final AssessmentService assessmentService;
   private final Clock clock;
 
   /**
@@ -74,6 +79,55 @@ public class ValidationService {
 
     if (!publishDates.getEndDate().isAfter(now)) {
       throw new IllegalArgumentException("endDate must be in the future");
+    }
+
+  }
+
+  /**
+   * Validates the Capabilty Assessment related properties of {@link UpdateEvent}, in combination
+   * with the supplied {@link DefineEventType}
+   *
+   * @param updateEvent
+   * @param principal
+   * @throws ValidationException if provided values are invalid or represent an invalid update
+   *         combination
+   */
+  public void validateUpdateEventAssessment(final UpdateEvent updateEvent,
+      final ProcurementEvent existingEvent, final String principal) {
+
+    // Post MVP - user may have created an assessment before commencing CaT journey so validate
+    if (updateEvent.getAssessmentId() != null) {
+
+      if (updateEvent.getEventType() != null && !Set.of(DefineEventType.FCA, DefineEventType.DAA)
+          .contains(updateEvent.getEventType())) {
+        throw new ValidationException(
+            "assessmentId is invalid for eventType: " + updateEvent.getEventType());
+      }
+
+      assessmentService.getAssessment(updateEvent.getAssessmentId(), principal);
+    }
+
+    if (updateEvent.getAssessmentSupplierTarget() != null) {
+
+      if (updateEvent.getAssessmentId() == null) {
+        throw new ValidationException(
+            "assessmentId must be provided with assessmentSupplierTarget");
+      }
+
+      var assessmentSupplierTarget = updateEvent.getAssessmentSupplierTarget();
+
+      // SCAT-3504 AC5. Check existing event type is valid for setting assessmentSupplierTarget
+      if (!Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name())
+          .contains(existingEvent.getEventType())) {
+        throw new ValidationException(
+            "assessmentSupplierTarget is not applicable for existing eventType: "
+                + existingEvent.getEventType());
+      }
+
+      // SCAT-3504 AC4
+      if (DefineEventType.DAA == updateEvent.getEventType() && assessmentSupplierTarget > 1) {
+        throw new ValidationException("assessmentSupplierTarget must be 1 for event type DAA");
+      }
     }
 
   }

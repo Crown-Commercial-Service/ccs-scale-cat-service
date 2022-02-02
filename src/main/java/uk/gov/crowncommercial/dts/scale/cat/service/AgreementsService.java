@@ -6,6 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPICo
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,14 +50,14 @@ public class AgreementsService {
                 Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
             .filter(WebclientWrapper::is5xxServerError))
         .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new AgreementsServiceApplicationException(
-                String.format("Unexpected error retrieving {} template from AS",eventType.name())));
+            .orElseThrow(() -> new AgreementsServiceApplicationException(String
+                .format("Unexpected error retrieving {} template from AS", eventType.name())));
 
     return dataTemplates.stream().map(tcs -> DataTemplate.builder().criteria(tcs).build())
         .collect(Collectors.toList());
   }
 
-  public Set<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
+  public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
     var lotSuppliers =
@@ -87,6 +88,17 @@ public class AgreementsService {
 
     return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
         "Lot with ID: [" + lotId + "] for CA: [" + agreementId + "] not found in AS"));
+  }
+
+  public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
+    var getLotEventTypesUri =
+        agreementServiceAPIConfig.getGetEventTypesForAgreement().get(KEY_URI_TEMPLATE);
+
+    var lotEventTypes = webclientWrapper.getOptionalResource(LotEventType[].class,
+        agreementsServiceWebClient, agreementServiceAPIConfig.getTimeoutDuration(),
+        getLotEventTypesUri, agreementId, lotId);
+
+    return lotEventTypes.isPresent() ? Set.of(lotEventTypes.get()) : Set.of();
   }
 
 }
