@@ -144,7 +144,7 @@ class AssessmentsControllerTest {
     dimensionRequirement.setName(DIMENSION_NAME);
     dimensionRequirement.setType(DIMENSION_TYPE.toString());
     dimensionRequirement.setWeighting(50);
-    dimensionRequirement.setIncludedCriterion(getTestCriteria());
+    dimensionRequirement.setIncludedCriteria(getTestCriteria());
     assessment.setDimensionRequirements(List.of(dimensionRequirement));
 
     var criterion = new Criterion();

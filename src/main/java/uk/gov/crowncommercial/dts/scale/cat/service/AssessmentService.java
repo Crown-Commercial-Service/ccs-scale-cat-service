@@ -251,7 +251,7 @@ public class AssessmentService {
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
       // Build Criteria for Dimension (includedCriteria)
-      req.setIncludedCriterion(getCriteriaForDimension(dw.getDimension(), assessment.getTool()));
+      req.setIncludedCriteria(getCriteriaForDimension(dw.getDimension(), assessment.getTool()));
 
       // Build Requirements
       var requirements = assessment.getAssessmentSelections().stream()
