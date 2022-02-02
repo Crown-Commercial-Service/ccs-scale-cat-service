@@ -1,9 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,6 +23,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
@@ -27,7 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
- * Controller tests
+ * Controller tests.
  */
 @WebMvcTest(AssessmentsController.class)
 @Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class})
@@ -47,6 +51,11 @@ class AssessmentsControllerTest {
   private static final Integer GROUP_LEVEL = 1;
   private static final String CRITERION_ID = "11";
   private static final String CRITERION_NAME_SUPPLIER = "Supplier";
+  private static final String REQUIREMENT_SC_NONE = "0: None";
+  private static final String REQUIREMENT_SC_CTC = "2: Counter Terrorist Check (CTC)";
+
+  @Autowired
+  private ObjectMapper objectMapper;
 
   @Autowired
   private MockMvc mockMvc;
@@ -99,13 +108,7 @@ class AssessmentsControllerTest {
     option.setName(OPTION_NAME);
     option.setGroups(List.of(group));
     dimension.setOptions(List.of(option));
-
-    var evaluationCriteria = new CriterionDefinition();
-    evaluationCriteria.setCriterionId(CRITERION_ID);
-    evaluationCriteria.setName(CRITERION_NAME_SUPPLIER);
-    evaluationCriteria.setType(DIMENSION_TYPE);
-    evaluationCriteria.setOptions(List.of("0: None", "2: Counter Terrorist Check (CTC)"));
-    dimension.setEvaluationCriteria(List.of(evaluationCriteria));
+    dimension.setEvaluationCriteria(getTestCriteria());
 
     when(assessmentService.getDimensions(TOOL_ID)).thenReturn(Arrays.asList(dimension));
 
@@ -124,10 +127,9 @@ class AssessmentsControllerTest {
         .andExpect(jsonPath("$[0].options[0].groups[0].level").value(GROUP_LEVEL))
         .andExpect(jsonPath("$[0].evaluationCriteria[0].criterion-id").value(CRITERION_ID))
         .andExpect(jsonPath("$[0].evaluationCriteria[0].name").value(CRITERION_NAME_SUPPLIER))
-        .andExpect(jsonPath("$[0]..evaluationCriteria[0].type").value(DIMENSION_TYPE.getValue()))
-        .andExpect(jsonPath("$[0].evaluationCriteria[0].options[0]").value("0: None"))
-        .andExpect(jsonPath("$[0].evaluationCriteria[0].options[1]")
-            .value("2: Counter Terrorist Check (CTC)"));
+        .andExpect(jsonPath("$[0].evaluationCriteria[0].type").value(DIMENSION_TYPE.getValue()))
+        .andExpect(jsonPath("$[0].evaluationCriteria[0].options[0]").value(REQUIREMENT_SC_NONE))
+        .andExpect(jsonPath("$[0].evaluationCriteria[0].options[1]").value(REQUIREMENT_SC_CTC));
   }
 
   @Test
@@ -137,6 +139,26 @@ class AssessmentsControllerTest {
     assessment.setAssessmentId(ASSESSMENT_ID);
     assessment.setExternalToolId(EXTERNAL_TOOL_ID);
 
+    var dimensionRequirement = new DimensionRequirement();
+    dimensionRequirement.setDimensionId(DIMENSION_ID);
+    dimensionRequirement.setName(DIMENSION_NAME);
+    dimensionRequirement.setType(DIMENSION_TYPE.toString());
+    dimensionRequirement.setWeighting(50);
+    dimensionRequirement.setIncludedCriterion(getTestCriteria());
+    assessment.setDimensionRequirements(List.of(dimensionRequirement));
+
+    var criterion = new Criterion();
+    criterion.setCriterionId(CRITERION_ID);
+    criterion.setName(CRITERION_NAME_SUPPLIER);
+    criterion.setValue(REQUIREMENT_SC_CTC);
+
+    var requirement = new Requirement();
+    requirement.setName(OPTION_NAME);
+    requirement.setRequirementId(1);
+    requirement.setWeighting(25);
+    requirement.setValues(List.of(criterion));
+    dimensionRequirement.setRequirements(List.of(requirement));
+
     when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
 
     mockMvc
@@ -145,6 +167,52 @@ class AssessmentsControllerTest {
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.assessment-id").value(ASSESSMENT_ID))
-        .andExpect(jsonPath("$.external-tool-id").value(TOOL_ID));
+        .andExpect(jsonPath("$.external-tool-id").value(TOOL_ID))
+        .andExpect(jsonPath("$.dimensionRequirements[0].dimension-id").value(DIMENSION_ID))
+        .andExpect(jsonPath("$.dimensionRequirements[0].name").value(DIMENSION_NAME))
+        .andExpect(jsonPath("$.dimensionRequirements[0].type").value(DIMENSION_TYPE.getValue()))
+        .andExpect(jsonPath("$.dimensionRequirements[0].weighting").value(50))
+        .andExpect(jsonPath("$.dimensionRequirements[0].includedCriterion[0].criterion-id")
+            .value(CRITERION_ID))
+        .andExpect(jsonPath("$.dimensionRequirements[0].includedCriterion[0].name")
+            .value(CRITERION_NAME_SUPPLIER))
+        .andExpect(jsonPath("$.dimensionRequirements[0].includedCriterion[0].type")
+            .value(DIMENSION_TYPE.getValue()))
+        .andExpect(jsonPath("$.dimensionRequirements[0].includedCriterion[0].options[0]")
+            .value(REQUIREMENT_SC_NONE))
+        .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].name").value(OPTION_NAME))
+        .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].requirement-id").value(1))
+        .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].weighting").value(25))
+        .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].values[0].criterion-id")
+            .value(CRITERION_ID))
+        .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].values[0].name")
+            .value(CRITERION_NAME_SUPPLIER))
+        .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].values[0].value")
+            .value(REQUIREMENT_SC_CTC));
+  }
+
+  @Test
+  void createAssessment_200_OK() throws Exception {
+
+    var assessment = new Assessment();
+
+    when(assessmentService.createAssessment(assessment, PRINCIPAL)).thenReturn(1);
+
+    mockMvc
+        .perform(post(ASSESSMENTS_PATH).with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(assessment)))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$").value(1));
+
+    verify(assessmentService, times(1)).createAssessment(assessment, PRINCIPAL);
+  }
+
+  private List<CriterionDefinition> getTestCriteria() {
+    var criterion = new CriterionDefinition();
+    criterion.setCriterionId(CRITERION_ID);
+    criterion.setName(CRITERION_NAME_SUPPLIER);
+    criterion.setType(DIMENSION_TYPE);
+    criterion.setOptions(List.of(REQUIREMENT_SC_NONE, REQUIREMENT_SC_CTC));
+    return List.of(criterion);
   }
 }
