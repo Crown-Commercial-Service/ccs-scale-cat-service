@@ -18,9 +18,9 @@ spring:
   jpa:
     open-in-view: false
     database: postgresql
-    show-sql: false
+    show-sql: true
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
   datasource:
     hikari:
       connectionTimeout: 10000
@@ -74,6 +74,7 @@ config:
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
       defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
       defaultSupplierRightsProfile: ""
+      messageAPIUrl: "https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation"
 
       rfxStatusToTenderStatus:
         0: PLANNED
