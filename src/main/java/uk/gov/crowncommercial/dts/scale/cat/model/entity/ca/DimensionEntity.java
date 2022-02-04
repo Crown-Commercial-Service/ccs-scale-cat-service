@@ -33,6 +33,7 @@ public class DimensionEntity {
       inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
   Set<AssessmentTaxon> assessmentTaxons;
 
+  @EqualsAndHashCode.Exclude
   @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
   @JoinColumn(name = "dimension_id")
   Set<DimensionValidValue> validValues;
