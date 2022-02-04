@@ -568,13 +568,12 @@ public class ProcurementEventService {
     var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
         .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-    if (TenderStatus.PLANNED == status) {
-      validationService.validatePublishDates(publishDates);
-      jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
-    } else {
+    if (TenderStatus.PLANNED != status) {
       throw new IllegalArgumentException(
           "You cannot publish an event unless it is in a 'planned' state");
     }
+    validationService.validatePublishDates(publishDates);
+    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
   }
 
   /**
@@ -585,15 +584,15 @@ public class ProcurementEventService {
    */
   public List<EventSummary> getEventsForProject(final Integer projectId) {
 
-    Set<ProcurementEvent> events =
+    var events =
         retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
     return events.stream().map(event -> {
 
       var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-      return tendersAPIModelUtils.buildEventSummary(
-          event.getEventID(), event.getEventName(), event.getExternalEventId(),
+      return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
+          Optional.ofNullable(event.getExternalEventId()),
           ViewEventType.fromValue(event.getEventType()), jaggaerAPIConfig
               .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
           EVENT_STAGE, Optional.empty());
