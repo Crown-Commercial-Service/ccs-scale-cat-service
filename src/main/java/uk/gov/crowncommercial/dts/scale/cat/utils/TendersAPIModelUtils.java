@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
@@ -45,7 +46,7 @@ public class TendersAPIModelUtils {
 
   public EventSummary buildEventSummary(final String eventId, final String name,
       final String supportID, final ViewEventType type, final TenderStatus status,
-      final ReleaseTag stage) {
+      final ReleaseTag stage, final Optional<Integer> assessmentId) {
     var eventSummary = new EventSummary();
     eventSummary.setId(eventId);
     eventSummary.setTitle(name);
@@ -53,6 +54,8 @@ public class TendersAPIModelUtils {
     eventSummary.setStatus(status);
     eventSummary.setEventType(type);
     eventSummary.setEventSupportId(supportID);
+    assessmentId.ifPresent(eventSummary::setAssessmentId);
+
     return eventSummary;
   }
 

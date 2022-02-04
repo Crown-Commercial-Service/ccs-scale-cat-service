@@ -227,14 +227,6 @@ class ProjectsControllerTest {
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
 
-    var expectedJson = "[" + "{\"type\":\"EOI\",\"description\":\"Expression of Interest\","
-        + "\"preMarketActivity\":true},"
-        + "{\"type\":\"RFI\",\"description\":\"Request for Information\","
-        + "\"preMarketActivity\":true},"
-        + "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true},"
-        + "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true},"
-        + "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
-
     when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
         .thenReturn(TestUtils.getEventTypes());
 
@@ -243,7 +235,8 @@ class ProjectsControllerTest {
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
-        .andExpect(content().string(expectedJson));
+        .andExpect(
+            content().json(objectMapper.writeValueAsString(TestUtils.getEventTypes()), false));
   }
 
   @Test

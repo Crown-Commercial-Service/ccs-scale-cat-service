@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -13,7 +15,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -32,17 +33,17 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ProjectEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -102,6 +103,9 @@ class ProcurementProjectServiceTest {
 
   @MockBean
   private WebclientWrapper webclientWrapper;
+
+  @MockBean
+  private AgreementsService agreementsService;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
@@ -295,12 +299,8 @@ class ProcurementProjectServiceTest {
       return Optional.of(procurementProject);
     });
 
-    when(jaggaerWebClient.get()
-        .uri(agreementsServiceAPIConfig.getGetEventTypesForAgreement().get("uriTemplate"),
-            CA_NUMBER, LOT_NUMBER)
-        .retrieve().bodyToMono(eq(ProjectEventType[].class))
-        .block(Duration.ofSeconds(agreementsServiceAPIConfig.getTimeoutDuration())))
-            .thenReturn(TestUtils.getProjectEvents());
+    when(agreementsService.getLotEventTypes(CA_NUMBER, LOT_NUMBER))
+        .thenReturn(TestUtils.getLotEventTypes());
 
     // Invoke
     var projectEventTypes = procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID);
@@ -308,17 +308,7 @@ class ProcurementProjectServiceTest {
     // Verify
     verify(retryableTendersDBDelegate).findProcurementProjectById(PROC_PROJECT_ID);
 
-    // TODO : better way to compare ??
-    var defineEventTypes = projectEventTypes.stream()
-        .map(eventType -> eventType.getType().getValue()).collect(Collectors.joining(","));
-    var eventTypesDescription =
-        projectEventTypes.stream().map(EventType::getDescription).collect(Collectors.joining(","));
-    var expectedEventTypes = TestUtils.getEventTypes().stream()
-        .map(eventType -> eventType.getType().getValue()).collect(Collectors.joining(","));
-    var expectedEventTypesDescription = TestUtils.getEventTypes().stream()
-        .map(EventType::getDescription).collect(Collectors.joining(","));
-    assertEquals(defineEventTypes, expectedEventTypes);
-    assertEquals(eventTypesDescription, expectedEventTypesDescription);
+    assertEquals(TestUtils.getEventTypes(), new HashSet<>(projectEventTypes));
   }
 
   @Test
@@ -348,16 +338,13 @@ class ProcurementProjectServiceTest {
     event.setOcidPrefix("b5fd17");
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
-    var project = ProcurementProject.builder()
-            .id(PROC_PROJECT_ID)
-            .projectName(PROJ_NAME)
-            .externalProjectId("Test")
-            .procurementEvents(events)
-            .build();
+    var project = ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJ_NAME)
+        .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getProjectList(JAGGAER_USER_ID)).thenReturn(TestUtils.getProjectListResponse());
+    when(jaggaerService.getProjectList(JAGGAER_USER_ID))
+        .thenReturn(TestUtils.getProjectListResponse());
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
-            .thenReturn(Arrays.asList(project));
+        .thenReturn(Arrays.asList(project));
 
     var response = procurementProjectService.getProjects(PRINCIPAL);
 
@@ -365,6 +352,7 @@ class ProcurementProjectServiceTest {
     assertEquals(1, response.size());
 
   }
+
   /**
    * Custom matcher to verify the object sent to Jaggaer to update a project.
    *

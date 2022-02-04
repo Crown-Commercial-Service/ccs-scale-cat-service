@@ -7,7 +7,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.6.1</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
 	<artifactId>ccs-scale-cat-service</artifactId>
@@ -250,6 +250,36 @@
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.journey-service.generated</modelPackage>
 							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>true</strictSpec>
+							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
+							<verbose>false</verbose>
+							<configOptions>
+								<sourceFolder>src/gen/java/main</sourceFolder>
+								<useBeanValidation>true</useBeanValidation>
+								<performBeanValidation>true</performBeanValidation>
+								<dateLibrary>java8</dateLibrary>
+								<hideGenerationTimestamp>true</hideGenerationTimestamp>
+								<openApiNullable>false</openApiNullable>
+								<useOptional>true</useOptional>
+							</configOptions>
+						</configuration>
+					</execution>
+					<execution>
+						<id>capability-service-api</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/capabilities/capability-service.yaml</inputSpec>
+							<generatorName>spring</generatorName>
+							<generateModels>true</generateModels>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateApis>false</generateApis>
+							<generateModelTests>false</generateModelTests>
+							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.capability.generated</modelPackage>
+							<skipValidateSpec>false</skipValidateSpec>
+							<strictSpec>true</strictSpec>
+							<languageSpecificPrimitives>OneOfintegerstring</languageSpecificPrimitives>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String</typeMappings>
 							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>

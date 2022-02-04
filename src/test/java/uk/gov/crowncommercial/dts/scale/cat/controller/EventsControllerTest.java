@@ -23,10 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -111,7 +108,7 @@ class EventsControllerTest {
   void createProcurementEvent_200_OK() throws Exception {
 
     var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
 
     when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
         nullable(Boolean.class), anyString())).thenReturn(eventStatus);
@@ -182,7 +179,7 @@ class EventsControllerTest {
     updateEvent.setName("New name");
 
     var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
 
     when(procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID, updateEvent,
         PRINCIPAL)).thenReturn(eventSummary);
