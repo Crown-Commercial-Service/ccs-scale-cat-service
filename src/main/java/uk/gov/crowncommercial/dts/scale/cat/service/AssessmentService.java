@@ -34,6 +34,8 @@ public class AssessmentService {
       "Submission Type for Criterion [%s] not found";
   private static final String ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND =
       "Dimension Select Type [%s] not found";
+  private static final String ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
+      "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -99,13 +101,15 @@ public class AssessmentService {
    */
   public Integer createEmptyAssessment(final String caNumber, final String lotNumber,
       final DefineEventType eventType, final String principal) {
+
     var lotEventType = agreementsService.getLotEventTypes(caNumber, lotNumber).stream()
         .filter(let -> eventType.name().equals(let.getType())).findFirst()
-        .orElseThrow(IllegalStateException::new);
+        .orElseThrow(() -> new ValidationException(
+            format(ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT, eventType, caNumber, lotNumber)));
 
     var assessment = new Assessment().externalToolId(lotEventType.getAssessmentToolId());
-    log.debug("Empty assessment created with ext tool-id [" + lotEventType.getAssessmentToolId()
-        + "] for event type [" + eventType + "]");
+    log.debug("Empty assessment created with ext tool-id [{}] for event type [{}]",
+        lotEventType.getAssessmentToolId(), eventType);
     return createAssessment(assessment, principal);
   }
 

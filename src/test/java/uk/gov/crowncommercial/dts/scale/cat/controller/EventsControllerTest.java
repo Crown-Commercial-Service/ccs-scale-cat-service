@@ -107,8 +107,8 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_200_OK() throws Exception {
 
-    var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
+    var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME,
+        Optional.of(JAGGAER_ID), EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
 
     when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
         nullable(Boolean.class), anyString())).thenReturn(eventStatus);
@@ -178,8 +178,8 @@ class EventsControllerTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setName("New name");
 
-    var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
+    var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME,
+        Optional.of(JAGGAER_ID), EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
 
     when(procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID, updateEvent,
         PRINCIPAL)).thenReturn(eventSummary);
