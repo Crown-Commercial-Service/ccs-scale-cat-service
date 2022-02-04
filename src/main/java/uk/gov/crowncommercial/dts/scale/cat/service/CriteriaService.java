@@ -254,8 +254,8 @@ public class CriteriaService {
     var description = r.getOcds().getDescription();
     if (Objects.nonNull(description) && description.contains(END_DATE)) {
       var agreementDetails = agreementsService.getAgreementDetails(agreementNumber);
-      description = description.replace(END_DATE,
-              DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(agreementDetails.getEndDate()));
+      description = description.replaceAll(END_DATE,
+              DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(agreementDetails.getEndDate()));
     }
     var questionOCDS = new Requirement1()
         .id(r.getOcds().getId())
