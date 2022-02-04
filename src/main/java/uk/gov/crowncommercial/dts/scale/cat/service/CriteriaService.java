@@ -5,6 +5,8 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -16,11 +18,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
@@ -36,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
+  private static final String END_DATE = "##END_DATE##";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -250,10 +251,16 @@ public class CriteriaService {
                      .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())
                 .text(o.getText())).collect(Collectors.toList()));
 
+    var description = r.getOcds().getDescription();
+    if (Objects.nonNull(description) && description.contains(END_DATE)) {
+      var agreementDetails = agreementsService.getAgreementDetails(agreementNumber);
+      description = description.replaceAll(END_DATE,
+              DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(agreementDetails.getEndDate()));
+    }
     var questionOCDS = new Requirement1()
         .id(r.getOcds().getId())
         .title(r.getOcds().getTitle())
-        .description(r.getOcds().getDescription())
+        .description(description)
         .dataType(DataType.fromValue(r.getOcds().getDataType()))
         .pattern(r.getOcds().getPattern())
         .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
