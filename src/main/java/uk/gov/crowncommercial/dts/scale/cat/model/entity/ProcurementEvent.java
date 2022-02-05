@@ -57,6 +57,9 @@ public class ProcurementEvent {
   @Column(name = "assessment_supplier_target")
   Integer assessmentSupplierTarget;
 
+  @Column(name = "assessment_id")
+  Integer assessmentId;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
