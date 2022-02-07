@@ -148,14 +148,26 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public AssessmentSelection save(final AssessmentSelection journey) {
-    return assessmentSelectionRepo.save(journey);
+  public Set<AssessmentSelection> findByDimensionIdAndRequirementId(final Integer assessmentId,
+      final Integer dimensionId, final Integer requirementId) {
+    return assessmentSelectionRepo.findByDimensionIdAndRequirementTaxonRequirementId(dimensionId,
+        requirementId);
   }
 
   @TendersDBRetryable
-  public Optional<RequirementTaxon> findRequirementTaxon(final String requirementName,
+  public AssessmentSelection save(final AssessmentSelection assessmentSelection) {
+    return assessmentSelectionRepo.save(assessmentSelection);
+  }
+
+  @TendersDBRetryable
+  public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
       final Integer toolId) {
-    return requirementTaxonRepo.findByRequirementNameAndTaxonToolId(requirementName, toolId);
+    return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
+  }
+
+  @TendersDBRetryable
+  public Optional<DimensionEntity> findDimensionById(final Integer dimensionId) {
+    return dimensionRepo.findById(dimensionId);
   }
 
   @TendersDBRetryable

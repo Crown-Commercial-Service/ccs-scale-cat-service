@@ -46,7 +46,6 @@ public class ProcurementProjectService {
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
-  private final String PROJECT_STATE = "project.state.";
   private final AgreementsService agreementsService;
 
   /**
@@ -344,21 +343,21 @@ public class ProcurementProjectService {
       var dbProjects = retryableTendersDBDelegate.findByExternalProjectIdIn(projectsFromJaggaer);
 
       return projectListResponse.getProjectList().getProject().stream()
-          .map((final Project project) -> convertProjectToProjectPackageSummary(project, dbProjects,
-              jaggaerUserId))
+          .map(
+              (final Project project) -> convertProjectToProjectPackageSummary(project, dbProjects))
           .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
     }
     return Collections.emptyList();
   }
 
   /**
-   * convert project top project package summary
+   * Convert project to project package summary
    *
    * @param project the project
    * @return ProjectPackageSummary
    */
   private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
-      final Project project, final List<ProcurementProject> projects, final String jaggaerUserId) {
+      final Project project, final List<ProcurementProject> projects) {
     // Get Project from database
     var dbProject = getProject(projects, project.getTender().getTenderCode());
     var projectPackageSummary = new ProjectPackageSummary();
@@ -370,20 +369,21 @@ public class ProcurementProjectService {
       projectPackageSummary.setProjectId(dbProject.get().getId());
       projectPackageSummary.setProjectName(dbProject.get().getProjectName());
 
-      var eventSummary =
-          tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(), dbEvent.getEventName(),
-              jaggaerUserId, ViewEventType.fromValue(dbEvent.getEventType()), null, // TODO which
-                                                                                    // field from
-                                                                                    // Jaaggaer
-              // TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.length())),
-              ReleaseTag.TENDER, Optional.empty());
+      /*
+       * TODO which field from Jaaggaer
+       * TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.
+       * length()))
+       */
+      var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
+          dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
+          ViewEventType.fromValue(dbEvent.getEventType()), null, ReleaseTag.TENDER,
+          Optional.empty());
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
-    } else {
-      // TODO ignoring at the moment. What to do with these?
-      log.warn("Unable to project details in database for project id  {}, so ignoring.",
-          project.getTender().getTenderCode());
     }
+    // TODO ignoring at the moment. What to do with these?
+    log.warn("Unable to project details in database for project id  {}, so ignoring.",
+        project.getTender().getTenderCode());
     return Optional.empty();
   }
 
