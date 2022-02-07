@@ -210,6 +210,77 @@ class ProcurementEventServiceTest {
     assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(ViewEventType.DA, eventStatus.getEventType());
+
+    verify(assessmentService, never()).createEmptyAssessment(any(), any(), any(), any());
+  }
+
+  @Test
+  void testCreateFromProjectCreateAssessment() throws Exception {
+
+    // Stub some objects
+    var agreementDetails = new AgreementDetails();
+    agreementDetails.agreementId(CA_NUMBER);
+    agreementDetails.setLotId(LOT_NUMBER);
+
+    var procurementProject = ProcurementProject.builder()
+        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
+    var procurementEvent = ProcurementEvent.builder().build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
+
+    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
+      procurementProject.setId(PROC_PROJECT_ID);
+      procurementProject.setProjectName(PROJECT_NAME);
+      return Optional.of(procurementProject);
+    });
+
+    when(procurementEventRepo.save(any(ProcurementEvent.class))).then(mock -> {
+      procurementEvent.setId(PROC_PROJECT_ID);
+      procurementEvent.setOcdsAuthorityName(OCDS_AUTH_NAME);
+      procurementEvent.setOcidPrefix(OCID_PREFIX);
+      return procurementEvent;
+    });
+
+    when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
+        PRINCIPAL)).thenReturn(ASSESSMENT_ID);
+
+    var createEventNonOCDS = new CreateEventNonOCDS();
+    createEventNonOCDS.setEventType(DefineEventType.FCA);
+    createEvent.setNonOCDS(createEventNonOCDS);
+
+    // Invoke
+    ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
+    var eventStatus = procurementEventService.createEvent(PROC_PROJECT_ID, createEvent,
+        DOWNSELECTED_SUPPLIERS, PRINCIPAL);
+
+    // Verify that entity was created as expected
+    verify(procurementEventRepo).save(captor.capture());
+    var capturedProcEvent = captor.getValue();
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-FCA", capturedProcEvent.getEventName());
+    assertEquals(OCID_PREFIX, capturedProcEvent.getOcidPrefix());
+    assertEquals(OCDS_AUTH_NAME, capturedProcEvent.getOcdsAuthorityName());
+    assertEquals(PROC_PROJECT_ID, capturedProcEvent.getProject().getId());
+    assertEquals(PRINCIPAL, capturedProcEvent.getCreatedBy());
+    assertEquals(ViewEventType.FCA.getValue(), capturedProcEvent.getEventType());
+    assertEquals(DOWNSELECTED_SUPPLIERS, capturedProcEvent.getDownSelectedSuppliers());
+    assertNotNull(capturedProcEvent.getCreatedAt());
+    assertNotNull(capturedProcEvent.getUpdatedAt());
+
+    // Verify that event ID is generated correctly by entity
+    assertEquals(OCDS_AUTH_NAME + "-" + OCID_PREFIX + "-1", procurementEvent.getEventID());
+
+    // Verify that response is correct
+    assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-FCA", eventStatus.getTitle());
+    assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
+    assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
+    assertEquals(ViewEventType.FCA, eventStatus.getEventType());
+    assertEquals(ASSESSMENT_ID, eventStatus.getAssessmentId());
+
+    verify(assessmentService).createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
+        PRINCIPAL);
+    verify(jaggaerWebClient, never()).post();
   }
 
   @Test
@@ -281,6 +352,8 @@ class ProcurementEventServiceTest {
     assertEquals(ReleaseTag.TENDER, eventStatus.getEventStage());
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(ViewEventType.TBD, eventStatus.getEventType());
+
+    verify(assessmentService, never()).createEmptyAssessment(any(), any(), any(), any());
   }
 
   @Test

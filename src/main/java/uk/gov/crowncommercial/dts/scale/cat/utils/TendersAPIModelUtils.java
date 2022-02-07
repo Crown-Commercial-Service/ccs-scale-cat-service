@@ -45,7 +45,7 @@ public class TendersAPIModelUtils {
   }
 
   public EventSummary buildEventSummary(final String eventId, final String name,
-      final String supportID, final ViewEventType type, final TenderStatus status,
+      final Optional<String> supportID, final ViewEventType type, final TenderStatus status,
       final ReleaseTag stage, final Optional<Integer> assessmentId) {
     var eventSummary = new EventSummary();
     eventSummary.setId(eventId);
@@ -53,7 +53,7 @@ public class TendersAPIModelUtils {
     eventSummary.setEventStage(stage);
     eventSummary.setStatus(status);
     eventSummary.setEventType(type);
-    eventSummary.setEventSupportId(supportID);
+    supportID.ifPresent(eventSummary::setEventSupportId);
     assessmentId.ifPresent(eventSummary::setAssessmentId);
 
     return eventSummary;

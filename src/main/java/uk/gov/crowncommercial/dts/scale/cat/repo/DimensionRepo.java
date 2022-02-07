@@ -5,7 +5,7 @@ import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.DimensionEntity;
 
-public interface DimensionRepo extends JpaRepository<DimensionEntity, String> {
+public interface DimensionRepo extends JpaRepository<DimensionEntity, Integer> {
 
   Optional<DimensionEntity> findByName(final String name);
 
