@@ -27,7 +27,7 @@ public class DependencyMapper {
 		if (Objects.nonNull(dependency.getConditional())) {
 			questionNonOCDSDependency.conditional(new QuestionDependancy()
 					.dependencyType(
-							DependencyType.valueOf(dependency.getConditional().getDependencyType().getValue()))
+							DependencyType.fromValue(dependency.getConditional().getDependencyType().getValue()))
 					.dependencyValue(dependency.getConditional().getDependencyValue())
 					.dependentOnId(dependency.getConditional().getDependentOnID()));
 		}
