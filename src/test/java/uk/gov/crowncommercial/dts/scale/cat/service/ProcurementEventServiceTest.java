@@ -6,10 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
@@ -115,6 +112,9 @@ class ProcurementEventServiceTest {
   private AssessmentService assessmentService;
 
   @MockBean
+  private ConclaveService conclaveService;
+
+  @MockBean
   private JourneyRepo journeyRepo;
 
   @MockBean
@@ -146,6 +146,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private ProjectUserMappingRepo projectUserMappingRepo;
+
+  @MockBean
+  private SupplierSelectionRepo supplierSelectionRepo;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -625,10 +628,11 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void testGetSuppliers() throws Exception {
+  void testGetSuppliersFromJaggaer() throws Exception {
 
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
+    event.setEventType(UPDATED_EVENT_TYPE);
 
     var companyData = CompanyData.builder().id(JAGGAER_SUPPLIER_ID).build();
     var supplier = Supplier.builder().companyData(companyData).build();
@@ -656,13 +660,14 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void testAddSupplier() throws Exception {
+  void testAddSuppliersToJaggaer() throws Exception {
 
     var org = new OrganizationReference();
     org.setId(SUPPLIER_ID);
 
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
+    event.setEventType(UPDATED_EVENT_TYPE);
 
     var mapping = new OrganisationMapping();
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
@@ -671,12 +676,13 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationId(SUPPLIER_ID))
-        .thenReturn(Optional.of(mapping));
+    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+        .thenReturn(Set.of(mapping));
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
-    var response = procurementEventService.addSupplier(PROC_PROJECT_ID, PROC_EVENT_ID, org);
+    var response = procurementEventService.addSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID,
+        List.of(org), false, PRINCIPAL);
 
     // Verify
     verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.CREATEUPDATE));
@@ -684,14 +690,15 @@ class ProcurementEventServiceTest {
     assertEquals(JAGGAER_SUPPLIER_ID,
         rfxCaptor.getValue().getSuppliersList().getSupplier().get(0).getCompanyData().getId());
 
-    assertEquals(SUPPLIER_ID, response.getId());
+    assertEquals(SUPPLIER_ID, response.stream().findFirst().get().getId());
   }
 
   @Test
-  void testDeleteSupplier() throws Exception {
+  void testDeleteSupplierFromJaggaer() throws Exception {
 
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
+    event.setEventType(UPDATED_EVENT_TYPE);
 
     var mapping = new OrganisationMapping();
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
@@ -712,7 +719,7 @@ class ProcurementEventServiceTest {
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
-    procurementEventService.deleteSupplier(PROC_PROJECT_ID, PROC_EVENT_ID, SUPPLIER_ID);
+    procurementEventService.deleteSupplier(PROC_PROJECT_ID, PROC_EVENT_ID, SUPPLIER_ID, PRINCIPAL);
 
     // Verify (supplier removed from Rfx for reset update)
     verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.UPDATE_RESET));
