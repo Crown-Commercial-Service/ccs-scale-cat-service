@@ -1,14 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.mapper;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DependencyType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionDependancy;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDSDependency;
-
-import java.util.Arrays;
 import java.util.Objects;
+
+import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 /**
  * Encapsulates conversion logic between DTOs and Entities.
@@ -17,26 +15,25 @@ import java.util.Objects;
 @Component
 public class DependencyMapper {
 
-    public QuestionNonOCDSDependency convertToQuestionNonOCDSDependency(final Requirement requirement) {
+	public QuestionNonOCDSDependency convertToQuestionNonOCDSDependency(final Requirement requirement) {
 
-        var questionNonOCDSDependency = new QuestionNonOCDSDependency();
-
-        if (Objects.nonNull(requirement.getNonOCDS().getDependency().getConditional())) {
-            questionNonOCDSDependency.conditional(new QuestionDependancy()
-                    .dependencyType(
-                            DependencyType.valueOf(requirement.getNonOCDS().
-                                    getDependency().getConditional().getDependencyType().getValue()))
-                    .dependencyValue(requirement.getNonOCDS().getDependency().getConditional().getDependencyValue())
-                    .dependentOnId(requirement.getNonOCDS().getDependency().getConditional().getDependentOnID()));
-        }
-        if (Objects.nonNull(requirement.getNonOCDS().
-                getDependency().getRelationships())) {
-            questionNonOCDSDependency.relationships(Arrays.asList(
-                    requirement.getNonOCDS().getDependency().getRelationships().getRelationshipType(),
-                    requirement.getNonOCDS().getDependency().getRelationships().getDependentOnID())
-            );
-        }
-        return questionNonOCDSDependency;
-    }
+		final var questionNonOCDSDependency = new QuestionNonOCDSDependency();
+		final var dependency = requirement.getNonOCDS().getDependency();
+		if (Objects.nonNull(dependency.getConditional())) {
+			questionNonOCDSDependency.conditional(new QuestionDependancy()
+					.dependencyType(
+							DependencyType.valueOf(dependency.getConditional().getDependencyType().getValue()))
+					.dependencyValue(dependency.getConditional().getDependencyValue())
+					.dependentOnId(dependency.getConditional().getDependentOnID()));
+		}
+		if (Objects.nonNull(dependency.getRelationships())) {
+			questionNonOCDSDependency.relationships(
+					new QuestionRelationship()
+					.dependentOnId(dependency.getRelationships().getDependentOnID())
+					.relationshipType(RelationshipType.fromValue(dependency.getRelationships().getRelationshipType()))
+					);
+		}
+		return questionNonOCDSDependency;
+	}
 
 }
