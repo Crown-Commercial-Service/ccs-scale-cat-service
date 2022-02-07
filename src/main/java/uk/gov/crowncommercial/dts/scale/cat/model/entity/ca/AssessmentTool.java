@@ -32,6 +32,7 @@ public class AssessmentTool {
   @Column(name = "assessment_tool_descr")
   private String description;
 
+  @EqualsAndHashCode.Exclude
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
   Set<AssessmentSubmissionType> assessmentSubmissionTypes;
