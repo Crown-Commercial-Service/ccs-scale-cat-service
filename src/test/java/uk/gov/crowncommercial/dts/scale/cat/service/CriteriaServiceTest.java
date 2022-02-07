@@ -17,6 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
@@ -51,6 +52,9 @@ class CriteriaServiceTest {
 
   @MockBean
   private WebClient jaggaerWebClient;
+
+  @MockBean
+  private DependencyMapper dependencyMapper;
 
   @Autowired
   private CriteriaService criteriaService;

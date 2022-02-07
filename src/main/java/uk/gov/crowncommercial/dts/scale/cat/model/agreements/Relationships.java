@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 @Jacksonized
 @Slf4j
 public class Relationships{
-    String dependentOnID;
-    String relationshipType;
+	String dependentOnID;
+	String relationshipType;
 }
 

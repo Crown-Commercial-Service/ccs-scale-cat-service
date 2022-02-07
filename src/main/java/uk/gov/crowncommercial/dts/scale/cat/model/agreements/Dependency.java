@@ -10,6 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 @Jacksonized
 @Slf4j
 public class Dependency{
-   Conditional conditional;
-   Relationships relationships;
+	Conditional conditional;
+	Relationships relationships;
 }

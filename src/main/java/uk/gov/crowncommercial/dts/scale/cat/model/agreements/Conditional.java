@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 @Jacksonized
 @Slf4j
 public class Conditional{
-    String dependentOnID;
-    DependencyType dependencyType;
-    String dependencyValue;
+	String dependentOnID;
+	DependencyType dependencyType;
+	String dependencyValue;
 }
