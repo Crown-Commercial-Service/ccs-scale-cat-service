@@ -40,4 +40,5 @@ public class JaggaerAPIConfig {
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;
   private String messageAPIUrl;
+  private String rpaAccessUrl;
 }

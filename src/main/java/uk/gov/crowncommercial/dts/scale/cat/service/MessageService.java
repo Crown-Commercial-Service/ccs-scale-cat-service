@@ -50,9 +50,9 @@ public class MessageService {
 
 		Optional<SubUser> buyerUser = userService.resolveBuyerUserByEmail(profile);
 
-		Map<String, Object> processInputMap = new LinkedHashMap<String, Object>();
+		var processInputMap = new LinkedHashMap<String, Object>();
 
-		Map<String, Object> ocds = (LinkedHashMap<String, Object>) message.getOCDS();
+		var ocds = (LinkedHashMap<String, Object>) message.getOCDS();
 
 		processInputMap.put("Search.Username", buyerUser.get().getEmail());
 		processInputMap.put("Search.Password", "password");
@@ -113,11 +113,11 @@ public class MessageService {
 
 	private String getAccessToken() {
 		
-		Map<String, String> jaggerRPACredentials = new LinkedHashMap<String, String>();
+		var jaggerRPACredentials = new LinkedHashMap<String, String>();
 		
 		jaggerRPACredentials.put("username", "testuser");
 		jaggerRPACredentials.put("password", "rpa@123");
-		String uriTemplate = "https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/token";
+		String uriTemplate = jaggaerAPIConfig.getRpaAccessUrl();
 		
 		return webclientWrapper.postData(jaggerRPACredentials, String.class, messageServiceWebClient, 60, uriTemplate);
 	}

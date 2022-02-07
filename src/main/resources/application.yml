@@ -74,7 +74,8 @@ config:
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
       defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
       defaultSupplierRightsProfile: ""
-      messageAPIUrl: "https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation"
+      messageAPIUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation
+      rpaAccessUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/token
 
       rfxStatusToTenderStatus:
         0: PLANNED
