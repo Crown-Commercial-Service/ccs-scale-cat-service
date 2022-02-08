@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
@@ -43,6 +44,7 @@ public class CriteriaService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
+  private final DependencyMapper dependencyMapper;
 
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
       final boolean populateGroups) {
@@ -250,6 +252,9 @@ public class CriteriaService {
             new QuestionNonOCDSOptions().value(o.getValue())
                      .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())
                 .text(o.getText())).collect(Collectors.toList()));
+    if (Objects.nonNull(r.getNonOCDS().getDependency())) {
+      questionNonOCDS.dependency(dependencyMapper.convertToQuestionNonOCDSDependency(r));
+    }
 
     var description = r.getOcds().getDescription();
     if (Objects.nonNull(description) && description.contains(END_DATE)) {
