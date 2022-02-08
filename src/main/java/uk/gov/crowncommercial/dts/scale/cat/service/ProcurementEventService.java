@@ -266,7 +266,7 @@ public class ProcurementEventService {
       }
 
       if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())
-          && updateEvent.getAssessmentId() == null) {
+          && updateEvent.getAssessmentId() == null && event.getAssessmentId() == null) {
         createAssessment = true;
       }
 
@@ -584,8 +584,7 @@ public class ProcurementEventService {
    */
   public List<EventSummary> getEventsForProject(final Integer projectId) {
 
-    var events =
-        retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
     return events.stream().map(event -> {
 
