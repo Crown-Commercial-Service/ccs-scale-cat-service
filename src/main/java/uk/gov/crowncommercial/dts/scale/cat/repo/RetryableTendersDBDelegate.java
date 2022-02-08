@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -30,6 +31,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentSelectionRepo assessmentSelectionRepo;
   private final RequirementTaxonRepo requirementTaxonRepo;
   private final AssessmentTaxonRepo assessmentTaxonRepo;
+  private final CalculationBaseRepo calculationBaseRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -178,6 +180,11 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public Optional<AssessmentTaxon> findAssessmentTaxonById(final Integer assessmentTaxonId) {
     return assessmentTaxonRepo.findById(assessmentTaxonId);
+  }
+
+  @TendersDBRetryable
+  public Set<CalculationBase> findCalculationBaseByAssessmentId(final Integer assessmentId) {
+    return calculationBaseRepo.findByAssessmentId(assessmentId);
   }
 
   /**

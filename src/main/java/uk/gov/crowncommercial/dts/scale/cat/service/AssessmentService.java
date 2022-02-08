@@ -4,8 +4,10 @@ import static java.lang.String.format;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,8 @@ public class AssessmentService {
       "Dimension Select Type [%s] not found";
   private static final String ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
       "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
+  private static final String SUBMISSION_TYPE_SUPPLIER = "Supplier";
+  private static final String SUBMISSION_TYPE_SUBCONTRACTOR = "Sub Contractor";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -260,7 +264,7 @@ public class AssessmentService {
     }).collect(Collectors.toList());
 
     // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    List<SupplierScores> scores = new ArrayList<>();
+    var scores = calculateSupplierScores(assessmentId);
 
     var response = new Assessment();
     response.setExternalToolId(assessment.getTool().getExternalToolId());
@@ -269,6 +273,80 @@ public class AssessmentService {
     response.setScores(scores);
 
     return response;
+  }
+
+  public List<SupplierScores> calculateSupplierScores(final Integer assessmentId) {
+
+    var filteredCalculationBaseData =
+        retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessmentId);
+
+    var supplierScoresMap = new HashMap<String, SupplierScores>();
+    var dimensionScoresMap = new HashMap<Pair<String, Integer>, DimensionScores>();
+
+    filteredCalculationBaseData.stream().forEach(calcBase -> {
+
+      // Create (if necessary) a new map entry keyed on the supplier ID
+      var supplierScores = supplierScoresMap.computeIfAbsent(calcBase.getSupplierId(),
+          supplierId -> new SupplierScores().supplier(supplierId));
+
+      // Compute the score for the row
+      var numericSubmissionValue = Integer.parseInt(calcBase.getSubmissionValue());
+
+      // TODO: Adaptor plugin for different calcs
+      var score = numericSubmissionValue == 0 ? 0
+          : (double) numericSubmissionValue / (double) calcBase.getDimensionDivisor()
+              * calcBase.getAssessmentSelectionWeightPercentage().doubleValue()
+              * calcBase.getAssessmentDimensionWeightPercentage().doubleValue() / 100;
+
+      // Generate an immutable map key of the supplier ID and dimension ID
+      var supplierDimensionIdKeyPair = Pair.of(calcBase.getSupplierId(), calcBase.getDimensionId());
+      var dimensionScoresExists = dimensionScoresMap.containsKey(supplierDimensionIdKeyPair);
+
+      var dimensionScores = dimensionScoresMap.computeIfAbsent(supplierDimensionIdKeyPair,
+          p -> new DimensionScores().dimension(p.getSecond()));
+
+      var requirementScore = new RequirementScore().requirement(calcBase.getRequirementName())
+          .criterion(calcBase.getSubmissionTypeName()).value(numericSubmissionValue)
+          .weightedValue((int) score);
+      dimensionScores.addRequirementScoresItem(requirementScore);
+
+      if (!dimensionScoresExists) {
+        supplierScores.addDimensionScoresItem(dimensionScores);
+      }
+
+    });
+
+    // Now calculate the overall score per supplier from the dimension requirement weighted scores
+    var supplierScores = supplierScoresMap.values().stream().collect(Collectors.toList());
+    calculateSupplierScoreTotals(supplierScores);
+    return supplierScores;
+  }
+
+  private void calculateSupplierScoreTotals(final List<SupplierScores> supplierScores) {
+    supplierScores.forEach(supplierScore -> {
+
+      // Not sure about this - relies on the client having submitted the 'correct' data
+      var subcontractorsAccepted = supplierScore.getDimensionScores().stream()
+          .flatMap(ds -> ds.getRequirementScores().stream())
+          .anyMatch(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()));
+
+      var supplierDimensionTotalScore = new AtomicInteger();
+      var subcontractorDimensionTotalScore = new AtomicInteger(0);
+
+      supplierScore.getDimensionScores().forEach(dimension -> {
+        supplierDimensionTotalScore.addAndGet(dimension.getRequirementScores().stream()
+            .filter(rs -> SUBMISSION_TYPE_SUPPLIER.equals(rs.getCriterion()))
+            .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
+
+        subcontractorDimensionTotalScore.addAndGet(dimension.getRequirementScores().stream()
+            .filter(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()))
+            .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
+      });
+
+      supplierScore.setTotal(subcontractorsAccepted
+          ? (supplierDimensionTotalScore.get() + subcontractorDimensionTotalScore.get()) / 2
+          : supplierDimensionTotalScore.get());
+    });
   }
 
   /**
@@ -319,7 +397,7 @@ public class AssessmentService {
     }
 
     // Verify the total weightings of all dimensions <= 100
-    BigDecimal totalDimensionWeightings = assessment.getDimensionWeightings().stream()
+    var totalDimensionWeightings = assessment.getDimensionWeightings().stream()
         .map(AssessmentDimensionWeighting::getWeightingPercentage)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -681,6 +759,5 @@ public class AssessmentService {
 
     return criteria;
   }
-
 
 }
