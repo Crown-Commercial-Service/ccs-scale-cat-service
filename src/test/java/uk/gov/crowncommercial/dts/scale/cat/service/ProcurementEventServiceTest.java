@@ -514,6 +514,7 @@ class ProcurementEventServiceTest {
     verify(procurementEventRepo).save(captor.capture());
     assertEquals(UPDATED_EVENT_TYPE_CAP_ASS, captor.getValue().getEventType());
     assertEquals(PRINCIPAL, captor.getValue().getUpdatedBy());
+    assertEquals(ASSESSMENT_ID, captor.getValue().getAssessmentId());
     verify(jaggaerService, times(0)).createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE));
   }
 

@@ -300,7 +300,7 @@ public class ProcurementEventService {
     if (updateDB) {
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
-
+      event.setAssessmentId(returnAssessmentId);
       retryableTendersDBDelegate.save(event);
     }
 
