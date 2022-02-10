@@ -77,16 +77,7 @@ public class AssessmentService {
       // Build Options
       List<DimensionOption> dimensionOptions = new ArrayList<>();
       d.getAssessmentTaxons().stream()
-          .forEach(at -> at.getRequirementTaxons().stream().forEach(rt -> {
-            var dopt = new DimensionOption();
-            dopt.setName(rt.getRequirement().getName());
-            var doptg = new DimensionOptionGroups();
-            doptg.setOptionId(rt.getRequirement().getId());
-            doptg.setName(at.getName());
-            doptg.setLevel(calculateLevel(at, 0));
-            dopt.setGroups(List.of(doptg));
-            dimensionOptions.add(dopt);
-          }));
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at, 1)));
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
@@ -563,21 +554,49 @@ public class AssessmentService {
   }
 
   /**
-   * Recursive routine to calculate nested level of AssessmentTaxon.
+   * Recurses down the {@link AssessmentTaxon} and {@link RequirementTaxon} tree of objects building
+   * a tree of {@link DimensionOption} objects.
    *
-   * @param taxon
+   * @param assessmentTaxon
    * @param level
    * @return
    */
-  private int calculateLevel(final AssessmentTaxon taxon, int level) {
-    if (taxon.getParentTaxon() == null) {
-      return level;
+  private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon,
+      final int level) {
+
+    log.debug("Assessment Taxon :" + assessmentTaxon.getName());
+
+    List<DimensionOption> dimensionOptions = new ArrayList<>();
+
+    // Assessment Taxon Option
+    var atOption = new DimensionOption();
+    atOption.setName(assessmentTaxon.getName());
+    var atOptionGroup = new DimensionOptionGroups();
+    atOptionGroup.setName(assessmentTaxon.getName());
+    atOptionGroup.setLevel(level);
+    atOption.setGroups(List.of(atOptionGroup));
+    dimensionOptions.add(atOption);
+
+    // Requirement Taxon Option
+    dimensionOptions.addAll(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
+      var rtOption = new DimensionOption();
+      rtOption.setName(rt.getRequirement().getName());
+      rtOption.setOptionId(rt.getRequirement().getId());
+      var rtOptionGroup = new DimensionOptionGroups();
+      rtOptionGroup.setName(assessmentTaxon.getName());
+      rtOptionGroup.setLevel(level + 1);
+      rtOption.setGroups(List.of(rtOptionGroup));
+      return rtOption;
+    }).collect(Collectors.toList()));
+
+    // Recurse down child Assessment Taxon collection
+    if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {
+      log.debug("Assessment Taxon : process children..");
+      assessmentTaxon.getAssessmentTaxons().stream()
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at, level + 1)));
     }
-    var parent = taxon.getParentTaxon();
-    if (parent == null) {
-      return ++level;
-    }
-    return calculateLevel(taxon.getParentTaxon(), ++level);
+
+    return dimensionOptions;
   }
 
   /**
