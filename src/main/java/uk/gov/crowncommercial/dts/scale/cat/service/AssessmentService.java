@@ -77,16 +77,7 @@ public class AssessmentService {
       // Build Options
       List<DimensionOption> dimensionOptions = new ArrayList<>();
       d.getAssessmentTaxons().stream()
-          .forEach(at -> at.getRequirementTaxons().stream().forEach(rt -> {
-            var dopt = new DimensionOption();
-            dopt.setName(rt.getRequirement().getName());
-            var doptg = new DimensionOptionGroups();
-            doptg.setOptionId(rt.getRequirement().getId());
-            doptg.setName(at.getName());
-            doptg.setLevel(calculateLevel(at, 0));
-            dopt.setGroups(List.of(doptg));
-            dimensionOptions.add(dopt);
-          }));
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
@@ -563,21 +554,70 @@ public class AssessmentService {
   }
 
   /**
-   * Recursive routine to calculate nested level of AssessmentTaxon.
+   * Recurses down the {@link AssessmentTaxon} and {@link RequirementTaxon} tree of objects building
+   * a tree of {@link DimensionOption} objects.
    *
-   * @param taxon
-   * @param level
+   * @param assessmentTaxon
    * @return
    */
-  private int calculateLevel(final AssessmentTaxon taxon, int level) {
-    if (taxon.getParentTaxon() == null) {
-      return level;
+  private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
+
+    log.debug("Assessment Taxon :" + assessmentTaxon.getName());
+    List<DimensionOption> dimensionOptions = new ArrayList<>();
+
+    dimensionOptions.addAll(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
+
+      log.debug(" - requirement :" + rt.getRequirement().getName());
+      var rtOption = new DimensionOption();
+      rtOption.setName(rt.getRequirement().getName());
+      rtOption.setOptionId(rt.getRequirement().getId());
+      rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
+      return rtOption;
+
+    }).collect(Collectors.toList()));
+
+    // Recurse down child Assessment Taxon collection
+    if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {
+      log.debug("Assessment Taxon : process children..");
+      assessmentTaxon.getAssessmentTaxons().stream()
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
     }
-    var parent = taxon.getParentTaxon();
-    if (parent == null) {
-      return ++level;
+
+    return dimensionOptions;
+  }
+
+  /**
+   * Given an {@link AssessmentTaxon}, will recurse up the parents to build a hierarchy of
+   * {@link DimensionOptionGroups} objects. The highest group in the hierarchy will be level 1, the
+   * second level 2, and so on..
+   *
+   * @param assessmentTaxon
+   * @param optionGroups
+   * @return
+   */
+  private List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
+      final List<DimensionOptionGroups> optionGroups) {
+
+    log.debug("  - traverse up taxon tree :" + assessmentTaxon.getName());
+    var rtOptionGroup = new DimensionOptionGroups();
+    rtOptionGroup.setName(assessmentTaxon.getName());
+    optionGroups.add(rtOptionGroup);
+
+    // Recurse
+    if (assessmentTaxon.getParentTaxon() != null) {
+      return recurseUpTree(assessmentTaxon.getParentTaxon(), optionGroups);
     }
-    return calculateLevel(taxon.getParentTaxon(), ++level);
+
+    // Remove the highest AssessmentTaxon element from the list - as this is the taxon name and not
+    // required to be shown. Reverse the list and add the levels.
+    Collections.reverse(optionGroups);
+    optionGroups.remove(0);
+    var level = 1;
+    for (DimensionOptionGroups og : optionGroups) {
+      og.setLevel(level++);
+    }
+
+    return optionGroups;
   }
 
   /**
