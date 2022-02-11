@@ -77,7 +77,7 @@ public class AssessmentService {
       // Build Options
       List<DimensionOption> dimensionOptions = new ArrayList<>();
       d.getAssessmentTaxons().stream()
-          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at, 1)));
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
@@ -296,6 +296,9 @@ public class AssessmentService {
 
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+    // TODO - need to take account of includedCriteria - may have one or more DimensionWeightings
+    // dimensionRequirement.getIncludedCriteria()
 
     var response = assessment.getDimensionWeightings().stream()
         .filter(dw -> dw.getDimension().getId().equals(dimensionId)).findFirst();
@@ -561,42 +564,65 @@ public class AssessmentService {
    * @param level
    * @return
    */
-  private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon,
-      final int level) {
+  private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
 
     log.debug("Assessment Taxon :" + assessmentTaxon.getName());
-
     List<DimensionOption> dimensionOptions = new ArrayList<>();
 
-    // Assessment Taxon Option
-    var atOption = new DimensionOption();
-    atOption.setName(assessmentTaxon.getName());
-    var atOptionGroup = new DimensionOptionGroups();
-    atOptionGroup.setName(assessmentTaxon.getName());
-    atOptionGroup.setLevel(level);
-    atOption.setGroups(List.of(atOptionGroup));
-    dimensionOptions.add(atOption);
-
-    // Requirement Taxon Option
     dimensionOptions.addAll(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
+
+      log.debug(" - requirement :" + rt.getRequirement().getName());
+
       var rtOption = new DimensionOption();
       rtOption.setName(rt.getRequirement().getName());
       rtOption.setOptionId(rt.getRequirement().getId());
-      var rtOptionGroup = new DimensionOptionGroups();
-      rtOptionGroup.setName(assessmentTaxon.getName());
-      rtOptionGroup.setLevel(level + 1);
-      rtOption.setGroups(List.of(rtOptionGroup));
+      rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
       return rtOption;
+
     }).collect(Collectors.toList()));
 
     // Recurse down child Assessment Taxon collection
     if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {
       log.debug("Assessment Taxon : process children..");
       assessmentTaxon.getAssessmentTaxons().stream()
-          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at, level + 1)));
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
     }
 
     return dimensionOptions;
+  }
+
+  /**
+   * Given an AssessmentTaxon, will recurse up the parents to build a hierarchy of groups. The
+   * highest group in the hierarchy will be level 1, the second level 2, and so on..
+   *
+   * @param assessmentTaxon
+   * @param optionGroups
+   * @return
+   */
+  private List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
+      final List<DimensionOptionGroups> optionGroups) {
+
+    log.debug("  - traverse up taxon tree :" + assessmentTaxon.getName());
+
+    var rtOptionGroup = new DimensionOptionGroups();
+    rtOptionGroup.setName(assessmentTaxon.getName());
+    optionGroups.add(rtOptionGroup);
+
+    // Recurse
+    if (assessmentTaxon.getParentTaxon() != null) {
+      return recurseUpTree(assessmentTaxon.getParentTaxon(), optionGroups);
+    }
+
+    // Remove the highest AssessmentTaxon element from the list - as this is the taxon name and not
+    // required to be shown. Reverse the list and add the levels.
+    Collections.reverse(optionGroups);
+    optionGroups.remove(0);
+    var level = 1;
+    for (DimensionOptionGroups og : optionGroups) {
+      og.setLevel(level++);
+    }
+
+    return optionGroups;
   }
 
   /**
