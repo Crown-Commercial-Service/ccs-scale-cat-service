@@ -297,9 +297,6 @@ public class AssessmentService {
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
 
-    // TODO - need to take account of includedCriteria - may have one or more DimensionWeightings
-    // dimensionRequirement.getIncludedCriteria()
-
     var response = assessment.getDimensionWeightings().stream()
         .filter(dw -> dw.getDimension().getId().equals(dimensionId)).findFirst();
 
@@ -561,7 +558,6 @@ public class AssessmentService {
    * a tree of {@link DimensionOption} objects.
    *
    * @param assessmentTaxon
-   * @param level
    * @return
    */
   private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
@@ -572,7 +568,6 @@ public class AssessmentService {
     dimensionOptions.addAll(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
       log.debug(" - requirement :" + rt.getRequirement().getName());
-
       var rtOption = new DimensionOption();
       rtOption.setName(rt.getRequirement().getName());
       rtOption.setOptionId(rt.getRequirement().getId());
@@ -592,8 +587,9 @@ public class AssessmentService {
   }
 
   /**
-   * Given an AssessmentTaxon, will recurse up the parents to build a hierarchy of groups. The
-   * highest group in the hierarchy will be level 1, the second level 2, and so on..
+   * Given an {@link AssessmentTaxon}, will recurse up the parents to build a hierarchy of
+   * {@link DimensionOptionGroups} objects. The highest group in the hierarchy will be level 1, the
+   * second level 2, and so on..
    *
    * @param assessmentTaxon
    * @param optionGroups
@@ -603,7 +599,6 @@ public class AssessmentService {
       final List<DimensionOptionGroups> optionGroups) {
 
     log.debug("  - traverse up taxon tree :" + assessmentTaxon.getName());
-
     var rtOptionGroup = new DimensionOptionGroups();
     rtOptionGroup.setName(assessmentTaxon.getName());
     optionGroups.add(rtOptionGroup);
