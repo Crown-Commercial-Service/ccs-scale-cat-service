@@ -32,6 +32,7 @@ public class RetryableTendersDBDelegate {
   private final RequirementTaxonRepo requirementTaxonRepo;
   private final AssessmentTaxonRepo assessmentTaxonRepo;
   private final CalculationBaseRepo calculationBaseRepo;
+  private final AssessmentResultRepo assessmentResultRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -185,6 +186,18 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public Set<CalculationBase> findCalculationBaseByAssessmentId(final Integer assessmentId) {
     return calculationBaseRepo.findByAssessmentId(assessmentId);
+  }
+
+  @TendersDBRetryable
+  public Optional<AssessmentResult> findByAssessmentIdAndSupplierOrganisationId(
+      final Integer assessmentId, final String supplierOrganisationId) {
+    return assessmentResultRepo.findByAssessmentIdAndSupplierOrganisationId(assessmentId,
+        supplierOrganisationId);
+  }
+
+  @TendersDBRetryable
+  public AssessmentResult save(final AssessmentResult assessmentResult) {
+    return assessmentResultRepo.save(assessmentResult);
   }
 
   /**

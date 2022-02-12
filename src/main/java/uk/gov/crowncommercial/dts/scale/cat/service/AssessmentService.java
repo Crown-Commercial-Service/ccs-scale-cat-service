@@ -264,7 +264,7 @@ public class AssessmentService {
     }).collect(Collectors.toList());
 
     // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    var scores = calculateSupplierScores(assessmentId);
+    var scores = calculateSupplierScores(assessment, principal);
 
     var response = new Assessment();
     response.setExternalToolId(assessment.getTool().getExternalToolId());
@@ -275,10 +275,11 @@ public class AssessmentService {
     return response;
   }
 
-  public List<SupplierScores> calculateSupplierScores(final Integer assessmentId) {
+  public List<SupplierScores> calculateSupplierScores(final AssessmentEntity assessment,
+      final String principal) {
 
     var filteredCalculationBaseData =
-        retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessmentId);
+        retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId());
 
     var supplierScoresMap = new HashMap<String, SupplierScores>();
     var dimensionScoresMap = new HashMap<Pair<String, Integer>, DimensionScores>();
@@ -313,16 +314,16 @@ public class AssessmentService {
       if (!dimensionScoresExists) {
         supplierScores.addDimensionScoresItem(dimensionScores);
       }
-
     });
 
-    // Now calculate the overall score per supplier from the dimension requirement weighted scores
+    // Calculate the overall score per supplier from the dimension requirement weighted scores
     var supplierScores = supplierScoresMap.values().stream().collect(Collectors.toList());
-    calculateSupplierScoreTotals(supplierScores);
+    calculateSupplierScoreTotals(supplierScores, assessment, principal);
     return supplierScores;
   }
 
-  private void calculateSupplierScoreTotals(final List<SupplierScores> supplierScores) {
+  private void calculateSupplierScoreTotals(final List<SupplierScores> supplierScores,
+      final AssessmentEntity assessment, final String principal) {
     supplierScores.forEach(supplierScore -> {
 
       // Not sure about this - relies on the client having submitted the 'correct' data
@@ -343,10 +344,33 @@ public class AssessmentService {
             .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
       });
 
-      supplierScore.setTotal(subcontractorsAccepted
+      var supplierTotal = subcontractorsAccepted
           ? (supplierDimensionTotalScore.get() + subcontractorDimensionTotalScore.get()) / 2
-          : supplierDimensionTotalScore.get());
+          : supplierDimensionTotalScore.get();
+
+      supplierScore.setTotal(supplierTotal);
+
+      updateAssessmentResult(assessment, supplierScore.getSupplier(),
+          BigDecimal.valueOf(supplierTotal), principal);
     });
+  }
+
+  /*
+   * Get existing assessment result and update with new score, or create a new one
+   */
+  private void updateAssessmentResult(final AssessmentEntity assessment, final String supplierOrgId,
+      final BigDecimal supplierTotal, final String principal) {
+    var assessmentResult = retryableTendersDBDelegate
+        .findByAssessmentIdAndSupplierOrganisationId(assessment.getId(), supplierOrgId)
+        .orElse(AssessmentResult.builder().assessment(assessment)
+            .supplierOrganisationId(supplierOrgId).timestamps(createTimestamps(principal)).build());
+    assessmentResult.setAssessmentResultValue(supplierTotal);
+
+    if (assessmentResult.getId() != null) {
+      updateTimestamps(assessmentResult.getTimestamps(), principal);
+    }
+
+    retryableTendersDBDelegate.save(assessmentResult);
   }
 
   /**
@@ -641,18 +665,17 @@ public class AssessmentService {
   private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
 
     log.debug("Assessment Taxon :" + assessmentTaxon.getName());
-    List<DimensionOption> dimensionOptions = new ArrayList<>();
+    List<DimensionOption> dimensionOptions =
+        new ArrayList<>(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
-    dimensionOptions.addAll(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
+          log.debug(" - requirement :" + rt.getRequirement().getName());
+          var rtOption = new DimensionOption();
+          rtOption.setName(rt.getRequirement().getName());
+          rtOption.setOptionId(rt.getRequirement().getId());
+          rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
+          return rtOption;
 
-      log.debug(" - requirement :" + rt.getRequirement().getName());
-      var rtOption = new DimensionOption();
-      rtOption.setName(rt.getRequirement().getName());
-      rtOption.setOptionId(rt.getRequirement().getId());
-      rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
-      return rtOption;
-
-    }).collect(Collectors.toList()));
+        }).collect(Collectors.toList()));
 
     // Recurse down child Assessment Taxon collection
     if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {
