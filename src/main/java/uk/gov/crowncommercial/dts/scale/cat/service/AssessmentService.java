@@ -443,6 +443,24 @@ public class AssessmentService {
     dimensionWeighting.setDimension(dimension);
     dimensionWeighting.setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
     dimensionWeighting.setTimestamps(createTimestamps(principal));
+
+    // TODO: Build the dimension weighting submission types from 'includedCriteria'
+
+    var toolSubmissionTypes = assessment.getTool().getAssessmentToolSubmissionTypes();
+    var validToolSubmissionTypeIDs =
+        toolSubmissionTypes.stream().map(AssessmentToolSubmissionType::getSubmissionType)
+            .map(SubmissionType::getCode).collect(Collectors.toSet());
+
+    dimensionWeighting.setAssessmentToolSubmissionTypes(
+        dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+          if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
+            throw new ValidationException(
+                format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
+          }
+          return toolSubmissionTypes.stream()
+              .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
+              .findFirst().get();
+        }).collect(Collectors.toSet()));
     return dimensionWeighting;
   }
 

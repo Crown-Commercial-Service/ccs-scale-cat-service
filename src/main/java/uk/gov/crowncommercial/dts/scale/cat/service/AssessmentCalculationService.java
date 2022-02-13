@@ -88,10 +88,10 @@ public class AssessmentCalculationService {
       final AssessmentEntity assessment, final String principal) {
     supplierScores.forEach(supplierScore -> {
 
-      // Not sure about this - relies on the client having submitted the 'correct' data
-      var subcontractorsAccepted = supplierScore.getDimensionScores().stream()
-          .flatMap(ds -> ds.getRequirementScores().stream())
-          .anyMatch(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()));
+      // New agreed approach via Assess dim weighting / tool submission type join
+      var subcontractorsAccepted = assessment.getDimensionWeightings().stream()
+          .flatMap(adw -> adw.getAssessmentToolSubmissionTypes().stream()).anyMatch(
+              atst -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(atst.getSubmissionType().getName()));
 
       var supplierDimensionTotalScore = new AtomicInteger(0);
       var subcontractorDimensionTotalScore = new AtomicInteger(0);

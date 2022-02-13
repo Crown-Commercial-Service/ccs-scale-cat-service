@@ -32,6 +32,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -134,6 +135,12 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private AssessmentTaxonRepo assessmentTaxonRepo;
+
+  @MockBean
+  private CalculationBaseRepo calculationBaseRepo;
+
+  @MockBean
+  private AssessmentResultRepo assessmentResultRepo;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -751,7 +758,7 @@ class ProcurementEventServiceTest {
   @Test
   void testPublishEvent() throws Exception {
 
-    PublishDates publishDates = mock(PublishDates.class);
+    var publishDates = mock(PublishDates.class);
 
     var procurementProject =
         ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
