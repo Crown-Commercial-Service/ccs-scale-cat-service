@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,7 +17,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@EqualsAndHashCode(exclude = "assessment")
 public class AssessmentDimensionWeighting {
 
   @Id
@@ -31,6 +31,13 @@ public class AssessmentDimensionWeighting {
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_id")
   AssessmentEntity assessment;
+
+  @EqualsAndHashCode.Exclude
+  @ManyToMany(fetch = FetchType.EAGER)
+  @JoinTable(name = "assessment_dimension_submission_types",
+      joinColumns = @JoinColumn(name = "assessment_dimension_weighting_id"),
+      inverseJoinColumns = @JoinColumn(name = "assessment_submission_type_id"))
+  Set<AssessmentToolSubmissionType> assessmentToolSubmissionTypes;
 
   @Column(name = "weighting_pct")
   private BigDecimal weightingPercentage;

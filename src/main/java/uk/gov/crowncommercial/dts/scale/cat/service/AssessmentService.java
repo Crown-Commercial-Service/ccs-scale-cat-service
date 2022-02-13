@@ -82,7 +82,7 @@ public class AssessmentService {
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
-      dd.setEvaluationCriteria(getCriteriaForDimension(d, tool));
+      dd.setEvaluationCriteria(getAssessmentToolDimensionCriteria(d, tool));
 
       return dd;
 
@@ -222,7 +222,7 @@ public class AssessmentService {
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
       // Build Criteria for Dimension (includedCriteria)
-      req.setIncludedCriteria(getCriteriaForDimension(dw.getDimension(), assessment.getTool()));
+      req.setIncludedCriteria(getAssessmentDimensionCriteria(dw));
 
       // Build Requirements
       var requirements = assessment.getAssessmentSelections().stream()
@@ -235,9 +235,10 @@ public class AssessmentService {
             // Build Criteria for Requirement (values)
             requirement.setValues(s.getAssessmentSelectionDetails().stream().map(asd -> {
               var criterion = new Criterion();
+              criterion.setCriterionId(
+                  asd.getAssessmentToolSubmissionType().getSubmissionType().getCode());
               criterion
-                  .setCriterionId(asd.getAssessmentSubmissionType().getSubmissionType().getCode());
-              criterion.setName(asd.getAssessmentSubmissionType().getSubmissionType().getName());
+                  .setName(asd.getAssessmentToolSubmissionType().getSubmissionType().getName());
 
               if (asd.getRequirementValidValueCode() != null) {
                 var validValue =
@@ -500,11 +501,11 @@ public class AssessmentService {
       selection.setAssessmentSelectionDetails(requirement.getValues().stream().map(c -> {
         var asd = new AssessmentSelectionDetail();
         asd.setAssessmentSelection(selection);
-        var assessmentSubmissionType = assessment.getTool().getAssessmentSubmissionTypes().stream()
-            .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
-            .orElseThrow(() -> new ValidationException(
+        var assessmentSubmissionType = assessment.getTool().getAssessmentToolSubmissionTypes()
+            .stream().filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId()))
+            .findFirst().orElseThrow(() -> new ValidationException(
                 format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
-        asd.setAssessmentSubmissionType(assessmentSubmissionType);
+        asd.setAssessmentToolSubmissionType(assessmentSubmissionType);
         asd.setTimestamps(createTimestamps(principal));
 
         var dimensionSelectionType =
@@ -525,7 +526,8 @@ public class AssessmentService {
         }
 
         log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
-            + ", for criterion " + asd.getAssessmentSubmissionType().getSubmissionType().getCode()
+            + ", for criterion "
+            + asd.getAssessmentToolSubmissionType().getSubmissionType().getCode()
             + " and selection " + asd.getAssessmentSelection().getId());
 
         return asd;
@@ -631,26 +633,47 @@ public class AssessmentService {
   }
 
   /**
-   * Get the Criteria for a Dimension.
+   * Get the Criteria for an Assessment Tool Dimension.
    *
-   * This will return the same list for each submission type - which is redundant as the database
-   * does not support this currently, but Nick wanted to keep the option in the API for these to be
-   * different in future if required (will require a change to the database and either a different
-   * DB call, or filtering of this list).
+   * This returns the valid criterion (aka submission types) for a Dimension per assessment tool.
+   * I.e. it should be used to inform the client of the available valid submission types per
+   * Dimension, for them to select from when creating / updating an assessment.
    *
    * @param dimension
    * @param tool
    * @return
    */
-  private List<CriterionDefinition> getCriteriaForDimension(final DimensionEntity dimension,
-      final AssessmentTool tool) {
+  private List<CriterionDefinition> getAssessmentToolDimensionCriteria(
+      final DimensionEntity dimension, final AssessmentTool tool) {
 
+    return buildCriteria(dimension, tool.getAssessmentToolSubmissionTypes());
+  }
+
+  /**
+   * Gets the (buyer supplied) Criteria for an Assessment Dimension.
+   *
+   * Contrasts with {@link #getAssessmentToolDimensionCriteria(DimensionEntity, AssessmentTool)} as
+   * this builds the criteria via the join between assessment dimensions and submission types (not
+   * just via assessment tool)
+   *
+   * @param assessmentDimensionWeighting
+   * @return
+   */
+  private List<CriterionDefinition> getAssessmentDimensionCriteria(
+      final AssessmentDimensionWeighting assessmentDimensionWeighting) {
+
+    return buildCriteria(assessmentDimensionWeighting.getDimension(),
+        assessmentDimensionWeighting.getAssessmentToolSubmissionTypes());
+  }
+
+  private List<CriterionDefinition> buildCriteria(final DimensionEntity dimension,
+      final Collection<AssessmentToolSubmissionType> assessmentToolSubmissionTypes) {
     List<CriterionDefinition> criteria = new ArrayList<>();
 
     var options = dimension.getValidValues().stream().map(DimensionValidValue::getValueName)
         .collect(Collectors.toList());
 
-    tool.getAssessmentSubmissionTypes().stream().forEach(st -> {
+    assessmentToolSubmissionTypes.stream().forEach(st -> {
       var criterion = new CriterionDefinition();
       criterion.setCriterionId(st.getSubmissionType().getCode());
       criterion.setName(st.getSubmissionType().getName());
