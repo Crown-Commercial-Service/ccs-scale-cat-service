@@ -1,20 +1,18 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -44,12 +42,11 @@ public class AssessmentService {
       "Dimension Select Type [%s] not found";
   private static final String ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
       "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
-  private static final String SUBMISSION_TYPE_SUPPLIER = "Supplier";
-  private static final String SUBMISSION_TYPE_SUBCONTRACTOR = "Sub Contractor";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AgreementsService agreementsService;
+  private final AssessmentCalculationService assessmentCalculationService;
 
   /**
    * Get the Dimensions for an Assessment Tool.
@@ -264,7 +261,7 @@ public class AssessmentService {
     }).collect(Collectors.toList());
 
     // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    var scores = calculateSupplierScores(assessment, principal);
+    var scores = assessmentCalculationService.calculateSupplierScores(assessment, principal);
 
     var response = new Assessment();
     response.setExternalToolId(assessment.getTool().getExternalToolId());
@@ -273,104 +270,6 @@ public class AssessmentService {
     response.setScores(scores);
 
     return response;
-  }
-
-  public List<SupplierScores> calculateSupplierScores(final AssessmentEntity assessment,
-      final String principal) {
-
-    var filteredCalculationBaseData =
-        retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId());
-
-    var supplierScoresMap = new HashMap<String, SupplierScores>();
-    var dimensionScoresMap = new HashMap<Pair<String, Integer>, DimensionScores>();
-
-    filteredCalculationBaseData.stream().forEach(calcBase -> {
-
-      // Create (if necessary) a new map entry keyed on the supplier ID
-      var supplierScores = supplierScoresMap.computeIfAbsent(calcBase.getSupplierId(),
-          supplierId -> new SupplierScores().supplier(supplierId));
-
-      // Compute the score for the row
-      var numericSubmissionValue = Integer.parseInt(calcBase.getSubmissionValue());
-
-      // TODO: Adaptor plugin for different calcs
-      var score = numericSubmissionValue == 0 ? 0
-          : (double) numericSubmissionValue / (double) calcBase.getDimensionDivisor()
-              * calcBase.getAssessmentSelectionWeightPercentage().doubleValue()
-              * calcBase.getAssessmentDimensionWeightPercentage().doubleValue() / 100;
-
-      // Generate an immutable map key of the supplier ID and dimension ID
-      var supplierDimensionIdKeyPair = Pair.of(calcBase.getSupplierId(), calcBase.getDimensionId());
-      var dimensionScoresExists = dimensionScoresMap.containsKey(supplierDimensionIdKeyPair);
-
-      var dimensionScores = dimensionScoresMap.computeIfAbsent(supplierDimensionIdKeyPair,
-          p -> new DimensionScores().dimension(p.getSecond()));
-
-      var requirementScore = new RequirementScore().requirement(calcBase.getRequirementName())
-          .criterion(calcBase.getSubmissionTypeName()).value(numericSubmissionValue)
-          .weightedValue((int) score);
-      dimensionScores.addRequirementScoresItem(requirementScore);
-
-      if (!dimensionScoresExists) {
-        supplierScores.addDimensionScoresItem(dimensionScores);
-      }
-    });
-
-    // Calculate the overall score per supplier from the dimension requirement weighted scores
-    var supplierScores = supplierScoresMap.values().stream().collect(Collectors.toList());
-    calculateSupplierScoreTotals(supplierScores, assessment, principal);
-    return supplierScores;
-  }
-
-  private void calculateSupplierScoreTotals(final List<SupplierScores> supplierScores,
-      final AssessmentEntity assessment, final String principal) {
-    supplierScores.forEach(supplierScore -> {
-
-      // Not sure about this - relies on the client having submitted the 'correct' data
-      var subcontractorsAccepted = supplierScore.getDimensionScores().stream()
-          .flatMap(ds -> ds.getRequirementScores().stream())
-          .anyMatch(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()));
-
-      var supplierDimensionTotalScore = new AtomicInteger();
-      var subcontractorDimensionTotalScore = new AtomicInteger(0);
-
-      supplierScore.getDimensionScores().forEach(dimension -> {
-        supplierDimensionTotalScore.addAndGet(dimension.getRequirementScores().stream()
-            .filter(rs -> SUBMISSION_TYPE_SUPPLIER.equals(rs.getCriterion()))
-            .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
-
-        subcontractorDimensionTotalScore.addAndGet(dimension.getRequirementScores().stream()
-            .filter(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()))
-            .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
-      });
-
-      var supplierTotal = subcontractorsAccepted
-          ? (supplierDimensionTotalScore.get() + subcontractorDimensionTotalScore.get()) / 2
-          : supplierDimensionTotalScore.get();
-
-      supplierScore.setTotal(supplierTotal);
-
-      updateAssessmentResult(assessment, supplierScore.getSupplier(),
-          BigDecimal.valueOf(supplierTotal), principal);
-    });
-  }
-
-  /*
-   * Get existing assessment result and update with new score, or create a new one
-   */
-  private void updateAssessmentResult(final AssessmentEntity assessment, final String supplierOrgId,
-      final BigDecimal supplierTotal, final String principal) {
-    var assessmentResult = retryableTendersDBDelegate
-        .findByAssessmentIdAndSupplierOrganisationId(assessment.getId(), supplierOrgId)
-        .orElse(AssessmentResult.builder().assessment(assessment)
-            .supplierOrganisationId(supplierOrgId).timestamps(createTimestamps(principal)).build());
-    assessmentResult.setAssessmentResultValue(supplierTotal);
-
-    if (assessmentResult.getId() != null) {
-      updateTimestamps(assessmentResult.getTimestamps(), principal);
-    }
-
-    retryableTendersDBDelegate.save(assessmentResult);
   }
 
   /**
@@ -634,25 +533,6 @@ public class AssessmentService {
     }
 
     return selection;
-  }
-
-  /**
-   * Create entity time stamps.
-   */
-  private Timestamps createTimestamps(final String userId) {
-    var timestamps = new Timestamps();
-    timestamps.setCreatedAt(Instant.now());
-    timestamps.setCreatedBy(userId);
-    return timestamps;
-  }
-
-  /**
-   * Update entity time stamps.
-   */
-  private Timestamps updateTimestamps(final Timestamps timestamps, final String userId) {
-    timestamps.setUpdatedAt(Instant.now());
-    timestamps.setUpdatedBy(userId);
-    return timestamps;
   }
 
   /**
