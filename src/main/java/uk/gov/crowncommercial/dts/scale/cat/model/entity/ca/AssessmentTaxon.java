@@ -32,6 +32,11 @@ public class AssessmentTaxon {
   AssessmentTaxon parentTaxon;
 
   @EqualsAndHashCode.Exclude
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @JoinColumn(name = "parent_assessment_taxon_id")
+  Set<AssessmentTaxon> assessmentTaxons;
+
+  @EqualsAndHashCode.Exclude
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "assessment_taxon_dimensions",
       joinColumns = @JoinColumn(name = "assessment_taxon_id"),

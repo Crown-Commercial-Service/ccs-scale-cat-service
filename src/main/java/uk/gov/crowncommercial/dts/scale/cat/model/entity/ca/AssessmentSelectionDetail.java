@@ -30,7 +30,7 @@ public class AssessmentSelectionDetail {
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_submission_type_id")
-  AssessmentSubmissionType assessmentSubmissionType;
+  AssessmentToolSubmissionType assessmentToolSubmissionType;
 
   @Column(name = "requirement_value")
   private BigDecimal requirementValue;

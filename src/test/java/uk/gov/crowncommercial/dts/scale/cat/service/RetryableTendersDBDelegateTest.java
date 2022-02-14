@@ -18,6 +18,7 @@ import org.springframework.transaction.CannotCreateTransactionException;
 import uk.gov.crowncommercial.dts.scale.cat.config.RetryConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 
 /**
  *
@@ -62,8 +63,14 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private AssessmentTaxonRepo assessmentTaxonRepo;
 
+  @MockBean
+  private CalculationBaseRepo calculationBaseRepo;
+
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
+
+  @MockBean
+  private AssessmentResultRepo assessmentResultRepo;
 
   @Test
   void testRetrySuccess() {
