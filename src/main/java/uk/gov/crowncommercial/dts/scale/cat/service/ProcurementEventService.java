@@ -216,10 +216,10 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
-
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        buyerQuestions);
+        ASSESSMENT_EVENT_TYPES.contains(DefineEventType.fromValue(event.getEventType()))
+            ? Collections.emptySet()
+            : criteriaService.getEvalCriteria(projectId, eventId, true));
   }
 
   /**
