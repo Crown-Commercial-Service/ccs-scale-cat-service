@@ -362,21 +362,29 @@ public class ProcurementProjectService {
     var dbProject = getProject(projects, project.getTender().getTenderCode());
     var projectPackageSummary = new ProjectPackageSummary();
     if (dbProject.isPresent()) {
+      var agreementNo = dbProject.get().getCaNumber();
       var dbEvent = getCurrentEvent(dbProject.get());
-
+      // TODO make single call instead of 2
+      try {
+        var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+        var lotDetails = agreementsService.getLotDetails(agreementNo, dbProject.get().getLotNumber());
+        projectPackageSummary.setAgreementName(agreementDetails.getName());
+        projectPackageSummary.setLotName(lotDetails.getName());
+      }catch (Exception e) {
+        //ignore for the moment, replace when single method to get all data from agreement service
+      }
       // TODO no value for Uri
       // projectPackageSummary.setUri(getProjectUri);
+      projectPackageSummary.setAgreementId(dbProject.get().getCaNumber());
+      projectPackageSummary.setLotId(dbProject.get().getLotNumber());
       projectPackageSummary.setProjectId(dbProject.get().getId());
       projectPackageSummary.setProjectName(dbProject.get().getProjectName());
 
-      /*
-       * TODO which field from Jaaggaer
-       * TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.
-       * length()))
-       */
+      var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+      var status = findTenderStatus(dbEvent,exportRfxResponse);
       var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-          ViewEventType.fromValue(dbEvent.getEventType()), null, ReleaseTag.TENDER,
+          ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
           Optional.empty());
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
@@ -385,6 +393,70 @@ public class ProcurementProjectService {
     log.warn("Unable to project details in database for project id  {}, so ignoring.",
         project.getTender().getTenderCode());
     return Optional.empty();
+  }
+
+  private TenderStatus findTenderStatus(ProcurementEvent dbEvent, ExportRfxResponse exportRfxResponse) {
+    var statusCode = exportRfxResponse.getRfxSetting().getStatusCode();
+    String eventType = dbEvent.getEventType();
+    // This logic is based on attached excel of SCAT-3671
+    //TODO: some scenarios are have ambiguous and need to check end to this logic
+    //TODO: can it be better?
+    switch (statusCode) {
+      case 0:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+          case "FC":
+          case "DA":
+            return TenderStatus.PLANNING;
+        }
+        break;
+      case 300:
+      case 400:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+            return TenderStatus.PLANNING;
+          case "FC":
+          case "DA":
+            return TenderStatus.ACTIVE;
+        }
+        break;
+      case 500:
+        switch(eventType) {
+          case "FC":
+          case "DA":
+            return TenderStatus.COMPLETE;
+        }
+        break;
+      case 800:
+        switch(eventType) {
+          case "FC":
+          case "DA":
+            return TenderStatus.ACTIVE;
+        }
+        break;
+      case 950:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+            return TenderStatus.PLANNING;
+          case "FC":
+          case "DA":
+            return TenderStatus.COMPLETE;
+        }
+        break;
+      case 1500:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+          case "FC":
+          case "DA":
+            return TenderStatus.CANCELLED;
+        }
+        break;
+    }
+  return null;
   }
 
   private Optional<ProcurementProject> getProject(final List<ProcurementProject> projects,
