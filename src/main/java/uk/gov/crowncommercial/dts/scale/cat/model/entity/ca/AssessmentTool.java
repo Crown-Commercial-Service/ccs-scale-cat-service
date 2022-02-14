@@ -33,9 +33,10 @@ public class AssessmentTool {
   private String description;
 
   @EqualsAndHashCode.Exclude
+  @ToString.Exclude
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
-  Set<AssessmentSubmissionType> assessmentSubmissionTypes;
+  Set<AssessmentToolSubmissionType> assessmentToolSubmissionTypes;
 
   @Embedded
   private Timestamps timestamps;

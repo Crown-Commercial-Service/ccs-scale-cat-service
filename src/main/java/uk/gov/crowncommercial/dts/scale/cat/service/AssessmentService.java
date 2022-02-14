@@ -1,8 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
@@ -12,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -46,6 +46,7 @@ public class AssessmentService {
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AgreementsService agreementsService;
+  private final AssessmentCalculationService assessmentCalculationService;
 
   /**
    * Get the Dimensions for an Assessment Tool.
@@ -77,20 +78,11 @@ public class AssessmentService {
       // Build Options
       List<DimensionOption> dimensionOptions = new ArrayList<>();
       d.getAssessmentTaxons().stream()
-          .forEach(at -> at.getRequirementTaxons().stream().forEach(rt -> {
-            var dopt = new DimensionOption();
-            dopt.setName(rt.getRequirement().getName());
-            var doptg = new DimensionOptionGroups();
-            doptg.setOptionId(rt.getRequirement().getId());
-            doptg.setName(at.getName());
-            doptg.setLevel(calculateLevel(at, 0));
-            dopt.setGroups(List.of(doptg));
-            dimensionOptions.add(dopt);
-          }));
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
-      dd.setEvaluationCriteria(getCriteriaForDimension(d, tool));
+      dd.setEvaluationCriteria(getAssessmentToolDimensionCriteria(d, tool));
 
       return dd;
 
@@ -230,7 +222,7 @@ public class AssessmentService {
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
       // Build Criteria for Dimension (includedCriteria)
-      req.setIncludedCriteria(getCriteriaForDimension(dw.getDimension(), assessment.getTool()));
+      req.setIncludedCriteria(getAssessmentDimensionCriteria(dw));
 
       // Build Requirements
       var requirements = assessment.getAssessmentSelections().stream()
@@ -243,9 +235,10 @@ public class AssessmentService {
             // Build Criteria for Requirement (values)
             requirement.setValues(s.getAssessmentSelectionDetails().stream().map(asd -> {
               var criterion = new Criterion();
+              criterion.setCriterionId(
+                  asd.getAssessmentToolSubmissionType().getSubmissionType().getCode());
               criterion
-                  .setCriterionId(asd.getAssessmentSubmissionType().getSubmissionType().getCode());
-              criterion.setName(asd.getAssessmentSubmissionType().getSubmissionType().getName());
+                  .setName(asd.getAssessmentToolSubmissionType().getSubmissionType().getName());
 
               if (asd.getRequirementValidValueCode() != null) {
                 var validValue =
@@ -269,7 +262,7 @@ public class AssessmentService {
     }).collect(Collectors.toList());
 
     // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    List<SupplierScores> scores = new ArrayList<>();
+    var scores = assessmentCalculationService.calculateSupplierScores(assessment, principal);
 
     var response = new Assessment();
     response.setExternalToolId(assessment.getTool().getExternalToolId());
@@ -328,7 +321,7 @@ public class AssessmentService {
     }
 
     // Verify the total weightings of all dimensions <= 100
-    BigDecimal totalDimensionWeightings = assessment.getDimensionWeightings().stream()
+    var totalDimensionWeightings = assessment.getDimensionWeightings().stream()
         .map(AssessmentDimensionWeighting::getWeightingPercentage)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -450,6 +443,24 @@ public class AssessmentService {
     dimensionWeighting.setDimension(dimension);
     dimensionWeighting.setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
     dimensionWeighting.setTimestamps(createTimestamps(principal));
+
+    // TODO: Build the dimension weighting submission types from 'includedCriteria'
+
+    var toolSubmissionTypes = assessment.getTool().getAssessmentToolSubmissionTypes();
+    var validToolSubmissionTypeIDs =
+        toolSubmissionTypes.stream().map(AssessmentToolSubmissionType::getSubmissionType)
+            .map(SubmissionType::getCode).collect(Collectors.toSet());
+
+    dimensionWeighting.setAssessmentToolSubmissionTypes(
+        dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+          if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
+            throw new ValidationException(
+                format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
+          }
+          return toolSubmissionTypes.stream()
+              .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
+              .findFirst().get();
+        }).collect(Collectors.toSet()));
     return dimensionWeighting;
   }
 
@@ -508,11 +519,11 @@ public class AssessmentService {
       selection.setAssessmentSelectionDetails(requirement.getValues().stream().map(c -> {
         var asd = new AssessmentSelectionDetail();
         asd.setAssessmentSelection(selection);
-        var assessmentSubmissionType = assessment.getTool().getAssessmentSubmissionTypes().stream()
-            .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
-            .orElseThrow(() -> new ValidationException(
+        var assessmentSubmissionType = assessment.getTool().getAssessmentToolSubmissionTypes()
+            .stream().filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId()))
+            .findFirst().orElseThrow(() -> new ValidationException(
                 format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
-        asd.setAssessmentSubmissionType(assessmentSubmissionType);
+        asd.setAssessmentToolSubmissionType(assessmentSubmissionType);
         asd.setTimestamps(createTimestamps(principal));
 
         var dimensionSelectionType =
@@ -533,7 +544,8 @@ public class AssessmentService {
         }
 
         log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
-            + ", for criterion " + asd.getAssessmentSubmissionType().getSubmissionType().getCode()
+            + ", for criterion "
+            + asd.getAssessmentToolSubmissionType().getSubmissionType().getCode()
             + " and selection " + asd.getAssessmentSelection().getId());
 
         return asd;
@@ -544,40 +556,69 @@ public class AssessmentService {
   }
 
   /**
-   * Create entity time stamps.
-   */
-  private Timestamps createTimestamps(final String userId) {
-    var timestamps = new Timestamps();
-    timestamps.setCreatedAt(Instant.now());
-    timestamps.setCreatedBy(userId);
-    return timestamps;
-  }
-
-  /**
-   * Update entity time stamps.
-   */
-  private Timestamps updateTimestamps(final Timestamps timestamps, final String userId) {
-    timestamps.setUpdatedAt(Instant.now());
-    timestamps.setUpdatedBy(userId);
-    return timestamps;
-  }
-
-  /**
-   * Recursive routine to calculate nested level of AssessmentTaxon.
+   * Recurses down the {@link AssessmentTaxon} and {@link RequirementTaxon} tree of objects building
+   * a tree of {@link DimensionOption} objects.
    *
-   * @param taxon
-   * @param level
+   * @param assessmentTaxon
    * @return
    */
-  private int calculateLevel(final AssessmentTaxon taxon, int level) {
-    if (taxon.getParentTaxon() == null) {
-      return level;
+  private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
+
+    log.debug("Assessment Taxon :" + assessmentTaxon.getName());
+    List<DimensionOption> dimensionOptions =
+        new ArrayList<>(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
+
+          log.debug(" - requirement :" + rt.getRequirement().getName());
+          var rtOption = new DimensionOption();
+          rtOption.setName(rt.getRequirement().getName());
+          rtOption.setOptionId(rt.getRequirement().getId());
+          rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
+          return rtOption;
+
+        }).collect(Collectors.toList()));
+
+    // Recurse down child Assessment Taxon collection
+    if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {
+      log.debug("Assessment Taxon : process children..");
+      assessmentTaxon.getAssessmentTaxons().stream()
+          .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
     }
-    var parent = taxon.getParentTaxon();
-    if (parent == null) {
-      return ++level;
+
+    return dimensionOptions;
+  }
+
+  /**
+   * Given an {@link AssessmentTaxon}, will recurse up the parents to build a hierarchy of
+   * {@link DimensionOptionGroups} objects. The highest group in the hierarchy will be level 1, the
+   * second level 2, and so on..
+   *
+   * @param assessmentTaxon
+   * @param optionGroups
+   * @return
+   */
+  private List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
+      final List<DimensionOptionGroups> optionGroups) {
+
+    log.debug("  - traverse up taxon tree :" + assessmentTaxon.getName());
+    var rtOptionGroup = new DimensionOptionGroups();
+    rtOptionGroup.setName(assessmentTaxon.getName());
+    optionGroups.add(rtOptionGroup);
+
+    // Recurse
+    if (assessmentTaxon.getParentTaxon() != null) {
+      return recurseUpTree(assessmentTaxon.getParentTaxon(), optionGroups);
     }
-    return calculateLevel(taxon.getParentTaxon(), ++level);
+
+    // Remove the highest AssessmentTaxon element from the list - as this is the taxon name and not
+    // required to be shown. Reverse the list and add the levels.
+    Collections.reverse(optionGroups);
+    optionGroups.remove(0);
+    var level = 1;
+    for (DimensionOptionGroups og : optionGroups) {
+      og.setLevel(level++);
+    }
+
+    return optionGroups;
   }
 
   /**
@@ -610,26 +651,47 @@ public class AssessmentService {
   }
 
   /**
-   * Get the Criteria for a Dimension.
+   * Get the Criteria for an Assessment Tool Dimension.
    *
-   * This will return the same list for each submission type - which is redundant as the database
-   * does not support this currently, but Nick wanted to keep the option in the API for these to be
-   * different in future if required (will require a change to the database and either a different
-   * DB call, or filtering of this list).
+   * This returns the valid criterion (aka submission types) for a Dimension per assessment tool.
+   * I.e. it should be used to inform the client of the available valid submission types per
+   * Dimension, for them to select from when creating / updating an assessment.
    *
    * @param dimension
    * @param tool
    * @return
    */
-  private List<CriterionDefinition> getCriteriaForDimension(final DimensionEntity dimension,
-      final AssessmentTool tool) {
+  private List<CriterionDefinition> getAssessmentToolDimensionCriteria(
+      final DimensionEntity dimension, final AssessmentTool tool) {
 
+    return buildCriteria(dimension, tool.getAssessmentToolSubmissionTypes());
+  }
+
+  /**
+   * Gets the (buyer supplied) Criteria for an Assessment Dimension.
+   *
+   * Contrasts with {@link #getAssessmentToolDimensionCriteria(DimensionEntity, AssessmentTool)} as
+   * this builds the criteria via the join between assessment dimensions and submission types (not
+   * just via assessment tool)
+   *
+   * @param assessmentDimensionWeighting
+   * @return
+   */
+  private List<CriterionDefinition> getAssessmentDimensionCriteria(
+      final AssessmentDimensionWeighting assessmentDimensionWeighting) {
+
+    return buildCriteria(assessmentDimensionWeighting.getDimension(),
+        assessmentDimensionWeighting.getAssessmentToolSubmissionTypes());
+  }
+
+  private List<CriterionDefinition> buildCriteria(final DimensionEntity dimension,
+      final Collection<AssessmentToolSubmissionType> assessmentToolSubmissionTypes) {
     List<CriterionDefinition> criteria = new ArrayList<>();
 
     var options = dimension.getValidValues().stream().map(DimensionValidValue::getValueName)
         .collect(Collectors.toList());
 
-    tool.getAssessmentSubmissionTypes().stream().forEach(st -> {
+    assessmentToolSubmissionTypes.stream().forEach(st -> {
       var criterion = new CriterionDefinition();
       criterion.setCriterionId(st.getSubmissionType().getCode());
       criterion.setName(st.getSubmissionType().getName());
@@ -641,6 +703,5 @@ public class AssessmentService {
 
     return criteria;
   }
-
 
 }

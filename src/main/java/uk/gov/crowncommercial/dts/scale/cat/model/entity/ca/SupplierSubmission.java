@@ -28,7 +28,7 @@ public class SupplierSubmission {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_submission_type_id")
-  AssessmentSubmissionType assessmentSubmissionType;
+  AssessmentToolSubmissionType assessmentToolSubmissionType;
 
   @Column(name = "submission_reference")
   private String submissionReference;

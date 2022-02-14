@@ -34,6 +34,8 @@ public class AssessmentEntity {
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
 
+  @EqualsAndHashCode.Exclude
+  @ToString.Exclude
   @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
   @JoinColumn(name = "assessment_id")
   Set<AssessmentDimensionWeighting> dimensionWeightings;

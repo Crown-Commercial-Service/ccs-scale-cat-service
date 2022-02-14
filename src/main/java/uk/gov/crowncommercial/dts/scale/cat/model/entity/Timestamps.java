@@ -24,4 +24,23 @@ public class Timestamps {
 
   @Column(name = "updated_at")
   Instant updatedAt;
+
+  /**
+   * Create entity time stamps.
+   */
+  public static Timestamps createTimestamps(final String userId) {
+    var timestamps = new Timestamps();
+    timestamps.setCreatedAt(Instant.now());
+    timestamps.setCreatedBy(userId);
+    return timestamps;
+  }
+
+  /**
+   * Update entity time stamps.
+   */
+  public static Timestamps updateTimestamps(final Timestamps timestamps, final String userId) {
+    timestamps.setUpdatedAt(Instant.now());
+    timestamps.setUpdatedBy(userId);
+    return timestamps;
+  }
 }
