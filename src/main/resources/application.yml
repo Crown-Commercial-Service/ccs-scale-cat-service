@@ -184,7 +184,7 @@ spring:
         - local-pg
   jpa:
     database: postgresql
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: validate
 
