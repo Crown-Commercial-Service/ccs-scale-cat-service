@@ -62,7 +62,7 @@ public class MessageService {
 	 * @param message   {@link Message}
 	 * @return
 	 */
-	public Object sendOrRespondMessage(String profile, Integer projectId, String eventId, Message message) {
+	public String sendOrRespondMessage(String profile, Integer projectId, String eventId, Message message) {
 
 		var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 		var buyerUser = userService.resolveBuyerUserByEmail(profile);
