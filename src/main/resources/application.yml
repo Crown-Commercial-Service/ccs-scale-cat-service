@@ -74,9 +74,6 @@ config:
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
       defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
       defaultSupplierRightsProfile: ""
-      messageAPIUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation
-      rpaAccessUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/token
-
       rfxStatusToTenderStatus:
         0: PLANNED
         100: PLANNED
@@ -124,7 +121,18 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
+      messages:
+        endpoint: /esop/jint/api/public/ja/v1/messages
+      message:
+        endpoint: /esop/jint/api/public/ja/v1/messages/{messageId} 
 
+      rpa: 
+        accessUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation
+        authenticationUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/token
+        userName: testuser
+        userPwd: rpa@123
+#       buyerPwd: "SET IN ENV"
+      
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"

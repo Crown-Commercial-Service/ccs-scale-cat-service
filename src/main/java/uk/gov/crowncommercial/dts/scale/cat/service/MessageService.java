@@ -1,23 +1,41 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import static java.time.Duration.ofSeconds;
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.boot.configurationprocessor.json.JSONArray;
+import org.springframework.boot.configurationprocessor.json.JSONException;
+import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.AutomationOutputData;
 
+/**
+ *
+ */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MessageService {
 
 	private static final String CREATE_MESSAGE = "Create";
@@ -30,9 +48,9 @@ public class MessageService {
 
 	private static final String SOURCE = "CaT";
 
-	private static final Integer SOURCE_ID = 1;
+	private static final String SOURCE_ID = "1";
 
-	private final WebClient messageServiceWebClient;
+	private final WebClient rpaServiceWebClient;
 
 	private final WebclientWrapper webclientWrapper;
 
@@ -42,47 +60,87 @@ public class MessageService {
 
 	private final ObjectMapper objectMapper;
 
-	private final JaggaerAPIConfig jaggaerAPIConfig;
+	private final RPAAPIConfig rpaAPIConfig;
 
+	private final JaggaerAPIConfig jaggeApiConfig;
+
+	/**
+	 * Which sends outbound message to all suppliers and single supplier. And also
+	 * responds supplier messages
+	 * 
+	 * @param profile
+	 * @param projectId
+	 * @param eventId
+	 * @param message   {@link Message}
+	 * @return
+	 */
 	public Object broadcastMessage(String profile, Integer projectId, String eventId, Message message) {
 
-		ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+		var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 
-		Optional<SubUser> buyerUser = userService.resolveBuyerUserByEmail(profile);
+		var buyerUser = userService.resolveBuyerUserByEmail(profile);
 
-		var processInputMap = new LinkedHashMap<String, Object>();
+		var ocds = (LinkedHashMap<String, String>) message.getOCDS();
 
-		var ocds = (LinkedHashMap<String, Object>) message.getOCDS();
+		var nonOCDS = message.getNonOCDS();
+
+		var processInputMap = new HashMap<String, String>();
 
 		processInputMap.put("Search.Username", buyerUser.get().getEmail());
-		processInputMap.put("Search.Password", "password");
-		processInputMap.put("Search.ITTCode", procurementEvent.getEventID());
-		processInputMap.put("Search.BroadcastMessage", message.getNonOCDS().getIsBroadcast());
+		processInputMap.put("Search.Password", rpaAPIConfig.getBuyerPwd());
+		processInputMap.put("Search.ITTCode", /* procurementEvent.getExternalReferenceId() */"itt_86");
+		processInputMap.put("Search.BroadcastMessage", nonOCDS.getIsBroadcast() ? "Yes" : "No");
 		processInputMap.put("Search.MessagingAction", CREATE_MESSAGE);
 		processInputMap.put("Search.MessageSubject", ocds.get("title"));
 		processInputMap.put("Search.MessageBody", ocds.get("description"));
-		processInputMap.put("Search.MessageClassification", message.getNonOCDS().getClassification().getValue());
-		processInputMap.put("Search.SenderName", buyerUser.get().getEmail());
+		processInputMap.put("Search.MessageClassification",
+				/* nonOCDS.getClassification().getValue() */"Technical Clarification");
+		processInputMap.put("Search.SenderName", buyerUser.get().getName());
+		processInputMap.put("Search.SupplierName", "");
+		processInputMap.put("Search.MessageReceivedDate", "");
 
 		// Fields to reply the message
-		if (message.getNonOCDS().getParentId() != null) {
-			//TODO get supplier details using parentId
+		if (nonOCDS.getParentId() != null) {
+			// TODO get supplier details using parentId
 			processInputMap.put("Search.SupplierName", "supplier-name");
 			processInputMap.put("Search.MessagingAction", RESPOND_MESSAGE);
 			processInputMap.put("Search.MessageReceivedDate", "message-receive-date");
 		}
 
-		Object callJaggaerMessageAPI = callJaggaerMessageAPI(processInputMap);
-
-		return callJaggaerMessageAPI;
+		return callRPAMessageAPI(processInputMap);
 
 	}
 
-	private Object callJaggaerMessageAPI(Map<String, Object> processInputMap) {
-		
-		String processInput = makeProcessInput(processInputMap);
-		
-		Map<String, Object> postData = new LinkedHashMap<String, Object>();
+	/**
+	 * @param projectId
+	 * @param eventId
+	 * @param messageId
+	 * @return
+	 */
+	public Object getMessage(Integer projectId, String eventId, String messageId) {
+
+		validationService.validateProjectAndEventIds(projectId, eventId);
+
+		var exportMessageUri = jaggeApiConfig.getMessage().get(ENDPOINT);
+
+		var response = ofNullable(rpaServiceWebClient.get().uri(exportMessageUri, messageId).retrieve()
+				.bodyToMono(Object.class).block(ofSeconds(jaggeApiConfig.getTimeoutDuration())))
+						.orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+								"Unexpected error retrieving message"));
+
+		// TODO segregate response object
+		return response;
+	}
+
+	/**
+	 * @param processInputMap
+	 * @return
+	 */
+	private String callRPAMessageAPI(Map<String, String> processInputMap) {
+
+		var processInput = makeProcessInput(processInputMap);
+
+		var postData = new HashMap<String, Object>();
 		postData.put("processInput", processInput);
 		postData.put("processName", PROCESS_NAME);
 		postData.put("profileName", PROFILE_NAME);
@@ -92,33 +150,98 @@ public class MessageService {
 		postData.put("requestTimeout", 3600000);
 		postData.put("isSync", true);
 
-		Object o = webclientWrapper.postData(postData, Object.class,
-				messageServiceWebClient.mutate().defaultHeader("Authorization", "Bearer " + getAccessToken()).build(),
-				60, jaggaerAPIConfig.getMessageAPIUrl());
-
-		return o;
+		var response = ofNullable(rpaServiceWebClient.post().uri(rpaAPIConfig.getAccessUrl())
+				.headers(e -> e.setBearerAuth(getAccessToken())).bodyValue(postData).retrieve().bodyToMono(Object.class)
+				.block(Duration.ofSeconds(60)))
+						.orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+								"Unexpected error posting data to " + "uri template"));
+		return validateResponse(response);
 	}
 
-	private String makeProcessInput(Map<String, Object> processInputMap) {
-		
-		String processInput = null;
+	private String validateResponse(Object apiResponse) {
+
 		try {
-			processInput = objectMapper.writeValueAsString(processInputMap);
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException("Invalid process input fields");
+
+			var response = (LinkedHashMap<String, Object>) apiResponse;
+
+			JSONObject json = new JSONObject(response);
+
+			var responseString = (String) json.getJSONObject("response").get("response");
+
+			Map<String, Object> convertedObject = convertStringToObject(responseString);
+
+			json = new JSONObject(convertedObject);
+
+			JSONArray jsonArray = json.getJSONArray("AutomationOutputData");
+
+			AutomationOutputData automationData = new Gson().fromJson(jsonArray.get(1).toString(),
+					AutomationOutputData.class);
+
+			String status = automationData.getCviewDictionary().getStatus();
+
+			log.info("Status of RPA API call : {} ", status);
+
+			if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
+				String errorDescription = automationData.getCviewDictionary().getErrorDescription();
+				log.info("Error Description {} ", errorDescription);
+				throw new JaggaerRPAException(errorDescription);
+			}
+
+			return (String) response.get("transactionId");
+			
+		} catch (JSONException e) {
+			throw new RuntimeException(e.getMessage());
 		}
-		
-		return processInput.replaceAll("\"", "\\\\\"");
 	}
 
+	/**
+	 * @param processInputMap
+	 * @return input as a string value
+	 */
+	private String makeProcessInput(Map<String, String> processInputMap) {
+
+		String processInput = convertObjectToString(processInputMap);
+
+		log.info("Process input {}", processInput);
+		return processInput.replaceAll("\"", "\\\"");
+	}
+
+	private String convertObjectToString(Map<String, String> inputObject) {
+
+		String outputString = null;
+		try {
+			outputString = objectMapper.writeValueAsString(inputObject);
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException("Failed to convert Object to String");
+		}
+		return outputString;
+	}
+
+	private Map<String, Object> convertStringToObject(String inputString) {
+
+		var outputObject = new HashMap<String, Object>();
+		try {
+			outputObject = objectMapper.readValue(inputString, outputObject.getClass());
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException("Failed to convert String to Object");
+		}
+		return outputObject;
+	}
+
+	/**
+	 * Get Access Token by calling RPA access API
+	 * 
+	 * @return accessToken
+	 */
 	private String getAccessToken() {
-		
-		var jaggerRPACredentials = new LinkedHashMap<String, String>();
-		
-		jaggerRPACredentials.put("username", "testuser");
-		jaggerRPACredentials.put("password", "rpa@123");
-		String uriTemplate = jaggaerAPIConfig.getRpaAccessUrl();
-		
-		return webclientWrapper.postData(jaggerRPACredentials, String.class, messageServiceWebClient, 60, uriTemplate);
+
+		var jaggerRPACredentials = new HashMap<String, String>();
+
+		jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
+		jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
+
+		var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
+
+		return webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient, 60, uriTemplate);
 	}
 }
