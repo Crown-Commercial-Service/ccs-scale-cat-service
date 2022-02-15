@@ -28,7 +28,7 @@ public class AssessmentResult {
   AssessmentEntity assessment;
 
   @Column(name = "supplier_organisation_id")
-  private Integer supplierOrganisationId;
+  private String supplierOrganisationId;
 
   @Column(name = "assessment_result_value")
   private BigDecimal assessmentResultValue;

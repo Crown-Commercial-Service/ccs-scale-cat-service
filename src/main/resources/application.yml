@@ -121,10 +121,6 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
-      messages:
-        endpoint: /esop/jint/api/public/ja/v1/messages
-      message:
-        endpoint: /esop/jint/api/public/ja/v1/messages/{messageId} 
 
       rpa: 
         accessUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation
@@ -132,6 +128,9 @@ config:
         userName: testuser
         userPwd: rpa@123
 #       buyerPwd: "SET IN ENV"
+        source: CaT
+        sourceId: 1
+        profileName: ITTEvaluation
       
     agreementsService:
       # baseUrl: "SET IN ENV"
