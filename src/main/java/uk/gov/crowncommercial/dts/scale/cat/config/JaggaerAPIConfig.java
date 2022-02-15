@@ -39,6 +39,6 @@ public class JaggaerAPIConfig {
   private Map<String, String> createUpdateCompany;
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;
-  private String messageAPIUrl;
-  private String rpaAccessUrl;
+  private Map<String, String> messages;
+  private Map<String, String> message;
 }

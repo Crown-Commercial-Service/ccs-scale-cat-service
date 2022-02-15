@@ -4,8 +4,10 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 import javax.validation.Valid;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
 
 /**
+ * Message Controller which provides outbound messages API to jaggaer
  *
  */
 @RestController
@@ -26,21 +29,43 @@ import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
 @Slf4j
 @Validated
 public class MessageController extends AbstractRestController {
-  
-  private final MessageService messageService;
 
-  @PostMapping("{proc-id}/events/{event-id}/messages")
-  public Object createAdnRespondMessage(@PathVariable("proc-id") final Integer procId,
-		  @PathVariable("event-id") final String eventId,
-      @Valid @RequestBody final Message messageRequest,
-      final JwtAuthenticationToken authentication) {
+	private final MessageService messageService;
 
-    var principal = getPrincipalFromJwt(authentication);
-    var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-    log.info("createProcuremenProject invoked on behalf of principal: {}", principal,
-        conclaveOrgId);
+	@PostMapping("{proc-id}/events/{event-id}/messages")
+	public ResponseEntity<?> createAndRespondMessage(@PathVariable("proc-id") final Integer procId,
+			@PathVariable("event-id") final String eventId, @Valid @RequestBody final Message messageRequest,
+			final JwtAuthenticationToken authentication) {
 
-    return messageService.broadcastMessage(principal, procId, eventId, messageRequest);
-  }
+		var principal = getPrincipalFromJwt(authentication);
+		var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
+		log.info("createAndRespondMessage invoked on behalf of principal: {}", principal, conclaveOrgId);
+
+		return ResponseEntity.ok(messageService.broadcastMessage(principal, procId, eventId, messageRequest));
+	}
+
+	@GetMapping("{proc-id}/events/{event-id}/messages")
+	public ResponseEntity<?> getMessages(@PathVariable("proc-id") final Integer procId,
+			@PathVariable("event-id") final String eventId, @Valid @RequestBody final Message messageRequest,
+			final JwtAuthenticationToken authentication) {
+
+		var principal = getPrincipalFromJwt(authentication);
+		var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
+		log.info("createAndRespondMessage invoked on behalf of principal: {}", principal, conclaveOrgId);
+
+		return ResponseEntity.ok(messageService.broadcastMessage(principal, procId, eventId, messageRequest));
+	}
+
+	@GetMapping("{proc-id}/events/{event-id}/messages/{messageId}")
+	public ResponseEntity<?> getMessageById(@PathVariable("proc-id") final Integer procId,
+			@PathVariable("event-id") final String eventId, @PathVariable("messageId") final String messageId,
+			@Valid @RequestBody final Message messageRequest, final JwtAuthenticationToken authentication) {
+
+		var principal = getPrincipalFromJwt(authentication);
+		var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
+		log.info("createAndRespondMessage invoked on behalf of principal: {}", principal, conclaveOrgId);
+
+		return ResponseEntity.ok(messageService.broadcastMessage(principal, procId, eventId, messageRequest));
+	}
 
 }
