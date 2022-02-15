@@ -7,7 +7,6 @@ import javax.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,31 +40,7 @@ public class MessageController extends AbstractRestController {
 		var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
 		log.info("createAndRespondMessage invoked on behalf of principal: {}", principal, conclaveOrgId);
 
-		return ResponseEntity.ok(messageService.broadcastMessage(principal, procId, eventId, messageRequest));
-	}
-
-	@GetMapping("{proc-id}/events/{event-id}/messages")
-	public ResponseEntity<?> getMessages(@PathVariable("proc-id") final Integer procId,
-			@PathVariable("event-id") final String eventId, @Valid @RequestBody final Message messageRequest,
-			final JwtAuthenticationToken authentication) {
-
-		var principal = getPrincipalFromJwt(authentication);
-		var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-		log.info("createAndRespondMessage invoked on behalf of principal: {}", principal, conclaveOrgId);
-
-		return ResponseEntity.ok(messageService.broadcastMessage(principal, procId, eventId, messageRequest));
-	}
-
-	@GetMapping("{proc-id}/events/{event-id}/messages/{messageId}")
-	public ResponseEntity<?> getMessageById(@PathVariable("proc-id") final Integer procId,
-			@PathVariable("event-id") final String eventId, @PathVariable("messageId") final String messageId,
-			@Valid @RequestBody final Message messageRequest, final JwtAuthenticationToken authentication) {
-
-		var principal = getPrincipalFromJwt(authentication);
-		var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-		log.info("createAndRespondMessage invoked on behalf of principal: {}", principal, conclaveOrgId);
-
-		return ResponseEntity.ok(messageService.broadcastMessage(principal, procId, eventId, messageRequest));
+		return ResponseEntity.ok(messageService.sendOrRespondMessage(principal, procId, eventId, messageRequest));
 	}
 
 }

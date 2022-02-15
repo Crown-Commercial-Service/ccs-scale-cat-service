@@ -13,10 +13,16 @@ import lombok.Data;
 @Data
 public class RPAAPIConfig {
 
+	//Access keys
 	private String authenticationUrl;
 	private String accessUrl;
 	private String userName;
 	private String userPwd;
 	private String buyerPwd;
+	
+	//RPA input keys
+	private String source;
+	private String sourceId;
+	private String profileName;
 
 }
