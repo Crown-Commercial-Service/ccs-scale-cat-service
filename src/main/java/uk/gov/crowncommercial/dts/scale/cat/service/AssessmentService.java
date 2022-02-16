@@ -82,7 +82,7 @@ public class AssessmentService {
       dd.setOptions(dimensionOptions);
 
       // Build Evaluation Criteria
-      dd.setEvaluationCriteria(getAssessmentToolDimensionCriteria(d, tool));
+      dd.setEvaluationCriteria(getDimensionCriteria(d));
 
       return dd;
 
@@ -235,10 +235,9 @@ public class AssessmentService {
             // Build Criteria for Requirement (values)
             requirement.setValues(s.getAssessmentSelectionDetails().stream().map(asd -> {
               var criterion = new Criterion();
-              criterion.setCriterionId(
-                  asd.getAssessmentToolSubmissionType().getSubmissionType().getCode());
               criterion
-                  .setName(asd.getAssessmentToolSubmissionType().getSubmissionType().getName());
+                  .setCriterionId(asd.getDimensionSubmissionType().getSubmissionType().getCode());
+              criterion.setName(asd.getDimensionSubmissionType().getSubmissionType().getName());
 
               if (asd.getRequirementValidValueCode() != null) {
                 var validValue =
@@ -446,18 +445,18 @@ public class AssessmentService {
 
     // TODO: Build the dimension weighting submission types from 'includedCriteria'
 
-    var toolSubmissionTypes = assessment.getTool().getAssessmentToolSubmissionTypes();
+    var dimensionSubmissionTypes = dimension.getDimensionSubmissionTypes();
     var validToolSubmissionTypeIDs =
-        toolSubmissionTypes.stream().map(AssessmentToolSubmissionType::getSubmissionType)
+        dimensionSubmissionTypes.stream().map(DimensionSubmissionType::getSubmissionType)
             .map(SubmissionType::getCode).collect(Collectors.toSet());
 
-    dimensionWeighting.setAssessmentToolSubmissionTypes(
-        dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+    dimensionWeighting
+        .setDimensionSubmissionTypes(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
           if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
             throw new ValidationException(
                 format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
           }
-          return toolSubmissionTypes.stream()
+          return dimensionSubmissionTypes.stream()
               .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
               .findFirst().get();
         }).collect(Collectors.toSet()));
@@ -519,11 +518,11 @@ public class AssessmentService {
       selection.setAssessmentSelectionDetails(requirement.getValues().stream().map(c -> {
         var asd = new AssessmentSelectionDetail();
         asd.setAssessmentSelection(selection);
-        var assessmentSubmissionType = assessment.getTool().getAssessmentToolSubmissionTypes()
-            .stream().filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId()))
-            .findFirst().orElseThrow(() -> new ValidationException(
+        var dimensionSubmissionType = dimension.getDimensionSubmissionTypes().stream()
+            .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
+            .orElseThrow(() -> new ValidationException(
                 format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
-        asd.setAssessmentToolSubmissionType(assessmentSubmissionType);
+        asd.setDimensionSubmissionType(dimensionSubmissionType);
         asd.setTimestamps(createTimestamps(principal));
 
         var dimensionSelectionType =
@@ -544,8 +543,7 @@ public class AssessmentService {
         }
 
         log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
-            + ", for criterion "
-            + asd.getAssessmentToolSubmissionType().getSubmissionType().getCode()
+            + ", for criterion " + asd.getDimensionSubmissionType().getSubmissionType().getCode()
             + " and selection " + asd.getAssessmentSelection().getId());
 
         return asd;
@@ -661,10 +659,9 @@ public class AssessmentService {
    * @param tool
    * @return
    */
-  private List<CriterionDefinition> getAssessmentToolDimensionCriteria(
-      final DimensionEntity dimension, final AssessmentTool tool) {
+  private List<CriterionDefinition> getDimensionCriteria(final DimensionEntity dimension) {
 
-    return buildCriteria(dimension, tool.getAssessmentToolSubmissionTypes());
+    return buildCriteria(dimension, dimension.getDimensionSubmissionTypes());
   }
 
   /**
@@ -681,17 +678,17 @@ public class AssessmentService {
       final AssessmentDimensionWeighting assessmentDimensionWeighting) {
 
     return buildCriteria(assessmentDimensionWeighting.getDimension(),
-        assessmentDimensionWeighting.getAssessmentToolSubmissionTypes());
+        assessmentDimensionWeighting.getDimensionSubmissionTypes());
   }
 
   private List<CriterionDefinition> buildCriteria(final DimensionEntity dimension,
-      final Collection<AssessmentToolSubmissionType> assessmentToolSubmissionTypes) {
+      final Collection<DimensionSubmissionType> dimensionSubmissionTypes) {
     List<CriterionDefinition> criteria = new ArrayList<>();
 
     var options = dimension.getValidValues().stream().map(DimensionValidValue::getValueName)
         .collect(Collectors.toList());
 
-    assessmentToolSubmissionTypes.stream().forEach(st -> {
+    dimensionSubmissionTypes.stream().forEach(st -> {
       var criterion = new CriterionDefinition();
       criterion.setCriterionId(st.getSubmissionType().getCode());
       criterion.setName(st.getSubmissionType().getName());

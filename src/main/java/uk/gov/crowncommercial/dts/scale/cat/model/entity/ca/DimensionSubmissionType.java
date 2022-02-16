@@ -9,17 +9,17 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 *
 */
 @Entity
-@Table(name = "assessment_submission_types")
+@Table(name = "dimension_submission_types")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AssessmentToolSubmissionType {
+public class DimensionSubmissionType {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "assessment_submission_type_id")
+  @Column(name = "dimension_submission_type_id")
   Integer id;
 
   @ManyToOne(fetch = FetchType.EAGER)
@@ -28,8 +28,8 @@ public class AssessmentToolSubmissionType {
 
   @EqualsAndHashCode.Exclude
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "assessment_tool_id")
-  AssessmentTool assessmentTool;
+  @JoinColumn(name = "dimension_id")
+  DimensionEntity dimension;
 
   @Embedded
   private Timestamps timestamps;

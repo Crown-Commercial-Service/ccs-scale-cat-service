@@ -27,8 +27,8 @@ public class SupplierSubmission {
   LotRequirementTaxon lotRequirementTaxon;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "assessment_submission_type_id")
-  AssessmentToolSubmissionType assessmentToolSubmissionType;
+  @JoinColumn(name = "dimension_submission_type_id")
+  DimensionSubmissionType dimensionSubmissionType;
 
   @Column(name = "submission_reference")
   private String submissionReference;
