@@ -122,6 +122,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
+      getMessages:
+        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
 
     agreementsService:
       # baseUrl: "SET IN ENV"

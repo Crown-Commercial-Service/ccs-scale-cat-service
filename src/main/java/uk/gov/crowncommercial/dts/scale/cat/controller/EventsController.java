@@ -171,4 +171,20 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  @GetMapping("/{eventID}/messages")
+  public Collection<MessageSummary> getMessages(
+          @PathVariable("procID") final Integer procId,
+          @PathVariable("eventID") final String eventId,
+          @RequestParam(name = "message-direction",required = false) String messageDirection,
+          @RequestParam(name = "message-read",required = false) String messageRead,
+          @RequestParam(name = "sort") String sort,
+          @RequestParam(name = "page",required = false, defaultValue = "1") Integer page,
+          @RequestParam(name = "page-size",required = false,defaultValue = "100") Integer pageSize,
+          final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getMessagesSummaries invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.getMessageSummaries(procId, eventId,messageDirection,messageRead,sort,page,pageSize);
+  }
 }

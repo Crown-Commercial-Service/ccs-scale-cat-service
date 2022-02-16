@@ -57,6 +57,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class EventsControllerTest {
 
   private static final String EVENTS_PATH = "/tenders/projects/{procID}/events";
+  private static final String MESSAGES_PATH = "messages";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String EVENT_ID = "ocds-b5fd17-1";
@@ -328,5 +329,18 @@ class EventsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
 
     verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID);
+  }
+
+  @Test
+  void getMessages_200_OK() throws Exception {
+    mockMvc
+        .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH+"?sort=DATE", PROC_PROJECT_ID,EVENT_ID)
+                .with(validJwtReqPostProcessor)
+            .accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON));
+
+    verify(procurementEventService, times(1)).getMessageSummaries(PROC_PROJECT_ID,EVENT_ID,
+            null,null,"DATE",1,100);
   }
 }

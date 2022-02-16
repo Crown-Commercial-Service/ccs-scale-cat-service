@@ -5,6 +5,8 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+
+import java.net.URI;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -48,6 +51,7 @@ public class ProcurementEventService {
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
   private static final String SUPPLIER_NOT_FOUND_MSG =
       "Organisation id '%s' not found in organisation mappings";
+  private static final String LINK_URI = "/messages/";
   private static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
       Set.of(DefineEventType.FCA, DefineEventType.DAA);
 
@@ -596,6 +600,81 @@ public class ProcurementEventService {
               .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
           EVENT_STAGE, Optional.empty());
     }).collect(Collectors.toList());
+  }
+
+  /**
+   * Returns a list of message summary at the event level.
+   *
+   * @param procId
+   * @param eventId
+   * @param messageDirection
+   * @param messageRead
+   * @param sort
+   * @param page
+   * @param pageSize
+   * @return
+   */
+  public Collection<MessageSummary> getMessageSummaries(
+          final Integer procId, final String eventId, final String messageDirection,
+          final String messageRead, final String sort, final Integer page, final Integer pageSize) {
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var messagesResponse = jaggaerService.getMessages(event.getExternalReferenceId(),
+            messageDirection, messageRead, sort, page, pageSize);
+
+    return messagesResponse.getMessageList().getMessage()
+            .stream().map(message -> convertMessageToMessageSummary(message,pageSize,messagesResponse.getTotRecords()))
+            .collect(Collectors.toList());
+
+  }
+
+  private MessageSummary convertMessageToMessageSummary(final Message message, final Integer pageSize, final Integer totalRecords) {
+    var messageSummary = new MessageSummary();
+    messageSummary.setOCDS(getCaTMessageOCDS(message));
+    messageSummary.setNonOCDS(getMessageSummaryAllOfNonOCDS(message,pageSize,totalRecords));
+    return messageSummary;
+  }
+
+  private MessageSummaryAllOfNonOCDS getMessageSummaryAllOfNonOCDS(Message message,final Integer pageSize, final Integer totalRecords) {
+    var nonOcds = new MessageSummaryAllOfNonOCDS();
+    var messageTotals = new MessageTotals();
+    messageTotals.setMessagesTotal(totalRecords);
+    messageTotals.setPageTotal(pageSize);
+    //TODO Directiion & Counts not generated from api
+  //    nonOcds.setDirection(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection()));
+  //    nonOcds.setCounts();
+    nonOcds.setLinks(getLinks(message,pageSize));
+    return nonOcds;
+  }
+
+  private CaTMessageOCDS getCaTMessageOCDS(Message message) {
+    var ocds = new CaTMessageOCDS();
+    ocds.setDate(message.getSendDate());
+    ocds.setId(message.getMessageId());
+    ocds.setAuthor(getOrganizationReference1(message));
+    ocds.setTitle(message.getSubject());
+    return ocds;
+  }
+
+  private OrganizationReference1 getOrganizationReference1(final Message message) {
+    var author = new OrganizationReference1();
+    author.setId(message.getSender().getId());
+    author.setName(message.getSender().getName());
+    return author;
+  }
+
+  private Links1 getLinks(final Message message,final Integer pageSize) {
+
+    //TODO - business logic for first, last,next,previous needs to improve
+    // data from desending order by date
+    // what if messages ids are not in sequential incremental
+    var links = new Links1();
+    links.setSelf(URI.create(LINK_URI+(message.getMessageId())));
+    links.setFirst(URI.create(LINK_URI+(message.getMessageId())));
+    links.setLast(URI.create(LINK_URI+(message.getMessageId()+pageSize)));
+    links.setNext(URI.create(LINK_URI+(message.getMessageId()-1)));
+    links.setPrev(URI.create(LINK_URI+(message.getMessageId()+11)));
+    return links;
   }
 
 }

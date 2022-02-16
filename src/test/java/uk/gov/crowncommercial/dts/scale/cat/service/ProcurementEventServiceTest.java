@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.*;
+
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
@@ -29,6 +32,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
@@ -837,6 +841,47 @@ class ProcurementEventServiceTest {
     assertEquals(TenderStatus.ACTIVE, response.stream().findFirst().get().getStatus());
     assertEquals(RFX_ID, response.stream().findFirst().get().getEventSupportId());
     assertEquals("ocds-b5fd17-2", response.stream().findFirst().get().getId());
+  }
+
+  @Test
+  void testGetMessages() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message =  builder()
+            .messageId(1)
+            .sender(Sender.builder().build())
+            .sendDate(OffsetDateTime.now())
+            .senderUser(SenderUser.builder().build())
+            .subject("Test message")
+            .direction("ALL")
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder()
+                    .message(Arrays.asList(message))
+                    .build())
+            .returnCode(0)
+            .returnMessage("")
+            .returnedRecords(100)
+            .startAt(1)
+            .totRecords(120)
+            .build();
+
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID,null,null,null,1,10))
+            .thenReturn(messagesResponse);
+
+    var response = procurementEventService.getMessageSummaries(PROC_PROJECT_ID, PROC_EVENT_ID,
+            null,null,null,1,10);
+
+    // Verify
+    assertEquals(1, response.size());
+    assertEquals(1, response.stream().findFirst().get().getOCDS().getId());
+
   }
 
 }
