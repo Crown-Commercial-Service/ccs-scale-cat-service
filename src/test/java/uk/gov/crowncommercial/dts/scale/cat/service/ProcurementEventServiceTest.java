@@ -3,8 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.*;
 
@@ -720,43 +719,61 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void testGetEvent() throws Exception {
-
-    var procurementProject =
-        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
-    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
-        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
-
-    var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
-        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
-    var rfxResponse = new ExportRfxResponse();
-    rfxResponse.setRfxSetting(rfxSetting);
+  void testGetEventNonAssessmentType() throws Exception {
 
     var criterion = new EvalCriteria();
     criterion.setTitle(CRITERION_TITLE);
     var buyerQuestions = new HashSet<EvalCriteria>();
     buyerQuestions.add(criterion);
 
+    when(criteriaService.getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true))
+        .thenReturn(buyerQuestions);
+
+    var eventDetail = testGetEventHelper(ViewEventType.RFI);
+
+    // Additional assertions / verifications
+    assertEquals(CRITERION_TITLE,
+        eventDetail.getNonOCDS().getBuyerQuestions().stream().findFirst().get().getTitle());
+    verify(criteriaService).getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true);
+  }
+
+  @Test
+  void testGetEventAssessmentType() throws Exception {
+    testGetEventHelper(ViewEventType.FCA);
+
+    verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyBoolean());
+  }
+
+  EventDetail testGetEventHelper(final ViewEventType eventType) {
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent =
+        ProcurementEvent.builder().project(procurementProject).eventType(eventType.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
+        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
-    when(criteriaService.getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true))
-        .thenReturn(buyerQuestions);
 
-    var response = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
+    var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
-    assertEquals(CRITERION_TITLE,
-        response.getNonOCDS().getBuyerQuestions().stream().findFirst().get().getTitle());
-    assertEquals(ViewEventType.RFI, response.getNonOCDS().getEventType());
-    assertEquals(RFX_REF_CODE, response.getNonOCDS().getEventSupportId());
+    assertEquals(eventType, eventDetail.getNonOCDS().getEventType());
+    assertEquals(RFX_REF_CODE, eventDetail.getNonOCDS().getEventSupportId());
 
-    assertEquals(RFX_ID, response.getOCDS().getId());
-    assertEquals(ORIGINAL_EVENT_NAME, response.getOCDS().getTitle());
-    assertEquals(DESCRIPTION, response.getOCDS().getDescription());
-    assertEquals(TenderStatus.PLANNED, response.getOCDS().getStatus());
-    assertEquals(AwardCriteria.RATEDCRITERIA, response.getOCDS().getAwardCriteria());
+    assertEquals(RFX_ID, eventDetail.getOCDS().getId());
+    assertEquals(ORIGINAL_EVENT_NAME, eventDetail.getOCDS().getTitle());
+    assertEquals(DESCRIPTION, eventDetail.getOCDS().getDescription());
+    assertEquals(TenderStatus.PLANNED, eventDetail.getOCDS().getStatus());
+    assertEquals(AwardCriteria.RATEDCRITERIA, eventDetail.getOCDS().getAwardCriteria());
+
+    return eventDetail;
   }
 
   @Test
