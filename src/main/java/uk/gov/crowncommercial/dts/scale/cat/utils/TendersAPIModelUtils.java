@@ -86,6 +86,8 @@ public class TendersAPIModelUtils {
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
     eventDetailNonOCDS.setEventSupportId(procurementEvent.getExternalReferenceId());
+    eventDetailNonOCDS.setAssessmentId(procurementEvent.getAssessmentId());
+    eventDetailNonOCDS.setAssessmentSupplierTarget(procurementEvent.getAssessmentSupplierTarget());
     if (buyerQuestions != null && !buyerQuestions.isEmpty()) {
       eventDetailNonOCDS.setBuyerQuestions(List.copyOf(buyerQuestions));
     }
