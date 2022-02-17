@@ -36,8 +36,8 @@ public class AssessmentDimensionWeighting {
   @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "assessment_dimension_submission_types",
       joinColumns = @JoinColumn(name = "assessment_dimension_weighting_id"),
-      inverseJoinColumns = @JoinColumn(name = "assessment_submission_type_id"))
-  Set<AssessmentToolSubmissionType> assessmentToolSubmissionTypes;
+      inverseJoinColumns = @JoinColumn(name = "dimension_submission_type_id"))
+  Set<DimensionSubmissionType> dimensionSubmissionTypes;
 
   @Column(name = "weighting_pct")
   private BigDecimal weightingPercentage;

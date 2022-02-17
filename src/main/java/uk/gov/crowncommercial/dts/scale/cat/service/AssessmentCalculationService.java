@@ -89,7 +89,7 @@ public class AssessmentCalculationService {
 
       // New agreed approach via Assess dim weighting / tool submission type join
       var subcontractorsAccepted = assessment.getDimensionWeightings().stream()
-          .flatMap(adw -> adw.getAssessmentToolSubmissionTypes().stream()).anyMatch(
+          .flatMap(adw -> adw.getDimensionSubmissionTypes().stream()).anyMatch(
               atst -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(atst.getSubmissionType().getName()));
 
       var supplierDimensionTotalScore = new AtomicReference<>(0d);
