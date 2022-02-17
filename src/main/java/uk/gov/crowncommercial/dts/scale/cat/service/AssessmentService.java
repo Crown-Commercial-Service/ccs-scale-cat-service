@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -192,6 +193,7 @@ public class AssessmentService {
       var summary = new AssessmentSummary();
       summary.setAssessmentId(a.getId());
       summary.setExternalToolId(a.getTool().getExternalToolId());
+      summary.setStatus(StatusEnum.fromValue(a.getStatus().toString().toLowerCase()));
       return summary;
     }).collect(Collectors.toList());
   }
@@ -510,7 +512,6 @@ public class AssessmentService {
     log.debug("populateAssessmentSelectionDetails for selection " + selection.getId()
         + " and requirement " + requirement.getName());
 
-    var assessment = selection.getAssessment();
     var dimension = selection.getDimension();
 
     // Build AssessmentSelectionDetails
