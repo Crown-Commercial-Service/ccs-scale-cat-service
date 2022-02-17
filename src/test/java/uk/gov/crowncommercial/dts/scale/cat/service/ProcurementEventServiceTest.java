@@ -26,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
@@ -71,6 +72,7 @@ class ProcurementEventServiceTest {
   private static final String DESCRIPTION = "Description";
   private static final String CRITERION_TITLE = "Criteria 1";
   private static final Integer ASSESSMENT_ID = 1;
+  private static final Integer ASSESSMENT_SUPPLIER_TARGET = 10;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -717,6 +719,7 @@ class ProcurementEventServiceTest {
   @Test
   void testGetEventNonAssessmentType() throws Exception {
 
+    var procurementEventBuilder = ProcurementEvent.builder();
     var criterion = new EvalCriteria();
     criterion.setTitle(CRITERION_TITLE);
     var buyerQuestions = new HashSet<EvalCriteria>();
@@ -725,7 +728,7 @@ class ProcurementEventServiceTest {
     when(criteriaService.getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true))
         .thenReturn(buyerQuestions);
 
-    var eventDetail = testGetEventHelper(ViewEventType.RFI);
+    var eventDetail = testGetEventHelper(ViewEventType.RFI, procurementEventBuilder);
 
     // Additional assertions / verifications
     assertEquals(CRITERION_TITLE,
@@ -735,16 +738,23 @@ class ProcurementEventServiceTest {
 
   @Test
   void testGetEventAssessmentType() throws Exception {
-    testGetEventHelper(ViewEventType.FCA);
+    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET);
+    var eventDetail = testGetEventHelper(ViewEventType.FCA, procurementEventBuilder);
+
+    assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
+    assertEquals(ASSESSMENT_SUPPLIER_TARGET,
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyBoolean());
   }
 
-  EventDetail testGetEventHelper(final ViewEventType eventType) {
+  EventDetail testGetEventHelper(final ViewEventType eventType,
+      final ProcurementEventBuilder procurementEventBuilder) {
     var procurementProject =
         ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-        ProcurementEvent.builder().project(procurementProject).eventType(eventType.name())
+        procurementEventBuilder.project(procurementProject).eventType(eventType.name())
             .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
