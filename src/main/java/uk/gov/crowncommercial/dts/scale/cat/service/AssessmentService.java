@@ -569,7 +569,7 @@ public class AssessmentService {
           log.debug(" - requirement :" + rt.getRequirement().getName());
           var rtOption = new DimensionOption();
           rtOption.setName(rt.getRequirement().getName());
-          rtOption.setOptionId(rt.getRequirement().getId());
+          rtOption.setRequirementId(rt.getRequirement().getId());
           rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
           return rtOption;
 
