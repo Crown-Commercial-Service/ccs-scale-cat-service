@@ -189,9 +189,7 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<!-- <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec> -->
-							<inputSpec>/Users/venki/Documents/CCS/ccs-scale-api-definitions/cat/CaT-service.yaml</inputSpec>
-							
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/cat/CaT-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
