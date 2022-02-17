@@ -18,9 +18,9 @@ spring:
   jpa:
     open-in-view: false
     database: postgresql
-    show-sql: true
+    show-sql: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
   datasource:
     hikari:
       connectionTimeout: 10000

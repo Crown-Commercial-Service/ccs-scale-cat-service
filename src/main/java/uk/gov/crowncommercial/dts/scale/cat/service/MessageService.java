@@ -110,11 +110,9 @@ public class MessageService {
 		}
 
 		return callRPAMessageAPI(processInputMap);
-
 	}
 
 	private String validateSuppliers(ProcurementEvent procurementEvent, MessageNonOCDS nonOCDS) {
-
 		// ignoring string content from organisation Ids
 		var supplierOrgIds = nonOCDS.getReceiverList().stream().map(ls -> ls.getId().replace("GB-COH-", ""))
 				.collect(Collectors.toSet());
