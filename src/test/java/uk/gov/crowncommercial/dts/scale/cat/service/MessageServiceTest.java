@@ -50,6 +50,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -135,6 +136,7 @@ class MessageServiceTest {
 
 	private Map<String, String> processInputMap;
 	private Map<String, Object> postData = new HashMap<String, Object>();
+	RPAGenericData request = new RPAGenericData();
 
 	@BeforeEach
 	void beforeEach() {
@@ -146,13 +148,9 @@ class MessageServiceTest {
 		processInputMap.put("Search.SupplierName", "");
 		processInputMap.put("Search.MessageReceivedDate", "");
 
-		postData.put("processName", RPAProcessNameEnum.BUYER_MESSAGING.getValue());
-		postData.put("profileName", rpaAPIConfig.getProfileName());
-		postData.put("source", rpaAPIConfig.getSource());
-		postData.put("sourceId", rpaAPIConfig.getSourceId());
-		postData.put("retry", false);
-		postData.put("requestTimeout", 3600000);
-		postData.put("isSync", true);
+		request.setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
+				.setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
+				.setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000).setSync(true);
 
 		var jaggerRPACredentials = new HashMap<String, String>();
 		jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
@@ -166,7 +164,7 @@ class MessageServiceTest {
 		when(requestBodyUriSpec.uri(rpaAPIConfig.getAccessUrl())).thenReturn(requestBodySpec);
 		when(requestBodySpec.header("Authorization", "Bearer token")).thenReturn(requestBodySpec);
 		when(requestHeadersSpec.header("Authorization", "Bearer token")).thenReturn(requestHeadersSpec);
-		when(requestBodySpec.bodyValue(postData)).thenReturn(requestHeadersSpec);
+		when(requestBodySpec.bodyValue(request)).thenReturn(requestHeadersSpec);
 		when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
 	}
 
@@ -202,13 +200,12 @@ class MessageServiceTest {
 				+ "		        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Create message for itt_8673 completed by venki.bathula@brickendon.com\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"password\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"Yes\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"Yes\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"Yes\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"BuyerMessaging\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-02-15T22:21:46.190Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:14.6458043\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-02-15T22:21:46.2043795Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-02-15T22:22:00.8501838Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
 				+ "		    },\n" + "		    \"error\": {}\n" + "		}\"";
 
-		processInputMap.put("Search.Password", rpaAPIConfig.getBuyerPwd());
 		processInputMap.put("Search.BroadcastMessage", nonocds.getIsBroadcast() ? "Yes" : "No");
 		processInputMap.put("Search.MessagingAction", CREATE_MESSAGE);
 		processInputMap.put("Search.MessageSubject", ocds.getTitle());
 		processInputMap.put("Search.MessageBody", ocds.getDescription());
 		processInputMap.put("Search.MessageClassification", nonocds.getClassification().getValue());
-		postData.put("processInput", messageService.makeProcessInput(processInputMap));
+		request.setProcessInput(messageService.makeProcessInput(processInputMap));
 		RPAAPIResponse responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
 		// Mock behaviours
@@ -253,14 +250,7 @@ class MessageServiceTest {
 				+ "    \"status\": \"success\",\n" + "    \"response\": {\n"
 				+ "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Create message for itt_8673 completed by venki.bathula@brickendon.com\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"password\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"No\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"No\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"No\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"BuyerMessaging\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-02-16T13:26:30.159Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:08.3225069\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-02-16T13:26:30.1801763Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-02-16T13:26:38.5026832Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
 				+ "    },\n" + "    \"error\": {}\n" + "}";
-		processInputMap.put("Search.Password", rpaAPIConfig.getBuyerPwd());
-		processInputMap.put("Search.BroadcastMessage", nonocds.getIsBroadcast() ? "Yes" : "No");
-		processInputMap.put("Search.MessagingAction", CREATE_MESSAGE);
-		processInputMap.put("Search.MessageSubject", ocds.getTitle());
-		processInputMap.put("Search.MessageBody", ocds.getDescription());
-		processInputMap.put("Search.MessageClassification", nonocds.getClassification().getValue());
-		processInputMap.put("Search.SupplierName", "Bathula Consulting;Venki CCS");
-		postData.put("processInput", messageService.makeProcessInput(processInputMap));
+		request.setProcessInput(messageService.makeProcessInput(processInputMap));
 		RPAAPIResponse responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
 		// Mock behaviours
@@ -311,14 +301,15 @@ class MessageServiceTest {
 				+ "    \"status\": \"success\",\n" + "    \"response\": {\n"
 				+ "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Create message for itt_8673 completed by venki.bathula@brickendon.com\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"password\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"No\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"No\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.BroadcastMessage\\\":\\\"No\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"BuyerMessaging\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-02-16T13:26:30.159Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:08.3225069\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-02-16T13:26:30.1801763Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-02-16T13:26:38.5026832Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
 				+ "    },\n" + "    \"error\": {}\n" + "}";
-		processInputMap.put("Search.Password", rpaAPIConfig.getBuyerPwd());
+
 		processInputMap.put("Search.BroadcastMessage", nonocds.getIsBroadcast() ? "Yes" : "No");
 		processInputMap.put("Search.MessagingAction", CREATE_MESSAGE);
 		processInputMap.put("Search.MessageSubject", ocds.getTitle());
 		processInputMap.put("Search.MessageBody", ocds.getDescription());
 		processInputMap.put("Search.MessageClassification", nonocds.getClassification().getValue());
 		processInputMap.put("Search.SupplierName", "Bathula Consulting;Doshi Industries");
-		postData.put("processInput", messageService.makeProcessInput(processInputMap));
+		request.setProcessInput(messageService.makeProcessInput(processInputMap));
+
 		RPAAPIResponse responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
 		// Mock behaviours

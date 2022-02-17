@@ -132,6 +132,7 @@ config:
         sourceId: 1
         profileName: ITTEvaluation
         timeoutDuration: 20
+        requestTimeout: 3600000
       
     agreementsService:
       # baseUrl: "SET IN ENV"

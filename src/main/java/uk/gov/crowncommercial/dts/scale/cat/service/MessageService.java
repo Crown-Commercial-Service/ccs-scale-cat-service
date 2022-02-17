@@ -30,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.AutomationOutputData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -112,6 +113,11 @@ public class MessageService {
 		return callRPAMessageAPI(processInputMap);
 	}
 
+	/**
+	 * @param procurementEvent
+	 * @param nonOCDS
+	 * @return suppliers as a string
+	 */
 	private String validateSuppliers(ProcurementEvent procurementEvent, MessageNonOCDS nonOCDS) {
 		// ignoring string content from organisation Ids
 		var supplierOrgIds = nonOCDS.getReceiverList().stream().map(ls -> ls.getId().replace("GB-COH-", ""))
@@ -163,22 +169,16 @@ public class MessageService {
 
 	/**
 	 * @param processInputMap
-	 * @return
+	 * @return rpa status
 	 */
 	private String callRPAMessageAPI(Map<String, String> processInputMap) {
 		var processInput = makeProcessInput(processInputMap);
-		var postData = new HashMap<String, Object>();
-		postData.put("processInput", processInput);
-		postData.put("processName", RPAProcessNameEnum.BUYER_MESSAGING.getValue());
-		postData.put("profileName", rpaAPIConfig.getProfileName());
-		postData.put("source", rpaAPIConfig.getSource());
-		postData.put("sourceId", rpaAPIConfig.getSourceId());
-		postData.put("retry", false);
-		postData.put("requestTimeout", 3600000);
-		postData.put("isSync", true);
-
+		var request = new RPAGenericData();
+		request.setProcessInput(processInput).setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
+				.setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
+				.setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000).setSync(true);
 		var response = ofNullable(rpaServiceWebClient.post().uri(rpaAPIConfig.getAccessUrl())
-				.header("Authorization", "Bearer " + getAccessToken()).bodyValue(postData).retrieve()
+				.header("Authorization", "Bearer " + getAccessToken()).bodyValue(request).retrieve()
 				.bodyToMono(RPAAPIResponse.class).block(Duration.ofSeconds(rpaAPIConfig.getTimeoutDuration())))
 						.orElseThrow(() -> new JaggaerRPAException(INTERNAL_SERVER_ERROR.value(),
 								"Unexpected error posting data to " + "uri template"));
@@ -189,7 +189,7 @@ public class MessageService {
 	 * Validate RPA API Response
 	 * 
 	 * @param apiResponse
-	 * @return
+	 * @return rpa api status
 	 */
 	private String validateResponse(RPAAPIResponse apiResponse) {
 		try {
@@ -214,7 +214,7 @@ public class MessageService {
 
 	/**
 	 * @param processInputMap
-	 * @return input as a string value
+	 * @return processInput as a string value
 	 */
 	public String makeProcessInput(Map<String, String> processInputMap) {
 		var processInput = convertObjectToString(processInputMap);
@@ -226,7 +226,7 @@ public class MessageService {
 	 * Convert object to String
 	 * 
 	 * @param inputObject
-	 * @return
+	 * @return String
 	 */
 	private String convertObjectToString(Map<String, String> inputObject) {
 		String outputString = null;
@@ -242,7 +242,7 @@ public class MessageService {
 	 * Convert String to Object
 	 * 
 	 * @param inputString
-	 * @return
+	 * @return Object
 	 */
 	private Map<String, Object> convertStringToObject(String inputString) {
 		var outputObject = new HashMap<String, Object>();
