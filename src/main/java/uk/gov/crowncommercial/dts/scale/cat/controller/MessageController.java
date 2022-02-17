@@ -32,7 +32,7 @@ public class MessageController extends AbstractRestController {
 	private final MessageService messageService;
 
 	@PostMapping("{proc-id}/events/{event-id}/messages")
-	public ResponseEntity<?> createAndRespondMessage(@PathVariable("proc-id") final Integer procId,
+	public ResponseEntity<String> createAndRespondMessage(@PathVariable("proc-id") final Integer procId,
 			@PathVariable("event-id") final String eventId, @Valid @RequestBody final Message messageRequest,
 			final JwtAuthenticationToken authentication) {
 
