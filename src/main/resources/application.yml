@@ -131,6 +131,7 @@ config:
         source: CaT
         sourceId: 1
         profileName: ITTEvaluation
+        timeoutDuration: 20
       
     agreementsService:
       # baseUrl: "SET IN ENV"

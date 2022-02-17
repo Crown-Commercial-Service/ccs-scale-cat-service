@@ -24,5 +24,6 @@ public class RPAAPIConfig {
 	private String source;
 	private String sourceId;
 	private String profileName;
+	private Integer timeoutDuration;
 
 }

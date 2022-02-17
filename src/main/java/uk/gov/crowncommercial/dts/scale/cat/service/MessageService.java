@@ -6,7 +6,6 @@ import static org.springframework.util.CollectionUtils.isEmpty;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -30,6 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.AutomationOutputData;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -72,7 +72,6 @@ public class MessageService {
 	 * @return
 	 */
 	public String sendOrRespondMessage(String profile, Integer projectId, String eventId, Message message) {
-
 		var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 		var buyerUser = userService.resolveBuyerUserByEmail(profile);
 		var ocds = message.getOCDS();
@@ -82,7 +81,7 @@ public class MessageService {
 		var processInputMap = new HashMap<String, String>();
 		processInputMap.put("Search.Username", buyerUser.get().getEmail());
 		processInputMap.put("Search.Password", rpaAPIConfig.getBuyerPwd());
-		processInputMap.put("Search.ITTCode", /* procurementEvent.getExternalReferenceId() */"itt_8673");
+		processInputMap.put("Search.ITTCode", procurementEvent.getExternalReferenceId());
 		processInputMap.put("Search.BroadcastMessage", nonOCDS.getIsBroadcast() ? "Yes" : "No");
 		processInputMap.put("Search.MessagingAction", CREATE_MESSAGE);
 		processInputMap.put("Search.MessageSubject", ocds.getTitle());
@@ -98,7 +97,7 @@ public class MessageService {
 			processInputMap.put("Search.MessagingAction", RESPOND_MESSAGE);
 			processInputMap.put("Search.MessageReceivedDate", "message-receive-date");
 		}
-		
+
 		// Adding supplier details
 		if (!nonOCDS.getIsBroadcast()) {
 			if (!CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
@@ -115,19 +114,16 @@ public class MessageService {
 	}
 
 	private String validateSuppliers(ProcurementEvent procurementEvent, MessageNonOCDS nonOCDS) {
-		
-		var suppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId())
-				.getSuppliersList().getSupplier();
 
-		// ignorning string content from organisation Ids
-		var supplierOrgIds = nonOCDS.getReceiverList().stream().map(ls -> ls.getId().replace("GB-COH-", "")).collect(Collectors.toSet());
+		// ignoring string content from organisation Ids
+		var supplierOrgIds = nonOCDS.getReceiverList().stream().map(ls -> ls.getId().replace("GB-COH-", ""))
+				.collect(Collectors.toSet());
 
 		// Retrieve and verify Tenders DB org mappings
 		var supplierOrgMappings = retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
 		if (isEmpty(supplierOrgMappings)) {
-			String errorDesc = String.format(
-					"No supplier org mappings found in Tenders DB for project: %s, event: %s",
-					procurementEvent.getProject().getId(), procurementEvent.getEventID());
+			String errorDesc = String.format("No supplier organisation mappings found in Tenders DB %s",
+					supplierOrgIds);
 			log.error(errorDesc);
 			throw new JaggaerRPAException(errorDesc);
 		}
@@ -136,22 +132,26 @@ public class MessageService {
 		var supplierExternalIds = supplierOrgMappings.stream().map(OrganisationMapping::getExternalOrganisationId)
 				.collect(Collectors.toSet());
 
+		// Find actual suppliers of project and event
+		var suppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId()).getSuppliersList().getSupplier();
+
+		// Find all unmatched org ids
+		var unMatchedSuppliers = supplierExternalIds.stream().filter(
+				orgid -> suppliers.stream().noneMatch(supplier -> supplier.getCompanyData().getId().equals(orgid)))
+				.collect(Collectors.toList());
+
+		if (!isEmpty(unMatchedSuppliers)) {
+			String errorDesc = String.format("Supplied organisation mappings not matched with actual suppliers '%s'",
+					unMatchedSuppliers);
+			log.error(errorDesc);
+			throw new JaggaerRPAException(errorDesc);
+		}
+
 		// Comparing the requested organisation ids and event suppliers info
 		var matchedSuppliers = suppliers.stream()
 				.filter(supplier -> supplierExternalIds.stream()
 						.anyMatch(orgId -> orgId.equals(supplier.getCompanyData().getId())))
 				.collect(Collectors.toList());
-
-		// Find all unmatched org ids
-		var unMatchedSuppliers = supplierExternalIds.stream()
-				.filter(orgid -> suppliers.stream().noneMatch(supplier -> supplier.getCompanyData().getId().equals(orgid)))
-				.collect(Collectors.toList());
-
-		if (!isEmpty(unMatchedSuppliers)) {
-			String errorDesc = String.format("Supplied org mappings not found in Tenders DB '{}", unMatchedSuppliers);
-			log.error(errorDesc);
-			throw new JaggaerRPAException(errorDesc);
-		}
 
 		// Coverting all requested suppliers names into a string
 		var appendSupplierList = new StringBuilder();
@@ -168,9 +168,7 @@ public class MessageService {
 	 * @return
 	 */
 	private String callRPAMessageAPI(Map<String, String> processInputMap) {
-
 		var processInput = makeProcessInput(processInputMap);
-
 		var postData = new HashMap<String, Object>();
 		postData.put("processInput", processInput);
 		postData.put("processName", RPAProcessNameEnum.BUYER_MESSAGING.getValue());
@@ -181,10 +179,9 @@ public class MessageService {
 		postData.put("requestTimeout", 3600000);
 		postData.put("isSync", true);
 
-		rpaServiceWebClient.mutate().defaultHeaders(h -> h.setBearerAuth(getAccessToken())).build();
-
-		var response = ofNullable(rpaServiceWebClient.post().uri(rpaAPIConfig.getAccessUrl()).bodyValue(postData)
-				.retrieve().bodyToMono(Object.class).block(Duration.ofSeconds(60)))
+		var response = ofNullable(rpaServiceWebClient.post().uri(rpaAPIConfig.getAccessUrl())
+				.header("Authorization", "Bearer " + getAccessToken()).bodyValue(postData).retrieve()
+				.bodyToMono(RPAAPIResponse.class).block(Duration.ofSeconds(rpaAPIConfig.getTimeoutDuration())))
 						.orElseThrow(() -> new JaggaerRPAException(INTERNAL_SERVER_ERROR.value(),
 								"Unexpected error posting data to " + "uri template"));
 		return validateResponse(response);
@@ -196,16 +193,10 @@ public class MessageService {
 	 * @param apiResponse
 	 * @return
 	 */
-	private String validateResponse(Object apiResponse) {
-
+	private String validateResponse(RPAAPIResponse apiResponse) {
 		try {
-			var response = (LinkedHashMap<String, Object>) apiResponse;
-			var json = new JSONObject(response);
-			log.info("RPA Response Object: {}", json.toString());
-			var responseString = (String) json.getJSONObject("response").get("response");
-			var convertedObject = convertStringToObject(responseString);
-
-			json = new JSONObject(convertedObject);
+			var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
+			var json = new JSONObject(convertedObject);
 			var jsonArray = json.getJSONArray("AutomationOutputData");
 			var automationData = new Gson().fromJson(jsonArray.get(1).toString(), AutomationOutputData.class);
 
@@ -218,7 +209,6 @@ public class MessageService {
 				throw new JaggaerRPAException(errorDescription);
 			}
 			return status;
-
 		} catch (JSONException e) {
 			throw new RuntimeException(e.getMessage());
 		}
@@ -229,9 +219,7 @@ public class MessageService {
 	 * @return input as a string value
 	 */
 	public String makeProcessInput(Map<String, String> processInputMap) {
-
 		var processInput = convertObjectToString(processInputMap);
-
 		log.info("Process input {}", processInput);
 		return processInput.replaceAll("\"", "\\\"");
 	}
@@ -243,7 +231,6 @@ public class MessageService {
 	 * @return
 	 */
 	private String convertObjectToString(Map<String, String> inputObject) {
-
 		String outputString = null;
 		try {
 			outputString = objectMapper.writeValueAsString(inputObject);
@@ -260,7 +247,6 @@ public class MessageService {
 	 * @return
 	 */
 	private Map<String, Object> convertStringToObject(String inputString) {
-
 		var outputObject = new HashMap<String, Object>();
 		try {
 			outputObject = objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {
@@ -277,14 +263,12 @@ public class MessageService {
 	 * @return accessToken
 	 */
 	private String getAccessToken() {
-
 		var jaggerRPACredentials = new HashMap<String, String>();
-
 		jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
 		jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
-
 		var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
-
-		return webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient, 60, uriTemplate);
+		String token = webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
+				rpaAPIConfig.getTimeoutDuration(), uriTemplate);
+		return token;
 	}
 }
