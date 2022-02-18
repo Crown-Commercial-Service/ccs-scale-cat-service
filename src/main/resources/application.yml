@@ -125,8 +125,8 @@ config:
       rpa: 
         accessUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/a/automation
         authenticationUrl: https://azd-uk-catrpa.uksouth.cloudapp.azure.com/api/token
-        userName: testuser
-        userPwd: rpa@123
+#       userName: "SET IN ENV"
+#       userPwd: "SET IN ENV"
 #       buyerPwd: "SET IN ENV"
         source: CaT
         sourceId: 1
