@@ -51,9 +51,9 @@ public class ProcurementEventService {
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
   private static final String SUPPLIER_NOT_FOUND_MSG =
       "Organisation id '%s' not found in organisation mappings";
+  private static final Set<String> ASSESSMENT_EVENT_TYPES =
+      Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
   private static final String LINK_URI = "/messages/";
-  private static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
-      Set.of(DefineEventType.FCA, DefineEventType.DAA);
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -108,7 +108,7 @@ public class ProcurementEventService {
     String rfxReferenceCode = null;
 
     if (createEventNonOCDS.getEventType() != null
-        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
+        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType().name())) {
 
       // Either create a new assessment or validate and link to existing one
       if (createEvent.getNonOCDS().getAssessmentId() == null) {
@@ -220,10 +220,12 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+    var getDataTemplate = !ASSESSMENT_EVENT_TYPES.contains(event.getEventType())
+        && !ViewEventType.TBD.name().equals(event.getEventType());
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        buyerQuestions);
+        getDataTemplate ? criteriaService.getEvalCriteria(projectId, eventId, true)
+            : Collections.emptySet());
   }
 
   /**
@@ -269,7 +271,7 @@ public class ProcurementEventService {
             "Cannot update an existing event type of '" + event.getEventType() + "'");
       }
 
-      if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())
+      if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType().name())
           && updateEvent.getAssessmentId() == null && event.getAssessmentId() == null) {
         createAssessment = true;
       }
