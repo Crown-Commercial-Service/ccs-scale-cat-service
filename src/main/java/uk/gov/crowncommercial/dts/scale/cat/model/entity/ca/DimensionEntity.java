@@ -38,6 +38,12 @@ public class DimensionEntity {
   @JoinColumn(name = "dimension_id")
   Set<DimensionValidValue> validValues;
 
+  @EqualsAndHashCode.Exclude
+  @ToString.Exclude
+  @OneToMany(fetch = FetchType.EAGER)
+  @JoinColumn(name = "dimension_id")
+  Set<DimensionSubmissionType> dimensionSubmissionTypes;
+
   @Column(name = "dimension_descr")
   private String description;
 
