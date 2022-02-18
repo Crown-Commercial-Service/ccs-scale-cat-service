@@ -55,6 +55,7 @@ public class ProcurementEventService {
       Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
   private static final String LINK_URI = "/messages/";
 
+
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;

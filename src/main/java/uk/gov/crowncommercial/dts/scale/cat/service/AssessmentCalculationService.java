@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.RequirementScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
@@ -27,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AssessmentCalculationService {
 
   private static final String SUBMISSION_TYPE_SUPPLIER = "Supplier";
@@ -89,7 +87,7 @@ public class AssessmentCalculationService {
 
       // New agreed approach via Assess dim weighting / tool submission type join
       var subcontractorsAccepted = assessment.getDimensionWeightings().stream()
-          .flatMap(adw -> adw.getAssessmentToolSubmissionTypes().stream()).anyMatch(
+          .flatMap(adw -> adw.getDimensionSubmissionTypes().stream()).anyMatch(
               atst -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(atst.getSubmissionType().getName()));
 
       var supplierDimensionTotalScore = new AtomicReference<>(0d);
