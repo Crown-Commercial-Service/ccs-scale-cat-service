@@ -5,8 +5,10 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+
 import java.time.Duration;
 import java.util.Objects;
+
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -35,6 +37,7 @@ public class JaggaerService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final WebclientWrapper webclientWrapper;
+  private final String MESSAGE_PARAMS = "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
   /**
    * Create or update a Project.
@@ -45,12 +48,12 @@ public class JaggaerService {
   public CreateUpdateProjectResponse createUpdateProject(
       final CreateUpdateProject createUpdateProject) {
 
-    var updateProjectResponse =
+    final var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating project"));
+        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+            "Unexpected error updating project"));
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
@@ -228,17 +231,13 @@ public class JaggaerService {
             "Unexpected error retrieving projects"));
   }
 
-  public MessagesResponse getMessages(final String externalEventId, final String messageDirection,
-      final String messageRead, final String sort, final Integer page,
-      final Integer pageSize) {
+  public MessagesResponse getMessages(final String externalEventId, final Integer page, final Integer pageSize) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
-    final int start = page +(page > 1 ?pageSize:0);
+    final int start = page + (page > 1 ?pageSize:0);
     final String filters = "objectReferenceCode=="+externalEventId;
     final String queryPrams = "start="+start;
 
-
-
-    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters,queryPrams)
+    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters,queryPrams,MESSAGE_PARAMS)
         .retrieve()
         .bodyToMono(MessagesResponse.class)
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))

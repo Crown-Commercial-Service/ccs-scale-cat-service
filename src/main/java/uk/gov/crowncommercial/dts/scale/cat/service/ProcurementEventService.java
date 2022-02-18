@@ -220,10 +220,10 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
+    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        ASSESSMENT_EVENT_TYPES.contains(DefineEventType.fromValue(event.getEventType()))
-            ? Collections.emptySet()
-            : criteriaService.getEvalCriteria(projectId, eventId, true));
+        buyerQuestions);
   }
 
   /**
@@ -614,57 +614,59 @@ public class ProcurementEventService {
    * @param pageSize
    * @return
    */
-  public Collection<MessageSummary> getMessageSummaries(
-          final Integer procId, final String eventId, final String messageDirection,
-          final String messageRead, final String sort, final Integer page, final Integer pageSize) {
+  public MessageSummary getMessageSummaries(
+          final Integer procId, final String eventId, final MessageDirection messageDirection,
+          final MessageRead messageRead, final MessageSort sort, final Integer page, final Integer pageSize) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var messagesResponse = jaggaerService.getMessages(event.getExternalReferenceId(),
-            messageDirection, messageRead, sort, page, pageSize);
+             page, pageSize);
+    return  convertMessageToMessageSummary(messagesResponse,messageDirection,messageRead,sort,pageSize);
+  }
 
-    return messagesResponse.getMessageList().getMessage()
-            .stream().map(message -> convertMessageToMessageSummary(message,pageSize,messagesResponse.getTotRecords()))
+  private MessageSummary convertMessageToMessageSummary(final MessagesResponse messagesResponse,
+                                                        final MessageDirection messageDirection,
+                                                        final MessageRead messageRead,
+                                                        final MessageSort sort,
+                                                        final Integer pageSize) {
+    return new MessageSummary()
+            .counts(new MessageTotals()
+                    .messagesTotal(messagesResponse.getTotRecords())
+                    .pageTotal(messagesResponse.getReturnedRecords()) )
+            .links(getLinks(messagesResponse,pageSize))
+            .messages(getCatMessages(messagesResponse,messageDirection,messageRead,sort));
+  }
+
+  private List<CaTMessage> getCatMessages(final MessagesResponse messagesResponse,
+                                          final MessageDirection messageDirection,
+                                          final MessageRead messageRead,
+                                          final MessageSort sort) {
+    List<Message> messages = messagesResponse.getMessageList().getMessage()
+            .stream()
+            .filter(message -> (MessageDirection.ALL.equals(messageDirection)
+                    || message.getDirection().equals(messageDirection)))
+            .collect(Collectors.toList());
+      sortMessages(messages,sort);
+    return messages.stream().map(message ->  convertMessageToCatMessage(message))
             .collect(Collectors.toList());
 
   }
 
-  private MessageSummary convertMessageToMessageSummary(final Message message, final Integer pageSize, final Integer totalRecords) {
-    var messageSummary = new MessageSummary();
-    messageSummary.setOCDS(getCaTMessageOCDS(message));
-    messageSummary.setNonOCDS(getMessageSummaryAllOfNonOCDS(message,pageSize,totalRecords));
-    return messageSummary;
-  }
-
-  private MessageSummaryAllOfNonOCDS getMessageSummaryAllOfNonOCDS(Message message,final Integer pageSize, final Integer totalRecords) {
-    var nonOcds = new MessageSummaryAllOfNonOCDS();
-    var messageTotals = new MessageTotals();
-    messageTotals.setMessagesTotal(totalRecords);
-    messageTotals.setPageTotal(pageSize);
-    //TODO Directiion & Counts not generated from api
-  //    nonOcds.setDirection(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection()));
-  //    nonOcds.setCounts();
-    nonOcds.setLinks(getLinks(message,pageSize));
-    return nonOcds;
+  private CaTMessage convertMessageToCatMessage(final Message message) {
+    return new CaTMessage().OCDS(getCaTMessageOCDS(message))
+            .nonOCDS(new CaTMessageNonOCDS()
+                    .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
+            );
   }
 
   private CaTMessageOCDS getCaTMessageOCDS(Message message) {
-    var ocds = new CaTMessageOCDS();
-    ocds.setDate(message.getSendDate());
-    ocds.setId(message.getMessageId());
-    ocds.setAuthor(getOrganizationReference1(message));
-    ocds.setTitle(message.getSubject());
-    return ocds;
+    return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
+            .title(message.getSubject())
+            .author(message.getSender().getName());
   }
 
-  private OrganizationReference1 getOrganizationReference1(final Message message) {
-    var author = new OrganizationReference1();
-    author.setId(message.getSender().getId());
-    author.setName(message.getSender().getName());
-    return author;
-  }
-
-  private Links1 getLinks(final Message message,final Integer pageSize) {
-
+  private Links1 getLinks(final MessagesResponse messagesResponse,final Integer pageSize) {
+    var message = messagesResponse.getMessageList().getMessage().iterator().next();
     //TODO - business logic for first, last,next,previous needs to improve
     // data from desending order by date
     // what if messages ids are not in sequential incremental
@@ -677,4 +679,17 @@ public class ProcurementEventService {
     return links;
   }
 
+  private void sortMessages(List<Message> messages, final MessageSort sort ) {
+
+    switch(sort) {
+      case TITLE:
+         Collections.sort(messages, Comparator.comparing(Message::getSubject)) ;
+         break;
+      case AUTHOR:
+        messages.sort(Comparator.comparing(o -> o.getSender().getName()));
+      break;
+      default:
+        Collections.sort(messages, Comparator.comparing(Message::getSendDate)) ;
+    }
+  }
 }

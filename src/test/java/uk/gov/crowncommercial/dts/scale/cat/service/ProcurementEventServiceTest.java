@@ -889,15 +889,16 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
             .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID,null,null,null,1,10))
+    when(jaggaerService.getMessages(RFX_ID,1,10))
             .thenReturn(messagesResponse);
 
     var response = procurementEventService.getMessageSummaries(PROC_PROJECT_ID, PROC_EVENT_ID,
             null,null,null,1,10);
 
     // Verify
-    assertEquals(1, response.size());
-    assertEquals(1, response.stream().findFirst().get().getOCDS().getId());
+    assertNotNull( response);
+    assertEquals(1, response.getMessages().size());
+    assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
 
   }
 

@@ -341,6 +341,6 @@ class EventsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
 
     verify(procurementEventService, times(1)).getMessageSummaries(PROC_PROJECT_ID,EVENT_ID,
-            null,null,"DATE",1,100);
+            null,null,MessageSort.DATE,1,100);
   }
 }

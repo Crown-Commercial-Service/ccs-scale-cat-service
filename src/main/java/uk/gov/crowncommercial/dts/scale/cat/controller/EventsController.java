@@ -172,12 +172,12 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/messages")
-  public Collection<MessageSummary> getMessages(
+  public MessageSummary getMessages(
           @PathVariable("procID") final Integer procId,
           @PathVariable("eventID") final String eventId,
-          @RequestParam(name = "message-direction",required = false) String messageDirection,
-          @RequestParam(name = "message-read",required = false) String messageRead,
-          @RequestParam(name = "sort") String sort,
+          @RequestParam(name = "message-direction",required = false) MessageDirection messageDirection,
+          @RequestParam(name = "message-read",required = false) MessageRead messageRead,
+          @RequestParam(name = "sort") MessageSort messageSort,
           @RequestParam(name = "page",required = false, defaultValue = "1") Integer page,
           @RequestParam(name = "page-size",required = false,defaultValue = "100") Integer pageSize,
           final JwtAuthenticationToken authentication) {
@@ -185,6 +185,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getMessagesSummaries invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.getMessageSummaries(procId, eventId,messageDirection,messageRead,sort,page,pageSize);
+    return procurementEventService.getMessageSummaries(procId, eventId,messageDirection,
+            messageRead,messageSort,page,pageSize);
   }
 }
