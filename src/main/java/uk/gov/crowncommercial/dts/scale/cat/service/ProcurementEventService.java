@@ -647,7 +647,7 @@ public class ProcurementEventService {
     List<Message> messages = messagesResponse.getMessageList().getMessage()
             .stream()
             .filter(message -> (MessageDirection.ALL.equals(messageDirection)
-                    || message.getDirection().equals(messageDirection)))
+                    || message.getDirection().equals(messageDirection.getValue())))
             .collect(Collectors.toList());
       sortMessages(messages,sort);
     return messages.stream().map(message ->  convertMessageToCatMessage(message))

@@ -881,7 +881,7 @@ class ProcurementEventServiceTest {
             .sendDate(OffsetDateTime.now())
             .senderUser(SenderUser.builder().build())
             .subject("Test message")
-            .direction("ALL")
+            .direction(MessageDirection.SENT.getValue())
             .build();
 
     var messagesResponse = MessagesResponse.builder()
@@ -903,7 +903,7 @@ class ProcurementEventServiceTest {
             .thenReturn(messagesResponse);
 
     var response = procurementEventService.getMessageSummaries(PROC_PROJECT_ID, PROC_EVENT_ID,
-            null,null,null,1,10);
+            MessageDirection.SENT,MessageRead.READ,MessageSort.DATE,1,10);
 
     // Verify
     assertNotNull( response);

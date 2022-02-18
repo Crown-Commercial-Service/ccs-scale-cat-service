@@ -333,14 +333,20 @@ class EventsControllerTest {
 
   @Test
   void getMessages_200_OK() throws Exception {
+
+    when(procurementEventService.getMessageSummaries(PROC_PROJECT_ID,EVENT_ID,
+            MessageDirection.SENT,MessageRead.READ,MessageSort.DATE,1,10))
+            .thenReturn(new MessageSummary());
+
     mockMvc
-        .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH+"?sort=DATE", PROC_PROJECT_ID,EVENT_ID)
+        .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH
+                +"?page=1&page-size=10&message-direction=SENT&message-read=READ&sort=DATE", PROC_PROJECT_ID,EVENT_ID)
                 .with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
     verify(procurementEventService, times(1)).getMessageSummaries(PROC_PROJECT_ID,EVENT_ID,
-            null,null,MessageSort.DATE,1,100);
+            MessageDirection.SENT,MessageRead.READ,MessageSort.DATE,1,10);
   }
 }
