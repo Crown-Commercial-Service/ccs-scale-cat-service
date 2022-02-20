@@ -32,7 +32,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
@@ -881,7 +880,10 @@ class ProcurementEventServiceTest {
             .sendDate(OffsetDateTime.now())
             .senderUser(SenderUser.builder().build())
             .subject("Test message")
-            .direction(MessageDirection.SENT.getValue())
+            .direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build()))
+                    .build())
             .build();
 
     var messagesResponse = MessagesResponse.builder()
@@ -894,16 +896,28 @@ class ProcurementEventServiceTest {
             .startAt(1)
             .totRecords(120)
             .build();
-
+    var  messageRequestInfo = MessageRequestInfo.builder()
+            .procId(PROC_PROJECT_ID)
+            .eventId(PROC_EVENT_ID)
+            .messageDirection(MessageDirection.RECEIVED)
+            .messageRead(MessageRead.ALL)
+            .messageSort(MessageSort.DATE)
+            .messageSortOrder(MessageSortOrder.ASCENDING)
+            .page(1)
+            .pageSize(20)
+            .principal(PRINCIPAL)
+            .build();
+  var user =   SubUser.builder().userId(JAGGAER_USER_ID).build();
 
     // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL))
+            .thenReturn(Optional.of(user));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
             .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID,1,10))
+    when(jaggaerService.getMessages(RFX_ID,1))
             .thenReturn(messagesResponse);
 
-    var response = procurementEventService.getMessageSummaries(PROC_PROJECT_ID, PROC_EVENT_ID,
-            MessageDirection.SENT,MessageRead.READ,MessageSort.DATE,1,10);
+    var response = procurementEventService.getMessagesSummary(messageRequestInfo);
 
     // Verify
     assertNotNull( response);

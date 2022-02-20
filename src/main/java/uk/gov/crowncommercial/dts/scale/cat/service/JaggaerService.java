@@ -23,6 +23,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
@@ -37,7 +38,7 @@ public class JaggaerService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final WebclientWrapper webclientWrapper;
-  private final String MESSAGE_PARAMS = "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
+  private static final String MESSAGE_PARAMS = "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
   /**
    * Create or update a Project.
@@ -231,9 +232,9 @@ public class JaggaerService {
             "Unexpected error retrieving projects"));
   }
 
-  public MessagesResponse getMessages(final String externalEventId, final Integer page, final Integer pageSize) {
+  public MessagesResponse getMessages(final String externalEventId, final Integer pageSize) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
-    final int start = page + (page > 1 ?pageSize:0);
+    final int start =  (pageSize > 0 ? pageSize+1 :1);
     final String filters = "objectReferenceCode=="+externalEventId;
     final String queryPrams = "start="+start;
 
@@ -243,5 +244,15 @@ public class JaggaerService {
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
         .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
             "Unexpected error retrieving messages"));
+  }
+  public Message getMessage(final String messageId) {
+    final var messagesUrl = jaggaerAPIConfig.getGetMessage().get(ENDPOINT);
+
+    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, messageId,MESSAGE_PARAMS)
+            .retrieve()
+            .bodyToMono(Message.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving messages"));
   }
 }

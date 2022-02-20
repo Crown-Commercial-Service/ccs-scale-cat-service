@@ -44,6 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -334,19 +335,28 @@ class EventsControllerTest {
   @Test
   void getMessages_200_OK() throws Exception {
 
-    when(procurementEventService.getMessageSummaries(PROC_PROJECT_ID,EVENT_ID,
-            MessageDirection.SENT,MessageRead.READ,MessageSort.DATE,1,10))
+    var  messageRequestInfo = MessageRequestInfo.builder()
+            .procId(PROC_PROJECT_ID)
+            .eventId(EVENT_ID)
+            .messageDirection(MessageDirection.RECEIVED)
+            .messageRead(MessageRead.ALL)
+            .messageSort(MessageSort.DATE)
+            .messageSortOrder(MessageSortOrder.ASCENDING)
+            .page(1)
+            .pageSize(20)
+            .principal(PRINCIPAL)
+            .build();
+
+    when(procurementEventService.getMessagesSummary(messageRequestInfo))
             .thenReturn(new MessageSummary());
 
     mockMvc
-        .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH
-                +"?page=1&page-size=10&message-direction=SENT&message-read=READ&sort=DATE", PROC_PROJECT_ID,EVENT_ID)
+        .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH, PROC_PROJECT_ID,EVENT_ID)
                 .with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementEventService, times(1)).getMessageSummaries(PROC_PROJECT_ID,EVENT_ID,
-            MessageDirection.SENT,MessageRead.READ,MessageSort.DATE,1,10);
+    verify(procurementEventService, times(1)).getMessagesSummary(messageRequestInfo);
   }
 }

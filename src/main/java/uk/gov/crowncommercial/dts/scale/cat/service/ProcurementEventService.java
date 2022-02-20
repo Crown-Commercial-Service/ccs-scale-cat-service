@@ -9,6 +9,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPO
 import java.net.URI;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
@@ -54,6 +55,8 @@ public class ProcurementEventService {
   private static final Set<String> ASSESSMENT_EVENT_TYPES =
       Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
   private static final String LINK_URI = "/messages/";
+  private static final int RECORDS_PER_REQUEST = 100;
+  public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
 
   private final UserProfileService userProfileService;
@@ -70,6 +73,8 @@ public class ProcurementEventService {
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerService jaggaerService;
+
+  private final Comparator<Message> comparator = Comparator.comparing(o -> o.getSender().getName());
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -173,7 +178,7 @@ public class ProcurementEventService {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     var jaggaerBuyerCompanyId =
         userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
 
@@ -568,7 +573,7 @@ public class ProcurementEventService {
       final PublishDates publishDates, final String principal) {
 
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
@@ -607,58 +612,106 @@ public class ProcurementEventService {
 
   /**
    * Returns a list of message summary at the event level.
-   *
-   * @param procId
-   * @param eventId
-   * @param messageDirection
-   * @param messageRead
-   * @param sort
-   * @param page
-   * @param pageSize
+   * @param messageRequestInfo
    * @return
    */
-  public MessageSummary getMessageSummaries(
-          final Integer procId, final String eventId, final MessageDirection messageDirection,
-          final MessageRead messageRead, final MessageSort sort, final Integer page, final Integer pageSize) {
+  public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
+            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+    var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
+            messageRequestInfo.getEventId());
+
+    Predicate<Message> directionPredicate = message ->
+            (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
+            || message.getDirection().equals(messageRequestInfo.getMessageDirection().getValue()));
+    Predicate<Receiver> receiverPredicate = receiver ->  MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
+            || (MessageRead.READ.equals(messageRequestInfo.getMessageRead())
+            && receiver.getId().equals(jaggaerUserId));
+
     var messagesResponse = jaggaerService.getMessages(event.getExternalReferenceId(),
-             page, pageSize);
-    return  convertMessageToMessageSummary(messagesResponse,messageDirection,messageRead,sort,pageSize);
-  }
+            messageRequestInfo.getPage());
+    var allMessages = messagesResponse.getMessageList().getMessage();
 
-  private MessageSummary convertMessageToMessageSummary(final MessagesResponse messagesResponse,
-                                                        final MessageDirection messageDirection,
-                                                        final MessageRead messageRead,
-                                                        final MessageSort sort,
-                                                        final Integer pageSize) {
+    /**
+     * Make first request to jagger
+     * if total records are more than  > 100 (Jaggaer returns max 100 order by date desc) and messageSort is TITLE/AUTHOR
+     * then make sub-sequent call to get total records, then messageSort it
+     * send only requested no of records
+     *
+     *
+     */
+    if (MessageSort.AUTHOR.equals(messageRequestInfo.getMessageSort())
+            || MessageSort.TITLE.equals(messageRequestInfo.getMessageSort())) {
+      var totalRecords = messagesResponse.getTotRecords();
+      var pages = Math.round(totalRecords / (double) RECORDS_PER_REQUEST);
+      for (int i = 2; i < pages; i++) {
+        var response = jaggaerService.getMessages(event.getExternalReferenceId(), (i * RECORDS_PER_REQUEST));
+        allMessages.addAll(response.getMessageList().getMessage());
+      }
+    }
+    //Apply all predicates on messages
+    var messages = allMessages.stream()
+            .filter(directionPredicate)
+            .filter(message -> message.getReceiverList().getReceiver().stream()
+                    .anyMatch(receiverPredicate))
+            .collect(Collectors.toList());
+
+    // sort messages
+    sortMessages(messages, messageRequestInfo.getMessageSort(),messageRequestInfo.getMessageSortOrder());
+
+    //convert to message summary
     return new MessageSummary()
             .counts(new MessageTotals()
                     .messagesTotal(messagesResponse.getTotRecords())
-                    .pageTotal(messagesResponse.getReturnedRecords()) )
-            .links(getLinks(messagesResponse,pageSize))
-            .messages(getCatMessages(messagesResponse,messageDirection,messageRead,sort));
+                    .pageTotal(messagesResponse.getReturnedRecords()))
+            .links(getLinks(messages, messageRequestInfo.getPageSize()))
+            .messages(getCatMessages(messages, messageRequestInfo.getMessageRead()
+                    ,jaggaerUserId,messageRequestInfo.getPageSize()));
   }
 
-  private List<CaTMessage> getCatMessages(final MessagesResponse messagesResponse,
-                                          final MessageDirection messageDirection,
-                                          final MessageRead messageRead,
-                                          final MessageSort sort) {
-    List<Message> messages = messagesResponse.getMessageList().getMessage()
-            .stream()
-            .filter(message -> (MessageDirection.ALL.equals(messageDirection)
-                    || message.getDirection().equals(messageDirection.getValue())))
-            .collect(Collectors.toList());
-      sortMessages(messages,sort);
-    return messages.stream().map(message ->  convertMessageToCatMessage(message))
-            .collect(Collectors.toList());
+  /**
+   * Method to get details of message
+   * @param procId
+   * @param eventId
+   * @param messageId
+   * @param principal
+   * @return Message Summary
+   */
+  public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
+          final Integer procId, final String eventId, final String messageId, final String principal) {
 
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+    validationService.validateProjectAndEventIds(procId, eventId);
+    //TODO jagaer endpoint for this not working at the moment
+    return  jaggaerService.getMessage(messageId);
   }
 
-  private CaTMessage convertMessageToCatMessage(final Message message) {
+  private List<CaTMessage> getCatMessages(final List<Message> messages,
+                                          final MessageRead messageRead, final String jaggaerUserId, Integer pageSize) {
+    return messages.stream().map(message ->  convertMessageToCatMessage(message,messageRead,jaggaerUserId))
+            .limit(pageSize)
+            .collect(Collectors.toList());
+  }
+
+  private CaTMessage convertMessageToCatMessage(final Message message,
+                                                final MessageRead messageRead,
+                                                final String jaggaerUserId) {
+    Predicate<Receiver> receiverPredicate = receiver -> MessageRead.READ.equals(messageRead)
+            && receiver.getId().equals(jaggaerUserId);
+    Boolean read;
+    if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals( message.getDirection())) {
+      read = Boolean.FALSE;
+    } else {
+      read = message.getReceiverList().getReceiver().stream()
+              .anyMatch(receiverPredicate);
+    }
+
     return new CaTMessage().OCDS(getCaTMessageOCDS(message))
             .nonOCDS(new CaTMessageNonOCDS()
                     .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
+                    .read(read)
             );
   }
 
@@ -668,31 +721,41 @@ public class ProcurementEventService {
             .author(message.getSender().getName());
   }
 
-  private Links1 getLinks(final MessagesResponse messagesResponse,final Integer pageSize) {
-    var message = messagesResponse.getMessageList().getMessage().iterator().next();
-    //TODO - business logic for first, last,next,previous needs to improve
-    // data from desending order by date
-    // what if messages ids are not in sequential incremental
-    var links = new Links1();
-    links.setSelf(URI.create(LINK_URI+(message.getMessageId())));
-    links.setFirst(URI.create(LINK_URI+(message.getMessageId())));
-    links.setLast(URI.create(LINK_URI+(message.getMessageId()+pageSize)));
-    links.setNext(URI.create(LINK_URI+(message.getMessageId()-1)));
-    links.setPrev(URI.create(LINK_URI+(message.getMessageId()+11)));
-    return links;
+  private Links1 getLinks(final List<Message> messages, final Integer pageSize) {
+    var message = messages.iterator().next();
+    return new Links1().first(URI.create(LINK_URI+(message.getMessageId())))
+            .self(URI.create(LINK_URI+(message.getMessageId())))
+            .prev(URI.create(LINK_URI+(message.getMessageId())))
+            .next(URI.create(LINK_URI+(message.getMessageId()+1)))
+            .last(URI.create(LINK_URI+(message.getMessageId()+pageSize)));
   }
 
-  private void sortMessages(List<Message> messages, final MessageSort sort ) {
-
-    switch(sort) {
-      case TITLE:
-         Collections.sort(messages, Comparator.comparing(Message::getSubject)) ;
-         break;
-      case AUTHOR:
-        messages.sort(Comparator.comparing(o -> o.getSender().getName()));
-      break;
-      default:
-        Collections.sort(messages, Comparator.comparing(Message::getSendDate)) ;
+  private void sortMessages(List<Message> messages, final MessageSort messageSort, MessageSortOrder messageSortOrder) {
+    switch (messageSort) {
+      case TITLE: {
+        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
+          Collections.sort(messages, Comparator.comparing(Message::getSubject));
+        } else {
+          Collections.sort(messages, Comparator.comparing(Message::getSubject).reversed());
+        }
+        break;
+      }
+      case AUTHOR: {
+        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
+          messages.sort(Comparator.comparing(o -> o.getSender().getName()));
+        } else {
+          Collections.sort(messages, comparator.reversed());
+        }
+        break;
+      }
+      default: {
+        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
+          Collections.sort(messages, Comparator.comparing(Message::getSendDate));
+        } else {
+          Collections.sort(messages, Comparator.comparing(Message::getSendDate).reversed());
+        }
+        break;
+      }
     }
   }
 }

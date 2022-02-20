@@ -8,7 +8,7 @@ import lombok.extern.jackson.Jacksonized;
 @Builder
 @Jacksonized
 public class Receiver {
-  Integer id;
+  String id;
   String code;
   String name;
   String type;
