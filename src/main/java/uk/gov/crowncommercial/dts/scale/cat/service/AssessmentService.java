@@ -571,7 +571,14 @@ public class AssessmentService {
           var rtOption = new DimensionOption();
           rtOption.setName(rt.getRequirement().getName());
           rtOption.setRequirementId(rt.getRequirement().getId());
-          rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
+          rtOption.setGroupRequirement(rt.getRequirement().getGroupRequirement());
+
+          // If it is a group requirement - no need to duplicate in the `groups` collection
+          if (Boolean.TRUE.equals(rt.getRequirement().getGroupRequirement())) {
+            rtOption.setGroups(recurseUpTree(assessmentTaxon.getParentTaxon(), new ArrayList<>()));
+          } else {
+            rtOption.setGroups(recurseUpTree(assessmentTaxon, new ArrayList<>()));
+          }
           return rtOption;
 
         }).collect(Collectors.toList()));
