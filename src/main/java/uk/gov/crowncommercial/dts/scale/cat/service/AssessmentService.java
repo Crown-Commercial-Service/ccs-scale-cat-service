@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -107,7 +106,8 @@ public class AssessmentService {
         .orElseThrow(() -> new ValidationException(
             format(ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT, eventType, caNumber, lotNumber)));
 
-    var assessment = new Assessment().externalToolId(lotEventType.getAssessmentToolId());
+    var assessment = new Assessment().externalToolId(lotEventType.getAssessmentToolId())
+        .status(AssessmentStatus.ACTIVE);
     log.debug("Empty assessment created with ext tool-id [{}] for event type [{}]",
         lotEventType.getAssessmentToolId(), eventType);
     return createAssessment(assessment, principal);
@@ -138,7 +138,7 @@ public class AssessmentService {
     // Create an AssessmentEntity
     var entity = new AssessmentEntity();
     entity.setTool(tool);
-    entity.setStatus(AssessmentStatus.ACTIVE);
+    entity.setStatus(AssessmentStatusEntity.ACTIVE);
     entity.setBuyerOrganisationId(conclaveUser.getOrganisationId());
     entity.setTimestamps(createTimestamps(principal));
 
@@ -193,7 +193,7 @@ public class AssessmentService {
       var summary = new AssessmentSummary();
       summary.setAssessmentId(a.getId());
       summary.setExternalToolId(a.getTool().getExternalToolId());
-      summary.setStatus(StatusEnum.fromValue(a.getStatus().toString().toLowerCase()));
+      summary.setStatus(AssessmentStatus.fromValue(a.getStatus().toString().toLowerCase()));
       return summary;
     }).collect(Collectors.toList());
   }
@@ -270,6 +270,7 @@ public class AssessmentService {
     response.setAssessmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
     response.setScores(scores);
+    response.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
 
     return response;
   }
@@ -423,6 +424,11 @@ public class AssessmentService {
       throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_ID_NOT_MATCH_NAME,
           dimensionRequirement.getName(), dimensionId, dimension.getName()));
     }
+
+    // var requirementMap = new HashMap<Requirement, List<Requirement>>();
+    // dimensionRequirement.getRequirements().stream().forEach(r -> {
+    // var requirementsInGroup = requirementMap.get(r.get)
+    // });
 
     return dimension;
   }

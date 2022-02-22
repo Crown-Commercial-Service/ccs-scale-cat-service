@@ -28,7 +28,7 @@ public class AssessmentEntity {
 
   @Column(name = "status")
   @Enumerated(EnumType.STRING)
-  private AssessmentStatus status;
+  private AssessmentStatusEntity status;
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_tool_id")
