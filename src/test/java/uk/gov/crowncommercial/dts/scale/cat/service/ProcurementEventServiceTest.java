@@ -855,7 +855,7 @@ class ProcurementEventServiceTest {
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
-    var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID);
+    var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
     // Verify
     assertEquals(1, response.size());
