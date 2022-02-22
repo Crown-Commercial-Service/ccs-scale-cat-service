@@ -106,8 +106,7 @@ public class AssessmentService {
         .orElseThrow(() -> new ValidationException(
             format(ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT, eventType, caNumber, lotNumber)));
 
-    var assessment = new Assessment().externalToolId(lotEventType.getAssessmentToolId())
-        .status(AssessmentStatus.ACTIVE);
+    var assessment = new Assessment().externalToolId(lotEventType.getAssessmentToolId());
     log.debug("Empty assessment created with ext tool-id [{}] for event type [{}]",
         lotEventType.getAssessmentToolId(), eventType);
     return createAssessment(assessment, principal);
