@@ -96,5 +96,4 @@ public class WebclientWrapper {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error posting data to " + uriTemplate));
   }
-
 }
