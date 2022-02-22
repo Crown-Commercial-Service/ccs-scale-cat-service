@@ -424,11 +424,6 @@ public class AssessmentService {
           dimensionRequirement.getName(), dimensionId, dimension.getName()));
     }
 
-    // var requirementMap = new HashMap<Requirement, List<Requirement>>();
-    // dimensionRequirement.getRequirements().stream().forEach(r -> {
-    // var requirementsInGroup = requirementMap.get(r.get)
-    // });
-
     return dimension;
   }
 
