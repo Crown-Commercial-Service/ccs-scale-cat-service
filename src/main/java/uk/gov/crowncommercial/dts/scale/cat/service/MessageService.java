@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
@@ -163,18 +164,15 @@ public class MessageService {
 	 * @return rpa status
 	 * @throws JsonProcessingException
 	 */
+	@SneakyThrows(JsonProcessingException.class)
 	private String callRPAMessageAPI(RPAProcessInput processInput) {
 		var request = new RPAGenericData();
-		try {
-			request.setProcessInput(objectMapper.writeValueAsString(processInput))
-					.setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
-					.setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
-					.setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(rpaAPIConfig.getRequestTimeout())
-					.setSync(true);
-			log.info("RPA Request: {}", objectMapper.writeValueAsString(request));
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException(e.getMessage());
-		}
+		request.setProcessInput(objectMapper.writeValueAsString(processInput))
+				.setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
+				.setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
+				.setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(rpaAPIConfig.getRequestTimeout())
+				.setSync(true);
+		log.info("RPA Request: {}", objectMapper.writeValueAsString(request));
 
 		var response = webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
 				rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), getAccessToken());
@@ -188,51 +186,22 @@ public class MessageService {
 	 * @param apiResponse
 	 * @return rpa api status
 	 */
+	@SneakyThrows({ JsonProcessingException.class, JSONException.class })
 	private String validateResponse(RPAAPIResponse apiResponse) {
-		try {
-			var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
-			var json = new JSONObject(convertedObject);
-			var jsonArray = json.getJSONArray("AutomationOutputData");
-			var automationData = objectMapper.readValue(jsonArray.get(1).toString(), AutomationOutputData.class);
+		var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
+		var json = new JSONObject(convertedObject);
+		var jsonArray = json.getJSONArray("AutomationOutputData");
+		var automationData = objectMapper.readValue(jsonArray.get(1).toString(), AutomationOutputData.class);
 
-			var status = automationData.getCviewDictionary().getStatus();
-			log.info("Status of RPA API call : {} ", status);
+		var status = automationData.getCviewDictionary().getStatus();
+		log.info("Status of RPA API call : {} ", status);
 
-			if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
-				var errorDescription = automationData.getCviewDictionary().getErrorDescription();
-				log.info("Error Description {} ", errorDescription);
-				throw new JaggaerRPAException(errorDescription);
-			}
-			return status;
-		} catch (JSONException | JsonProcessingException e) {
-			throw new RuntimeException(e.getMessage());
+		if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
+			var errorDescription = automationData.getCviewDictionary().getErrorDescription();
+			log.info("Error Description {} ", errorDescription);
+			throw new JaggaerRPAException(errorDescription);
 		}
-	}
-
-	/**
-	 * @param processInputMap
-	 * @return processInput as a string value
-	 */
-	public String makeProcessInput(Map<String, String> processInputMap) {
-		var processInput = convertObjectToString(processInputMap);
-		log.info("Process input {}", processInput);
-		return processInput.replaceAll("\"", "\\\"");
-	}
-
-	/**
-	 * Convert object to String
-	 * 
-	 * @param inputObject
-	 * @return String
-	 */
-	private String convertObjectToString(Map<String, String> inputObject) {
-		String outputString = null;
-		try {
-			outputString = objectMapper.writeValueAsString(inputObject);
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException("Failed to convert Object to String");
-		}
-		return outputString;
+		return status;
 	}
 
 	/**
@@ -241,14 +210,11 @@ public class MessageService {
 	 * @param inputString
 	 * @return Object
 	 */
+	@SneakyThrows({ JsonProcessingException.class })
 	private Map<String, Object> convertStringToObject(String inputString) {
 		var outputObject = new HashMap<String, Object>();
-		try {
-			outputObject = objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {
-			});
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException("Failed to convert String to Object");
-		}
+		outputObject = objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {
+		});
 		return outputObject;
 	}
 
