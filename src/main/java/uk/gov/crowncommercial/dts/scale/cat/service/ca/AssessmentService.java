@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.service;
+package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 
 import static java.lang.String.format;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
@@ -16,6 +16,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 
 @Service
 @RequiredArgsConstructor
