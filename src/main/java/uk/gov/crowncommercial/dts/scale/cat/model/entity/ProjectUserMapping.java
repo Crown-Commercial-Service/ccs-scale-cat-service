@@ -6,8 +6,7 @@ import lombok.experimental.FieldDefaults;
 import javax.persistence.*;
 
 /**
- * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
- * and Jaggaer internal event code
+ * JPA entity representing a mapping between a project and its users
  */
 @Entity
 @Table(name = "project_user_mapping")
