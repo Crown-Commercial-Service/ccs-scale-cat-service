@@ -594,19 +594,26 @@ public class ProcurementEventService {
    * @param projectId
    * @return
    */
-  public List<EventSummary> getEventsForProject(final Integer projectId) {
+  public List<EventSummary> getEventsForProject(final Integer projectId, final String principal) {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
     return events.stream().map(event -> {
 
-      var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+      TenderStatus statusCode;
+
+      if (event.getExternalEventId() == null) {
+        var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+        statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
+      } else {
+        var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+            .get(exportRfxResponse.getRfxSetting().getStatusCode());
+      }
 
       return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
           Optional.ofNullable(event.getExternalEventId()),
-          ViewEventType.fromValue(event.getEventType()), jaggaerAPIConfig
-              .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
-          EVENT_STAGE, Optional.empty());
+          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE, Optional.empty());
     }).collect(Collectors.toList());
   }
 

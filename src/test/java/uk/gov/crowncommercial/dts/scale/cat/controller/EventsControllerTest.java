@@ -329,7 +329,7 @@ class EventsControllerTest {
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID);
+    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
   }
 
   @Test
