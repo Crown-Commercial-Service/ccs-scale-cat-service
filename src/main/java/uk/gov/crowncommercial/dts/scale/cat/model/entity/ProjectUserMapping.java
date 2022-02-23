@@ -4,7 +4,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import javax.persistence.*;
-import java.time.Instant;
 
 /**
  * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
@@ -25,23 +24,14 @@ public class ProjectUserMapping {
   @Column(name = "project_user_mapping_id")
   Integer id;
 
-  @Column(name = "event_id")
-  Integer eventId;
-
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "project_id")
-  ProcurementProject project;
-
-  @Column(name = "event_type")
-  String eventType;
+  @JoinColumn(name = "event_id")
+  ProcurementEvent event;
 
   @Column(name = "user_id")
   String userId;
 
-  @Column(name = "created_at", updatable = false)
-  Instant createdAt;
-
-  @Column(name = "updated_at")
-  Instant updatedAt;
+  @Embedded
+  private Timestamps timestamps;
 
 }

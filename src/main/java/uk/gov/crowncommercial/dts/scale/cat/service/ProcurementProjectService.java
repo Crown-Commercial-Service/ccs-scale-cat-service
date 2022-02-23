@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -149,7 +151,7 @@ public class ProcurementProjectService {
         new CreateEvent(), null, principal);
 
     //add current user to project
-    addProjectUserMapping(jaggaerUserId, procurementProject);
+    addProjectUserMapping(jaggaerUserId, procurementProject,principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
         procurementProject.getId(), eventSummary.getId(), projectTitle,
@@ -226,9 +228,10 @@ public class ProcurementProjectService {
    * email recipients on the rfx.
    *
    * @param projectId CCS project id
+   * @param principal
    * @return Collection of project team members
    */
-  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId) {
+  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId, final String principal) {
 
     // Get Project (project team)
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -258,7 +261,7 @@ public class ProcurementProjectService {
     combinedIds.addAll(emailRecipientIds);
 
     //update user
-    updateProjectUserMapping(dbProject,dbEvent, teamIds);
+    updateProjectUserMapping(dbProject,dbEvent, teamIds,principal);
 
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
@@ -272,10 +275,11 @@ public class ProcurementProjectService {
    * @param projectId CCS project id
    * @param userId Conclave user id (email)
    * @param updateTeamMember contains details of type of update to perform
+   * @param principal
    * @return Team Member details
    */
   public TeamMember addProjectTeamMember(final Integer projectId, final String userId,
-      final UpdateTeamMember updateTeamMember) {
+                                         final UpdateTeamMember updateTeamMember, final String principal) {
 
     log.debug("Add/update Project Team");
 
@@ -325,8 +329,8 @@ public class ProcurementProjectService {
         throw new IllegalArgumentException("Unknown Team Member Update Type");
     }
 
-      addProjectUserMapping(jaggaerUserId,dbProject);
-    return getProjectTeamMembers(projectId).stream()
+      addProjectUserMapping(jaggaerUserId,dbProject,principal);
+    return getProjectTeamMembers(projectId, principal).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
 
@@ -477,20 +481,22 @@ public class ProcurementProjectService {
 
 
   private void addProjectUserMapping(final String jaggaerUserId,
-                                     final ProcurementProject project) {
+                                     final ProcurementProject project, final String principal) {
     var event = getCurrentEvent(project);
 
-    var projectUserMapping = ProjectUserMapping.builder().project(project)
-            .eventType(event.getEventType()).id(event.getId())
+    var projectUserMapping = ProjectUserMapping.builder()
+            .event(event)
             .userId(jaggaerUserId)
-            .createdAt(Instant.now())
+            .timestamps(createTimestamps(principal))
             .build();
     retryableTendersDBDelegate.save(projectUserMapping);
   }
 
   private void updateProjectUserMapping(final ProcurementProject project,
-                                        final ProcurementEvent event, final Set<String> teamIds) {
-    var existingMappings = retryableTendersDBDelegate.findProjectUserMappingByProjectId(project.getId());
+                                        final ProcurementEvent event, final Set<String> teamIds,
+                                        final String principal) {
+    var existingMappings = retryableTendersDBDelegate.
+            findProjectUserMappingByProjectId(project.getId());
     var addMappingList = new ArrayList<ProjectUserMapping>();
 
     //Add any users, who do not exists in database
@@ -499,11 +505,9 @@ public class ProcurementProjectService {
               .filter(projectUserMapping -> projectUserMapping.getUserId().equals(teamId)).findFirst();
       if (!userMapping.isPresent()) {
         addMappingList.add( ProjectUserMapping.builder()
-                .project(project)
-                .eventId(event.getId())
-                .eventType(event.getEventType()).id(event.getId())
+                .event(event)
                 .userId(teamId)
-                .createdAt(Instant.now())
+                .timestamps(createTimestamps(principal))
                 .build());
       }
     }
