@@ -3,8 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import java.time.Duration;
 import java.util.Arrays;
@@ -27,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
@@ -72,6 +72,7 @@ class ProcurementEventServiceTest {
   private static final String DESCRIPTION = "Description";
   private static final String CRITERION_TITLE = "Criteria 1";
   private static final Integer ASSESSMENT_ID = 1;
+  private static final Integer ASSESSMENT_SUPPLIER_TARGET = 10;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
@@ -716,43 +717,69 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void testGetEvent() throws Exception {
+  void testGetEventNonAssessmentType() throws Exception {
 
+    var procurementEventBuilder = ProcurementEvent.builder();
+    var criterion = new EvalCriteria();
+    criterion.setTitle(CRITERION_TITLE);
+    var buyerQuestions = new HashSet<EvalCriteria>();
+    buyerQuestions.add(criterion);
+
+    when(criteriaService.getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true))
+        .thenReturn(buyerQuestions);
+
+    var eventDetail = testGetEventHelper(ViewEventType.RFI, procurementEventBuilder);
+
+    // Additional assertions / verifications
+    assertEquals(CRITERION_TITLE,
+        eventDetail.getNonOCDS().getBuyerQuestions().stream().findFirst().get().getTitle());
+    verify(criteriaService).getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true);
+  }
+
+  @Test
+  void testGetEventAssessmentType() throws Exception {
+    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET);
+    var eventDetail = testGetEventHelper(ViewEventType.FCA, procurementEventBuilder);
+
+    assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
+    assertEquals(ASSESSMENT_SUPPLIER_TARGET,
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+
+    verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyBoolean());
+  }
+
+  EventDetail testGetEventHelper(final ViewEventType eventType,
+      final ProcurementEventBuilder procurementEventBuilder) {
     var procurementProject =
         ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
-    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
-        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+    var procurementEvent =
+        procurementEventBuilder.project(procurementProject).eventType(eventType.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
         .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
-    var criterion = new EvalCriteria();
-    criterion.setTitle(CRITERION_TITLE);
-    var buyerQuestions = new HashSet<EvalCriteria>();
-    buyerQuestions.add(criterion);
-
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
-    when(criteriaService.getEvalCriteria(PROC_PROJECT_ID, PROC_EVENT_ID, true))
-        .thenReturn(buyerQuestions);
 
-    var response = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
+    var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
-    assertEquals(CRITERION_TITLE,
-        response.getNonOCDS().getBuyerQuestions().stream().findFirst().get().getTitle());
-    assertEquals(ViewEventType.RFI, response.getNonOCDS().getEventType());
-    assertEquals(RFX_REF_CODE, response.getNonOCDS().getEventSupportId());
+    assertEquals(eventType, eventDetail.getNonOCDS().getEventType());
+    assertEquals(RFX_REF_CODE, eventDetail.getNonOCDS().getEventSupportId());
 
-    assertEquals(RFX_ID, response.getOCDS().getId());
-    assertEquals(ORIGINAL_EVENT_NAME, response.getOCDS().getTitle());
-    assertEquals(DESCRIPTION, response.getOCDS().getDescription());
-    assertEquals(TenderStatus.PLANNED, response.getOCDS().getStatus());
-    assertEquals(AwardCriteria.RATEDCRITERIA, response.getOCDS().getAwardCriteria());
+    assertEquals(RFX_ID, eventDetail.getOCDS().getId());
+    assertEquals(ORIGINAL_EVENT_NAME, eventDetail.getOCDS().getTitle());
+    assertEquals(DESCRIPTION, eventDetail.getOCDS().getDescription());
+    assertEquals(TenderStatus.PLANNED, eventDetail.getOCDS().getStatus());
+    assertEquals(AwardCriteria.RATEDCRITERIA, eventDetail.getOCDS().getAwardCriteria());
+
+    return eventDetail;
   }
 
   @Test
@@ -828,7 +855,7 @@ class ProcurementEventServiceTest {
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
-    var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID);
+    var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
     // Verify
     assertEquals(1, response.size());

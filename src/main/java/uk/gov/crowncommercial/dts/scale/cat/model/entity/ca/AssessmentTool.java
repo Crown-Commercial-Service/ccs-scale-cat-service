@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
-import java.util.Set;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -31,12 +30,6 @@ public class AssessmentTool {
 
   @Column(name = "assessment_tool_descr")
   private String description;
-
-  @EqualsAndHashCode.Exclude
-  @ToString.Exclude
-  @OneToMany(fetch = FetchType.EAGER)
-  @JoinColumn(name = "assessment_tool_id")
-  Set<AssessmentToolSubmissionType> assessmentToolSubmissionTypes;
 
   @Embedded
   private Timestamps timestamps;

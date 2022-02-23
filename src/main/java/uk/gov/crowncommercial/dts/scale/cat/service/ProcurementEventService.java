@@ -48,8 +48,8 @@ public class ProcurementEventService {
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
   private static final String SUPPLIER_NOT_FOUND_MSG =
       "Organisation id '%s' not found in organisation mappings";
-  private static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
-      Set.of(DefineEventType.FCA, DefineEventType.DAA);
+  private static final Set<String> ASSESSMENT_EVENT_TYPES =
+      Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -104,7 +104,7 @@ public class ProcurementEventService {
     String rfxReferenceCode = null;
 
     if (createEventNonOCDS.getEventType() != null
-        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
+        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType().name())) {
 
       // Either create a new assessment or validate and link to existing one
       if (createEvent.getNonOCDS().getAssessmentId() == null) {
@@ -216,10 +216,12 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var buyerQuestions = new ArrayList<>(criteriaService.getEvalCriteria(projectId, eventId, true));
+    var getDataTemplate = !ASSESSMENT_EVENT_TYPES.contains(event.getEventType())
+        && !ViewEventType.TBD.name().equals(event.getEventType());
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        buyerQuestions);
+        getDataTemplate ? criteriaService.getEvalCriteria(projectId, eventId, true)
+            : Collections.emptySet());
   }
 
   /**
@@ -265,7 +267,7 @@ public class ProcurementEventService {
             "Cannot update an existing event type of '" + event.getEventType() + "'");
       }
 
-      if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())
+      if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType().name())
           && updateEvent.getAssessmentId() == null && event.getAssessmentId() == null) {
         createAssessment = true;
       }
@@ -582,19 +584,26 @@ public class ProcurementEventService {
    * @param projectId
    * @return
    */
-  public List<EventSummary> getEventsForProject(final Integer projectId) {
+  public List<EventSummary> getEventsForProject(final Integer projectId, final String principal) {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
     return events.stream().map(event -> {
 
-      var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+      TenderStatus statusCode;
+
+      if (event.getExternalEventId() == null) {
+        var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+        statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
+      } else {
+        var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+            .get(exportRfxResponse.getRfxSetting().getStatusCode());
+      }
 
       return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
           Optional.ofNullable(event.getExternalEventId()),
-          ViewEventType.fromValue(event.getEventType()), jaggaerAPIConfig
-              .getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode()),
-          EVENT_STAGE, Optional.empty());
+          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE, Optional.empty());
     }).collect(Collectors.toList());
   }
 

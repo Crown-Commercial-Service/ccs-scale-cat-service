@@ -8,12 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.RequirementScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
@@ -27,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AssessmentCalculationService {
 
   private static final String SUBMISSION_TYPE_SUPPLIER = "Supplier";
@@ -69,8 +67,7 @@ public class AssessmentCalculationService {
 
       var requirementScore = new RequirementScore().requirement(calcBase.getRequirementName())
           .criterion(calcBase.getSubmissionTypeName())
-          .value(Integer.valueOf(calcBase.getSubmissionValue()))
-          .weightedValue((int) Math.round(score));
+          .value(Integer.valueOf(calcBase.getSubmissionValue())).weightedValue(score);
       dimensionScores.addRequirementScoresItem(requirementScore);
 
       if (!dimensionScoresExists) {
@@ -90,25 +87,25 @@ public class AssessmentCalculationService {
 
       // New agreed approach via Assess dim weighting / tool submission type join
       var subcontractorsAccepted = assessment.getDimensionWeightings().stream()
-          .flatMap(adw -> adw.getAssessmentToolSubmissionTypes().stream()).anyMatch(
+          .flatMap(adw -> adw.getDimensionSubmissionTypes().stream()).anyMatch(
               atst -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(atst.getSubmissionType().getName()));
 
-      var supplierDimensionTotalScore = new AtomicInteger(0);
-      var subcontractorDimensionTotalScore = new AtomicInteger(0);
+      var supplierDimensionTotalScore = new AtomicReference<>(0d);
+      var subcontractorDimensionTotalScore = new AtomicReference<>(0d);
 
       supplierScore.getDimensionScores().forEach(dimension -> {
-        supplierDimensionTotalScore.addAndGet(dimension.getRequirementScores().stream()
+        supplierDimensionTotalScore.accumulateAndGet(dimension.getRequirementScores().stream()
             .filter(rs -> SUBMISSION_TYPE_SUPPLIER.equals(rs.getCriterion()))
-            .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
+            .map(RequirementScore::getWeightedValue).reduce(0d, Double::sum), Double::sum);
 
-        subcontractorDimensionTotalScore.addAndGet(dimension.getRequirementScores().stream()
+        subcontractorDimensionTotalScore.accumulateAndGet(dimension.getRequirementScores().stream()
             .filter(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()))
-            .map(RequirementScore::getWeightedValue).reduce(0, Integer::sum));
+            .map(RequirementScore::getWeightedValue).reduce(0d, Double::sum), Double::sum);
       });
 
-      var supplierTotal = subcontractorsAccepted
+      var supplierTotal = roundDouble(subcontractorsAccepted
           ? (supplierDimensionTotalScore.get() + subcontractorDimensionTotalScore.get()) / 2
-          : supplierDimensionTotalScore.get();
+          : supplierDimensionTotalScore.get(), 2);
 
       supplierScore.setTotal(supplierTotal);
 
@@ -163,6 +160,11 @@ public class AssessmentCalculationService {
 
     return assessmentCalculationBase.stream()
         .filter(cb -> retainSuppliers.contains(cb.getSupplierId())).collect(Collectors.toSet());
+  }
+
+  static double roundDouble(final double value, final int scale) {
+    var multiplier = Math.pow(10, scale); // 1 = 10, 2 = 100 etc
+    return Math.round(value * multiplier) / multiplier;
   }
 
 }

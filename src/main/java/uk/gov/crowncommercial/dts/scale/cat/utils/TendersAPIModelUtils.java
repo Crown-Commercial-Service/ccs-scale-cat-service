@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -72,7 +73,7 @@ public class TendersAPIModelUtils {
   }
 
   public EventDetail buildEventDetail(final RfxSetting rfxSetting,
-      final ProcurementEvent procurementEvent, final List<EvalCriteria> buyerQuestions) {
+      final ProcurementEvent procurementEvent, final Collection<EvalCriteria> buyerQuestions) {
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
@@ -85,7 +86,11 @@ public class TendersAPIModelUtils {
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
     eventDetailNonOCDS.setEventSupportId(procurementEvent.getExternalReferenceId());
-    eventDetailNonOCDS.setBuyerQuestions(buyerQuestions);
+    eventDetailNonOCDS.setAssessmentId(procurementEvent.getAssessmentId());
+    eventDetailNonOCDS.setAssessmentSupplierTarget(procurementEvent.getAssessmentSupplierTarget());
+    if (buyerQuestions != null && !buyerQuestions.isEmpty()) {
+      eventDetailNonOCDS.setBuyerQuestions(List.copyOf(buyerQuestions));
+    }
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
     // OCDS

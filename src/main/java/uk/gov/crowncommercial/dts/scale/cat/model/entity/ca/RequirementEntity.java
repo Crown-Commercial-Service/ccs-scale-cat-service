@@ -28,6 +28,9 @@ public class RequirementEntity {
   @JoinColumn(name = "requirement_taxon_id")
   Set<RequirementTaxon> requirementTaxons;
 
+  @Column(name = "group_requirement")
+  private Boolean groupRequirement;
+  
   @Column(name = "requirement_name")
   private String name;
 

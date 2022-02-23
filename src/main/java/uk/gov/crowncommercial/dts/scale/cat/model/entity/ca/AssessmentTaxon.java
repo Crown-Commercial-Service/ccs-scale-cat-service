@@ -27,6 +27,7 @@ public class AssessmentTaxon {
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
 
+  @EqualsAndHashCode.Exclude
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "parent_assessment_taxon_id")
   AssessmentTaxon parentTaxon;

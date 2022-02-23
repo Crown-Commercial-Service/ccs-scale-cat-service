@@ -29,8 +29,8 @@ public class AssessmentSelectionDetail {
   AssessmentSelection assessmentSelection;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "assessment_submission_type_id")
-  AssessmentToolSubmissionType assessmentToolSubmissionType;
+  @JoinColumn(name = "dimension_submission_type_id")
+  DimensionSubmissionType dimensionSubmissionType;
 
   @Column(name = "requirement_value")
   private BigDecimal requirementValue;
