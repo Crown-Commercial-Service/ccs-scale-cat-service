@@ -66,6 +66,9 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private CalculationBaseRepo calculationBaseRepo;
 
+  @MockBean
+  private ProjectUserMappingRepo projectUserMappingRepo;
+
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
