@@ -219,7 +219,7 @@ public class AssessmentService {
       var req = new DimensionRequirement();
       req.setDimensionId(dw.getDimension().getId());
       req.setName(dw.getDimension().getName());
-      req.setType(dw.getDimension().getSelectionType());
+      // req.setType(dw.getDimensionSubmissionTypes());
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
       // Build Criteria for Dimension (includedCriteria)
@@ -538,8 +538,8 @@ public class AssessmentService {
         asd.setDimensionSubmissionType(dimensionSubmissionType);
         asd.setTimestamps(createTimestamps(principal));
 
-        var dimensionSelectionType =
-            DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase());
+        var dimensionSelectionType = DimensionSelectionType
+            .fromValue(dimensionSubmissionType.getSelectionType().toLowerCase());
 
         switch (dimensionSelectionType) {
           case SELECT:
@@ -710,11 +710,14 @@ public class AssessmentService {
 
     dimensionSubmissionTypes.stream().forEach(st -> {
       var criterion = new CriterionDefinition();
+      var selectionType = DimensionSelectionType.fromValue(st.getSelectionType().toLowerCase());
       criterion.setCriterionId(st.getSubmissionType().getCode());
       criterion.setName(st.getSubmissionType().getName());
-      criterion
-          .setType(DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase()));
-      criterion.setOptions(options);
+      criterion.setType(selectionType);
+      if (DimensionSelectionType.SELECT == selectionType
+          || DimensionSelectionType.MULTISELECT == selectionType) {
+        criterion.setOptions(options);
+      }
       criteria.add(criterion);
     });
 
