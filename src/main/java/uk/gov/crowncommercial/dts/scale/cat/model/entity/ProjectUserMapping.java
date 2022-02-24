@@ -24,8 +24,8 @@ public class ProjectUserMapping {
   Integer id;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "event_id")
-  ProcurementEvent event;
+  @JoinColumn(name = "project_id")
+  ProcurementProject project;
 
   @Column(name = "user_id")
   String userId;

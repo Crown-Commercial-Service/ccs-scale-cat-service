@@ -261,7 +261,7 @@ public class ProcurementProjectService {
     combinedIds.addAll(emailRecipientIds);
 
     //update user
-    updateProjectUserMapping(dbProject,dbEvent, teamIds,principal);
+    updateProjectUserMapping(dbProject, teamIds,principal);
 
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
@@ -482,18 +482,15 @@ public class ProcurementProjectService {
 
   private void addProjectUserMapping(final String jaggaerUserId,
                                      final ProcurementProject project, final String principal) {
-    var event = getCurrentEvent(project);
-
     var projectUserMapping = ProjectUserMapping.builder()
-            .event(event)
+            .project(project)
             .userId(jaggaerUserId)
             .timestamps(createTimestamps(principal))
             .build();
     retryableTendersDBDelegate.save(projectUserMapping);
   }
 
-  private void updateProjectUserMapping(final ProcurementProject project,
-                                        final ProcurementEvent event, final Set<String> teamIds,
+  private void updateProjectUserMapping(final ProcurementProject project, final Set<String> teamIds,
                                         final String principal) {
     var existingMappings = retryableTendersDBDelegate.
             findProjectUserMappingByProjectId(project.getId());
@@ -505,7 +502,7 @@ public class ProcurementProjectService {
               .filter(projectUserMapping -> projectUserMapping.getUserId().equals(teamId)).findFirst();
       if (!userMapping.isPresent()) {
         addMappingList.add( ProjectUserMapping.builder()
-                .event(event)
+                .project(project)
                 .userId(teamId)
                 .timestamps(createTimestamps(principal))
                 .build());
