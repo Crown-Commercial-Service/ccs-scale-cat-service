@@ -9,6 +9,6 @@ import lombok.extern.jackson.Jacksonized;
 @Value
 @Builder
 @Jacksonized
-class AttachmentList {
+public class AttachmentList {
   List<Object> attachment;
 }

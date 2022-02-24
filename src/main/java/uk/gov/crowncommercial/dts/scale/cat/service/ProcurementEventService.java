@@ -688,11 +688,14 @@ public class ProcurementEventService {
   public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
           final Integer procId, final String eventId, final String messageId, final String principal) {
 
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    userProfileService.resolveBuyerUserByEmail(principal)
             .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     validationService.validateProjectAndEventIds(procId, eventId);
-    //TODO jagaer endpoint for this not working at the moment
-    return  jaggaerService.getMessage(messageId);
+    var respose = jaggaerService.getMessage(messageId);
+
+    return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
+            .OCDS(getMessageOCDS(respose) )
+            .nonOCDS(getMessageNonOCDS(respose));
   }
 
   private List<CaTMessage> getCatMessages(final List<Message> messages,
@@ -726,6 +729,27 @@ public class ProcurementEventService {
     return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
             .title(message.getSubject())
             .author(message.getSender().getName());
+  }
+  private MessageOCDS getMessageOCDS(Message message) {
+    return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
+            .title(message.getSubject())
+            .author(message.getSender().getName());
+  }
+
+  private MessageNonOCDS getMessageNonOCDS(Message message) {
+  //TODO fix generated class with correct classes
+    return new MessageNonOCDS()
+            .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
+//            .attachments(  message.getAttachmentList().getAttachment().stream()
+//            .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
+            .readList(message.getReadingList().getReading().stream()
+                    .map(reading -> new ContactPoint1().name(reading.getReaderName()))
+                    .collect(Collectors.toList()))
+            .receiverList(message.getReceiverList().getReceiver().stream()
+                    .map(receiver ->  new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
+                    .collect(Collectors.toList()))
+            ;
+
   }
 
   private Links1 getLinks(final List<Message> messages, final Integer pageSize) {

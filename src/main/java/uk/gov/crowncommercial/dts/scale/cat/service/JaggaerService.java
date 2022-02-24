@@ -23,7 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
@@ -250,7 +249,7 @@ public class JaggaerService {
 
     return ofNullable(jaggaerWebClient.get().uri(messagesUrl, messageId,MESSAGE_PARAMS)
             .retrieve()
-            .bodyToMono(Message.class)
+            .bodyToMono(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving messages"));

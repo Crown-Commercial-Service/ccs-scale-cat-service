@@ -202,7 +202,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/messages/{messageId}")
-  public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessage(
+  public Message getMessage(
           @PathVariable("procID") final Integer procId,
           @PathVariable("eventID") final String eventId,
           @PathVariable("messageId") final String messageId,
