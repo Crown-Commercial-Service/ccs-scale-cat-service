@@ -10,5 +10,5 @@ import lombok.extern.jackson.Jacksonized;
 @Builder
 @Jacksonized
 public class AttachmentList {
-  List<Object> attachment;
+  List<MessageObject> attachment;
 }

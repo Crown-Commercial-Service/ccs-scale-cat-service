@@ -16,7 +16,7 @@ public class Message {
   SenderUser senderUser;
   String subject;
   String body;
-  Object object;
+  MessageObject messageObject;
   Integer folderId;
   String direction;
   Integer isBroadcast;
@@ -30,7 +30,7 @@ public class Message {
 @Value
 @Builder
 @Jacksonized
-class Object {
+class MessageObject {
   String objectId;
   String objectReferenceCode;
   String objectTitle;

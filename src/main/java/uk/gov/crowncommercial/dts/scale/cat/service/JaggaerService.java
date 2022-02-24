@@ -233,7 +233,7 @@ public class JaggaerService {
 
   public MessagesResponse getMessages(final String externalEventId, final Integer pageSize) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
-    final int start =  (pageSize > 0 ? pageSize+1 :1);
+    final int start =  (pageSize > 1 ? pageSize+1 :1);
     final String filters = "objectReferenceCode=="+externalEventId;
     final String queryPrams = "start="+start;
 

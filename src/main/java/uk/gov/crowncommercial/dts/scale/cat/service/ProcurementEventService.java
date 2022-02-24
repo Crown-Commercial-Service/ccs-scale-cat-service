@@ -633,8 +633,8 @@ public class ProcurementEventService {
             (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
             || message.getDirection().equals(messageRequestInfo.getMessageDirection().getValue()));
     Predicate<Receiver> receiverPredicate = receiver ->  MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
-            || (MessageRead.READ.equals(messageRequestInfo.getMessageRead())
-            && receiver.getId().equals(jaggaerUserId));
+            || ((MessageRead.READ.equals(messageRequestInfo.getMessageRead())
+            && receiver.getId().equals(jaggaerUserId)));
 
     var messagesResponse = jaggaerService.getMessages(event.getExternalReferenceId(),
             messageRequestInfo.getPage());
