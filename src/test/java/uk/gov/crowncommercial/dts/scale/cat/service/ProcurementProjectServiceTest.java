@@ -136,7 +136,12 @@ class ProcurementProjectServiceTest {
         ProcurementProject.builder().caNumber(AGREEMENT_DETAILS.getAgreementId())
             .lotNumber(AGREEMENT_DETAILS.getLotId()).externalProjectId(TENDER_CODE)
             .externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME).createdBy(PRINCIPAL)
-            .createdAt(Instant.now()).updatedBy(PRINCIPAL).updatedAt(Instant.now()).build();
+            .createdAt(Instant.now()).updatedBy(PRINCIPAL).updatedAt(Instant.now())
+            .procurementEvents(Set.of(ProcurementEvent.builder()
+                            .eventType("FC")
+                            .id(1)
+                    .build()))
+             .build();
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventSummary = new EventSummary();

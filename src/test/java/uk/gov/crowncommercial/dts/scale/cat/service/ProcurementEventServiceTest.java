@@ -143,6 +143,9 @@ class ProcurementEventServiceTest {
   @MockBean
   private AssessmentResultRepo assessmentResultRepo;
 
+  @MockBean
+  private ProjectUserMappingRepo projectUserMappingRepo;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
