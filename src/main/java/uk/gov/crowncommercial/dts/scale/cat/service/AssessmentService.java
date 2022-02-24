@@ -314,6 +314,8 @@ public class AssessmentService {
           .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
       dimensionWeighting
           .setTimestamps(updateTimestamps(dimensionWeighting.getTimestamps(), principal));
+      dimensionWeighting.setDimensionSubmissionTypes(
+          buildDimensionSubmissionTypes(dimensionRequirement, dimension));
     } else {
       log.debug("Could not find existing Dimension Weighting for Assessment " + assessmentId
           + ", Dimension " + dimensionId + " - so creating one");
@@ -444,25 +446,35 @@ public class AssessmentService {
     dimensionWeighting.setDimension(dimension);
     dimensionWeighting.setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
     dimensionWeighting.setTimestamps(createTimestamps(principal));
+    dimensionWeighting.setDimensionSubmissionTypes(
+        buildDimensionSubmissionTypes(dimensionRequirement, dimension));
+    return dimensionWeighting;
+  }
 
-    // TODO: Build the dimension weighting submission types from 'includedCriteria'
+  /**
+   * Build a list of {@link DimensionSubmissionType} based on the includedCriteria submitted.
+   *
+   * @param dimensionRequirement
+   * @param dimension
+   * @return
+   */
+  private Set<DimensionSubmissionType> buildDimensionSubmissionTypes(
+      final DimensionRequirement dimensionRequirement, final DimensionEntity dimension) {
 
     var dimensionSubmissionTypes = dimension.getDimensionSubmissionTypes();
     var validToolSubmissionTypeIDs =
         dimensionSubmissionTypes.stream().map(DimensionSubmissionType::getSubmissionType)
             .map(SubmissionType::getCode).collect(Collectors.toSet());
 
-    dimensionWeighting
-        .setDimensionSubmissionTypes(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
-          if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
-            throw new ValidationException(
-                format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
-          }
-          return dimensionSubmissionTypes.stream()
-              .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
-              .findFirst().get();
-        }).collect(Collectors.toSet()));
-    return dimensionWeighting;
+    return dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+      if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
+        throw new ValidationException(
+            format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
+      }
+      return dimensionSubmissionTypes.stream()
+          .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
+          .findFirst().get();
+    }).collect(Collectors.toSet());
   }
 
   /**
