@@ -31,6 +31,9 @@ public class DimensionSubmissionType {
   @JoinColumn(name = "dimension_id")
   DimensionEntity dimension;
 
+  @Column(name = "selection_type")
+  private String selectionType;
+
   @Embedded
   private Timestamps timestamps;
 }

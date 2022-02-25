@@ -67,7 +67,6 @@ public class AssessmentService {
       var dd = new DimensionDefinition();
       dd.setDimensionId(d.getId());
       dd.setName(d.getName());
-      dd.setType(DimensionSelectionType.fromValue(d.getSelectionType().toLowerCase()));
 
       // Build WeightingRange
       var wr = new WeightingRange();
@@ -219,7 +218,6 @@ public class AssessmentService {
       var req = new DimensionRequirement();
       req.setDimensionId(dw.getDimension().getId());
       req.setName(dw.getDimension().getName());
-      req.setType(dw.getDimension().getSelectionType());
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
       // Build Criteria for Dimension (includedCriteria)
@@ -310,8 +308,12 @@ public class AssessmentService {
 
     if (response.isPresent()) {
       dimensionWeighting = response.get();
-      dimensionWeighting
-          .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
+      if (dimensionRequirement.getWeighting() == null) {
+        dimensionWeighting.setWeightingPercentage(BigDecimal.ZERO);
+      } else {
+        dimensionWeighting
+            .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
+      }
       dimensionWeighting
           .setTimestamps(updateTimestamps(dimensionWeighting.getTimestamps(), principal));
       dimensionWeighting.setDimensionSubmissionTypes(
@@ -334,8 +336,10 @@ public class AssessmentService {
 
     retryableTendersDBDelegate.save(dimensionWeighting);
 
-    dimensionRequirement.getRequirements().stream()
-        .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
+    if (dimensionRequirement.getRequirements() != null) {
+      dimensionRequirement.getRequirements().stream()
+          .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
+    }
 
     return dimensionId;
   }
@@ -379,7 +383,11 @@ public class AssessmentService {
 
     if (response.isPresent()) {
       selection = response.get();
-      selection.setWeightingPercentage(new BigDecimal(requirement.getWeighting()));
+      if (requirement.getWeighting() == null) {
+        selection.setWeightingPercentage(BigDecimal.ZERO);
+      } else {
+        selection.setWeightingPercentage(new BigDecimal(requirement.getWeighting()));
+      }
       selection.setTimestamps(updateTimestamps(selection.getTimestamps(), principal));
     } else {
       log.debug("Could not find existing Assessment Selection for Assessment " + assessmentId
@@ -538,10 +546,10 @@ public class AssessmentService {
         asd.setDimensionSubmissionType(dimensionSubmissionType);
         asd.setTimestamps(createTimestamps(principal));
 
-        var dimensionSelectionType =
-            DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase());
+        var criteriaSelectionType = CriteriaSelectionType
+            .fromValue(dimensionSubmissionType.getSelectionType().toLowerCase());
 
-        switch (dimensionSelectionType) {
+        switch (criteriaSelectionType) {
           case SELECT:
           case MULTISELECT:
             var validValue = getValidValueByName(dimension, c.getValue());
@@ -552,7 +560,7 @@ public class AssessmentService {
             break;
           default:
             throw new ValidationException(
-                format(ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, dimensionSelectionType));
+                format(ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, criteriaSelectionType));
         }
 
         log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
@@ -710,11 +718,14 @@ public class AssessmentService {
 
     dimensionSubmissionTypes.stream().forEach(st -> {
       var criterion = new CriterionDefinition();
+      var selectionType = CriteriaSelectionType.fromValue(st.getSelectionType().toLowerCase());
       criterion.setCriterionId(st.getSubmissionType().getCode());
       criterion.setName(st.getSubmissionType().getName());
-      criterion
-          .setType(DimensionSelectionType.fromValue(dimension.getSelectionType().toLowerCase()));
-      criterion.setOptions(options);
+      criterion.setType(selectionType);
+      if (CriteriaSelectionType.SELECT == selectionType
+          || CriteriaSelectionType.MULTISELECT == selectionType) {
+        criterion.setOptions(options);
+      }
       criteria.add(criterion);
     });
 
