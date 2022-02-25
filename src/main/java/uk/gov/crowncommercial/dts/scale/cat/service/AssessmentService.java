@@ -308,8 +308,12 @@ public class AssessmentService {
 
     if (response.isPresent()) {
       dimensionWeighting = response.get();
-      dimensionWeighting
-          .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
+      if (dimensionRequirement.getWeighting() == null) {
+        dimensionWeighting.setWeightingPercentage(BigDecimal.ZERO);
+      } else {
+        dimensionWeighting
+            .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
+      }
       dimensionWeighting
           .setTimestamps(updateTimestamps(dimensionWeighting.getTimestamps(), principal));
       dimensionWeighting.setDimensionSubmissionTypes(
@@ -332,8 +336,10 @@ public class AssessmentService {
 
     retryableTendersDBDelegate.save(dimensionWeighting);
 
-    dimensionRequirement.getRequirements().stream()
-        .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
+    if (dimensionRequirement.getRequirements() != null) {
+      dimensionRequirement.getRequirements().stream()
+          .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
+    }
 
     return dimensionId;
   }
@@ -377,7 +383,11 @@ public class AssessmentService {
 
     if (response.isPresent()) {
       selection = response.get();
-      selection.setWeightingPercentage(new BigDecimal(requirement.getWeighting()));
+      if (requirement.getWeighting() == null) {
+        selection.setWeightingPercentage(BigDecimal.ZERO);
+      } else {
+        selection.setWeightingPercentage(new BigDecimal(requirement.getWeighting()));
+      }
       selection.setTimestamps(updateTimestamps(selection.getTimestamps(), principal));
     } else {
       log.debug("Could not find existing Assessment Selection for Assessment " + assessmentId
