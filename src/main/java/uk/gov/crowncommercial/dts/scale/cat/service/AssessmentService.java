@@ -218,7 +218,6 @@ public class AssessmentService {
       var req = new DimensionRequirement();
       req.setDimensionId(dw.getDimension().getId());
       req.setName(dw.getDimension().getName());
-      // req.setType(dw.getDimensionSubmissionTypes());
       req.setWeighting(dw.getWeightingPercentage().intValue());
 
       // Build Criteria for Dimension (includedCriteria)
