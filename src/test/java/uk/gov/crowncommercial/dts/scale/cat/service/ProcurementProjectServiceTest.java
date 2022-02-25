@@ -39,6 +39,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Org
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
@@ -343,11 +344,21 @@ class ProcurementProjectServiceTest {
     event.setOcidPrefix("b5fd17");
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
+
+    var exportRfxResponse = new ExportRfxResponse();
+    exportRfxResponse.setRfxSetting(RfxSetting.builder().statusCode(0).build());
+
     var project = ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJ_NAME)
         .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getProjectList(JAGGAER_USER_ID))
-        .thenReturn(TestUtils.getProjectListResponse());
+    when(retryableTendersDBDelegate.findProjectUserMappingByUserId(JAGGAER_USER.get().getUserId()))
+        .thenReturn(Set.of(ProjectUserMapping.builder()
+                .project(ProcurementProject.builder()
+                        .id(1)
+                        .procurementEvents(events)
+                        .build())
+                .id(1).userId("1234").build()));
+    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse );
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
         .thenReturn(Arrays.asList(project));
 
