@@ -53,9 +53,6 @@ public class DimensionEntity {
   @Column(name = "max_weighting_pct")
   private BigDecimal maxWeightingPercentage;
 
-  @Column(name = "selection_type")
-  private String selectionType;
-
   @Column(name = "min_allowed_value")
   private BigDecimal minAllowedValue;
 
