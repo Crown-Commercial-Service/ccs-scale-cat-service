@@ -389,7 +389,7 @@ public class ProcurementProjectService {
       var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
           ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
-          Optional.empty());
+              Optional.ofNullable(dbEvent.getAssessmentId()));
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
 
@@ -457,13 +457,6 @@ public class ProcurementProjectService {
         break;
     }
   return null;
-  }
-
-  private Optional<ProcurementProject> getProject(final List<ProcurementProject> projects,
-      final String externalReferenceId) {
-    return projects.stream().filter(
-        procurementProject -> procurementProject.getExternalProjectId().equals(externalReferenceId))
-        .findFirst();
   }
 
   /**
