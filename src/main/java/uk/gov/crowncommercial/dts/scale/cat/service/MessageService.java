@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -163,7 +162,7 @@ public class MessageService {
    * @return rpa status
    * @throws JsonProcessingException
    */
-  @SneakyThrows(JsonProcessingException.class)
+  @SneakyThrows
   private String callRPAMessageAPI(RPAProcessInput processInput) {
     var request = new RPAGenericData();
     request.setProcessInput(objectMapper.writeValueAsString(processInput))
@@ -184,7 +183,7 @@ public class MessageService {
    * @param apiResponse
    * @return rpa api status
    */
-  @SneakyThrows({ JsonProcessingException.class, JSONException.class })
+  @SneakyThrows
   private String validateResponse(RPAAPIResponse apiResponse) {
     var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
     var json = new JSONObject(convertedObject);
@@ -208,7 +207,7 @@ public class MessageService {
    * @param inputString
    * @return Object
    */
-  @SneakyThrows({ JsonProcessingException.class })
+  @SneakyThrows
   private Map<String, Object> convertStringToObject(String inputString) {
     var outputObject = new HashMap<String, Object>();
     outputObject = objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {
