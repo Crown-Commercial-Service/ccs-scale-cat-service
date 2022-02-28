@@ -11,37 +11,37 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class RPAProcessInput {
 
-	@JsonProperty("Search.Username")
-	String userName;
+  @JsonProperty("Search.Username")
+  String userName;
 
-	@JsonProperty("Search.Password")
-	String password;
+  @JsonProperty("Search.Password")
+  String password;
 
-	@JsonProperty("Search.ITTCode")
-	String ittCode;
+  @JsonProperty("Search.ITTCode")
+  String ittCode;
 
-	@JsonProperty("Search.BroadcastMessage")
-	String broadcastMessage;
+  @JsonProperty("Search.BroadcastMessage")
+  String broadcastMessage;
 
-	@JsonProperty("Search.MessagingAction")
-	String messagingAction;
+  @JsonProperty("Search.MessagingAction")
+  String messagingAction;
 
-	@JsonProperty("Search.MessageSubject")
-	String messageSubject;
+  @JsonProperty("Search.MessageSubject")
+  String messageSubject;
 
-	@JsonProperty("Search.MessageBody")
-	String messageBody;
+  @JsonProperty("Search.MessageBody")
+  String messageBody;
 
-	@JsonProperty("Search.MessageClassification")
-	String messageClassification;
+  @JsonProperty("Search.MessageClassification")
+  String messageClassification;
 
-	@JsonProperty("Search.SenderName")
-	String senderName;
+  @JsonProperty("Search.SenderName")
+  String senderName;
 
-	@JsonProperty("Search.SupplierName")
-	String supplierName;
+  @JsonProperty("Search.SupplierName")
+  String supplierName;
 
-	@JsonProperty("Search.MessageReceivedDate")
-	String messageReceivedDate;
+  @JsonProperty("Search.MessageReceivedDate")
+  String messageReceivedDate;
 
 }

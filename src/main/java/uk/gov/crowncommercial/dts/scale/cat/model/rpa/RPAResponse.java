@@ -8,5 +8,5 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 @Builder
 public class RPAResponse {
-	String response;
+  String response;
 }

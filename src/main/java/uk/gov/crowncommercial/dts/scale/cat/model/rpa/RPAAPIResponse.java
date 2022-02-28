@@ -9,9 +9,9 @@ import lombok.experimental.FieldDefaults;
 @EqualsAndHashCode(callSuper = false)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RPAAPIResponse extends RPAGenericData {
-	RetryConfiguartion retryConfigurations;
-	String transactionId;
-	String status;
-	RPAResponse response;
-	Object error;
+  RetryConfiguartion retryConfigurations;
+  String transactionId;
+  String status;
+  RPAResponse response;
+  Object error;
 }

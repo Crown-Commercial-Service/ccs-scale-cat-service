@@ -10,7 +10,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 @Builder
 public class RetryConfiguartion {
-	List<String> previousRequestIds;
-	int noOfTimesRetry;
-	long retryCoolOffInterval;
+  List<String> previousRequestIds;
+  int noOfTimesRetry;
+  long retryCoolOffInterval;
 }

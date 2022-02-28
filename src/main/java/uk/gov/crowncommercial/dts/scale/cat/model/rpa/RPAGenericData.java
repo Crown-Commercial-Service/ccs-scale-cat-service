@@ -11,13 +11,13 @@ import lombok.experimental.FieldDefaults;
 @Accessors(chain = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RPAGenericData {
-	String processInput;
-	String processName;
-	String profileName;
-	String source;
-	String sourceId;
-	boolean retry;
-	@JsonProperty(value = "isSync")
-	boolean isSync;
-	long requestTimeout;
+  String processInput;
+  String processName;
+  String profileName;
+  String source;
+  String sourceId;
+  boolean retry;
+  @JsonProperty(value = "isSync")
+  boolean isSync;
+  long requestTimeout;
 }

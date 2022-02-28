@@ -14,12 +14,12 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class CviewDictionary {
 
-	@JsonProperty("ErrorDescription")
-	private String errorDescription;
+  @JsonProperty("ErrorDescription")
+  private String errorDescription;
 
-	@JsonProperty("IsError")
-	private String isError;
+  @JsonProperty("IsError")
+  private String isError;
 
-	@JsonProperty("Status")
-	private String status;
+  @JsonProperty("Status")
+  private String status;
 }

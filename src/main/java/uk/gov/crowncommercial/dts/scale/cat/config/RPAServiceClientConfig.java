@@ -25,30 +25,30 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RPAServiceClientConfig {
 
-	private final DocumentConfig documentConfig;
+  private final DocumentConfig documentConfig;
 
-	private final RPAAPIConfig rpaAPIConfig;
+  private final RPAAPIConfig rpaAPIConfig;
 
-	@Bean("rpaServiceWebClient")
-	public WebClient webClient() {
+  @Bean("rpaServiceWebClient")
+  public WebClient webClient() {
 
-		var sslContextFactory = new SslContextFactory.Client(true);
+    var sslContextFactory = new SslContextFactory.Client(true);
 
-		// SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
-		sslContextFactory.setExcludeProtocols("TLSv1.3");
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
 
-		// delay
-		var client = new HttpClient(sslContextFactory) {
-			@Override
-			public Request newRequest(final URI uri) {
-				return super.newRequest(uri);
-			}
-		};
-		ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
+    // delay
+    var client = new HttpClient(sslContextFactory) {
+      @Override
+      public Request newRequest(final URI uri) {
+        return super.newRequest(uri);
+      }
+    };
+    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
 
-		return WebClient.builder().clientConnector(jettyHttpClientConnector).baseUrl(rpaAPIConfig.getBaseUrl())
-				.defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
-				.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(documentConfig.getMaxSize())).build();
-	}
+    return WebClient.builder().clientConnector(jettyHttpClientConnector).baseUrl(rpaAPIConfig.getBaseUrl())
+        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
+        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(documentConfig.getMaxSize())).build();
+  }
 
 }

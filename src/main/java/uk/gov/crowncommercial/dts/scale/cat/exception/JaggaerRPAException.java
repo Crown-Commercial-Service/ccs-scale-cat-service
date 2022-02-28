@@ -7,17 +7,15 @@ import java.util.Optional;
  */
 public class JaggaerRPAException extends UpstreamServiceException {
 
-	private static final String SERVICE_NAME = "Jaggaer RPA";
-	/**
-	 *
-	 */
-	private static final long serialVersionUID = 1L;
+  private static final String SERVICE_NAME = "Jaggaer RPA";
 
-	public JaggaerRPAException(final Object code, final String message) {
-		super(SERVICE_NAME, Optional.of(code), message);
-	}
+  private static final long serialVersionUID = 1L;
 
-	public JaggaerRPAException(final String message) {
-		super(SERVICE_NAME, Optional.empty(), message);
-	}
+  public JaggaerRPAException(final Object code, final String message) {
+    super(SERVICE_NAME, Optional.of(code), message);
+  }
+
+  public JaggaerRPAException(final String message) {
+    super(SERVICE_NAME, Optional.empty(), message);
+  }
 }

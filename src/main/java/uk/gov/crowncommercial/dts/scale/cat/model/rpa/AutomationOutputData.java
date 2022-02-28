@@ -14,10 +14,10 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class AutomationOutputData {
 
-	@JsonProperty("CviewDictionary")
-	private CviewDictionary cviewDictionary;
+  @JsonProperty("CviewDictionary")
+  private CviewDictionary cviewDictionary;
 
-	@JsonProperty("AppName")
-	private String appName;
+  @JsonProperty("AppName")
+  private String appName;
 
 }
