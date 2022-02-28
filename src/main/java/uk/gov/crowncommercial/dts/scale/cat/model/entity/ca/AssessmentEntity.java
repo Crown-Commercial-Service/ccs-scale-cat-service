@@ -16,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+// @EqualsAndHashCode(exclude = {"dimensionWeightings", "assessmentSelections"})
 public class AssessmentEntity {
 
   @Id
@@ -40,7 +41,8 @@ public class AssessmentEntity {
   @JoinColumn(name = "assessment_id")
   Set<AssessmentDimensionWeighting> dimensionWeightings;
 
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @EqualsAndHashCode.Exclude
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "assessment_id")
   Set<AssessmentSelection> assessmentSelections;
 

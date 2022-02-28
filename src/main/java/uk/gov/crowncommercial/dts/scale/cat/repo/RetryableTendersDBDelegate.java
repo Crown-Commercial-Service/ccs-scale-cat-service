@@ -164,6 +164,16 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
+  public void delete(final AssessmentSelection assessmentSelection) {
+    assessmentSelectionRepo.deleteById(assessmentSelection.getId());
+  }
+
+  @TendersDBRetryable
+  public void deleteAll(final Set<AssessmentSelection> assessmentSelections) {
+    assessmentSelectionRepo.deleteAll(assessmentSelections);
+  }
+
+  @TendersDBRetryable
   public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
       final Integer toolId) {
     return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
@@ -208,23 +218,24 @@ public class RetryableTendersDBDelegate {
 
   @TendersDBRetryable
   public void delete(final ProjectUserMapping projectUserMapping) {
-     projectUserMappingRepo.delete(projectUserMapping);
+    projectUserMappingRepo.delete(projectUserMapping);
   }
 
   @TendersDBRetryable
   public void deleteAll(final List<ProjectUserMapping> projectUserMappings) {
-     projectUserMappingRepo.deleteAll(projectUserMappings);
+    projectUserMappingRepo.deleteAll(projectUserMappings);
   }
 
   @TendersDBRetryable
   public void saveAll(final List<ProjectUserMapping> projectUserMappings) {
-     projectUserMappingRepo.saveAll(projectUserMappings);
+    projectUserMappingRepo.saveAll(projectUserMappings);
   }
 
   @TendersDBRetryable
   public Set<ProjectUserMapping> findProjectUserMappingByProjectId(final Integer projectId) {
     return projectUserMappingRepo.findByProjectId(projectId);
   }
+
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.

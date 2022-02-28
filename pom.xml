@@ -269,7 +269,7 @@
 							<goal>generate</goal>
 						</goals>
 						<configuration>
-							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/capabilities/capability-service.yaml</inputSpec>
+							<inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/feature/SCAT-3231_add_overwriteRequirements_flag/capabilities/capability-service.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
