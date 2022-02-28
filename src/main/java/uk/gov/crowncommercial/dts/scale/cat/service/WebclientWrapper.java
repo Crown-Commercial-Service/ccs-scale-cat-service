@@ -85,4 +85,30 @@ public class WebclientWrapper {
                 "Unexpected error posting data to " + uriTemplate));
   }
 
+  /**
+   * Uses the passed webclient, uri template ,token and optional params to post the given data to
+   * the remote service
+   *
+   * @param <T>
+   * @param postData
+   * @param responseType
+   * @param webclient
+   * @param timeoutDuration
+   * @param uriTemplate
+   * @param authToken
+   * @param params
+   * @return responseType object
+   */
+  public <T> T postDataWithToken(final Object postData, final Class<T> responseType,
+      final WebClient webclient, final int timeoutDuration, final String uriTemplate,
+      final String authToken, final Object... params) {
+
+    // TODO: Make upstream service exeption generic
+    return ofNullable(webclient.post().uri(uriTemplate, params)
+        .headers(e -> e.setBearerAuth(authToken)).bodyValue(postData).retrieve()
+        .bodyToMono(responseType).block(Duration.ofSeconds(timeoutDuration)))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error posting data to " + uriTemplate));
+  }
+
 }
