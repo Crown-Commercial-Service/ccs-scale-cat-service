@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.service;
+package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import javax.annotation.PostConstruct;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -22,22 +22,39 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
- *
+ * Component to orchestrate the assessment scoring calculation, delegating to implementations of
+ * {@link CalculationAdaptor} for different requirement, dimension and overall supplier total score
+ * calculations.
  */
 @Service
 @RequiredArgsConstructor
 public class AssessmentCalculationService {
 
-  private static final String SUBMISSION_TYPE_SUPPLIER = "Supplier";
-  private static final String SUBMISSION_TYPE_SUBCONTRACTOR = "Sub Contractor";
   private static final Set<String> CA_ZERO_SCORE_ELIM_DIMENSIONS = Set.of("Location");
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final CalculationAdaptor standardWeightedCalculator;
+  private final CalculationAdaptor pricingCalculator;
+  private final Map<String, CalculationAdaptor> dimensionCalculators = new HashMap<>();
+
+  // Map of external toolId to calculator
+  private final Map<String, CalculationAdaptor> toolCalculators = new HashMap<>();
+
+  @PostConstruct
+  void init() {
+    // TODO: Externalise...
+    dimensionCalculators.putAll(Map.of("Resource Quantity", standardWeightedCalculator,
+        "Security Clearance", standardWeightedCalculator, "Service Capability",
+        standardWeightedCalculator, "Scalability", standardWeightedCalculator, "Location",
+        standardWeightedCalculator, "Pricing", pricingCalculator));
+
+    toolCalculators.putAll(Map.of("1", standardWeightedCalculator, "2", pricingCalculator));
+  }
 
   public List<SupplierScores> calculateSupplierScores(final AssessmentEntity assessment,
       final String principal) {
 
-    var assessmentCalculationBase = eliminateZeroScoreSuppliers(
+    final var assessmentCalculationBase = eliminateZeroScoreSuppliers(
         retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
 
     var supplierScoresMap = new HashMap<String, SupplierScores>();
@@ -49,25 +66,20 @@ public class AssessmentCalculationService {
       var supplierScores = supplierScoresMap.computeIfAbsent(calcBase.getSupplierId(),
           supplierId -> new SupplierScores().supplier(supplierId));
 
-      // Compute the score for the row
-      var numericSubmissionValue = Double.parseDouble(calcBase.getSubmissionValue());
-
-      // TODO: Adaptor plugin for different calcs
-      var score = numericSubmissionValue == 0 ? 0
-          : numericSubmissionValue / (double) calcBase.getDimensionDivisor()
-              * calcBase.getAssessmentSelectionWeightPercentage().doubleValue()
-              * calcBase.getAssessmentDimensionWeightPercentage().doubleValue() / 100;
+      // Compute the score for the row (requirement)
+      var score = dimensionCalculators.get(calcBase.getDimensionName())
+          .calculateRequirementScore(calcBase, assessmentCalculationBase);
 
       // Generate an immutable map key of the supplier ID and dimension ID
       var supplierDimensionIdKeyPair = Pair.of(calcBase.getSupplierId(), calcBase.getDimensionId());
       var dimensionScoresExists = dimensionScoresMap.containsKey(supplierDimensionIdKeyPair);
 
       var dimensionScores = dimensionScoresMap.computeIfAbsent(supplierDimensionIdKeyPair,
-          p -> new DimensionScores().dimension(p.getSecond()));
+          p -> new DimensionScores().dimensionId(p.getSecond()).name(calcBase.getDimensionName()));
 
-      var requirementScore = new RequirementScore().requirement(calcBase.getRequirementName())
+      var requirementScore = new RequirementScore().name(calcBase.getRequirementName())
           .criterion(calcBase.getSubmissionTypeName())
-          .value(Integer.valueOf(calcBase.getSubmissionValue())).weightedValue(score);
+          .value(Integer.valueOf(calcBase.getSubmissionValue())).score(score);
       dimensionScores.addRequirementScoresItem(requirementScore);
 
       if (!dimensionScoresExists) {
@@ -77,40 +89,28 @@ public class AssessmentCalculationService {
 
     // Calculate the overall score per supplier from the dimension requirement weighted scores
     var supplierScores = supplierScoresMap.values().stream().collect(Collectors.toList());
-    calculateSupplierScoreTotals(supplierScores, assessment, principal);
+    calculateSupplierScoreTotals(supplierScores, assessment, principal, assessmentCalculationBase);
     return supplierScores;
   }
 
-  private void calculateSupplierScoreTotals(final List<SupplierScores> supplierScores,
-      final AssessmentEntity assessment, final String principal) {
-    supplierScores.forEach(supplierScore -> {
+  private void calculateSupplierScoreTotals(final List<SupplierScores> suppliersScores,
+      final AssessmentEntity assessment, final String principal,
+      final Set<CalculationBase> assessmentCalculationBase) {
 
-      // New agreed approach via Assess dim weighting / tool submission type join
-      var subcontractorsAccepted = assessment.getDimensionWeightings().stream()
-          .flatMap(adw -> adw.getDimensionSubmissionTypes().stream()).anyMatch(
-              atst -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(atst.getSubmissionType().getName()));
+    suppliersScores.forEach(supplierScores -> {
 
-      var supplierDimensionTotalScore = new AtomicReference<>(0d);
-      var subcontractorDimensionTotalScore = new AtomicReference<>(0d);
-
-      supplierScore.getDimensionScores().forEach(dimension -> {
-        supplierDimensionTotalScore.accumulateAndGet(dimension.getRequirementScores().stream()
-            .filter(rs -> SUBMISSION_TYPE_SUPPLIER.equals(rs.getCriterion()))
-            .map(RequirementScore::getWeightedValue).reduce(0d, Double::sum), Double::sum);
-
-        subcontractorDimensionTotalScore.accumulateAndGet(dimension.getRequirementScores().stream()
-            .filter(rs -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(rs.getCriterion()))
-            .map(RequirementScore::getWeightedValue).reduce(0d, Double::sum), Double::sum);
+      // Certain dimension calculations use data from all supplier scores (e.g. Pricing)
+      supplierScores.getDimensionScores().forEach(dimensionScores -> {
+        dimensionCalculators.get(dimensionScores.getName()).calculateDimensionScore(suppliersScores,
+            supplierScores.getSupplier(), dimensionScores.getDimensionId(), assessment,
+            assessmentCalculationBase);
       });
 
-      var supplierTotal = roundDouble(subcontractorsAccepted
-          ? (supplierDimensionTotalScore.get() + subcontractorDimensionTotalScore.get()) / 2
-          : supplierDimensionTotalScore.get(), 2);
+      toolCalculators.get(assessment.getTool().getExternalToolId())
+          .calculateSupplierTotalScore(supplierScores);
 
-      supplierScore.setTotal(supplierTotal);
-
-      updateAssessmentResult(assessment, supplierScore.getSupplier(),
-          BigDecimal.valueOf(supplierTotal), principal);
+      updateAssessmentResult(assessment, supplierScores.getSupplier(),
+          BigDecimal.valueOf(supplierScores.getTotal()), principal);
     });
   }
 
@@ -160,11 +160,6 @@ public class AssessmentCalculationService {
 
     return assessmentCalculationBase.stream()
         .filter(cb -> retainSuppliers.contains(cb.getSupplierId())).collect(Collectors.toSet());
-  }
-
-  static double roundDouble(final double value, final int scale) {
-    var multiplier = Math.pow(10, scale); // 1 = 10, 2 = 100 etc
-    return Math.round(value * multiplier) / multiplier;
   }
 
 }
