@@ -58,6 +58,9 @@ public class CalculationBase {
   @Column(name = "asel_weighting_pct")
   BigDecimal assessmentSelectionWeightPercentage;
 
+  @Column(name = "requirement_value")
+  BigDecimal requirementValue;
+
   @Column(name = "dimension_divisor")
   Integer dimensionDivisor;
 

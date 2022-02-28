@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.service.AssessmentService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 @RestController
 @RequestMapping(path = "/assessments", produces = APPLICATION_JSON_VALUE)
