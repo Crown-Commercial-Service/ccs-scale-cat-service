@@ -342,7 +342,6 @@ public class AssessmentService {
     }
 
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
-      var itemsToRemove = new HashSet<AssessmentSelection>();
       assessment.getAssessmentSelections().forEach(as -> {
         var match = dimensionRequirement.getRequirements().stream().filter(
             dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()))
@@ -350,12 +349,9 @@ public class AssessmentService {
         if (match.isEmpty()) {
           log.debug(">>>> REMOVE ASSESSMENT SELECTION: " + as.getId() + ", REQ: "
               + +as.getRequirementTaxon().getRequirement().getId());
-          itemsToRemove.add(as);
+          retryableTendersDBDelegate.delete(as);
         }
       });
-
-
-      retryableTendersDBDelegate.deleteAll(itemsToRemove);
 
     }
 
