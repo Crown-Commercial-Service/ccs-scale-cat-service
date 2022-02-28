@@ -124,7 +124,20 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
       getMessages:
         endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
-
+        
+      rpa: 
+#       baseUrl: "SET IN ENV"
+        accessUrl: /api/a/automation
+        authenticationUrl: /api/token
+#       userName: "SET IN ENV"
+#       userPwd: "SET IN ENV"
+#       buyerPwd: "SET IN ENV"
+        source: CaT
+        sourceId: 1
+        profileName: ITTEvaluation
+        timeoutDuration: 60
+        requestTimeout: 3600000
+        
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"

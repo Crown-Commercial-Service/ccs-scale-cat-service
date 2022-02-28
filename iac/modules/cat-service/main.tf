@@ -63,6 +63,24 @@ data "aws_ssm_parameter" "conclave_wrapper_api_key" {
   name = "/cat/${var.environment}/conclave-wrapper-api-key"
 }
 
+# RPA related params
+data "aws_ssm_parameter" "jaggaer_rpa_base_url" {
+  name = "/cat/${var.environment}/jaggaer-rpa-base-url"
+}
+
+data "aws_ssm_parameter" "jaggaer_rpa_username" {
+  name = "/cat/${var.environment}/jaggaer-rpa-username"
+}
+
+data "aws_ssm_parameter" "jaggaer_rpa_password" {
+  name = "/cat/${var.environment}/jaggaer-rpa-password"
+}
+
+# TEMPORARY - to be replaced by RPA creds management
+data "aws_ssm_parameter" "jaggaer_rpa_buyer_password_temp" {
+  name = "/cat/${var.environment}/jaggaer-rpa-buyer-password-temp"
+}
+
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
@@ -81,6 +99,12 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.conclave-wrapper.apiKey" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
     "config.flags.devMode" : var.dev_mode
     "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
+
+    # RPA
+    "config.external.jaggaer.rpa.baseUrl" : data.aws_ssm_parameter.jaggaer_rpa_base_url.value
+    "config.external.jaggaer.rpa.user-name" : data.aws_ssm_parameter.jaggaer_rpa_username.value
+    "config.external.jaggaer.rpa.user-pwd" : data.aws_ssm_parameter.jaggaer_rpa_password.value
+    "config.external.jaggaer.rpa.buyer-pwd" : data.aws_ssm_parameter.jaggaer_rpa_buyer_password_temp.value
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"
