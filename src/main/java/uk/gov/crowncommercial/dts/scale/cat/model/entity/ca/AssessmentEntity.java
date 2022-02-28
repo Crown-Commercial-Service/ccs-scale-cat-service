@@ -31,18 +31,18 @@ public class AssessmentEntity {
   @Enumerated(EnumType.STRING)
   private AssessmentStatusEntity status;
 
-  @ManyToOne(fetch = FetchType.EAGER)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
 
   @EqualsAndHashCode.Exclude
   @ToString.Exclude
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "assessment_id")
   Set<AssessmentDimensionWeighting> dimensionWeightings;
 
   @EqualsAndHashCode.Exclude
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "assessment_id")
   Set<AssessmentSelection> assessmentSelections;
 

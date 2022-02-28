@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -54,6 +55,7 @@ public class AssessmentService {
    * @param toolId internal database Assessment Tool id
    * @return
    */
+  @Transactional
   public List<DimensionDefinition> getDimensions(final Integer toolId) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
@@ -97,6 +99,7 @@ public class AssessmentService {
    * @param eventType
    * @return assessmentId for the newly created assessment
    */
+  @Transactional
   public Integer createEmptyAssessment(final String caNumber, final String lotNumber,
       final DefineEventType eventType, final String principal) {
 
@@ -121,6 +124,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Integer createAssessment(final Assessment assessment, final String principal) {
 
     log.debug("Create Assessment");
@@ -184,6 +188,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public List<AssessmentSummary> getAssessmentsForUser(final String principal) {
     var assessments = retryableTendersDBDelegate.findAssessmentsForUser(principal);
 
@@ -203,6 +208,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Assessment getAssessment(final Integer assessmentId, final String principal) {
 
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId).orElseThrow(
@@ -290,6 +296,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Integer updateDimension(final Integer assessmentId, final Integer dimensionId,
       final DimensionRequirement dimensionRequirement, final String principal) {
 
@@ -334,24 +341,19 @@ public class AssessmentService {
       throw new ValidationException("Sum of all Dimension Weightings cannot exceed 100%");
     }
 
-    if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequiremnts())) {
+    if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
       var itemsToRemove = new HashSet<AssessmentSelection>();
       assessment.getAssessmentSelections().forEach(as -> {
         var match = dimensionRequirement.getRequirements().stream().filter(
             dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()))
             .findAny();
         if (match.isEmpty()) {
+          log.debug(">>>> REMOVE ASSESSMENT SELECTION: " + as.getId() + ", REQ: "
+              + +as.getRequirementTaxon().getRequirement().getId());
           itemsToRemove.add(as);
         }
       });
 
-
-      var test = itemsToRemove.stream().findAny().get();
-      var ass = test.getAssessment();
-      ass.getAssessmentSelections().remove(test);
-
-      // var dim = test.getDimension();
-      // dim.get
 
       retryableTendersDBDelegate.deleteAll(itemsToRemove);
 
@@ -384,6 +386,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Integer updateRequirement(final Integer assessmentId, final Integer dimensionId,
       final Requirement requirement, final String principal) {
 

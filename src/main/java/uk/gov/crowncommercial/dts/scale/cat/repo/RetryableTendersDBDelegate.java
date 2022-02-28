@@ -165,6 +165,7 @@ public class RetryableTendersDBDelegate {
 
   @TendersDBRetryable
   public void delete(final AssessmentSelection assessmentSelection) {
+    System.out.println("DELETE BY ID: " + assessmentSelection.getId());
     assessmentSelectionRepo.deleteById(assessmentSelection.getId());
   }
 
