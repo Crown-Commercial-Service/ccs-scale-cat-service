@@ -118,7 +118,7 @@ class MessageServiceTest {
 	@MockBean
 	private AgreementsService agreementsService;
 
-	@MockBean
+	@Autowired
 	private MessageService messageService;
 
 	private RPAGenericData request = new RPAGenericData();
