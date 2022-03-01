@@ -25,15 +25,15 @@ public class AssessmentSelection {
   @Column(name = "assessment_selection_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "assessment_id")
   AssessmentEntity assessment;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "dimension_id")
   DimensionEntity dimension;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon requirementTaxon;
 
