@@ -13,4 +13,6 @@ import java.util.Set;
 public interface ProjectUserMappingRepo extends JpaRepository<ProjectUserMapping, Integer> {
 
   Set<ProjectUserMapping> findByProjectId(Integer projectId);
+
+  Set<ProjectUserMapping> findByUserId(String userId);
 }

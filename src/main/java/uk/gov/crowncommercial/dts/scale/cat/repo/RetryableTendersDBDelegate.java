@@ -225,6 +225,11 @@ public class RetryableTendersDBDelegate {
   public Set<ProjectUserMapping> findProjectUserMappingByProjectId(final Integer projectId) {
     return projectUserMappingRepo.findByProjectId(projectId);
   }
+
+  @TendersDBRetryable
+  public Set<ProjectUserMapping> findProjectUserMappingByUserId(final String userId) {
+    return projectUserMappingRepo.findByUserId(userId);
+  }
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.
