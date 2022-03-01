@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentCalculationService;
 
 @Service
 @RequiredArgsConstructor
@@ -348,8 +349,7 @@ public class AssessmentService {
           .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
     }
 
-    // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
-    // in the request
+    // If overwriteRequirements flag true, remove AssessmentSelections not in request
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
       var newList = new HashSet<AssessmentSelection>();
       assessment.getAssessmentSelections().forEach(as -> {
