@@ -40,8 +40,8 @@ public class AssessmentEntity {
   @JoinColumn(name = "assessment_id")
   Set<AssessmentDimensionWeighting> dimensionWeightings;
 
-  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-  @JoinColumn(name = "assessment_id")
+  @OneToMany(mappedBy = "assessment", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
+      orphanRemoval = true)
   Set<AssessmentSelection> assessmentSelections;
 
   @Embedded

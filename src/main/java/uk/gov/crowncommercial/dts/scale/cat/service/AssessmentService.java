@@ -341,7 +341,17 @@ public class AssessmentService {
       throw new ValidationException("Sum of all Dimension Weightings cannot exceed 100%");
     }
 
+    retryableTendersDBDelegate.save(dimensionWeighting);
+
+    if (dimensionRequirement.getRequirements() != null) {
+      dimensionRequirement.getRequirements().stream()
+          .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
+    }
+
+
+
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
+      var newList = new HashSet<AssessmentSelection>();
       assessment.getAssessmentSelections().forEach(as -> {
         var match = dimensionRequirement.getRequirements().stream().filter(
             dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()))
@@ -349,17 +359,17 @@ public class AssessmentService {
         if (match.isEmpty()) {
           log.debug(">>>> REMOVE ASSESSMENT SELECTION: " + as.getId() + ", REQ: "
               + +as.getRequirementTaxon().getRequirement().getId());
-          retryableTendersDBDelegate.delete(as);
+          // retryableTendersDBDelegate.delete(as);
+          // as.setAssessment(null);
+          // assessment.getAssessmentSelections().remove(as);
+
+        } else {
+          newList.add(as);
         }
       });
-
-    }
-
-    retryableTendersDBDelegate.save(dimensionWeighting);
-
-    if (dimensionRequirement.getRequirements() != null) {
-      dimensionRequirement.getRequirements().stream()
-          .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
+      assessment.getAssessmentSelections().clear();
+      assessment.getAssessmentSelections().addAll(newList);
+      // retryableTendersDBDelegate.save(assessment);
     }
 
     return dimensionId;
@@ -556,42 +566,47 @@ public class AssessmentService {
 
     var dimension = selection.getDimension();
 
-    // Build AssessmentSelectionDetails
-    if (requirement.getValues() != null) {
-      selection.setAssessmentSelectionDetails(requirement.getValues().stream().map(c -> {
-        var asd = new AssessmentSelectionDetail();
-        asd.setAssessmentSelection(selection);
-        var dimensionSubmissionType = dimension.getDimensionSubmissionTypes().stream()
-            .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
-            .orElseThrow(() -> new ValidationException(
-                format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
-        asd.setDimensionSubmissionType(dimensionSubmissionType);
-        asd.setTimestamps(createTimestamps(principal));
-
-        var criteriaSelectionType = CriteriaSelectionType
-            .fromValue(dimensionSubmissionType.getSelectionType().toLowerCase());
-
-        switch (criteriaSelectionType) {
-          case SELECT:
-          case MULTISELECT:
-            var validValue = getValidValueByName(dimension, c.getValue());
-            asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
-            break;
-          case INTEGER:
-            asd.setRequirementValue(new BigDecimal(c.getValue()));
-            break;
-          default:
-            throw new ValidationException(
-                format(ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, criteriaSelectionType));
-        }
-
-        log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
-            + ", for criterion " + asd.getDimensionSubmissionType().getSubmissionType().getCode()
-            + " and selection " + asd.getAssessmentSelection().getId());
-
-        return asd;
-      }).collect(Collectors.toSet()));
+    if (selection.getAssessmentSelectionDetails() == null) {
+      selection.setAssessmentSelectionDetails(new HashSet<>());
+    } else {
+      selection.getAssessmentSelectionDetails().clear();
     }
+
+    var assessmentSelectionDetails = requirement.getValues().stream().map(c -> {
+      var asd = new AssessmentSelectionDetail();
+      asd.setAssessmentSelection(selection);
+      var dimensionSubmissionType = dimension.getDimensionSubmissionTypes().stream()
+          .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
+          .orElseThrow(() -> new ValidationException(
+              format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
+      asd.setDimensionSubmissionType(dimensionSubmissionType);
+      asd.setTimestamps(createTimestamps(principal));
+
+      var criteriaSelectionType =
+          CriteriaSelectionType.fromValue(dimensionSubmissionType.getSelectionType().toLowerCase());
+
+      switch (criteriaSelectionType) {
+        case SELECT:
+        case MULTISELECT:
+          var validValue = getValidValueByName(dimension, c.getValue());
+          asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
+          break;
+        case INTEGER:
+          asd.setRequirementValue(new BigDecimal(c.getValue()));
+          break;
+        default:
+          throw new ValidationException(
+              format(ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, criteriaSelectionType));
+      }
+
+      log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
+          + ", for criterion " + asd.getDimensionSubmissionType().getSubmissionType().getCode()
+          + " and selection " + asd.getAssessmentSelection().getId());
+
+      return asd;
+    }).collect(Collectors.toSet());
+
+    selection.getAssessmentSelectionDetails().addAll(assessmentSelectionDetails);
 
     return selection;
   }

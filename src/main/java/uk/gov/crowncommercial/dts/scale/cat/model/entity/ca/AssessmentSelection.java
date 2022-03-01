@@ -37,7 +37,8 @@ public class AssessmentSelection {
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon requirementTaxon;
 
-  @OneToMany(mappedBy = "assessmentSelection", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OneToMany(mappedBy = "assessmentSelection", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
+      orphanRemoval = true)
   Set<AssessmentSelectionDetail> assessmentSelectionDetails;
 
   @Column(name = "weighting_pct")
