@@ -17,7 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@EqualsAndHashCode(exclude = "assessment")
+@EqualsAndHashCode(exclude = {"assessment", "dimension", "requirementTaxon"})
 public class AssessmentSelection {
 
   @Id
@@ -25,19 +25,19 @@ public class AssessmentSelection {
   @Column(name = "assessment_selection_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.EAGER)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_id")
   AssessmentEntity assessment;
 
-  @ManyToOne(fetch = FetchType.EAGER)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "dimension_id")
   DimensionEntity dimension;
 
-  @ManyToOne(fetch = FetchType.EAGER)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon requirementTaxon;
 
-  @OneToMany(mappedBy = "assessmentSelection", fetch = FetchType.EAGER, cascade = CascadeType.ALL,
+  @OneToMany(mappedBy = "assessmentSelection", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
       orphanRemoval = true)
   Set<AssessmentSelectionDetail> assessmentSelectionDetails;
 

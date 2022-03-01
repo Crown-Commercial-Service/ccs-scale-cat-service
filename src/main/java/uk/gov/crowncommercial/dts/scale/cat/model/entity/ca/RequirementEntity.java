@@ -24,13 +24,13 @@ public class RequirementEntity {
   @Column(name = "requirement_id")
   Integer id;
 
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "requirement_taxon_id")
   Set<RequirementTaxon> requirementTaxons;
 
   @Column(name = "group_requirement")
   private Boolean groupRequirement;
-  
+
   @Column(name = "requirement_name")
   private String name;
 

@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -56,6 +57,7 @@ public class AssessmentService {
    * @param toolId internal database Assessment Tool id
    * @return
    */
+  @Transactional
   public List<DimensionDefinition> getDimensions(final Integer toolId) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
@@ -99,6 +101,7 @@ public class AssessmentService {
    * @param eventType
    * @return assessmentId for the newly created assessment
    */
+  @Transactional
   public Integer createEmptyAssessment(final String caNumber, final String lotNumber,
       final DefineEventType eventType, final String principal) {
 
@@ -123,6 +126,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Integer createAssessment(final Assessment assessment, final String principal) {
 
     log.debug("Create Assessment");
@@ -186,6 +190,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public List<AssessmentSummary> getAssessmentsForUser(final String principal) {
     var assessments = retryableTendersDBDelegate.findAssessmentsForUser(principal);
 
@@ -205,6 +210,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Assessment getAssessment(final Integer assessmentId, final String principal) {
 
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId).orElseThrow(
@@ -292,6 +298,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Integer updateDimension(final Integer assessmentId, final Integer dimensionId,
       final DimensionRequirement dimensionRequirement, final String principal) {
 
@@ -343,6 +350,25 @@ public class AssessmentService {
           .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
     }
 
+    // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
+    // in the request
+    if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
+      var newList = new HashSet<AssessmentSelection>();
+      assessment.getAssessmentSelections().forEach(as -> {
+        var match = dimensionRequirement.getRequirements().stream().filter(
+            dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()))
+            .findAny();
+        if (match.isEmpty()) {
+          log.debug("Remove AssessmentSelection: " + as.getId() + ", Requirement: "
+              + +as.getRequirementTaxon().getRequirement().getId());
+        } else {
+          newList.add(as);
+        }
+      });
+      assessment.getAssessmentSelections().clear();
+      assessment.getAssessmentSelections().addAll(newList);
+    }
+
     return dimensionId;
   }
 
@@ -363,6 +389,7 @@ public class AssessmentService {
    * @param principal
    * @return
    */
+  @Transactional
   public Integer updateRequirement(final Integer assessmentId, final Integer dimensionId,
       final Requirement requirement, final String principal) {
 
@@ -536,42 +563,47 @@ public class AssessmentService {
 
     var dimension = selection.getDimension();
 
-    // Build AssessmentSelectionDetails
-    if (requirement.getValues() != null) {
-      selection.setAssessmentSelectionDetails(requirement.getValues().stream().map(c -> {
-        var asd = new AssessmentSelectionDetail();
-        asd.setAssessmentSelection(selection);
-        var dimensionSubmissionType = dimension.getDimensionSubmissionTypes().stream()
-            .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
-            .orElseThrow(() -> new ValidationException(
-                format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
-        asd.setDimensionSubmissionType(dimensionSubmissionType);
-        asd.setTimestamps(createTimestamps(principal));
-
-        var criteriaSelectionType = CriteriaSelectionType
-            .fromValue(dimensionSubmissionType.getSelectionType().toLowerCase());
-
-        switch (criteriaSelectionType) {
-          case SELECT:
-          case MULTISELECT:
-            var validValue = getValidValueByName(dimension, c.getValue());
-            asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
-            break;
-          case INTEGER:
-            asd.setRequirementValue(new BigDecimal(c.getValue()));
-            break;
-          default:
-            throw new ValidationException(
-                format(ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, criteriaSelectionType));
-        }
-
-        log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
-            + ", for criterion " + asd.getDimensionSubmissionType().getSubmissionType().getCode()
-            + " and selection " + asd.getAssessmentSelection().getId());
-
-        return asd;
-      }).collect(Collectors.toSet()));
+    if (selection.getAssessmentSelectionDetails() == null) {
+      selection.setAssessmentSelectionDetails(new HashSet<>());
+    } else {
+      selection.getAssessmentSelectionDetails().clear();
     }
+
+    var assessmentSelectionDetails = requirement.getValues().stream().map(c -> {
+      var asd = new AssessmentSelectionDetail();
+      asd.setAssessmentSelection(selection);
+      var dimensionSubmissionType = dimension.getDimensionSubmissionTypes().stream()
+          .filter(ast -> ast.getSubmissionType().getCode().equals(c.getCriterionId())).findFirst()
+          .orElseThrow(() -> new ValidationException(
+              format(ERR_FMT_SUBMISSION_TYPE_NOT_FOUND, c.getCriterionId())));
+      asd.setDimensionSubmissionType(dimensionSubmissionType);
+      asd.setTimestamps(createTimestamps(principal));
+
+      var criteriaSelectionType =
+          CriteriaSelectionType.fromValue(dimensionSubmissionType.getSelectionType().toLowerCase());
+
+      switch (criteriaSelectionType) {
+        case SELECT:
+        case MULTISELECT:
+          var validValue = getValidValueByName(dimension, c.getValue());
+          asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
+          break;
+        case INTEGER:
+          asd.setRequirementValue(new BigDecimal(c.getValue()));
+          break;
+        default:
+          throw new ValidationException(
+              format(ERR_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND, criteriaSelectionType));
+      }
+
+      log.debug("Built assessmentSelectionDetail " + asd.getRequirementValidValueCode()
+          + ", for criterion " + asd.getDimensionSubmissionType().getSubmissionType().getCode()
+          + " and selection " + asd.getAssessmentSelection().getId());
+
+      return asd;
+    }).collect(Collectors.toSet());
+
+    selection.getAssessmentSelectionDetails().addAll(assessmentSelectionDetails);
 
     return selection;
   }
