@@ -348,8 +348,8 @@ public class AssessmentService {
           .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
     }
 
-
-
+    // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
+    // in the request
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
       var newList = new HashSet<AssessmentSelection>();
       assessment.getAssessmentSelections().forEach(as -> {
@@ -357,19 +357,14 @@ public class AssessmentService {
             dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()))
             .findAny();
         if (match.isEmpty()) {
-          log.debug(">>>> REMOVE ASSESSMENT SELECTION: " + as.getId() + ", REQ: "
+          log.debug("Remove AssessmentSelection: " + as.getId() + ", Requirement: "
               + +as.getRequirementTaxon().getRequirement().getId());
-          // retryableTendersDBDelegate.delete(as);
-          // as.setAssessment(null);
-          // assessment.getAssessmentSelections().remove(as);
-
         } else {
           newList.add(as);
         }
       });
       assessment.getAssessmentSelections().clear();
       assessment.getAssessmentSelections().addAll(newList);
-      // retryableTendersDBDelegate.save(assessment);
     }
 
     return dimensionId;

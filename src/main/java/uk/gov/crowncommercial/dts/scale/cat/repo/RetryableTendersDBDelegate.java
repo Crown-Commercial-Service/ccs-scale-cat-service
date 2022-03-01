@@ -164,17 +164,6 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public void delete(final AssessmentSelection assessmentSelection) {
-    System.out.println("DELETE BY ID: " + assessmentSelection.getId());
-    assessmentSelectionRepo.deleteById(assessmentSelection.getId());
-  }
-
-  @TendersDBRetryable
-  public void deleteAll(final Set<AssessmentSelection> assessmentSelections) {
-    assessmentSelectionRepo.deleteAll(assessmentSelections);
-  }
-
-  @TendersDBRetryable
   public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
       final Integer toolId) {
     return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
