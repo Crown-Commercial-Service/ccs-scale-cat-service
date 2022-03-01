@@ -16,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = {"dimensionWeightings", "assessmentSelections"})
 public class AssessmentEntity {
 
   @Id
@@ -30,18 +31,17 @@ public class AssessmentEntity {
   @Enumerated(EnumType.STRING)
   private AssessmentStatusEntity status;
 
-  @ManyToOne(fetch = FetchType.EAGER)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assessment_tool_id")
   AssessmentTool tool;
 
-  @EqualsAndHashCode.Exclude
   @ToString.Exclude
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "assessment_id")
   Set<AssessmentDimensionWeighting> dimensionWeightings;
 
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-  @JoinColumn(name = "assessment_id")
+  @OneToMany(mappedBy = "assessment", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
+      orphanRemoval = true)
   Set<AssessmentSelection> assessmentSelections;
 
   @Embedded
