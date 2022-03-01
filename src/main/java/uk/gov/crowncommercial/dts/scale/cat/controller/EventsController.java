@@ -85,15 +85,16 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping("/{eventID}/suppliers")
-  public OrganizationReference addSupplier(@PathVariable("procID") final Integer procId,
+  public Collection<OrganizationReference> addSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
-      @RequestBody final OrganizationReference organizationReference,
+      @RequestBody final Collection<OrganizationReference> organizationReferences,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.addSupplier(procId, eventId, organizationReference);
+    return procurementEventService.addSuppliers(procId, eventId, organizationReferences, false,
+        principal);
   }
 
   @DeleteMapping("/{eventID}/suppliers/{supplierID}")
@@ -105,7 +106,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteSupplier invoked on behalf of principal: {}", principal);
 
-    procurementEventService.deleteSupplier(procId, eventId, supplierId);
+    procurementEventService.deleteSupplier(procId, eventId, supplierId, principal);
 
     return "OK";
   }

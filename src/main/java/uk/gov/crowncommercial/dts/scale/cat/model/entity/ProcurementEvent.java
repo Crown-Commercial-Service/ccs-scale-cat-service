@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
+import java.util.Set;
 import javax.persistence.*;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
@@ -32,6 +33,10 @@ public class ProcurementEvent {
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "project_id")
   ProcurementProject project;
+
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "event_id")
+  Set<SupplierSelection> capabilityAssessmentSuppliers;
 
   @Column(name = "ocds_authority_name")
   String ocdsAuthorityName;
