@@ -355,14 +355,13 @@ public class AssessmentService {
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
       var newList = new HashSet<AssessmentSelection>();
       assessment.getAssessmentSelections().forEach(as -> {
-        var match = dimensionRequirement.getRequirements().stream().filter(
-            dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()))
-            .findAny();
-        if (match.isEmpty()) {
+        var match = dimensionRequirement.getRequirements().stream().anyMatch(
+            dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()));
+        if (match) {
+          newList.add(as);
+        } else {
           log.debug("Remove AssessmentSelection: " + as.getId() + ", Requirement: "
               + +as.getRequirementTaxon().getRequirement().getId());
-        } else {
-          newList.add(as);
         }
       });
       assessment.getAssessmentSelections().clear();
