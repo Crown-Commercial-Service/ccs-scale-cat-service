@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
 import java.time.OffsetDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -16,6 +17,7 @@ public class Message {
   SenderUser senderUser;
   String subject;
   String body;
+  @JsonProperty("object")
   MessageObject messageObject;
   Integer folderId;
   String direction;

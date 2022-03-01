@@ -331,32 +331,4 @@ class EventsControllerTest {
 
     verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
   }
-
-  @Test
-  void getMessages_200_OK() throws Exception {
-
-    var  messageRequestInfo = MessageRequestInfo.builder()
-            .procId(PROC_PROJECT_ID)
-            .eventId(EVENT_ID)
-            .messageDirection(MessageDirection.RECEIVED)
-            .messageRead(MessageRead.ALL)
-            .messageSort(MessageSort.DATE)
-            .messageSortOrder(MessageSortOrder.ASCENDING)
-            .page(1)
-            .pageSize(20)
-            .principal(PRINCIPAL)
-            .build();
-
-    when(procurementEventService.getMessagesSummary(messageRequestInfo))
-            .thenReturn(new MessageSummary());
-
-    mockMvc
-        .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH, PROC_PROJECT_ID,EVENT_ID)
-                .with(validJwtReqPostProcessor)
-            .accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON));
-
-    verify(procurementEventService, times(1)).getMessagesSummary(messageRequestInfo);
-  }
 }

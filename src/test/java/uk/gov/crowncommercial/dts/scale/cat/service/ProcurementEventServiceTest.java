@@ -5,10 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.*;
 
 import java.time.Duration;
-import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
@@ -871,63 +869,6 @@ class ProcurementEventServiceTest {
     assertEquals(TenderStatus.ACTIVE, response.stream().findFirst().get().getStatus());
     assertEquals(RFX_ID, response.stream().findFirst().get().getEventSupportId());
     assertEquals("ocds-b5fd17-2", response.stream().findFirst().get().getId());
-  }
-
-  @Test
-  void testGetMessages() throws Exception {
-
-    var event = new ProcurementEvent();
-    event.setExternalReferenceId(RFX_ID);
-    var message =  builder()
-            .messageId(1)
-            .sender(Sender.builder().build())
-            .sendDate(OffsetDateTime.now())
-            .senderUser(SenderUser.builder().build())
-            .subject("Test message")
-            .direction(MessageDirection.RECEIVED.getValue())
-            .receiverList(ReceiverList.builder()
-                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build()))
-                    .build())
-            .build();
-
-    var messagesResponse = MessagesResponse.builder()
-            .messageList(MessageList.builder()
-                    .message(Arrays.asList(message))
-                    .build())
-            .returnCode(0)
-            .returnMessage("")
-            .returnedRecords(100)
-            .startAt(1)
-            .totRecords(120)
-            .build();
-    var  messageRequestInfo = MessageRequestInfo.builder()
-            .procId(PROC_PROJECT_ID)
-            .eventId(PROC_EVENT_ID)
-            .messageDirection(MessageDirection.RECEIVED)
-            .messageRead(MessageRead.ALL)
-            .messageSort(MessageSort.DATE)
-            .messageSortOrder(MessageSortOrder.ASCENDING)
-            .page(1)
-            .pageSize(20)
-            .principal(PRINCIPAL)
-            .build();
-  var user =   SubUser.builder().userId(JAGGAER_USER_ID).build();
-
-    // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL))
-            .thenReturn(Optional.of(user));
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID,1))
-            .thenReturn(messagesResponse);
-
-    var response = procurementEventService.getMessagesSummary(messageRequestInfo);
-
-    // Verify
-    assertNotNull( response);
-    assertEquals(1, response.getMessages().size());
-    assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
-
   }
 
 }

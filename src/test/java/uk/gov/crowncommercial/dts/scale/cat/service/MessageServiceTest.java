@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
+import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.builder;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,21 +34,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageOCDS;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
@@ -57,9 +55,9 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  * Message Service layer tests
  */
-@SpringBootTest(classes = { MessageService.class, ModelMapper.class,
+@SpringBootTest(classes = { MessageService.class, JaggaerAPIConfig.class,ModelMapper.class,
 		ApplicationFlagsConfig.class }, webEnvironment = WebEnvironment.NONE)
-@EnableConfigurationProperties(RPAAPIConfig.class)
+@EnableConfigurationProperties({JaggaerAPIConfig.class,RPAAPIConfig.class})
 @ContextConfiguration(classes = { ObjectMapper.class })
 @Slf4j
 class MessageServiceTest {
@@ -120,7 +118,7 @@ class MessageServiceTest {
 	@MockBean
 	private AgreementsService agreementsService;
 
-	@Autowired
+	@MockBean
 	private MessageService messageService;
 
 	private RPAGenericData request = new RPAGenericData();
@@ -358,6 +356,63 @@ class MessageServiceTest {
 		var RPAGenericData = new RPAGenericData().setProcessInput(writeValueAsString);
 		String writeValueAsString1 = new ObjectMapper().writeValueAsString(RPAGenericData);
 		log.info(writeValueAsString1);
+
+	}
+
+	@Test
+	void testGetMessages() throws Exception {
+
+		var event = new ProcurementEvent();
+		event.setExternalReferenceId(RFX_ID);
+		var message =  builder()
+				.messageId(1)
+				.sender(Sender.builder().build())
+				.sendDate(OffsetDateTime.now())
+				.senderUser(SenderUser.builder().build())
+				.subject("Test message")
+				.direction(MessageDirection.RECEIVED.getValue())
+				.receiverList(ReceiverList.builder()
+						.receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build()))
+						.build())
+				.build();
+
+		var messagesResponse = MessagesResponse.builder()
+				.messageList(MessageList.builder()
+						.message(Arrays.asList(message))
+						.build())
+				.returnCode(0)
+				.returnMessage("")
+				.returnedRecords(100)
+				.startAt(1)
+				.totRecords(120)
+				.build();
+		var  messageRequestInfo = MessageRequestInfo.builder()
+				.procId(PROC_PROJECT_ID)
+				.eventId(EVENT_OCID)
+				.messageDirection(MessageDirection.RECEIVED)
+				.messageRead(MessageRead.ALL)
+				.messageSort(MessageSort.DATE)
+				.messageSortOrder(MessageSortOrder.ASCENDING)
+				.page(1)
+				.pageSize(20)
+				.principal(PRINCIPAL)
+				.build();
+		var user =   SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+		// Mock behaviours
+		when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL))
+				.thenReturn(Optional.of(user));
+		when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+				.thenReturn(event);
+		when(jaggaerService.getMessages(RFX_ID,1))
+				.thenReturn(messagesResponse);
+
+		var response = messageService.getMessagesSummary(messageRequestInfo);
+
+		// Verify
+		assertNotNull( response);
+		assertEquals(1, response.getMessages().size());
+		assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
 
 	}
 }

@@ -55,8 +55,6 @@ public class ProcurementEventService {
       "Organisation id '%s' not found in organisation mappings";
   private static final Set<String> ASSESSMENT_EVENT_TYPES =
       Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
-  private static final String LINK_URI = "/messages/";
-  private static final int RECORDS_PER_REQUEST = 100;
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
 
@@ -75,8 +73,6 @@ public class ProcurementEventService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerService jaggaerService;
 
-  private final Comparator<Message> comparator = Comparator.comparing(o -> o.getSender().getName());
-
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -91,7 +87,7 @@ public class ProcurementEventService {
    * @return
    */
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
-      Boolean downselectedSuppliers, final String principal) {
+      Boolean downSelectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -103,7 +99,7 @@ public class ProcurementEventService {
     var eventTypeValue = ofNullable(createEventNonOCDS.getEventType())
         .map(DefineEventType::getValue).orElseGet(ViewEventType.TBD::getValue);
 
-    downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
+    downSelectedSuppliers = requireNonNullElse(downSelectedSuppliers, Boolean.FALSE);
 
     var eventName = requireNonNullElse(createEventOCDS.getTitle(),
         getDefaultEventTitle(project.getProjectName(), eventTypeValue));
@@ -160,7 +156,7 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var event = eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
-        .downSelectedSuppliers(downselectedSuppliers).ocdsAuthorityName(ocdsAuthority)
+        .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).build();
 
@@ -618,176 +614,4 @@ public class ProcurementEventService {
     }).collect(Collectors.toList());
   }
 
-  /**
-   * Returns a list of message summary at the event level.
-   * @param messageRequestInfo
-   * @return
-   */
-  public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
-
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
-            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-    var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
-            messageRequestInfo.getEventId());
-
-    Predicate<Message> directionPredicate = message ->
-            (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
-            || message.getDirection().equals(messageRequestInfo.getMessageDirection().getValue()));
-    Predicate<Receiver> receiverPredicate = receiver ->  MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
-            || ((MessageRead.READ.equals(messageRequestInfo.getMessageRead())
-            && receiver.getId().equals(jaggaerUserId)));
-
-    var messagesResponse = jaggaerService.getMessages(event.getExternalReferenceId(),
-            messageRequestInfo.getPage());
-    var allMessages = messagesResponse.getMessageList().getMessage();
-
-    /**
-     * Make first request to jagger
-     * if total records are more than  > 100 (Jaggaer returns max 100 order by date desc) and messageSort is TITLE/AUTHOR
-     * then make sub-sequent call to get total records, then messageSort it
-     * send only requested no of records
-     *
-     *
-     */
-    if (MessageSort.AUTHOR.equals(messageRequestInfo.getMessageSort())
-            || MessageSort.TITLE.equals(messageRequestInfo.getMessageSort())) {
-      var totalRecords = messagesResponse.getTotRecords();
-      var pages = Math.round(totalRecords / (double) RECORDS_PER_REQUEST);
-      for (int i = 2; i < pages; i++) {
-        var response = jaggaerService.getMessages(event.getExternalReferenceId(), (i * RECORDS_PER_REQUEST));
-        allMessages.addAll(response.getMessageList().getMessage());
-      }
-    }
-    //Apply all predicates on messages
-    var messages = allMessages.stream()
-            .filter(directionPredicate)
-            .filter(message -> message.getReceiverList().getReceiver().stream()
-                    .anyMatch(receiverPredicate))
-            .collect(Collectors.toList());
-
-    // sort messages
-    sortMessages(messages, messageRequestInfo.getMessageSort(),messageRequestInfo.getMessageSortOrder());
-
-    //convert to message summary
-    return new MessageSummary()
-            .counts(new MessageTotals()
-                    .messagesTotal(messagesResponse.getTotRecords())
-                    .pageTotal(messagesResponse.getReturnedRecords()))
-            .links(getLinks(messages, messageRequestInfo.getPageSize()))
-            .messages(getCatMessages(messages, messageRequestInfo.getMessageRead()
-                    ,jaggaerUserId,messageRequestInfo.getPageSize()));
-  }
-
-  /**
-   * Method to get details of message
-   * @param procId
-   * @param eventId
-   * @param messageId
-   * @param principal
-   * @return Message Summary
-   */
-  public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
-          final Integer procId, final String eventId, final String messageId, final String principal) {
-
-    userProfileService.resolveBuyerUserByEmail(principal)
-            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-    validationService.validateProjectAndEventIds(procId, eventId);
-    var respose = jaggaerService.getMessage(messageId);
-
-    return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
-            .OCDS(getMessageOCDS(respose) )
-            .nonOCDS(getMessageNonOCDS(respose));
-  }
-
-  private List<CaTMessage> getCatMessages(final List<Message> messages,
-                                          final MessageRead messageRead, final String jaggaerUserId, Integer pageSize) {
-    return messages.stream().map(message ->  convertMessageToCatMessage(message,messageRead,jaggaerUserId))
-            .limit(pageSize)
-            .collect(Collectors.toList());
-  }
-
-  private CaTMessage convertMessageToCatMessage(final Message message,
-                                                final MessageRead messageRead,
-                                                final String jaggaerUserId) {
-    Predicate<Receiver> receiverPredicate = receiver -> MessageRead.READ.equals(messageRead)
-            && receiver.getId().equals(jaggaerUserId);
-    Boolean read;
-    if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals( message.getDirection())) {
-      read = Boolean.FALSE;
-    } else {
-      read = message.getReceiverList().getReceiver().stream()
-              .anyMatch(receiverPredicate);
-    }
-
-    return new CaTMessage().OCDS(getCaTMessageOCDS(message))
-            .nonOCDS(new CaTMessageNonOCDS()
-                    .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
-                    .read(read)
-            );
-  }
-
-  private CaTMessageOCDS getCaTMessageOCDS(Message message) {
-    return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-            .title(message.getSubject())
-            .author(message.getSender().getName());
-  }
-  private MessageOCDS getMessageOCDS(Message message) {
-    return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-            .title(message.getSubject())
-            .author(message.getSender().getName());
-  }
-
-  private MessageNonOCDS getMessageNonOCDS(Message message) {
-  //TODO fix generated class with correct classes
-    return new MessageNonOCDS()
-            .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
-//            .attachments(  message.getAttachmentList().getAttachment().stream()
-//            .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
-            .readList(message.getReadingList().getReading().stream()
-                    .map(reading -> new ContactPoint1().name(reading.getReaderName()))
-                    .collect(Collectors.toList()))
-            .receiverList(message.getReceiverList().getReceiver().stream()
-                    .map(receiver ->  new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
-                    .collect(Collectors.toList()))
-            ;
-
-  }
-
-  private Links1 getLinks(final List<Message> messages, final Integer pageSize) {
-    var message = messages.iterator().next();
-    return new Links1().first(URI.create(LINK_URI+(message.getMessageId())))
-            .self(URI.create(LINK_URI+(message.getMessageId())))
-            .prev(URI.create(LINK_URI+(message.getMessageId())))
-            .next(URI.create(LINK_URI+(message.getMessageId()+1)))
-            .last(URI.create(LINK_URI+(message.getMessageId()+pageSize)));
-  }
-
-  private void sortMessages(List<Message> messages, final MessageSort messageSort, MessageSortOrder messageSortOrder) {
-    switch (messageSort) {
-      case TITLE: {
-        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
-          Collections.sort(messages, Comparator.comparing(Message::getSubject));
-        } else {
-          Collections.sort(messages, Comparator.comparing(Message::getSubject).reversed());
-        }
-        break;
-      }
-      case AUTHOR: {
-        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
-          messages.sort(Comparator.comparing(o -> o.getSender().getName()));
-        } else {
-          Collections.sort(messages, comparator.reversed());
-        }
-        break;
-      }
-      default: {
-        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
-          Collections.sort(messages, Comparator.comparing(Message::getSendDate));
-        } else {
-          Collections.sort(messages, Comparator.comparing(Message::getSendDate).reversed());
-        }
-        break;
-      }
-    }
-  }
 }

@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
@@ -170,47 +169,5 @@ public class EventsController extends AbstractRestController {
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
 
     return new StringValueResponse("OK");
-  }
-
-  @GetMapping("/{eventID}/messages")
-  public MessageSummary getMessages(
-          @PathVariable("procID") final Integer procId,
-          @PathVariable("eventID") final String eventId,
-          @RequestParam(name = "message-direction",required = false, defaultValue = "RECEIVED") MessageDirection messageDirection,
-          @RequestParam(name = "message-read",required = false, defaultValue = "ALL") MessageRead messageRead,
-          @RequestParam(name = "sort",required = false, defaultValue = "DATE") MessageSort messageSort,
-          @RequestParam(name = "sort-order",required = false , defaultValue = "ASCENDING") MessageSortOrder messageSortOrder,
-          @RequestParam(name = "page",required = false, defaultValue = "1") Integer page,
-          @RequestParam(name = "page-size",required = false, defaultValue = "20") Integer pageSize,
-          final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
-    log.info("getMessagesSummaries invoked on behalf of principal: {}", principal);
-
-    var  messageRequestInfo = MessageRequestInfo.builder()
-            .procId(procId)
-            .eventId(eventId)
-            .messageDirection(messageDirection)
-            .messageRead(messageRead)
-            .messageSort(messageSort)
-            .messageSortOrder(messageSortOrder)
-            .page(page)
-            .pageSize(pageSize)
-            .principal(principal)
-            .build();
-    return procurementEventService.getMessagesSummary(messageRequestInfo);
-  }
-
-  @GetMapping("/{eventID}/messages/{messageId}")
-  public Message getMessage(
-          @PathVariable("procID") final Integer procId,
-          @PathVariable("eventID") final String eventId,
-          @PathVariable("messageId") final String messageId,
-          final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
-    log.info("getMessagesSummaries invoked on behalf of principal: {}", principal);
-
-    return procurementEventService.getMessageSummary(procId, eventId,messageId, principal);
   }
 }
