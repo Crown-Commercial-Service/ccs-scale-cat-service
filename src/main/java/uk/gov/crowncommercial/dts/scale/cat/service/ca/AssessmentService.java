@@ -45,6 +45,10 @@ public class AssessmentService {
       "Dimension Select Type [%s] not found";
   private static final String ERR_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
       "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
+  private static final String ERR_FMT_DIMENSION_WEIGHT_RANGE =
+      "Dimension weighting must fall within allowed min and max values for the Dimension [%d-%d]";
+  private static final String ERR_FMT_DIMENSION_WEIGHT_TOTAL =
+      "Sum of all Dimension Weightings cannot exceed 100%";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -339,10 +343,9 @@ public class AssessmentService {
         .compareTo(dimension.getMinWeightingPercentage()) < 0
         || dimensionWeighting.getWeightingPercentage()
             .compareTo(dimension.getMaxWeightingPercentage()) > 0) {
-      throw new ValidationException(format(
-          "Dimension weighting must fall within allowed min and max values for the Dimension [%d-%d]",
-          dimension.getMinWeightingPercentage().intValue(),
-          dimension.getMaxWeightingPercentage().intValue()));
+      throw new ValidationException(
+          format(ERR_FMT_DIMENSION_WEIGHT_RANGE, dimension.getMinWeightingPercentage().intValue(),
+              dimension.getMaxWeightingPercentage().intValue()));
     }
 
     // Verify the total weightings of all dimensions <= 100
@@ -351,7 +354,7 @@ public class AssessmentService {
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
     if (totalDimensionWeightings.intValue() > 100) {
-      throw new ValidationException("Sum of all Dimension Weightings cannot exceed 100%");
+      throw new ValidationException(ERR_FMT_DIMENSION_WEIGHT_TOTAL);
     }
 
     retryableTendersDBDelegate.save(dimensionWeighting);
