@@ -25,7 +25,7 @@ public class MessageController extends AbstractRestController {
 
   private final MessageService messageService;
 
-  @PostMapping()
+  @PostMapping
   public ResponseEntity<String> createAndRespondMessage(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final Message messageRequest,
@@ -39,7 +39,7 @@ public class MessageController extends AbstractRestController {
     return ResponseEntity
         .ok(messageService.sendOrRespondMessage(principal, procId, eventId, messageRequest));
   }
-  @GetMapping()
+  @GetMapping
   public MessageSummary getMessages(
           @PathVariable("proc-id") final Integer procId,
           @PathVariable("event-id") final String eventId,
