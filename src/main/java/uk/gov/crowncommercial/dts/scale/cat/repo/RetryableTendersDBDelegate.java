@@ -34,6 +34,7 @@ public class RetryableTendersDBDelegate {
   private final CalculationBaseRepo calculationBaseRepo;
   private final AssessmentResultRepo assessmentResultRepo;
   private final ProjectUserMappingRepo projectUserMappingRepo;
+  private final SupplierSelectionRepo supplierSelectionRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -208,17 +209,17 @@ public class RetryableTendersDBDelegate {
 
   @TendersDBRetryable
   public void delete(final ProjectUserMapping projectUserMapping) {
-     projectUserMappingRepo.delete(projectUserMapping);
+    projectUserMappingRepo.delete(projectUserMapping);
   }
 
   @TendersDBRetryable
   public void deleteAll(final List<ProjectUserMapping> projectUserMappings) {
-     projectUserMappingRepo.deleteAll(projectUserMappings);
+    projectUserMappingRepo.deleteAll(projectUserMappings);
   }
 
   @TendersDBRetryable
   public void saveAll(final List<ProjectUserMapping> projectUserMappings) {
-     projectUserMappingRepo.saveAll(projectUserMappings);
+    projectUserMappingRepo.saveAll(projectUserMappings);
   }
 
   @TendersDBRetryable
@@ -230,6 +231,12 @@ public class RetryableTendersDBDelegate {
   public Set<ProjectUserMapping> findProjectUserMappingByUserId(final String userId) {
     return projectUserMappingRepo.findByUserId(userId);
   }
+
+  @TendersDBRetryable
+  public void delete(final SupplierSelection supplierSelection) {
+    supplierSelectionRepo.delete(supplierSelection);
+  }
+
   /**
    * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
    * re-throw. Note - signature must match retried method.
