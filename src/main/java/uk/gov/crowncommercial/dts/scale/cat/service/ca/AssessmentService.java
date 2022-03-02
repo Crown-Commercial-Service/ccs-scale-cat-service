@@ -334,6 +334,17 @@ public class AssessmentService {
           buildAssessmentDimensionWeighting(assessment, dimension, dimensionRequirement, principal);
     }
 
+    // Verify that the dimension weighting falls within the allowed range
+    if (dimensionWeighting.getWeightingPercentage()
+        .compareTo(dimension.getMinWeightingPercentage()) < 0
+        || dimensionWeighting.getWeightingPercentage()
+            .compareTo(dimension.getMaxWeightingPercentage()) > 0) {
+      throw new ValidationException(format(
+          "Dimension weighting must fall within allowed min and max values for the Dimension [%d-%d]",
+          dimension.getMinWeightingPercentage().intValue(),
+          dimension.getMaxWeightingPercentage().intValue()));
+    }
+
     // Verify the total weightings of all dimensions <= 100
     var totalDimensionWeightings = assessment.getDimensionWeightings().stream()
         .map(AssessmentDimensionWeighting::getWeightingPercentage)
