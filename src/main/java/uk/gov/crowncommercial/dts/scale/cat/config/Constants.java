@@ -9,7 +9,7 @@ import lombok.experimental.UtilityClass;
 public class Constants {
 
   // Remote service response related
-  public static final String JAGGAER_GET_OK_MSG = "OK";
+  public static final String OK_MSG = "OK";
 
   // Security related
   public static final String JWT_CLAIM_SUBJECT = "sub";

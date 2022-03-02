@@ -51,6 +51,8 @@ public class AssessmentService {
       "Sum of all Dimension Weightings cannot exceed 100%";
   private static final String ERR_MSG_NOT_AUTHORISED =
       "User is not authorised to update this Assessment";
+  private static final String ERR_MSG_FMT_ASSESSMENT_SELECTION_NOT_FOUND =
+      "Assessment Selection for Assessment [%d], Dimension [%d] and Requirement [%d] not found";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -453,6 +455,36 @@ public class AssessmentService {
     retryableTendersDBDelegate.save(selection);
 
     return requirement.getRequirementId();
+  }
+
+  /**
+   * Delete an AssessmentSelection (requirement instance).
+   *
+   * @param assessmentId
+   * @param dimensionId
+   * @param requirementId
+   * @param principal
+   */
+  @Transactional
+  public void deleteRequirement(final Integer assessmentId, final Integer dimensionId,
+      final Integer requirementId, final String principal) {
+
+    var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
+        .orElseThrow(() -> new ResourceNotFoundException(
+            format(ERR_MSG_FMT_ASSESSMENT_SELECTION_NOT_FOUND, assessmentId)));
+
+    var assessmentSelection =
+        assessment.getAssessmentSelections().stream()
+            .filter(s -> s.getDimension().getId().equals(dimensionId)
+                && s.getRequirementTaxon().getRequirement().getId().equals(requirementId))
+            .findFirst();
+
+    if (assessmentSelection.isPresent()) {
+      assessment.getAssessmentSelections().remove(assessmentSelection.get());
+    } else {
+      throw new ResourceNotFoundException(format(ERR_MSG_FMT_ASSESSMENT_SELECTION_NOT_FOUND,
+          assessmentId, dimensionId, requirementId));
+    }
   }
 
   /**
