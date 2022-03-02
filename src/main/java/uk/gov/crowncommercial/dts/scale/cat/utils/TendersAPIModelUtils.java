@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -57,6 +58,17 @@ public class TendersAPIModelUtils {
     supportID.ifPresent(eventSummary::setEventSupportId);
     assessmentId.ifPresent(eventSummary::setAssessmentId);
 
+    return eventSummary;
+  }
+  public EventSummary buildEventSummary(final String eventId, final String name,
+                                        final Optional<String> supportID, final ViewEventType type,
+                                        final TenderStatus status,
+                                        final ReleaseTag stage, final Optional<Integer> assessmentId,
+                                        final OffsetDateTime publishDate, final OffsetDateTime closedDate) {
+    var eventSummary = buildEventSummary(eventId,name,supportID,type,status,stage,assessmentId);
+    eventSummary.tenderPeriod(new Period1()
+            .startDate(publishDate)
+            .endDate(closedDate));
     return eventSummary;
   }
 
