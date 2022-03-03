@@ -63,9 +63,6 @@ public class MessageService {
 
   private static final int RECORDS_PER_REQUEST = 100;
 
-  private final Comparator<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> comparator =
-          Comparator.comparing(o -> o.getSender().getName());
-
   /**
    * Which sends outbound message to all suppliers and single supplier. And also responds supplier
    * messages
@@ -267,11 +264,9 @@ public class MessageService {
 
     /**
      * Make first request to jagger
-     * if total records are more than  > 100 (Jaggaer returns max 100 order by date desc) and messageSort is TITLE/AUTHOR
-     * then make sub-sequent call to get total records, then messageSort it
+     * if total records are more than  > 100 (Jaggaer returns max 100 order by date desc)
+     * and messageSort is TITLE/AUTHOR then make sub-sequent call to get total records, then messageSort it
      * send only requested no of records
-     *
-     *
      */
     if (MessageSort.AUTHOR.equals(messageRequestInfo.getMessageSort())
             || MessageSort.TITLE.equals(messageRequestInfo.getMessageSort())) {
@@ -302,7 +297,8 @@ public class MessageService {
             .messages(getCatMessages(messages, messageRequestInfo.getMessageRead()
                     ,jaggaerUserId,messageRequestInfo.getPageSize()));
   }
-  private Links1 getLinks(final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages, final Integer pageSize) {
+  private Links1 getLinks(final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
+                          final Integer pageSize) {
     var message = messages.iterator().next();
     return new Links1().first(URI.create(LINK_URI+(message.getMessageId())))
             .self(URI.create(LINK_URI+(message.getMessageId())))
@@ -311,33 +307,23 @@ public class MessageService {
             .last(URI.create(LINK_URI+(message.getMessageId()+pageSize)));
   }
 
-  private void sortMessages(List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages, final MessageSort messageSort, MessageSortOrder messageSortOrder) {
+  private void sortMessages(List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
+                            final MessageSort messageSort, MessageSortOrder messageSortOrder) {
+
+    Comparator comparator ;
     switch (messageSort) {
-      case TITLE: {
-        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
-          Collections.sort(messages, Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSubject));
-        } else {
-          Collections.sort(messages, Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSubject).reversed());
-        }
+      case TITLE:
+          comparator = Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSubject);
         break;
-      }
-      case AUTHOR: {
-        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
-          messages.sort(Comparator.comparing(o -> o.getSender().getName()));
-        } else {
-          Collections.sort(messages, comparator.reversed());
-        }
+      case AUTHOR:
+         comparator = Comparator
+                 .comparing(o -> ((uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message)o).getSender().getName());
         break;
-      }
-      default: {
-        if (MessageSortOrder.ASCENDING.equals(messageSortOrder)) {
-          Collections.sort(messages, Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSendDate));
-        } else {
-          Collections.sort(messages, Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSendDate).reversed());
-        }
-        break;
-      }
+      default:
+          comparator = Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSendDate);
     }
+
+    Collections.sort(messages, MessageSortOrder.ASCENDING.equals(messageSortOrder) ?comparator:comparator.reversed());
   }
 
 

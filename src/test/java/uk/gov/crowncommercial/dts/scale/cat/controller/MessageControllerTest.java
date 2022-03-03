@@ -72,7 +72,7 @@ class MessageControllerTest {
                 .thenReturn(new MessageSummary());
 
         mockMvc
-                .perform(get(EVENTS_PATH + "/{eventID}/"+MESSAGES_PATH, PROC_PROJECT_ID,EVENT_ID)
+                .perform(get(EVENTS_PATH + "/{event-id}/"+MESSAGES_PATH, PROC_PROJECT_ID,EVENT_ID)
                         .with(validJwtReqPostProcessor)
                         .accept(APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isOk())
