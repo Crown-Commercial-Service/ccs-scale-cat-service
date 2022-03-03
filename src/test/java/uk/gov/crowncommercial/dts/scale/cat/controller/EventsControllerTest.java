@@ -234,13 +234,15 @@ class EventsControllerTest {
 
     var org = new OrganizationReference();
     org.setId(SUPPLIER_ID);
-    when(procurementEventService.addSupplier(PROC_PROJECT_ID, EVENT_ID, org)).thenReturn(org);
+    when(procurementEventService.addSuppliers(PROC_PROJECT_ID, EVENT_ID, List.of(org), false,
+        PRINCIPAL)).thenReturn(List.of(org));
 
     mockMvc
         .perform(post(EVENTS_PATH + "/{eventID}/suppliers", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(org)))
-        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(SUPPLIER_ID));
+            .content(objectMapper.writeValueAsString(List.of(org))))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(SUPPLIER_ID));
   }
 
   @Test
@@ -251,8 +253,8 @@ class EventsControllerTest {
             SUPPLIER_ID).with(validJwtReqPostProcessor).contentType(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk()).andExpect(content().string("OK"));
 
-    verify(procurementEventService, times(1)).deleteSupplier(PROC_PROJECT_ID, EVENT_ID,
-        SUPPLIER_ID);
+    verify(procurementEventService, times(1)).deleteSupplier(PROC_PROJECT_ID, EVENT_ID, SUPPLIER_ID,
+        PRINCIPAL);
 
   }
 
@@ -327,6 +329,6 @@ class EventsControllerTest {
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID);
+    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
   }
 }

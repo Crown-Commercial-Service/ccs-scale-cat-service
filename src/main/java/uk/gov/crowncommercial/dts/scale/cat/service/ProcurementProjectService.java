@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -22,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
@@ -147,6 +150,9 @@ public class ProcurementProjectService {
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
 
+    //add current user to project
+    addProjectUserMapping(jaggaerUserId, procurementProject,principal);
+
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
         procurementProject.getId(), eventSummary.getId(), projectTitle,
         conclaveUserOrg.getIdentifier().getLegalName());
@@ -222,9 +228,10 @@ public class ProcurementProjectService {
    * email recipients on the rfx.
    *
    * @param projectId CCS project id
+   * @param principal
    * @return Collection of project team members
    */
-  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId) {
+  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId, final String principal) {
 
     // Get Project (project team)
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -253,6 +260,10 @@ public class ProcurementProjectService {
     combinedIds.addAll(teamIds);
     combinedIds.addAll(emailRecipientIds);
 
+    //update user
+    //TODO Add only valid users
+    updateProjectUserMapping(dbProject, teamIds,principal);
+
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
         .map(i -> getTeamMember(i, teamIds, emailRecipientIds, projectOwner.getId()))
@@ -265,10 +276,11 @@ public class ProcurementProjectService {
    * @param projectId CCS project id
    * @param userId Conclave user id (email)
    * @param updateTeamMember contains details of type of update to perform
+   * @param principal
    * @return Team Member details
    */
   public TeamMember addProjectTeamMember(final Integer projectId, final String userId,
-      final UpdateTeamMember updateTeamMember) {
+                                         final UpdateTeamMember updateTeamMember, final String principal) {
 
     log.debug("Add/update Project Team");
 
@@ -318,7 +330,8 @@ public class ProcurementProjectService {
         throw new IllegalArgumentException("Unknown Team Member Update Type");
     }
 
-    return getProjectTeamMembers(projectId).stream()
+      addProjectUserMapping(jaggaerUserId,dbProject,principal);
+    return getProjectTeamMembers(projectId, principal).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
 
@@ -334,17 +347,11 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    var projectListResponse = jaggaerService.getProjectList(jaggaerUserId);
-    if (!CollectionUtils.isEmpty(projectListResponse.getProjectList().getProject())) {
-      // get list of project ids and query database once
-      Set<String> projectsFromJaggaer = projectListResponse.getProjectList().getProject().stream()
-          .map(project -> project.getTender().getTenderCode()).collect(Collectors.toSet());
+    var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId);
 
-      var dbProjects = retryableTendersDBDelegate.findByExternalProjectIdIn(projectsFromJaggaer);
-
-      return projectListResponse.getProjectList().getProject().stream()
-          .map(
-              (final Project project) -> convertProjectToProjectPackageSummary(project, dbProjects))
+    if (!CollectionUtils.isEmpty(projects)) {
+      return projects.stream()
+          .map(project -> convertProjectToProjectPackageSummary(project))
           .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
     }
     return Collections.emptyList();
@@ -356,42 +363,100 @@ public class ProcurementProjectService {
    * @param project the project
    * @return ProjectPackageSummary
    */
-  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
-      final Project project, final List<ProcurementProject> projects) {
+  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(final ProjectUserMapping project) {
     // Get Project from database
-    var dbProject = getProject(projects, project.getTender().getTenderCode());
     var projectPackageSummary = new ProjectPackageSummary();
-    if (dbProject.isPresent()) {
-      var dbEvent = getCurrentEvent(dbProject.get());
-
+      var agreementNo = project.getProject().getCaNumber();
+      var dbEvent = getCurrentEvent(project.getProject());
+      // TODO make single call instead of 2
+      try {
+        var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+        var lotDetails = agreementsService.getLotDetails(agreementNo, project.getProject().getLotNumber());
+        projectPackageSummary.setAgreementName(agreementDetails.getName());
+        projectPackageSummary.setLotName(lotDetails.getName());
+      }catch (Exception e) {
+        //ignore for the moment, replace when single method to get all data from agreement service
+      }
       // TODO no value for Uri
       // projectPackageSummary.setUri(getProjectUri);
-      projectPackageSummary.setProjectId(dbProject.get().getId());
-      projectPackageSummary.setProjectName(dbProject.get().getProjectName());
+      projectPackageSummary.setAgreementId(project.getProject().getCaNumber());
+      projectPackageSummary.setLotId(project.getProject().getLotNumber());
+      projectPackageSummary.setProjectId(project.getProject().getId());
+      projectPackageSummary.setProjectName(project.getProject().getProjectName());
 
-      /*
-       * TODO which field from Jaaggaer
-       * TenderStatus.fromValue(project.getTender().getTenderStatusLabel().substring(PROJECT_STATE.
-       * length()))
-       */
+      var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+      var status = findTenderStatus(dbEvent,exportRfxResponse);
       var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-          ViewEventType.fromValue(dbEvent.getEventType()), null, ReleaseTag.TENDER,
-          Optional.empty());
+          ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
+              Optional.ofNullable(dbEvent.getAssessmentId()));
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
-    }
-    // TODO ignoring at the moment. What to do with these?
-    log.warn("Unable to project details in database for project id  {}, so ignoring.",
-        project.getTender().getTenderCode());
-    return Optional.empty();
+
   }
 
-  private Optional<ProcurementProject> getProject(final List<ProcurementProject> projects,
-      final String externalReferenceId) {
-    return projects.stream().filter(
-        procurementProject -> procurementProject.getExternalProjectId().equals(externalReferenceId))
-        .findFirst();
+  private TenderStatus findTenderStatus(ProcurementEvent dbEvent, ExportRfxResponse exportRfxResponse) {
+    var statusCode = exportRfxResponse.getRfxSetting().getStatusCode();
+    String eventType = dbEvent.getEventType();
+    // This logic is based on attached excel of SCAT-3671
+    //TODO: some scenarios are have ambiguous and need to check end to this logic
+    //TODO: can it be better?
+    switch (statusCode) {
+      case 0:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+          case "FC":
+          case "DA":
+            return TenderStatus.PLANNING;
+        }
+        break;
+      case 300:
+      case 400:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+            return TenderStatus.PLANNING;
+          case "FC":
+          case "DA":
+            return TenderStatus.ACTIVE;
+        }
+        break;
+      case 500:
+        switch(eventType) {
+          case "FC":
+          case "DA":
+            return TenderStatus.COMPLETE;
+        }
+        break;
+      case 800:
+        switch(eventType) {
+          case "FC":
+          case "DA":
+            return TenderStatus.ACTIVE;
+        }
+        break;
+      case 950:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+            return TenderStatus.PLANNING;
+          case "FC":
+          case "DA":
+            return TenderStatus.COMPLETE;
+        }
+        break;
+      case 1500:
+        switch(eventType) {
+          case "RFI":
+          case "EOI":
+          case "FC":
+          case "DA":
+            return TenderStatus.CANCELLED;
+        }
+        break;
+    }
+  return null;
   }
 
   /**
@@ -465,5 +530,45 @@ public class ProcurementProjectService {
     }
     throw new UnhandledEdgeCaseException(
         "Could not find current event for project " + project.getId());
+  }
+
+
+  private void addProjectUserMapping(final String jaggaerUserId,
+                                     final ProcurementProject project, final String principal) {
+    var projectUserMapping = ProjectUserMapping.builder()
+            .project(project)
+            .userId(jaggaerUserId)
+            .timestamps(createTimestamps(principal))
+            .build();
+    retryableTendersDBDelegate.save(projectUserMapping);
+  }
+
+  private void updateProjectUserMapping(final ProcurementProject project, final Set<String> teamIds,
+                                        final String principal) {
+    var existingMappings = retryableTendersDBDelegate.
+            findProjectUserMappingByProjectId(project.getId());
+    var addMappingList = new ArrayList<ProjectUserMapping>();
+
+    //Add any users, who do not exists in database
+    for (String teamId: teamIds) {
+      var userMapping = existingMappings.stream()
+              .filter(projectUserMapping -> projectUserMapping.getUserId().equals(teamId)).findFirst();
+      if (!userMapping.isPresent()) {
+        addMappingList.add( ProjectUserMapping.builder()
+                .project(project)
+                .userId(teamId)
+                .timestamps(createTimestamps(principal))
+                .build());
+      }
+    }
+  // remove any users, who are not in users list
+    var deleteMappingList = existingMappings
+            .stream().filter(projectUserMapping -> !teamIds.contains(projectUserMapping.getUserId()))
+            .collect(Collectors.toList());
+
+    if (!CollectionUtils.isEmpty(addMappingList))
+      retryableTendersDBDelegate.saveAll(addMappingList);
+    if (!CollectionUtils.isEmpty(deleteMappingList))
+        retryableTendersDBDelegate.deleteAll(deleteMappingList);
   }
 }

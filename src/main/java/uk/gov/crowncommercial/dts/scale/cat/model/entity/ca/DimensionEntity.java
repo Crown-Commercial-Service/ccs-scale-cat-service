@@ -28,19 +28,19 @@ public class DimensionEntity {
   private String name;
 
   @EqualsAndHashCode.Exclude
-  @ManyToMany(fetch = FetchType.EAGER)
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "assessment_taxon_dimensions", joinColumns = @JoinColumn(name = "dimension_id"),
       inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
   Set<AssessmentTaxon> assessmentTaxons;
 
   @EqualsAndHashCode.Exclude
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "dimension_id")
   Set<DimensionValidValue> validValues;
 
   @EqualsAndHashCode.Exclude
   @ToString.Exclude
-  @OneToMany(fetch = FetchType.EAGER)
+  @OneToMany(fetch = FetchType.LAZY)
   @JoinColumn(name = "dimension_id")
   Set<DimensionSubmissionType> dimensionSubmissionTypes;
 
@@ -52,9 +52,6 @@ public class DimensionEntity {
 
   @Column(name = "max_weighting_pct")
   private BigDecimal maxWeightingPercentage;
-
-  @Column(name = "selection_type")
-  private String selectionType;
 
   @Column(name = "min_allowed_value")
   private BigDecimal minAllowedValue;

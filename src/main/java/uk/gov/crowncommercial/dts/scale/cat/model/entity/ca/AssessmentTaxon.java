@@ -33,19 +33,19 @@ public class AssessmentTaxon {
   AssessmentTaxon parentTaxon;
 
   @EqualsAndHashCode.Exclude
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "parent_assessment_taxon_id")
   Set<AssessmentTaxon> assessmentTaxons;
 
   @EqualsAndHashCode.Exclude
-  @ManyToMany(fetch = FetchType.EAGER)
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "assessment_taxon_dimensions",
       joinColumns = @JoinColumn(name = "assessment_taxon_id"),
       inverseJoinColumns = @JoinColumn(name = "dimension_id"))
   Set<DimensionEntity> dimensions;
 
   @EqualsAndHashCode.Exclude
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "assessment_taxon_id")
   Set<RequirementTaxon> requirementTaxons;
 

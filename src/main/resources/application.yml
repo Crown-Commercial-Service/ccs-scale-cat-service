@@ -106,7 +106,7 @@ config:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_445
+        templateId: itt_9899
       getBuyerCompanyProfile:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
@@ -122,7 +122,20 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
-
+        
+      rpa: 
+#       baseUrl: "SET IN ENV"
+        accessUrl: /api/a/automation
+        authenticationUrl: /api/token
+#       userName: "SET IN ENV"
+#       userPwd: "SET IN ENV"
+#       buyerPwd: "SET IN ENV"
+        source: CaT
+        sourceId: 1
+        profileName: ITTEvaluation
+        timeoutDuration: 60
+        requestTimeout: 3600000
+        
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"

@@ -33,6 +33,8 @@ public class RetryableTendersDBDelegate {
   private final AssessmentTaxonRepo assessmentTaxonRepo;
   private final CalculationBaseRepo calculationBaseRepo;
   private final AssessmentResultRepo assessmentResultRepo;
+  private final ProjectUserMappingRepo projectUserMappingRepo;
+  private final SupplierSelectionRepo supplierSelectionRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -198,6 +200,41 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public AssessmentResult save(final AssessmentResult assessmentResult) {
     return assessmentResultRepo.save(assessmentResult);
+  }
+
+  @TendersDBRetryable
+  public ProjectUserMapping save(final ProjectUserMapping projectUserMapping) {
+    return projectUserMappingRepo.save(projectUserMapping);
+  }
+
+  @TendersDBRetryable
+  public void delete(final ProjectUserMapping projectUserMapping) {
+    projectUserMappingRepo.delete(projectUserMapping);
+  }
+
+  @TendersDBRetryable
+  public void deleteAll(final List<ProjectUserMapping> projectUserMappings) {
+    projectUserMappingRepo.deleteAll(projectUserMappings);
+  }
+
+  @TendersDBRetryable
+  public void saveAll(final List<ProjectUserMapping> projectUserMappings) {
+    projectUserMappingRepo.saveAll(projectUserMappings);
+  }
+
+  @TendersDBRetryable
+  public Set<ProjectUserMapping> findProjectUserMappingByProjectId(final Integer projectId) {
+    return projectUserMappingRepo.findByProjectId(projectId);
+  }
+
+  @TendersDBRetryable
+  public Set<ProjectUserMapping> findProjectUserMappingByUserId(final String userId) {
+    return projectUserMappingRepo.findByUserId(userId);
+  }
+
+  @TendersDBRetryable
+  public void delete(final SupplierSelection supplierSelection) {
+    supplierSelectionRepo.delete(supplierSelection);
   }
 
   /**

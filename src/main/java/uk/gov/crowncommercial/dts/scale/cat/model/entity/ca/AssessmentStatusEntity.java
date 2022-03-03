@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
-public enum AssessmentStatus {
+public enum AssessmentStatusEntity {
 
-  ACTIVE, COMPLETED
+  ACTIVE, COMPLETE
 }

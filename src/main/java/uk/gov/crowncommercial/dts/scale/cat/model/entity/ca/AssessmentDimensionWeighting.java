@@ -33,7 +33,7 @@ public class AssessmentDimensionWeighting {
   AssessmentEntity assessment;
 
   @EqualsAndHashCode.Exclude
-  @ManyToMany(fetch = FetchType.EAGER)
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "assessment_dimension_submission_types",
       joinColumns = @JoinColumn(name = "assessment_dimension_weighting_id"),
       inverseJoinColumns = @JoinColumn(name = "dimension_submission_type_id"))
