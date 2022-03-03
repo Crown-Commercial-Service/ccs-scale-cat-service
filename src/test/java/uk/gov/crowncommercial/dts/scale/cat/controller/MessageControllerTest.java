@@ -17,13 +17,17 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
+import java.net.URI;
+import java.util.Arrays;
+
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * Controller tests
@@ -69,14 +73,24 @@ class MessageControllerTest {
                 .build();
 
         when(messageService.getMessagesSummary(messageRequestInfo))
-                .thenReturn(new MessageSummary());
+                .thenReturn(new MessageSummary()
+                        .messages(Arrays.asList(new CaTMessage()
+                                .OCDS(new CaTMessageOCDS().title("Test").author("Test Author"))
+                                        .nonOCDS(new CaTMessageNonOCDS()
+                                                .read(false).direction(CaTMessageNonOCDS.DirectionEnum.SENT))
+                                ))
+                        .counts(new MessageTotals().pageTotal(10).messagesTotal(100))
+                        .links(new Links1().first(new URI( "/first/"))
+                                .last(new URI( "/last/")).next(new URI( "/next/"))));
 
         mockMvc
                 .perform(get(EVENTS_PATH + "/{event-id}/"+MESSAGES_PATH, PROC_PROJECT_ID,EVENT_ID)
                         .with(validJwtReqPostProcessor)
                         .accept(APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON));
+                .andExpect(content().contentType(APPLICATION_JSON))
+                .andExpect(jsonPath("$.messages[0].ocds.author", is("Test Author")))
+                .andExpect(jsonPath("$.links.next", is("/next/")));
 
         verify(messageService, times(1)).getMessagesSummary(messageRequestInfo);
     }
