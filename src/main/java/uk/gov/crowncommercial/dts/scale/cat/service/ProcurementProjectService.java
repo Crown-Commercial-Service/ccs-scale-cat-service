@@ -389,8 +389,10 @@ public class ProcurementProjectService {
       var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
           ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
-              Optional.ofNullable(dbEvent.getAssessmentId()),exportRfxResponse.getRfxSetting().getPublishDate(),
-              exportRfxResponse.getRfxSetting().getCloseDate());
+              Optional.ofNullable(dbEvent.getAssessmentId()));
+    eventSummary.tenderPeriod(new Period1()
+            .startDate(exportRfxResponse.getRfxSetting().getPublishDate())
+            .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
 
