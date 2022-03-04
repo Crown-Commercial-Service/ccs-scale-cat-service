@@ -156,7 +156,17 @@ public class ProcurementEventService {
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).build();
 
-    var procurementEvent = retryableTendersDBDelegate.save(event);
+    ProcurementEvent procurementEvent;
+
+    // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
+    if (createEventNonOCDS.getEventType() != null
+        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType().name())) {
+      procurementEvent = addSuppliersToTendersDB(event,
+          supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true,
+          principal);
+    } else {
+      procurementEvent = retryableTendersDBDelegate.save(event);
+    }
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
@@ -640,12 +650,13 @@ public class ProcurementEventService {
    * @param event
    * @param supplierOrgMappings
    * @param overwrite
+   * @return
    */
-  private void addSuppliersToTendersDB(final ProcurementEvent event,
+  private ProcurementEvent addSuppliersToTendersDB(final ProcurementEvent event,
       final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite,
       final String principal) {
 
-    if (overwrite) {
+    if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
       event.getCapabilityAssessmentSuppliers().clear();
     }
 
@@ -660,7 +671,7 @@ public class ProcurementEventService {
         event.getCapabilityAssessmentSuppliers().add(selection);
       }
     });
-    retryableTendersDBDelegate.save(event);
+    return retryableTendersDBDelegate.save(event);
   }
 
   /**

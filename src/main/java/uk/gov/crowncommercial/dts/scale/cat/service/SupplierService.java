@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -37,11 +38,30 @@ public class SupplierService {
    */
   public List<Supplier> resolveSuppliers(final String agreementId, final String lotId) {
 
+    var supplierOrgMappings = getSuppliersForLot(agreementId, lotId);
+
+    var supplierExternalIds = supplierOrgMappings.stream()
+        .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
+
+    return supplierExternalIds.stream()
+        .map(id -> Supplier.builder().companyData((CompanyData.builder().id(id)).build()).build())
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Get OrganisationMapping objects matching Suppliers on a given Lot in the Agreements Service.
+   *
+   * @param agreementId
+   * @param lotId
+   * @return
+   */
+  public Set<OrganisationMapping> getSuppliersForLot(final String agreementId, final String lotId) {
+
     // Retrieve and verify AS suppliers
     var lotSuppliers = agreementsService.getLotSuppliers(agreementId, lotId);
     if (isEmpty(lotSuppliers)) {
       log.warn("No Lot Suppliers found in AS for CA: '{}', Lot: '{}'", agreementId, lotId);
-      return Collections.emptyList();
+      return Collections.emptySet();
     }
 
     var supplierOrgIds =
@@ -53,16 +73,11 @@ public class SupplierService {
     if (isEmpty(supplierOrgMappings)) {
       log.warn("No supplier org mappings found in Tenders DB for CA: '{}', Lot: '{}'", agreementId,
           lotId);
-      return Collections.emptyList();
+      return Collections.emptySet();
     }
 
-    var supplierExternalIds = supplierOrgMappings.stream()
-        .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
+    return supplierOrgMappings;
 
-    return supplierExternalIds.stream()
-        .map(id -> Supplier.builder().companyData((CompanyData.builder().id(id)).build()).build())
-        .collect(Collectors.toList());
   }
-
 
 }
