@@ -358,20 +358,20 @@ public class ProcurementProjectService {
   }
 
   /**
-   * Convert project to project package summary
+   * Convert mapping to mapping package summary
    *
-   * @param project the project
+   * @param mapping the mapping
    * @return ProjectPackageSummary
    */
-  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(final ProjectUserMapping project) {
+  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(final ProjectUserMapping mapping) {
     // Get Project from database
     var projectPackageSummary = new ProjectPackageSummary();
-      var agreementNo = project.getProject().getCaNumber();
-      var dbEvent = getCurrentEvent(project.getProject());
+      var agreementNo = mapping.getProject().getCaNumber();
+      var dbEvent = getCurrentEvent(mapping.getProject());
       // TODO make single call instead of 2
       try {
         var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
-        var lotDetails = agreementsService.getLotDetails(agreementNo, project.getProject().getLotNumber());
+        var lotDetails = agreementsService.getLotDetails(agreementNo, mapping.getProject().getLotNumber());
         projectPackageSummary.setAgreementName(agreementDetails.getName());
         projectPackageSummary.setLotName(lotDetails.getName());
       }catch (Exception e) {
@@ -379,10 +379,10 @@ public class ProcurementProjectService {
       }
       // TODO no value for Uri
       // projectPackageSummary.setUri(getProjectUri);
-      projectPackageSummary.setAgreementId(project.getProject().getCaNumber());
-      projectPackageSummary.setLotId(project.getProject().getLotNumber());
-      projectPackageSummary.setProjectId(project.getProject().getId());
-      projectPackageSummary.setProjectName(project.getProject().getProjectName());
+      projectPackageSummary.setAgreementId(mapping.getProject().getCaNumber());
+      projectPackageSummary.setLotId(mapping.getProject().getLotNumber());
+      projectPackageSummary.setProjectId(mapping.getProject().getId());
+      projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
 
       var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
       var status = findTenderStatus(dbEvent,exportRfxResponse);
@@ -390,6 +390,9 @@ public class ProcurementProjectService {
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
           ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
               Optional.ofNullable(dbEvent.getAssessmentId()));
+    eventSummary.tenderPeriod(new Period1()
+            .startDate(exportRfxResponse.getRfxSetting().getPublishDate())
+            .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
       projectPackageSummary.activeEvent(eventSummary);
       return Optional.of(projectPackageSummary);
 
