@@ -76,6 +76,14 @@ data "aws_ssm_parameter" "jaggaer_rpa_password" {
   name = "/cat/${var.environment}/jaggaer-rpa-password"
 }
 
+data "aws_ssm_parameter" "jaggaer_rpa_encryption_key" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-rpa-encryption-key"
+}
+
+data "aws_ssm_parameter" "jaggaer_rpa_encryption_iv" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-rpa-encryption-iv"
+}
+
 # TEMPORARY - to be replaced by RPA creds management
 data "aws_ssm_parameter" "jaggaer_rpa_buyer_password_temp" {
   name = "/cat/${var.environment}/jaggaer-rpa-buyer-password-temp"
@@ -104,6 +112,10 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.rpa.baseUrl" : data.aws_ssm_parameter.jaggaer_rpa_base_url.value
     "config.external.jaggaer.rpa.user-name" : data.aws_ssm_parameter.jaggaer_rpa_username.value
     "config.external.jaggaer.rpa.user-pwd" : data.aws_ssm_parameter.jaggaer_rpa_password.value
+    "config.external.jaggaer.rpa.encrpytion-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
+    "config.external.jaggaer.rpa.encrpytion-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
+
+    # RPA-TEMP
     "config.external.jaggaer.rpa.buyer-pwd" : data.aws_ssm_parameter.jaggaer_rpa_buyer_password_temp.value
   }
   health_check_timeout = var.healthcheck_timeout
