@@ -427,6 +427,19 @@ public class AssessmentService {
         .orElseThrow(() -> new ResourceNotFoundException(
             String.format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
 
+    // Validate that Requirement is valid for Dimension
+    var match = dimension.getAssessmentTaxons().stream().filter(as -> {
+      var req = as.getRequirementTaxons().stream()
+          .filter(rt -> rt.getRequirement().getId().equals(requirement.getRequirementId()))
+          .findAny();
+      return req.isPresent();
+    }).findAny();
+
+    if (match.isEmpty()) {
+      throw new IllegalArgumentException(format("Requirement [%d] does not exist in Dimension [%d]",
+          requirement.getRequirementId(), dimensionId));
+    }
+
     // Create the AssessmentSelection for the Dimension/Requirement/Assessment if it doesn't exist
     AssessmentSelection selection;
     var response = assessment.getAssessmentSelections().stream()

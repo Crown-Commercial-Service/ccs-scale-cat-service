@@ -86,6 +86,12 @@ public class AssessmentsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createUpdateRequirement invoked on behalf of principal: {}", principal);
 
+    // Requirement id in body is redundant - allow it to be optionally omitted, and use path param
+    if (requirement.getRequirementId() == null) {
+      requirement.setRequirementId(requirementId);
+    }
+
+    // Check in casde it has been supplied, but is not same as path param
     if (!requirement.getRequirementId().equals(requirementId)) {
       throw new ValidationException(
           String.format(ERR_FMT_REQ_IDS_NOT_MATCH, requirement.getRequirementId(), requirementId));
