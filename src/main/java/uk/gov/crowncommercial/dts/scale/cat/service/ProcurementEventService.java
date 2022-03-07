@@ -5,8 +5,11 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+
+import java.net.URI;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -53,6 +57,8 @@ public class ProcurementEventService {
       "Organisation id '%s' not found in organisation mappings";
   private static final Set<String> ASSESSMENT_EVENT_TYPES =
       Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
+  public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -83,7 +89,7 @@ public class ProcurementEventService {
    * @return
    */
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
-      Boolean downselectedSuppliers, final String principal) {
+      Boolean downSelectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -95,7 +101,7 @@ public class ProcurementEventService {
     var eventTypeValue = ofNullable(createEventNonOCDS.getEventType())
         .map(DefineEventType::getValue).orElseGet(ViewEventType.TBD::getValue);
 
-    downselectedSuppliers = requireNonNullElse(downselectedSuppliers, Boolean.FALSE);
+    downSelectedSuppliers = requireNonNullElse(downSelectedSuppliers, Boolean.FALSE);
 
     var eventName = requireNonNullElse(createEventOCDS.getTitle(),
         getDefaultEventTitle(project.getProjectName(), eventTypeValue));
@@ -152,7 +158,7 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var event = eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
-        .downSelectedSuppliers(downselectedSuppliers).ocdsAuthorityName(ocdsAuthority)
+        .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).build();
 
@@ -181,7 +187,7 @@ public class ProcurementEventService {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     var jaggaerBuyerCompanyId =
         userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
 
@@ -590,7 +596,7 @@ public class ProcurementEventService {
       final PublishDates publishDates, final String principal) {
 
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());

@@ -171,5 +171,4 @@ public class EventsController extends AbstractRestController {
 
     return new StringValueResponse("OK");
   }
-
 }
