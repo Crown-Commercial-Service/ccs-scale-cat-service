@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
@@ -91,5 +92,19 @@ public class AssessmentsController extends AbstractRestController {
     }
 
     return assessmentService.updateRequirement(assessmentId, dimensionId, requirement, principal);
+  }
+
+  @DeleteMapping("/{assessment-id}/dimensions/{dimension-id}/requirements/{requirement-id}")
+  public String deleteRequirement(final @PathVariable("assessment-id") Integer assessmentId,
+      final @PathVariable("dimension-id") Integer dimensionId,
+      final @PathVariable("requirement-id") Integer requirementId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteRequirement invoked on behalf of principal: {}", principal);
+
+    assessmentService.deleteRequirement(assessmentId, dimensionId, requirementId, principal);
+
+    return Constants.OK_MSG;
   }
 }

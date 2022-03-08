@@ -82,7 +82,7 @@ public class JaggaerService {
             "Unexpected error updating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
-        || !Constants.JAGGAER_GET_OK_MSG.equals(createRfxResponse.getReturnMessage())) {
+        || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
           createRfxResponse.getReturnMessage());
@@ -208,7 +208,7 @@ public class JaggaerService {
     log.debug("Publish event response: {}", publishRfxResponse);
 
     if (!Objects.equals(0, publishRfxResponse.getReturnCode())
-        || !Constants.JAGGAER_GET_OK_MSG.equals(publishRfxResponse.getReturnMessage())) {
+        || !Constants.OK_MSG.equals(publishRfxResponse.getReturnMessage())) {
       throw new JaggaerApplicationException(publishRfxResponse.getReturnCode(),
           publishRfxResponse.getReturnMessage());
     }
