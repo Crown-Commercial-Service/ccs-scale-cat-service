@@ -355,9 +355,19 @@ public class AssessmentService {
     }
 
     // Verify the total weightings of all dimensions <= 100
-    var totalDimensionWeightings = assessment.getDimensionWeightings().stream()
-        .map(AssessmentDimensionWeighting::getWeightingPercentage)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    var totalDimensionWeightings = assessment.getDimensionWeightings().stream().map(dw -> {
+      if (dw.getDimension().getId().equals(dimensionId)) {
+        return new BigDecimal(dimensionRequirement.getWeighting());
+      } else {
+        return dw.getWeightingPercentage();
+      }
+    }).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    // if we have not persisted the new Dimension yet - add it to the list
+    if (dimensionWeighting.getId() == null) {
+      totalDimensionWeightings =
+          totalDimensionWeightings.add(dimensionWeighting.getWeightingPercentage());
+    }
 
     if (totalDimensionWeightings.intValue() > 100) {
       throw new ValidationException(ERR_MSG_DIMENSION_WEIGHT_TOTAL);
