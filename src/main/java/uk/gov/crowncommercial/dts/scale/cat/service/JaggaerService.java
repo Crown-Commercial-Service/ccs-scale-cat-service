@@ -181,11 +181,13 @@ public class JaggaerService {
           "Get attachment from Jaggaer returned a null response: fileId:" + fileId + ", fileName: "
               + fileName);
     }
-    return new DocumentAttachment(response.getBody(), response.getHeaders().getContentType());
+    return DocumentAttachment.builder().data(response.getBody())
+        .contentType(response.getHeaders().getContentType()).build();
   }
 
   /**
    * publish Rfx
+   *
    * @param event
    * @param publishDates
    * @param jaggaerUserId
@@ -216,6 +218,7 @@ public class JaggaerService {
 
   /**
    * Get projects list from Jaggaer
+   *
    * @return ProjectList
    * @param jaggaerUserId
    */
