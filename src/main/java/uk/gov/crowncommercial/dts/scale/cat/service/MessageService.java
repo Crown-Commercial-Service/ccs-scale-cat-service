@@ -285,6 +285,9 @@ public class MessageService {
                     .anyMatch(receiverPredicate))))
             .collect(Collectors.toList());
 
+    if (messages.isEmpty()) {
+      return new MessageSummary();
+    }
     // sort messages
     sortMessages(messages, messageRequestInfo.getMessageSort(),messageRequestInfo.getMessageSortOrder());
 
