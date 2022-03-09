@@ -178,9 +178,7 @@ class ValidationServiceTest {
 
   @Test
   void testValidateUpdateEventAssessment_assSupTgtInvalidForDAA() {
-    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10)
-        .eventType(DefineEventType.DAA);
-
+    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10);
     var procurementEvent = ProcurementEvent.builder().eventType("DAA").build();
 
     var ex = assertThrows(ValidationException.class, () -> validationService
