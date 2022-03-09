@@ -1,13 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
-
 import java.net.URI;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.collections.CollectionUtils;
-import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -195,13 +193,13 @@ public class MessageService {
    * @param apiResponse
    * @return rpa api status
    */
+  @SuppressWarnings("unchecked")
   @SneakyThrows
   private String validateResponse(final RPAAPIResponse apiResponse) {
     var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
-    var json = new JSONObject(convertedObject);
-    var jsonArray = json.getJSONArray("AutomationOutputData");
-    var automationData =
-        objectMapper.readValue(jsonArray.get(1).toString(), AutomationOutputData.class);
+    var maps = (List<Map<String, String>>) convertedObject.get("AutomationOutputData");
+    var automationData = objectMapper.readValue(objectMapper.writeValueAsString(maps.get(1)),
+        AutomationOutputData.class);
 
     var status = automationData.getCviewDictionary().getStatus();
     log.info("Status of RPA API call : {} ", status);
@@ -241,98 +239,103 @@ public class MessageService {
 
   /**
    * Returns a list of message summary at the event level.
+   *
    * @param messageRequestInfo
    * @return
    */
   public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
-            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+    var jaggaerUserId = userProfileService
+        .resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
-            messageRequestInfo.getEventId());
+        messageRequestInfo.getEventId());
 
-    Predicate<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> directionPredicate = message ->
-            (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
-                    || message.getDirection().equals(messageRequestInfo.getMessageDirection().getValue()));
-    Predicate<Receiver> receiverPredicate = receiver ->  MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
-            || ((MessageRead.READ.equals(messageRequestInfo.getMessageRead())
-            && receiver.getId().equals(jaggaerUserId)));
+    Predicate<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> directionPredicate =
+        message -> (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
+            || message.getDirection().equals(messageRequestInfo.getMessageDirection().getValue()));
+    Predicate<Receiver> receiverPredicate =
+        receiver -> MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
+            || MessageRead.READ.equals(messageRequestInfo.getMessageRead())
+                && receiver.getId().equals(jaggaerUserId);
 
-    var messagesResponse = jaggaerService.getMessages(event.getExternalReferenceId(),
-            messageRequestInfo.getPage());
+    var messagesResponse =
+        jaggaerService.getMessages(event.getExternalReferenceId(), messageRequestInfo.getPage());
     var allMessages = messagesResponse.getMessageList().getMessage();
 
     /**
-     * Make first request to jagger
-     * if total records are more than  > 100 (Jaggaer returns max 100 order by date desc)
-     * and messageSort is TITLE/AUTHOR then make sub-sequent call to get total records, then messageSort it
-     * send only requested no of records
+     * Make first request to jagger if total records are more than > 100 (Jaggaer returns max 100
+     * order by date desc) and messageSort is TITLE/AUTHOR then make sub-sequent call to get total
+     * records, then messageSort it send only requested no of records
      */
     if (MessageSort.AUTHOR.equals(messageRequestInfo.getMessageSort())
-            || MessageSort.TITLE.equals(messageRequestInfo.getMessageSort())) {
+        || MessageSort.TITLE.equals(messageRequestInfo.getMessageSort())) {
       var totalRecords = messagesResponse.getTotRecords();
       var pages = Math.round(totalRecords / (double) RECORDS_PER_REQUEST);
-      for (int i = 2; i < pages; i++) {
-        var response = jaggaerService.getMessages(event.getExternalReferenceId(), (i * RECORDS_PER_REQUEST));
+      for (var i = 2; i < pages; i++) {
+        var response =
+            jaggaerService.getMessages(event.getExternalReferenceId(), i * RECORDS_PER_REQUEST);
         allMessages.addAll(response.getMessageList().getMessage());
       }
     }
-    //Apply all predicates on messages
-    var messages = allMessages.stream()
-            .filter(directionPredicate)
-            .filter(message -> (isEmpty(message.getReceiverList().getReceiver())
-                    || ( message.getReceiverList().getReceiver().stream()
-                    .anyMatch(receiverPredicate))))
-            .collect(Collectors.toList());
+    // Apply all predicates on messages
+    var messages = allMessages.stream().filter(directionPredicate)
+        .filter(message -> (isEmpty(message.getReceiverList().getReceiver())
+            || message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate)))
+        .collect(Collectors.toList());
 
     if (messages.isEmpty()) {
       return new MessageSummary();
     }
     // sort messages
-    sortMessages(messages, messageRequestInfo.getMessageSort(),messageRequestInfo.getMessageSortOrder());
+    sortMessages(messages, messageRequestInfo.getMessageSort(),
+        messageRequestInfo.getMessageSortOrder());
 
-    //convert to message summary
+    // convert to message summary
     return new MessageSummary()
-            .counts(new MessageTotals()
-                    .messagesTotal(messagesResponse.getTotRecords())
-                    .pageTotal(messagesResponse.getReturnedRecords()))
-            .links(getLinks(messages, messageRequestInfo.getPageSize()))
-            .messages(getCatMessages(messages, messageRequestInfo.getMessageRead()
-                    ,jaggaerUserId,messageRequestInfo.getPageSize()));
+        .counts(new MessageTotals().messagesTotal(messagesResponse.getTotRecords())
+            .pageTotal(messagesResponse.getReturnedRecords()))
+        .links(getLinks(messages, messageRequestInfo.getPageSize()))
+        .messages(getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
+            messageRequestInfo.getPageSize()));
   }
-  private Links1 getLinks(final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
-                          final Integer pageSize) {
+
+  private Links1 getLinks(
+      final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
+      final Integer pageSize) {
     var message = messages.iterator().next();
-    return new Links1().first(URI.create(LINK_URI+(message.getMessageId())))
-            .self(URI.create(LINK_URI+(message.getMessageId())))
-            .prev(URI.create(LINK_URI+(message.getMessageId())))
-            .next(URI.create(LINK_URI+(message.getMessageId()+1)))
-            .last(URI.create(LINK_URI+(message.getMessageId()+pageSize)));
+    return new Links1().first(URI.create(LINK_URI + message.getMessageId()))
+        .self(URI.create(LINK_URI + message.getMessageId()))
+        .prev(URI.create(LINK_URI + message.getMessageId()))
+        .next(URI.create(LINK_URI + (message.getMessageId() + 1)))
+        .last(URI.create(LINK_URI + (message.getMessageId() + pageSize)));
   }
 
-  private void sortMessages(List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
-                            final MessageSort messageSort, MessageSortOrder messageSortOrder) {
+  private void sortMessages(
+      final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
+      final MessageSort messageSort, final MessageSortOrder messageSortOrder) {
 
-    Comparator comparator ;
+    Comparator<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> comparator;
     switch (messageSort) {
       case TITLE:
-          comparator = Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSubject);
+        comparator = Comparator
+            .comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSubject);
         break;
       case AUTHOR:
-         comparator = Comparator
-                 .comparing(o -> ((uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message)o).getSender().getName());
+        comparator = Comparator.comparing(msg -> msg.getSender().getName());
         break;
       default:
-          comparator = Comparator.comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSendDate);
+        comparator = Comparator
+            .comparing(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message::getSendDate);
     }
 
-    Collections.sort(messages, MessageSortOrder.ASCENDING.equals(messageSortOrder) ?comparator:comparator.reversed());
+    Collections.sort(messages,
+        MessageSortOrder.ASCENDING.equals(messageSortOrder) ? comparator : comparator.reversed());
   }
-
-
 
   /**
    * Method to get details of message
+   *
    * @param procId
    * @param eventId
    * @param messageId
@@ -340,69 +343,66 @@ public class MessageService {
    * @return Message Summary
    */
   public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
-          final Integer procId, final String eventId, final String messageId, final String principal) {
+      final Integer procId, final String eventId, final String messageId, final String principal) {
 
     userProfileService.resolveBuyerUserByEmail(principal)
-            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     validationService.validateProjectAndEventIds(procId, eventId);
     var reponse = jaggaerService.getMessage(messageId);
 
     return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
-            .OCDS(getMessageOCDS(reponse) )
-            .nonOCDS(getMessageNonOCDS(reponse));
+        .OCDS(getMessageOCDS(reponse)).nonOCDS(getMessageNonOCDS(reponse));
   }
 
   private List<CaTMessage> getCatMessages(
-          final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
-          final MessageRead messageRead, final String jaggaerUserId, final Integer pageSize) {
-    return messages.stream().map(message ->  convertMessageToCatMessage(message,messageRead,jaggaerUserId))
-            .limit(pageSize)
-            .collect(Collectors.toList());
+      final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
+      final MessageRead messageRead, final String jaggaerUserId, final Integer pageSize) {
+    return messages.stream()
+        .map(message -> convertMessageToCatMessage(message, messageRead, jaggaerUserId))
+        .limit(pageSize).collect(Collectors.toList());
   }
 
   private CaTMessage convertMessageToCatMessage(
-          final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message,
-          final MessageRead messageRead, final String jaggaerUserId) {
+      final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message,
+      final MessageRead messageRead, final String jaggaerUserId) {
 
-    final Predicate<Receiver> receiverPredicate = receiver -> MessageRead.READ.equals(messageRead)
-            && receiver.getId().equals(jaggaerUserId);
+    final Predicate<Receiver> receiverPredicate =
+        receiver -> MessageRead.READ.equals(messageRead) && receiver.getId().equals(jaggaerUserId);
     Boolean read;
-    if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals( message.getDirection())) {
+    if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals(message.getDirection())) {
       read = Boolean.FALSE;
     } else {
-      read = message.getReceiverList().getReceiver().stream()
-              .anyMatch(receiverPredicate);
+      read = message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate);
     }
 
-    return new CaTMessage().OCDS(getCaTMessageOCDS(message))
-            .nonOCDS(new CaTMessageNonOCDS()
-                    .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
-                    .read(read)
-            );
+    return new CaTMessage().OCDS(getCaTMessageOCDS(message)).nonOCDS(new CaTMessageNonOCDS()
+        .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection())).read(read));
   }
 
-  private CaTMessageOCDS getCaTMessageOCDS(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
+  private CaTMessageOCDS getCaTMessageOCDS(
+      final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-            .title(message.getSubject())
-            .author(message.getSender().getName());
-  }
-  private MessageOCDS getMessageOCDS(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
-    return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-            .title(message.getSubject())
-            .author(message.getSender().getName());
+        .title(message.getSubject()).author(message.getSender().getName());
   }
 
-  private MessageNonOCDS getMessageNonOCDS(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
-    //TODO fix generated class with correct classes
+  private MessageOCDS getMessageOCDS(
+      final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
+    return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
+        .title(message.getSubject()).author(message.getSender().getName());
+  }
+
+  private MessageNonOCDS getMessageNonOCDS(
+      final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
+    // TODO fix generated class with correct classes
     return new MessageNonOCDS()
-            .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
-//            .attachments(  message.getAttachmentList().getAttachment().stream()
-//            .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
-            .readList(message.getReadingList().getReading().stream()
-                    .map(reading -> new ContactPoint1().name(reading.getReaderName()))
-                    .collect(Collectors.toList()))
-            .receiverList(message.getReceiverList().getReceiver().stream()
-                    .map(receiver ->  new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
-                    .collect(Collectors.toList()));
+        .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
+        // .attachments( message.getAttachmentList().getAttachment().stream()
+        // .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
+        .readList(message.getReadingList().getReading().stream()
+            .map(reading -> new ContactPoint1().name(reading.getReaderName()))
+            .collect(Collectors.toList()))
+        .receiverList(message.getReceiverList().getReceiver().stream().map(
+            receiver -> new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
+            .collect(Collectors.toList()));
   }
 }
