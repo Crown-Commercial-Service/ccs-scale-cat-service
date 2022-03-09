@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
+import org.springframework.http.MediaType;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -23,4 +24,7 @@ public class Constants {
 
   public static final int WEBCLIENT_DEFAULT_RETRIES = 3;
   public static final int WEBCLIENT_DEFAULT_DELAY = 2;
+
+  public static final MediaType MEDIA_TYPE_ODT =
+      MediaType.parseMediaType("application/vnd.oasis.opendocument.text");
 }

@@ -13,7 +13,6 @@ import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -28,8 +27,10 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -47,7 +48,6 @@ public class DocGenService {
 
   static final String PLACEHOLDER_ERROR = "«ERROR»";
   static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
-  static final String MEDIA_TYPE_OPEN_DOC_TEXT = "application/vnd.oasis.opendocument.text";
   static final String PROFORMA_FILENAME_FMT = "%s-%s-%s.odt";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
@@ -56,26 +56,27 @@ public class DocGenService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ObjectMapper objectMapper;
   private final ProcurementEventService procurementEventService;
+  private final DocumentTemplateSourceService documentTemplateSourceService;
 
-  // TODO: Replace with document retrieval from central location
-  @Value("classpath:rfi_proforma_template.odt")
-  private Resource rfiODT;
+  public void generateAndUploadProforma(final Integer projectId, final String eventId) {
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var proformaTemplate = documentTemplateSourceService
+        .getEventTypeTemplates(procurementEvent.getEventType()).stream().findFirst()
+        .orElseThrow(() -> new UnhandledEdgeCaseException("No template proformas for event type ["
+            + procurementEvent.getEventType() + "] found"));
 
-  @Value("classpath:eoi_proforma_template.odt")
-  private Resource eoiODT;
+    uploadProforma(procurementEvent, generateProforma(procurementEvent, proformaTemplate));
+  }
 
   @SneakyThrows
-  public void generateProformaDocument(final Integer projectId, final String eventId) {
-
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+  public ByteArrayOutputStream generateProforma(final ProcurementEvent procurementEvent,
+      final Resource proformaTemplate) {
     var eventType = procurementEvent.getEventType();
-    var template = "RFI".equalsIgnoreCase(eventType) ? rfiODT : eoiODT;
-
     var documentTemplate = retryableTendersDBDelegate.findByEventType(eventType)
         .orElseThrow(() -> new TendersDBDataException(
             "Document template for event type [" + eventType + "] not found in DB"));
 
-    final var textODT = TextDocument.loadDocument(template.getInputStream());
+    final var textODT = TextDocument.loadDocument(proformaTemplate.getInputStream());
     final var requestCache = new ConcurrentHashMap<String, Object>();
 
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
@@ -87,14 +88,20 @@ public class DocGenService {
 
     var outputStream = new ByteArrayOutputStream();
     textODT.save(outputStream);
+    return outputStream;
+  }
+
+  private void uploadProforma(final ProcurementEvent procurementEvent,
+      final ByteArrayOutputStream documentOutputStream) {
     var fileName = String.format(PROFORMA_FILENAME_FMT, procurementEvent.getEventID(),
         procurementEvent.getEventType(), procurementEvent.getProject().getProjectName());
 
-    ByteArrayMultipartFile multipartFile =
-        new ByteArrayMultipartFile(outputStream.toByteArray(), fileName, MEDIA_TYPE_OPEN_DOC_TEXT);
+    var multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName,
+        Constants.MEDIA_TYPE_ODT.toString());
 
-    procurementEventService.uploadDocument(projectId, eventId, multipartFile,
-        DocumentAudienceType.SUPPLIER, procurementEvent.getEventType() + " pro forma for tender: "
+    procurementEventService.uploadDocument(procurementEvent.getProject().getId(),
+        procurementEvent.getEventID(), multipartFile, DocumentAudienceType.SUPPLIER,
+        procurementEvent.getEventType() + " pro forma for tender: "
             + procurementEvent.getEventID());
   }
 

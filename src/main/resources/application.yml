@@ -64,6 +64,13 @@ config:
       - zip
     maxSize: 314572800 #300MB
     maxTotalSize: 1073741824 #1GB
+    
+    templates:
+      eventTypeProformas:
+        RFI: 
+          - /templates/Proforma RfI.odt
+        EOI: 
+          - /templates/Proforma EoI.odt
 
   external:
     jaggaer:
