@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.Set;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
@@ -105,6 +106,7 @@ public class ValidationService {
             "assessmentId is invalid for eventType: " + updateEvent.getEventType());
       }
 
+      // Verify the assessment with that ID already exists
       assessmentService.getAssessment(updateEvent.getAssessmentId(), principal);
     }
 
@@ -126,7 +128,8 @@ public class ValidationService {
       }
 
       // SCAT-3504 AC4
-      if (DefineEventType.DAA == updateEvent.getEventType() && assessmentSupplierTarget > 1) {
+      if (Objects.equals(DefineEventType.DAA.name(), existingEvent.getEventType())
+          && assessmentSupplierTarget > 1) {
         throw new ValidationException("assessmentSupplierTarget must be 1 for event type DAA");
       }
     }
