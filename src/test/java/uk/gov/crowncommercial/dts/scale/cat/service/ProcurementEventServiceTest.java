@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
 import java.time.Duration;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -271,7 +272,7 @@ class ProcurementEventServiceTest {
         DOWNSELECTED_SUPPLIERS, PRINCIPAL);
 
     // Verify that entity was created as expected
-    verify(procurementEventRepo).save(captor.capture());
+    verify(procurementEventRepo, times(1)).save(captor.capture());
     var capturedProcEvent = captor.getValue();
     assertEquals(CA_NUMBER + '-' + LOT_NUMBER + "-CCS-FCA", capturedProcEvent.getEventName());
     assertEquals(OCID_PREFIX, capturedProcEvent.getOcidPrefix());

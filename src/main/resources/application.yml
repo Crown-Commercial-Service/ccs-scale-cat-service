@@ -64,6 +64,13 @@ config:
       - zip
     maxSize: 314572800 #300MB
     maxTotalSize: 1073741824 #1GB
+    
+    templates:
+      eventTypeProformas:
+        RFI: 
+          - /templates/Proforma RfI.odt
+        EOI: 
+          - /templates/Proforma EoI.odt
 
   external:
     jaggaer:
@@ -122,6 +129,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
+      getMessages:
+        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
         
       rpa: 
 #       baseUrl: "SET IN ENV"

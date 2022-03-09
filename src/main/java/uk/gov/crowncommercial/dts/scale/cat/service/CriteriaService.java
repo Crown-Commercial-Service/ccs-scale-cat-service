@@ -143,7 +143,7 @@ public class CriteriaService {
                       "Unexpected error updating Rfx"));
 
       if (createRfxResponse.getReturnCode() != 0
-          || !Constants.JAGGAER_GET_OK_MSG.equals(createRfxResponse.getReturnMessage())) {
+          || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
         log.error(createRfxResponse.toString());
         throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
             createRfxResponse.getReturnMessage());

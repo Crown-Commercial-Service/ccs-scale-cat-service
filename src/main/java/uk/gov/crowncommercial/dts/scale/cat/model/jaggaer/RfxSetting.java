@@ -5,6 +5,8 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
 
+import java.time.OffsetDateTime;
+
 @Value
 @Jacksonized
 @Builder
@@ -24,6 +26,8 @@ public class RfxSetting {
   String rfxType;
   String status;
   Integer statusCode;
+  OffsetDateTime publishDate;
+  OffsetDateTime closeDate;
 
   public void setShortDescription(final String shortDescription) {
     this.shortDescription = shortDescription;

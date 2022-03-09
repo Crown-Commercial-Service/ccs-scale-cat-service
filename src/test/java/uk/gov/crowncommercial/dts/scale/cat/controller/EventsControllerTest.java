@@ -44,6 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -57,6 +58,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class EventsControllerTest {
 
   private static final String EVENTS_PATH = "/tenders/projects/{procID}/events";
+  private static final String MESSAGES_PATH = "messages";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String EVENT_ID = "ocds-b5fd17-1";
@@ -297,7 +299,7 @@ class EventsControllerTest {
             .content(objectMapper.writeValueAsString(publishDates)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
 
-    verify(docGenService).generateProformaDocument(PROC_PROJECT_ID, EVENT_ID);
+    verify(docGenService).generateAndUploadProforma(PROC_PROJECT_ID, EVENT_ID);
     verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
         PRINCIPAL);
   }
