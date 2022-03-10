@@ -5,11 +5,8 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-
-import java.net.URI;
 import java.time.Instant;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
@@ -34,7 +31,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -58,7 +54,6 @@ public class ProcurementEventService {
   private static final Set<String> ASSESSMENT_EVENT_TYPES =
       Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
-
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -103,8 +98,8 @@ public class ProcurementEventService {
 
     downSelectedSuppliers = requireNonNullElse(downSelectedSuppliers, Boolean.FALSE);
 
-    var eventName = requireNonNullElse(createEventOCDS.getTitle(),
-        getDefaultEventTitle(project.getProjectName(), eventTypeValue));
+    var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? createEventOCDS.getTitle()
+        : getDefaultEventTitle(project.getProjectName(), eventTypeValue);
 
     var eventBuilder = ProcurementEvent.builder();
 
@@ -354,11 +349,10 @@ public class ProcurementEventService {
       log.debug("Event {} is an Assessment Type {}, retrieve suppliers from Tenders DB",
           event.getId(), event.getEventType());
       return getSuppliersFromTendersDB(event);
-    } else {
-      log.debug("Event {} is not an Assessment Type {}, retrieve suppliers from Jaggaer",
-          event.getId(), event.getEventType());
-      return getSuppliersFromJaggaer(event);
     }
+    log.debug("Event {} is not an Assessment Type {}, retrieve suppliers from Jaggaer",
+        event.getId(), event.getEventType());
+    return getSuppliersFromJaggaer(event);
   }
 
   /**
@@ -647,7 +641,7 @@ public class ProcurementEventService {
    * @return
    */
   private boolean isAssessmentEvent(final ProcurementEvent event) {
-    return (ASSESSMENT_EVENT_TYPES.contains(event.getEventType()));
+    return ASSESSMENT_EVENT_TYPES.contains(event.getEventType());
   }
 
   /**
