@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.net.URI;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -36,6 +37,9 @@ public class MessageService {
   private static final String CREATE_MESSAGE = "Create";
 
   private static final String RESPOND_MESSAGE = "Respond";
+
+  private static final String DATE_FORMATTER = "yyyy-MM-dd'T'HH:mm:ss";
+  private static final String APPEND_DATE_FORMATTER = ".000+00:00";
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
@@ -89,8 +93,15 @@ public class MessageService {
 
     // To reply the message
     if (nonOCDS.getParentId() != null) {
-      // TODO get message details using parentId
-      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate("message-receive-date");
+      DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern(DATE_FORMATTER);
+      var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
+      if (messageDetails == null) {
+        throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
+      }
+      String messageRecievedDate =
+          messageDetails.getReceiveDate().format(dateFormat) + APPEND_DATE_FORMATTER;
+      log.info("MessageRecievedDate: {}", messageRecievedDate);
+      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate);
     }
 
     // Adding supplier details
