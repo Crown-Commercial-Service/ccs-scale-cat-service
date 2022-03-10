@@ -382,13 +382,20 @@ public class MessageService {
   private CaTMessageOCDS getCaTMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject()).author(message.getSender().getName());
+        .title(message.getSubject()) .author(new CaTMessageOCDSAllOfAuthor()
+                    .id(message.getSender().getId())
+                    .name(message.getSender().getName())
+            );
   }
 
   private MessageOCDS getMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject()).author(message.getSender().getName());
+        .title(message.getSubject())
+            .author(new CaTMessageOCDSAllOfAuthor()
+                    .id(message.getSender().getId())
+                    .name(message.getSender().getName())
+            );
   }
 
   private MessageNonOCDS getMessageNonOCDS(

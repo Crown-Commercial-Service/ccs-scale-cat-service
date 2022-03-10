@@ -75,7 +75,8 @@ class MessageControllerTest {
         when(messageService.getMessagesSummary(messageRequestInfo))
                 .thenReturn(new MessageSummary()
                         .messages(Arrays.asList(new CaTMessage()
-                                .OCDS(new CaTMessageOCDS().title("Test").author("Test Author"))
+                                .OCDS(new CaTMessageOCDS().title("Test")
+                                        .author(new CaTMessageOCDSAllOfAuthor().id("test").name("Test Author")))
                                         .nonOCDS(new CaTMessageNonOCDS()
                                                 .read(false).direction(CaTMessageNonOCDS.DirectionEnum.SENT))
                                 ))
@@ -89,7 +90,7 @@ class MessageControllerTest {
                         .accept(APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON))
-                .andExpect(jsonPath("$.messages[0].ocds.author", is("Test Author")))
+                .andExpect(jsonPath("$.messages[0].ocds.author.name", is("Test Author")))
                 .andExpect(jsonPath("$.links.next", is("/next/")));
 
         verify(messageService, times(1)).getMessagesSummary(messageRequestInfo);
