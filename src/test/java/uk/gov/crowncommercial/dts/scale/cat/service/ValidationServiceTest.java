@@ -153,8 +153,8 @@ class ValidationServiceTest {
 
   @Test
   void testValidateUpdateEventAssessment_assSupTgtMissingAssId() {
-    var updateEvent = new UpdateEvent().assessmentSupplierTarget(10).eventType(DefineEventType.FCA);
-    var procurementEvent = new ProcurementEvent();
+    var updateEvent = new UpdateEvent().assessmentSupplierTarget(10);
+    var procurementEvent = ProcurementEvent.builder().eventType("FCA").build();
 
     var ex = assertThrows(ValidationException.class, () -> validationService
         .validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL));
@@ -164,8 +164,7 @@ class ValidationServiceTest {
 
   @Test
   void testValidateUpdateEventAssessment_assSupTgtInvalidExistingEventType() {
-    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10)
-        .eventType(DefineEventType.FCA);
+    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10);
 
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 

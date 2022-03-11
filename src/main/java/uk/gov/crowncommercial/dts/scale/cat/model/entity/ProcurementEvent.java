@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import java.time.Instant;
 import java.util.Set;
 import javax.persistence.*;
@@ -9,6 +10,7 @@ import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 
 /**
  * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
@@ -86,5 +88,16 @@ public class ProcurementEvent {
 
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
+  }
+
+  /**
+   * Is the event an Assessment Event (e.g. FCA, DAA)?
+   *
+   * @param event
+   * @return true if it is, false otherwise
+   */
+  public boolean isAssessment() {
+    return ASSESSMENT_EVENT_TYPES.stream().map(DefineEventType::name)
+        .anyMatch(aet -> aet.equals(getEventType()));
   }
 }
