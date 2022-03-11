@@ -131,6 +131,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
       getMessages:
         endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
+      getMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}
         
       rpa: 
 #       baseUrl: "SET IN ENV"
