@@ -6,11 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -20,10 +19,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
@@ -45,7 +42,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = { SupplierService.class }, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(classes = {SupplierService.class}, webEnvironment = WebEnvironment.NONE)
 @Slf4j
 class SupplierServiceTest {
 
@@ -64,10 +61,10 @@ class SupplierServiceTest {
   static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_2 = OrganisationMapping.builder().build();
 
-  static final Supplier EXT_SUPPLIER_1 = Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_1).build())
-      .build();
-  static final Supplier EXT_SUPPLIER_2 = Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_2).build())
-      .build();
+  static final Supplier EXT_SUPPLIER_1 =
+      Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_1).build()).build();
+  static final Supplier EXT_SUPPLIER_2 =
+      Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_2).build()).build();
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
   private static final String BUYER_USER_NAME = "Venki Bathula";
@@ -164,7 +161,8 @@ class SupplierServiceTest {
         .thenReturn(Set.of(LOT_SUPPLIER_1, LOT_SUPPLIER_2));
 
     when(retryableTendersDBDelegate
-        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2))).thenReturn(Set.of());
+        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
+            .thenReturn(Set.of());
 
     var suppliers = supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
 
@@ -178,35 +176,43 @@ class SupplierServiceTest {
   @Disabled
   void testUpdateSupplierScoreAndComment() throws JsonProcessingException {
     // Stub some objects
-    var scoreAndComments = List
-        .of(new ScoreAndCommentNonOCDS().organisationId(SUPPLIER_ORG_ID_1).comment(COMMENT_1).score(90));
+    var scoreAndComments = List.of(new ScoreAndCommentNonOCDS().organisationId(SUPPLIER_ORG_ID_1)
+        .comment(COMMENT_1).score(90.0));
 
     var responseString = "";
 
-    inputBuilder.userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd()).ittCode(EXTERNAL_EVENT_ID).score("60")
-        .comment(COMMENT_1).supplierName(JAGGAER_SUPPLIER_NAME);
+    inputBuilder.userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd()).ittCode(EXTERNAL_EVENT_ID)
+        .score("90.0").comment(COMMENT_1).supplierName(JAGGAER_SUPPLIER_NAME);
 
-    request.setProcessName(RPAProcessNameEnum.ASSIGN_SCORE.getValue()).setProfileName(rpaAPIConfig.getProfileName())
-        .setSource(rpaAPIConfig.getSource()).setRetry(false).setSourceId(rpaAPIConfig.getSourceId())
-        .setRequestTimeout(3600000).setSync(true);
+    request.setProcessName(RPAProcessNameEnum.ASSIGN_SCORE.getValue())
+        .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
+        .setRetry(false).setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000)
+        .setSync(true);
 
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    RPAAPIResponse responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
+    RPAAPIResponse responseObject =
+        new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
-
-    when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token")).thenReturn(responseObject);
+    var jaggerRPACredentials = new HashMap<String, String>();
+    jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
+    jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
+    var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
 
     // Mock behaviours
+    when(webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
+        rpaAPIConfig.getTimeoutDuration(), uriTemplate)).thenReturn("token");
+    when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
+        rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
+            .thenReturn(responseObject);
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID).build());
 
     // Invoke
-    var supplierResponse = supplierService.updateSupplierScoreAndComment(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
-        scoreAndComments);
+    var supplierResponse = supplierService.updateSupplierScoreAndComment(PRINCIPAL, PROC_PROJECT_ID,
+        EVENT_OCID, scoreAndComments);
 
     // Assert
     assertAll(() -> assertNotNull(supplierResponse), () -> assertEquals("", supplierResponse));
