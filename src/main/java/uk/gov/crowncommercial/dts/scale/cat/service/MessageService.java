@@ -39,6 +39,7 @@ public class MessageService {
   private static final String RESPOND_MESSAGE = "Respond";
 
   private static final String DATE_FORMATTER = "yyyy-MM-dd'T'HH:mm:ss";
+
   private static final String APPEND_DATE_FORMATTER = ".000+00:00";
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
@@ -88,8 +89,8 @@ public class MessageService {
         .password(rpaAPIConfig.getBuyerPwd()).ittCode(procurementEvent.getExternalReferenceId())
         .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
         .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
-        .messageClassification(nonOCDS.getClassification().getValue())
-        .senderName(buyerUser.get().getName()).supplierName("").messageReceivedDate("");
+        .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
+        .supplierName("").messageReceivedDate("");
 
     // To reply the message
     if (nonOCDS.getParentId() != null) {
@@ -101,7 +102,8 @@ public class MessageService {
       String messageRecievedDate =
           messageDetails.getReceiveDate().format(dateFormat) + APPEND_DATE_FORMATTER;
       log.info("MessageRecievedDate: {}", messageRecievedDate);
-      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate);
+      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
+          .senderName(messageDetails.getSender().getName());
     }
 
     // Adding supplier details
