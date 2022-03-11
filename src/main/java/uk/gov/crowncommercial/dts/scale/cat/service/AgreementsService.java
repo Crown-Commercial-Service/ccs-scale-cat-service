@@ -6,6 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPICo
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,9 +18,7 @@ import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
 /**
@@ -51,14 +50,14 @@ public class AgreementsService {
                 Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
             .filter(WebclientWrapper::is5xxServerError))
         .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new AgreementsServiceApplicationException(
-                "Unexpected error retrieving RFI template from AS"));
+            .orElseThrow(() -> new AgreementsServiceApplicationException(String
+                .format("Unexpected error retrieving {} template from AS", eventType.name())));
 
     return dataTemplates.stream().map(tcs -> DataTemplate.builder().criteria(tcs).build())
         .collect(Collectors.toList());
   }
 
-  public Set<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
+  public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
     var lotSuppliers =
@@ -66,6 +65,40 @@ public class AgreementsService {
             agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, lotId);
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
+  }
+
+  public AgreementDetail getAgreementDetails(final String agreementId) {
+    var agreementDetailsUri =
+        agreementServiceAPIConfig.getGetAgreementDetail().get(KEY_URI_TEMPLATE);
+
+    var agreementDetail =
+        webclientWrapper.getOptionalResource(AgreementDetail.class, agreementsServiceWebClient,
+            agreementServiceAPIConfig.getTimeoutDuration(), agreementDetailsUri, agreementId);
+
+    return agreementDetail.orElseThrow();
+  }
+
+  public LotDetail getLotDetails(final String agreementId, final String lotId) {
+    var lotDetailUri =
+        agreementServiceAPIConfig.getGetLotDetailsForAgreement().get(KEY_URI_TEMPLATE);
+
+    var lotDetail =
+        webclientWrapper.getOptionalResource(LotDetail.class, agreementsServiceWebClient,
+            agreementServiceAPIConfig.getTimeoutDuration(), lotDetailUri, agreementId, lotId);
+
+    return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
+        "Lot with ID: [" + lotId + "] for CA: [" + agreementId + "] not found in AS"));
+  }
+
+  public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
+    var getLotEventTypesUri =
+        agreementServiceAPIConfig.getGetEventTypesForAgreement().get(KEY_URI_TEMPLATE);
+
+    var lotEventTypes = webclientWrapper.getOptionalResource(LotEventType[].class,
+        agreementsServiceWebClient, agreementServiceAPIConfig.getTimeoutDuration(),
+        getLotEventTypesUri, agreementId, lotId);
+
+    return lotEventTypes.isPresent() ? Set.of(lotEventTypes.get()) : Set.of();
   }
 
 }

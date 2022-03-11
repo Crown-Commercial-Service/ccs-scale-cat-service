@@ -14,6 +14,8 @@ import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.validation.ValidationException;
+
 /**
  * Mirror of Tenders API type {@link Question}. Simplified types where possible to avoid duplication
  * of enums, value types etc.
@@ -46,6 +48,7 @@ public class Requirement {
     Boolean multiAnswer;
     Integer order;
     Integer length;
+    Dependency dependency;
 
     @NonFinal
     List<Option> options; // Maps to QuestionNonOCDSOptions
@@ -74,7 +77,7 @@ public class Requirement {
           // more options in a single or multi-select, for example
           var optionToUpdate = options.stream()
               .filter(option -> Objects.equals(option.getValue(), updateOption.getValue()))
-              .findFirst().orElseThrow(() -> new IllegalStateException(
+              .findFirst().orElseThrow(() -> new ValidationException(
                   "Could not find updateOption '" + updateOption.getValue() + "' to " + "update."));
 
           log.debug("optionToUpdate: " + updateOption);

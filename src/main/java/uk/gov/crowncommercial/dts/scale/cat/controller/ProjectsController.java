@@ -24,6 +24,13 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
+  @GetMapping
+  public Collection<ProjectPackageSummary> getProjects(final JwtAuthenticationToken authentication){
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getProjects invoked on behalf of principal: {}", principal);
+    return procurementProjectService.getProjects(principal);
+  }
+
   @PostMapping("/agreements")
   public DraftProcurementProject createProcurementProject(
       @Valid @RequestBody final AgreementDetails agreementDetails,
@@ -31,7 +38,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-    log.info("createProcuremenProject invoked on behalf of principal: {}", principal,
+    log.info("createProcurementProject invoked on behalf of principal: {}", principal,
         conclaveOrgId);
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal,
@@ -49,7 +56,7 @@ public class ProjectsController extends AbstractRestController {
     procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
         principal);
 
-    return Constants.JAGGAER_GET_OK_MSG;
+    return Constants.OK_MSG;
   }
 
   @GetMapping("/{proc-id}/event-types")
@@ -66,10 +73,10 @@ public class ProjectsController extends AbstractRestController {
   public Collection<TeamMember> getProjectUsers(@PathVariable("proc-id") final Integer procId,
       final JwtAuthenticationToken authentication) {
 
-    log.info("getProjectUsers invoked on behalf of principal: {}",
-        getPrincipalFromJwt(authentication));
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getProjectUsers invoked on behalf of principal: {}", principal);
 
-    return procurementProjectService.getProjectTeamMembers(procId);
+    return procurementProjectService.getProjectTeamMembers(procId,principal);
   }
 
   @PutMapping("/{proc-id}/users/{user-id}")
@@ -78,10 +85,10 @@ public class ProjectsController extends AbstractRestController {
       @RequestBody final UpdateTeamMember updateTeamMember,
       final JwtAuthenticationToken authentication) {
 
-    log.info("addProjectUser invoked on behalf of principal: {}",
-        getPrincipalFromJwt(authentication));
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("addProjectUser invoked on behalf of principal: {}", principal);
 
-    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember);
+    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember,principal);
   }
 
 }

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Collection;
+import java.util.List;
 import javax.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
 /**
@@ -27,6 +29,17 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
+  private final DocGenService docGenService;
+
+  @GetMapping
+  public List<EventSummary> getEventsForProject(@PathVariable("procID") final Integer procId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getEventsForProject invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.getEventsForProject(procId, principal);
+  }
 
   @PostMapping
   public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId,
@@ -72,15 +85,16 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping("/{eventID}/suppliers")
-  public OrganizationReference addSupplier(@PathVariable("procID") final Integer procId,
+  public Collection<OrganizationReference> addSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
-      @RequestBody final OrganizationReference organizationReference,
+      @RequestBody final Collection<OrganizationReference> organizationReferences,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.addSupplier(procId, eventId, organizationReference);
+    return procurementEventService.addSuppliers(procId, eventId, organizationReferences, false,
+        principal);
   }
 
   @DeleteMapping("/{eventID}/suppliers/{supplierID}")
@@ -92,7 +106,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteSupplier invoked on behalf of principal: {}", principal);
 
-    procurementEventService.deleteSupplier(procId, eventId, supplierId);
+    procurementEventService.deleteSupplier(procId, eventId, supplierId, principal);
 
     return "OK";
   }
@@ -152,6 +166,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
+    docGenService.generateAndUploadProforma(procId, eventId);
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
 
     return new StringValueResponse("OK");

@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.Arrays;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,6 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectNa
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMemberType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -62,6 +64,9 @@ class ProjectsControllerTest {
   private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME;
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
+  public static final String TENDERS_PROJECTS_AGREEMENTS = "/tenders/projects/agreements";
+  public static final String TENDERS_PROJECTS = "/tenders/projects/";
+  public static final String JAGGAER_USER_ID = "12345";
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
 
@@ -76,6 +81,10 @@ class ProjectsControllerTest {
 
   @MockBean
   private ProcurementProjectService procurementProjectService;
+
+  @MockBean
+  private UserProfileService userProfileService;
+
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 
   @BeforeEach
@@ -96,7 +105,7 @@ class ProjectsControllerTest {
         CII_ORG_ID)).thenReturn(draftProcurementProject);
 
     mockMvc
-        .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).with(validJwtReqPostProcessor)
             .contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isOk())
@@ -135,7 +144,7 @@ class ProjectsControllerTest {
         jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
 
     mockMvc
-        .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).with(invalidJwtReqPostProcessor)
             .contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isForbidden())
@@ -148,7 +157,7 @@ class ProjectsControllerTest {
   @Test
   void createProcurementProject_401_Unauthorised() throws Exception {
     mockMvc
-        .perform(post("/tenders/projects/agreements").contentType(APPLICATION_JSON)
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
         .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
@@ -165,7 +174,7 @@ class ProjectsControllerTest {
         .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
 
     mockMvc
-        .perform(post("/tenders/projects/agreements").with(invalidJwtReqPostProcessor)
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).with(invalidJwtReqPostProcessor)
             .contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
@@ -183,7 +192,7 @@ class ProjectsControllerTest {
         CII_ORG_ID)).thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
-        .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).with(validJwtReqPostProcessor)
             .contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isInternalServerError())
@@ -200,7 +209,7 @@ class ProjectsControllerTest {
     projectName.setName("New name");
 
     mockMvc
-        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/name")
+        .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/name")
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(projectName)))
         .andDo(print()).andExpect(status().isOk())
@@ -216,33 +225,26 @@ class ProjectsControllerTest {
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
 
-    var expectedJson = "[" + "{\"type\":\"EOI\",\"description\":\"Expression of Interest\","
-        + "\"preMarketActivity\":true},"
-        + "{\"type\":\"RFI\",\"description\":\"Request for Information\","
-        + "\"preMarketActivity\":true},"
-        + "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true},"
-        + "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true},"
-        + "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
-
     when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
         .thenReturn(TestUtils.getEventTypes());
 
     mockMvc
-        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/event-types")
+        .perform(get(TENDERS_PROJECTS + PROC_PROJECT_ID + "/event-types")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
-        .andExpect(content().string(expectedJson));
+        .andExpect(
+            content().json(objectMapper.writeValueAsString(TestUtils.getEventTypes()), false));
   }
 
   @Test
   void getProjectUsers_200_OK() throws Exception {
 
-    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID, PRINCIPAL))
         .thenReturn(Arrays.asList(TestUtils.getTeamMember()));
 
     mockMvc
-        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+        .perform(get(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users")
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(1))
@@ -261,7 +263,7 @@ class ProjectsControllerTest {
         .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
 
     mockMvc
-        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+        .perform(get(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users")
             .with(invalidJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
@@ -275,11 +277,11 @@ class ProjectsControllerTest {
   @Test
   void getProjectUsers_500_ISE() throws Exception {
 
-    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID, PRINCIPAL))
         .thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
-        .perform(get("/tenders/projects/" + PROC_PROJECT_ID + "/users")
+        .perform(get(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users")
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isInternalServerError())
@@ -296,10 +298,10 @@ class ProjectsControllerTest {
     updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
-        updateTeamMember)).thenReturn(TestUtils.getTeamMember());
+        updateTeamMember, PRINCIPAL)).thenReturn(TestUtils.getTeamMember());
 
     mockMvc
-        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
+        .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(updateTeamMember)))
         .andDo(print()).andExpect(status().isOk())
@@ -312,7 +314,7 @@ class ProjectsControllerTest {
         .andExpect(jsonPath("$.nonOCDS.projectOwner", is(false)));
 
     verify(procurementProjectService).addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
-        updateTeamMember);
+        updateTeamMember, PRINCIPAL);
   }
 
   @Test
@@ -322,7 +324,7 @@ class ProjectsControllerTest {
         .jwt(jwt -> jwt.claims(claims -> claims.remove("sub")));
 
     mockMvc
-        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
+        .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
             .with(invalidJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(agreementDetails)))
         .andDo(print()).andExpect(status().isUnauthorized())
@@ -340,10 +342,10 @@ class ProjectsControllerTest {
     updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
-        updateTeamMember)).thenThrow(new JaggaerApplicationException("1", "BANG"));
+        updateTeamMember, PRINCIPAL)).thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
-        .perform(put("/tenders/projects/" + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
+        .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(updateTeamMember)))
         .andDo(print()).andExpect(status().isInternalServerError())
@@ -353,10 +355,21 @@ class ProjectsControllerTest {
             jsonPath("$.errors[0].title", is("An error occurred invoking an upstream service")));
   }
 
+  @Test
+  void getProjects_200_OK() throws Exception {
+
+    mockMvc
+            .perform(get(TENDERS_PROJECTS).with(validJwtReqPostProcessor)
+                    .accept(APPLICATION_JSON))
+            .andDo(print()).andExpect(status().isOk())
+            .andExpect(content().contentType(APPLICATION_JSON));
+
+    verify(procurementProjectService, times(1)).getProjects(PRINCIPAL);
+  }
   private void testCreateFromAgreement400BadRequestHelper(final AgreementDetails invalidPayload)
       throws Exception {
     mockMvc
-        .perform(post("/tenders/projects/agreements").with(validJwtReqPostProcessor)
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).with(validJwtReqPostProcessor)
             .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(invalidPayload)))
         .andDo(print()).andExpect(status().isBadRequest())
         .andExpect(content().contentType(APPLICATION_JSON))

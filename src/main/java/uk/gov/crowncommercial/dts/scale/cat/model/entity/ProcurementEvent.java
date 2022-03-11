@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
+import java.util.Set;
 import javax.persistence.*;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
@@ -33,6 +34,10 @@ public class ProcurementEvent {
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "event_id")
+  Set<SupplierSelection> capabilityAssessmentSuppliers;
+
   @Column(name = "ocds_authority_name")
   String ocdsAuthorityName;
 
@@ -54,6 +59,12 @@ public class ProcurementEvent {
   @Column(name = "down_selected_suppliers_ind")
   Boolean downSelectedSuppliers;
 
+  @Column(name = "assessment_supplier_target")
+  Integer assessmentSupplierTarget;
+
+  @Column(name = "assessment_id")
+  Integer assessmentId;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
@@ -69,6 +80,9 @@ public class ProcurementEvent {
   @Type(type = "jsonb")
   @Column(name = "procurement_template_payload")
   DataTemplate procurementTemplatePayload;
+
+  @Column(name = "procurement_template_payload", insertable = false, updatable = false)
+  String procurementTemplatePayloadRaw;
 
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;

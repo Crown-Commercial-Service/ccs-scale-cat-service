@@ -17,12 +17,13 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS.QuestionTypeEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -38,6 +39,7 @@ class CriteriaServiceTest {
   private static final String CRITERION_TITLE = "Test Criterion";
   private static final String GROUP_ID = "Group 1";
   private static final String QUESTION_ID = "Question 1";
+  private static final String AGREEMENT_NO = "TEST";
 
   @MockBean
   private AgreementsService agreementsService;
@@ -51,6 +53,9 @@ class CriteriaServiceTest {
   @MockBean
   private WebClient jaggaerWebClient;
 
+  @MockBean
+  private DependencyMapper dependencyMapper;
+
   @Autowired
   private CriteriaService criteriaService;
 
@@ -60,7 +65,11 @@ class CriteriaServiceTest {
   @Test
   void testPutQuestionOptionDetails_buyer_multiSelect() throws Exception {
 
+    var procurementProject = ProcurementProject.builder()
+            .caNumber(AGREEMENT_NO).build();
+
     ProcurementEvent event = new ProcurementEvent();
+    event.setProject(procurementProject);
     event.setProcurementTemplatePayload(
         getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
 
@@ -72,7 +81,7 @@ class CriteriaServiceTest {
     option.setValue("Wales");
     option.setSelected(true);
     QuestionNonOCDS questionNonOCDS = new QuestionNonOCDS();
-    questionNonOCDS.setQuestionType(QuestionTypeEnum.MULTISELECT);
+    questionNonOCDS.setQuestionType(QuestionType.MULTISELECT);
     questionNonOCDS.setMultiAnswer(true);
     questionNonOCDS.setOptions(Arrays.asList(option));
     Question question = new Question();
@@ -118,7 +127,10 @@ class CriteriaServiceTest {
 
   @Test
   void testGetEvalCriteriaWithBuyerQuestions() throws Exception {
+    var procurementProject = ProcurementProject.builder()
+            .caNumber(AGREEMENT_NO).build();
     ProcurementEvent event = new ProcurementEvent();
+    event.setProject(procurementProject);
     event.setProcurementTemplatePayload(
         getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
 

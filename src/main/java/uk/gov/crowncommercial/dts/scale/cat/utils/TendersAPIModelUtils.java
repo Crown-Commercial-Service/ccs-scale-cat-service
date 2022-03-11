@@ -1,7 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
@@ -44,15 +47,17 @@ public class TendersAPIModelUtils {
   }
 
   public EventSummary buildEventSummary(final String eventId, final String name,
-      final String supportID, final ViewEventType type, final TenderStatus status,
-      final ReleaseTag stage) {
+      final Optional<String> supportID, final ViewEventType type, final TenderStatus status,
+      final ReleaseTag stage, final Optional<Integer> assessmentId) {
     var eventSummary = new EventSummary();
     eventSummary.setId(eventId);
     eventSummary.setTitle(name);
     eventSummary.setEventStage(stage);
     eventSummary.setStatus(status);
     eventSummary.setEventType(type);
-    eventSummary.setEventSupportId(supportID);
+    supportID.ifPresent(eventSummary::setEventSupportId);
+    assessmentId.ifPresent(eventSummary::setAssessmentId);
+
     return eventSummary;
   }
 
@@ -69,7 +74,7 @@ public class TendersAPIModelUtils {
   }
 
   public EventDetail buildEventDetail(final RfxSetting rfxSetting,
-      final ProcurementEvent procurementEvent, final List<EvalCriteria> buyerQuestions) {
+      final ProcurementEvent procurementEvent, final Collection<EvalCriteria> buyerQuestions) {
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
@@ -82,7 +87,11 @@ public class TendersAPIModelUtils {
     var eventDetailNonOCDS = new EventDetailNonOCDS();
     eventDetailNonOCDS.setEventType(ViewEventType.fromValue(procurementEvent.getEventType()));
     eventDetailNonOCDS.setEventSupportId(procurementEvent.getExternalReferenceId());
-    eventDetailNonOCDS.setBuyerQuestions(buyerQuestions);
+    eventDetailNonOCDS.setAssessmentId(procurementEvent.getAssessmentId());
+    eventDetailNonOCDS.setAssessmentSupplierTarget(procurementEvent.getAssessmentSupplierTarget());
+    if (buyerQuestions != null && !buyerQuestions.isEmpty()) {
+      eventDetailNonOCDS.setBuyerQuestions(List.copyOf(buyerQuestions));
+    }
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
     // OCDS

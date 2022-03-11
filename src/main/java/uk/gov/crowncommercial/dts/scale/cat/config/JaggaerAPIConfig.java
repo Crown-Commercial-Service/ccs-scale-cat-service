@@ -30,6 +30,7 @@ public class JaggaerAPIConfig {
   private Long tokenExpirySeconds;
   private Map<String, String> createProject;
   private Map<String, String> getProject;
+  private Map<String, String> getProjectList;
   private Map<String, String> createRfx;
   private Map<String, String> getBuyerCompanyProfile;
   private Map<String, String> exportRfx;
@@ -38,4 +39,6 @@ public class JaggaerAPIConfig {
   private Map<String, String> createUpdateCompany;
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;
+  private Map<String, String> getMessages;
+  private Map<String, String> getMessage;
 }
