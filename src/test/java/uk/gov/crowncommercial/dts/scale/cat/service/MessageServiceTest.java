@@ -117,9 +117,9 @@ class MessageServiceTest {
 
   @BeforeEach
   void beforeEach() {
-    inputBuilder = RPAProcessInput.builder().userName(PRINCIPAL)
-        .password(rpaAPIConfig.getBuyerPwd()).ittCode("itt_8673").supplierName("")
-        .senderName(BUYER_USER_NAME).messageReceivedDate("");
+    inputBuilder =
+        RPAProcessInput.builder().userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd())
+            .ittCode("itt_8673").supplierName("").senderName("").messageReceivedDate("");
 
     request.setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
         .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
