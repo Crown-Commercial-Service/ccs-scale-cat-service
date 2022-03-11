@@ -97,8 +97,6 @@ public class ValidationService {
   public void validateUpdateEventAssessment(final UpdateEvent updateEvent,
       final ProcurementEvent existingEvent, final String principal) {
 
-    // Basic assessment event type checks first
-
     // Post MVP - user may have created an assessment before commencing CaT journey so validate
     if (updateEvent.getAssessmentId() != null) {
 
