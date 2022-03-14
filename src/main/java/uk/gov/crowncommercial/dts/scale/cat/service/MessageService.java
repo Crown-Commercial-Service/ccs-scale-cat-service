@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.net.URI;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -36,6 +37,9 @@ public class MessageService {
   private static final String CREATE_MESSAGE = "Create";
 
   private static final String RESPOND_MESSAGE = "Respond";
+
+  private static final DateTimeFormatter DATE_TIME_FORMATTER =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000+00:00");
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
@@ -84,13 +88,19 @@ public class MessageService {
         .password(rpaAPIConfig.getBuyerPwd()).ittCode(procurementEvent.getExternalReferenceId())
         .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
         .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
-        .messageClassification(nonOCDS.getClassification().getValue())
-        .senderName(buyerUser.get().getName()).supplierName("").messageReceivedDate("");
+        .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
+        .supplierName("").messageReceivedDate("");
 
     // To reply the message
     if (nonOCDS.getParentId() != null) {
-      // TODO get message details using parentId
-      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate("message-receive-date");
+      var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
+      if (messageDetails == null) {
+        throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
+      }
+      String messageRecievedDate = messageDetails.getReceiveDate().format(DATE_TIME_FORMATTER);
+      log.info("MessageRecievedDate: {}", messageRecievedDate);
+      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
+          .senderName(messageDetails.getSender().getName());
     }
 
     // Adding supplier details
@@ -382,20 +392,15 @@ public class MessageService {
   private CaTMessageOCDS getCaTMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject()) .author(new CaTMessageOCDSAllOfAuthor()
-                    .id(message.getSender().getId())
-                    .name(message.getSender().getName())
-            );
+        .title(message.getSubject()).author(new CaTMessageOCDSAllOfAuthor()
+            .id(message.getSender().getId()).name(message.getSender().getName()));
   }
 
   private MessageOCDS getMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject())
-            .author(new CaTMessageOCDSAllOfAuthor()
-                    .id(message.getSender().getId())
-                    .name(message.getSender().getName())
-            );
+        .title(message.getSubject()).author(new CaTMessageOCDSAllOfAuthor()
+            .id(message.getSender().getId()).name(message.getSender().getName()));
   }
 
   private MessageNonOCDS getMessageNonOCDS(
