@@ -46,8 +46,10 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  * Message Service layer tests
  */
-@SpringBootTest(classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
-    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
+        ApplicationFlagsConfig.class, RPAGenericService.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties({JaggaerAPIConfig.class, RPAAPIConfig.class})
 @ContextConfiguration(classes = {ObjectMapper.class})
 @Slf4j
@@ -406,6 +408,5 @@ class MessageServiceTest {
     assertNotNull(response);
     assertEquals(1, response.getMessages().size());
     assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
-
   }
 }

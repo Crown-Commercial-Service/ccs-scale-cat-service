@@ -3,29 +3,25 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.net.URI;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.*;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 
 /**
  *
@@ -36,36 +32,20 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class MessageService {
 
   private static final String CREATE_MESSAGE = "Create";
-
   private static final String RESPOND_MESSAGE = "Respond";
-
   private static final DateTimeFormatter DATE_TIME_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000+00:00");
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
-
-  private final WebClient rpaServiceWebClient;
-
-  private final WebclientWrapper webclientWrapper;
-
   private final ValidationService validationService;
-
   private final UserProfileService userService;
-
-  private final ObjectMapper objectMapper;
-
   private final RPAAPIConfig rpaAPIConfig;
-
   private final JaggaerService jaggaerService;
-
   private final UserProfileService userProfileService;
-
   private final ConclaveService conclaveService;
-
-  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final RPAGenericService rpaGenericService;
 
   private static final String LINK_URI = "/messages/";
-
   private static final int RECORDS_PER_REQUEST = 100;
 
   /**
@@ -111,143 +91,20 @@ public class MessageService {
       if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
         throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
       }
-      var supplierString = validateSuppliers(procurementEvent, nonOCDS);
+      var suppliers = rpaGenericService.getValidSuppliers(procurementEvent,
+          nonOCDS.getReceiverList().stream().map(org -> org.getId()).collect(Collectors.toList()));
+      var appendSupplierList = new StringBuilder();
+      suppliers.getFirst().stream().forEach(supplier -> {
+        appendSupplierList.append(supplier.getCompanyData().getName());
+        appendSupplierList.append(";");
+      });
+      var supplierString =
+          appendSupplierList.toString().substring(0, appendSupplierList.toString().length() - 1);
       log.info("Suppliers list: {}", supplierString);
       inputBuilder.supplierName(supplierString);
     }
-
-    return callRPAMessageAPI(inputBuilder.build());
-  }
-
-  /**
-   * @param procurementEvent
-   * @param nonOCDS
-   * @return suppliers as a string
-   */
-  private String validateSuppliers(final ProcurementEvent procurementEvent,
-      final MessageNonOCDS nonOCDS) {
-    // ignoring string content from organisation Ids
-    var supplierOrgIds = nonOCDS.getReceiverList().stream()
-        .map(ls -> ls.getId().replace("GB-COH-", "")).collect(Collectors.toSet());
-
-    // Retrieve and verify Tenders DB org mappings
-    var supplierOrgMappings =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
-    if (isEmpty(supplierOrgMappings)) {
-      var errorDesc =
-          String.format("No supplier organisation mappings found in Tenders DB %s", supplierOrgIds);
-      log.error(errorDesc);
-      throw new JaggaerRPAException(errorDesc);
-    }
-
-    // Find all externalOrgIds
-    var supplierExternalIds = supplierOrgMappings.stream()
-        .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
-
-    // Find actual suppliers of project and event
-    var suppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId()).getSuppliersList()
-        .getSupplier();
-
-    // Find all unmatched org ids
-    var unMatchedSuppliers = supplierExternalIds.stream()
-        .filter(orgid -> suppliers.stream()
-            .noneMatch(supplier -> supplier.getCompanyData().getId().equals(orgid)))
-        .collect(Collectors.toList());
-
-    if (!isEmpty(unMatchedSuppliers)) {
-      var errorDesc =
-          String.format("Supplied organisation mappings not matched with actual suppliers '%s'",
-              unMatchedSuppliers);
-      log.error(errorDesc);
-      throw new JaggaerRPAException(errorDesc);
-    }
-
-    // Comparing the requested organisation ids and event suppliers info
-    var matchedSuppliers = suppliers.stream()
-        .filter(supplier -> supplierExternalIds.stream()
-            .anyMatch(orgId -> orgId.equals(supplier.getCompanyData().getId())))
-        .collect(Collectors.toList());
-
-    // Coverting all requested suppliers names into a string
-    var appendSupplierList = new StringBuilder();
-    matchedSuppliers.stream().forEach(supplier -> {
-      appendSupplierList.append(supplier.getCompanyData().getName());
-      appendSupplierList.append(";");
-    });
-
-    return appendSupplierList.toString().substring(0, appendSupplierList.toString().length() - 1);
-  }
-
-  /**
-   * @param processInput
-   * @return rpa status
-   * @throws JsonProcessingException
-   */
-  @SneakyThrows
-  private String callRPAMessageAPI(final RPAProcessInput processInput) {
-    var request = new RPAGenericData();
-    request.setProcessInput(objectMapper.writeValueAsString(processInput))
-        .setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
-        .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
-        .setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(rpaAPIConfig.getRequestTimeout())
-        .setSync(true);
-    log.info("RPA Request: {}", objectMapper.writeValueAsString(request));
-
-    var response =
-        webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), getAccessToken());
-
-    return validateResponse(response);
-  }
-
-  /**
-   * Validate RPA API Response
-   *
-   * @param apiResponse
-   * @return rpa api status
-   */
-  @SuppressWarnings("unchecked")
-  @SneakyThrows
-  private String validateResponse(final RPAAPIResponse apiResponse) {
-    var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
-    var maps = (List<Map<String, String>>) convertedObject.get("AutomationOutputData");
-    var automationData = objectMapper.readValue(objectMapper.writeValueAsString(maps.get(1)),
-        AutomationOutputData.class);
-
-    var status = automationData.getCviewDictionary().getStatus();
-    log.info("Status of RPA API call : {} ", status);
-
-    if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
-      var errorDescription = automationData.getCviewDictionary().getErrorDescription();
-      log.info("Error Description {} ", errorDescription);
-      throw new JaggaerRPAException(errorDescription);
-    }
-    return status;
-  }
-
-  /**
-   * Convert String to Object
-   *
-   * @param inputString
-   * @return Object
-   */
-  @SneakyThrows
-  private Map<String, Object> convertStringToObject(final String inputString) {
-    return objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {});
-  }
-
-  /**
-   * Get Access Token by calling RPA access API
-   *
-   * @return accessToken
-   */
-  private String getAccessToken() {
-    var jaggerRPACredentials = new HashMap<String, String>();
-    jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
-    jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
-    var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
-    return webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), uriTemplate);
+    return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+        RPAProcessNameEnum.BUYER_MESSAGING);
   }
 
   /**
@@ -258,7 +115,7 @@ public class MessageService {
    */
   public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
-    //REM Assumption that user is buyer only
+    // REM Assumption that user is buyer only
     var jaggaerUserId = userProfileService
         .resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
@@ -396,16 +253,14 @@ public class MessageService {
   private CaTMessageOCDS getCaTMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject())
-        .author(getAuthorDetails(message));
+        .title(message.getSubject()).author(getAuthorDetails(message));
   }
 
   private MessageOCDS getMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject())
-            .description(message.getBody())
-            .author(getAuthorDetails(message));
+        .title(message.getSubject()).description(message.getBody())
+        .author(getAuthorDetails(message));
   }
 
   private CaTMessageOCDSAllOfAuthor getAuthorDetails(
@@ -415,9 +270,9 @@ public class MessageService {
       author = new CaTMessageOCDSAllOfAuthor().id(message.getSender().getId())
           .name(message.getSender().getName());
     } else {
-      var jaggaerUser = userProfileService.resolveBuyerUserByUserId(
-          String.valueOf(message.getSenderUser().getId())).orElseThrow(
-          () -> new ResourceNotFoundException(
+      var jaggaerUser = userProfileService
+          .resolveBuyerUserByUserId(String.valueOf(message.getSenderUser().getId()))
+          .orElseThrow(() -> new ResourceNotFoundException(
               String.format("Jaggaer user not found for %s", message.getSenderUser().getId())));
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail())
           .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
