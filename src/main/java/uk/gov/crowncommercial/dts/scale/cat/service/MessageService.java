@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -58,6 +59,8 @@ public class MessageService {
   private final JaggaerService jaggaerService;
 
   private final UserProfileService userProfileService;
+
+  private final ConclaveService conclaveService;
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
@@ -255,6 +258,7 @@ public class MessageService {
    */
   public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
+    //REM Assumption that user is buyer only
     var jaggaerUserId = userProfileService
         .resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
@@ -358,10 +362,10 @@ public class MessageService {
     userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     validationService.validateProjectAndEventIds(procId, eventId);
-    var reponse = jaggaerService.getMessage(messageId);
+    var response = jaggaerService.getMessage(messageId);
 
     return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
-        .OCDS(getMessageOCDS(reponse)).nonOCDS(getMessageNonOCDS(reponse));
+        .OCDS(getMessageOCDS(response)).nonOCDS(getMessageNonOCDS(response));
   }
 
   private List<CaTMessage> getCatMessages(
@@ -392,15 +396,36 @@ public class MessageService {
   private CaTMessageOCDS getCaTMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new CaTMessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject()).author(new CaTMessageOCDSAllOfAuthor()
-            .id(message.getSender().getId()).name(message.getSender().getName()));
+        .title(message.getSubject())
+        .author(getAuthorDetails(message));
   }
 
   private MessageOCDS getMessageOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     return new MessageOCDS().date(message.getSendDate()).id(message.getMessageId())
-        .title(message.getSubject()).author(new CaTMessageOCDSAllOfAuthor()
-            .id(message.getSender().getId()).name(message.getSender().getName()));
+        .title(message.getSubject())
+            .description(message.getBody())
+            .author(getAuthorDetails(message));
+  }
+
+  private CaTMessageOCDSAllOfAuthor getAuthorDetails(
+      final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
+    CaTMessageOCDSAllOfAuthor author;
+    if (CaTMessageNonOCDS.DirectionEnum.RECEIVED.getValue().equals(message.getDirection())) {
+      author = new CaTMessageOCDSAllOfAuthor().id(message.getSender().getId())
+          .name(message.getSender().getName());
+    } else {
+      var jaggaerUser = userProfileService.resolveBuyerUserByUserId(
+          String.valueOf(message.getSenderUser().getId())).orElseThrow(
+          () -> new ResourceNotFoundException(
+              String.format("Jaggaer user not found for %s", message.getSenderUser().getId())));
+      var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail())
+          .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
+
+      author = new CaTMessageOCDSAllOfAuthor().name(conclaveUser.getUserName())
+          .id(conclaveUser.getOrganisationId());
+    }
+    return author;
   }
 
   private MessageNonOCDS getMessageNonOCDS(
