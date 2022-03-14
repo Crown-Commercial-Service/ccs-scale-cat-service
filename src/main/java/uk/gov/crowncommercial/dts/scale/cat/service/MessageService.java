@@ -409,22 +409,21 @@ public class MessageService {
   }
 
   private CaTMessageOCDSAllOfAuthor getAuthorDetails(
-          final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
+      final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     CaTMessageOCDSAllOfAuthor author;
     if (CaTMessageNonOCDS.DirectionEnum.RECEIVED.getValue().equals(message.getDirection())) {
-      author = new CaTMessageOCDSAllOfAuthor()
-              .id(message.getSender().getId())
-              .name(message.getSender().getName());
+      author = new CaTMessageOCDSAllOfAuthor().id(message.getSender().getId())
+          .name(message.getSender().getName());
     } else {
       var jaggaerUser = userProfileService.resolveBuyerUserByUserId(
-              String.valueOf(message.getSenderUser().getId()))
-              .orElseThrow(() -> new ResourceNotFoundException("Jaggaer"));
+          String.valueOf(message.getSenderUser().getId())).orElseThrow(
+          () -> new ResourceNotFoundException(
+              String.format("Jaggaer user not found for %s", message.getSenderUser().getId())));
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail())
-              .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
+          .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
 
-      author = new CaTMessageOCDSAllOfAuthor()
-              .name(conclaveUser.getUserName())
-              .id(conclaveUser.getOrganisationId());
+      author = new CaTMessageOCDSAllOfAuthor().name(conclaveUser.getUserName())
+          .id(conclaveUser.getOrganisationId());
     }
     return author;
   }
