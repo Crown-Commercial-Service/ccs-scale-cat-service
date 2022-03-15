@@ -284,8 +284,8 @@
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.capability.generated</modelPackage>
 							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>true</strictSpec>
-							<languageSpecificPrimitives>OneOfintegerstring</languageSpecificPrimitives>
-							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String</typeMappings>
+							<languageSpecificPrimitives>OneOfintegerstring,OneOfstringinteger</languageSpecificPrimitives>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String,OneOfstringinteger=String</typeMappings>
 							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>

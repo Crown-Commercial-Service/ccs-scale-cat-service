@@ -4,6 +4,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
 import java.util.*;
@@ -51,8 +52,6 @@ public class ProcurementEventService {
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
   private static final String SUPPLIER_NOT_FOUND_MSG =
       "Organisation id '%s' not found in organisation mappings";
-  private static final Set<String> ASSESSMENT_EVENT_TYPES =
-      Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name());
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
   private final UserProfileService userProfileService;
@@ -108,7 +107,7 @@ public class ProcurementEventService {
     String rfxReferenceCode = null;
 
     if (createEventNonOCDS.getEventType() != null
-        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType().name())) {
+        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
 
       // Either create a new assessment or validate and link to existing one
       if (createEvent.getNonOCDS().getAssessmentId() == null) {
@@ -161,7 +160,7 @@ public class ProcurementEventService {
 
     // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
     if (createEventNonOCDS.getEventType() != null
-        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType().name())) {
+        && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
       procurementEvent = addSuppliersToTendersDB(event,
           supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true,
           principal);
@@ -230,8 +229,8 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var getDataTemplate = !ASSESSMENT_EVENT_TYPES.contains(event.getEventType())
-        && !ViewEventType.TBD.name().equals(event.getEventType());
+    var getDataTemplate =
+        !event.isAssessment() && !ViewEventType.TBD.name().equals(event.getEventType());
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
         getDataTemplate ? criteriaService.getEvalCriteria(projectId, eventId, true)
@@ -281,7 +280,7 @@ public class ProcurementEventService {
             "Cannot update an existing event type of '" + event.getEventType() + "'");
       }
 
-      if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType().name())
+      if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())
           && updateEvent.getAssessmentId() == null && event.getAssessmentId() == null) {
         createAssessment = true;
       }
@@ -345,7 +344,7 @@ public class ProcurementEventService {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
-    if (isAssessmentEvent(event)) {
+    if (event.isAssessment()) {
       log.debug("Event {} is an Assessment Type {}, retrieve suppliers from Tenders DB",
           event.getId(), event.getEventType());
       return getSuppliersFromTendersDB(event);
@@ -402,7 +401,7 @@ public class ProcurementEventService {
      * If Event is an Assessment Type, suppliers are stored in the Tenders DB only, otherwise they
      * are stored in Jaggaer.
      */
-    if (isAssessmentEvent(event)) {
+    if (event.isAssessment()) {
       log.debug("Event {} is an Assessment Type {}, add suppliers to Tenders DB",
           event.getEventID(), event.getEventType());
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
@@ -441,7 +440,7 @@ public class ProcurementEventService {
      * If Event is an Assessment Type, suppliers are stored in the Tenders DB only, otherwise they
      * are stored in Jaggaer.
      */
-    if (isAssessmentEvent(event)) {
+    if (event.isAssessment()) {
       log.debug("Event {} is an Assessment Type {}, delete supplier from Tenders DB", event.getId(),
           event.getEventType());
       deleteSupplierFromTendersDB(event, om, principal);
@@ -632,16 +631,6 @@ public class ProcurementEventService {
           Optional.ofNullable(event.getExternalEventId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE, Optional.empty());
     }).collect(Collectors.toList());
-  }
-
-  /**
-   * Is the event an Assessment Event (e.g. FCA, DAA)?
-   *
-   * @param event
-   * @return
-   */
-  private boolean isAssessmentEvent(final ProcurementEvent event) {
-    return ASSESSMENT_EVENT_TYPES.contains(event.getEventType());
   }
 
   /**
