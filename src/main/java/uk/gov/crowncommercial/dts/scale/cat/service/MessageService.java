@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.collections.CollectionUtils;
@@ -35,6 +36,7 @@ public class MessageService {
   private static final String RESPOND_MESSAGE = "Respond";
   private static final DateTimeFormatter DATE_TIME_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000+00:00");
+  private static final String RPA_DELIMETER = "~|";
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   private final ValidationService validationService;
@@ -80,7 +82,7 @@ public class MessageService {
       if (messageDetails == null) {
         throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
       }
-      String messageRecievedDate = messageDetails.getReceiveDate().format(DATE_TIME_FORMATTER);
+      var messageRecievedDate = messageDetails.getReceiveDate().format(DATE_TIME_FORMATTER);
       log.info("MessageRecievedDate: {}", messageRecievedDate);
       inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
           .senderName(messageDetails.getSender().getName());
@@ -91,15 +93,14 @@ public class MessageService {
       if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
         throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
       }
-      var suppliers = rpaGenericService.getValidSuppliers(procurementEvent,
-          nonOCDS.getReceiverList().stream().map(org -> org.getId()).collect(Collectors.toList()));
-      var appendSupplierList = new StringBuilder();
+      var suppliers =
+          rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
+              .map(OrganizationReference1::getId).collect(Collectors.toList()));
+      var supplierJoiner = new StringJoiner(RPA_DELIMETER);
       suppliers.getFirst().stream().forEach(supplier -> {
-        appendSupplierList.append(supplier.getCompanyData().getName());
-        appendSupplierList.append(";");
+        supplierJoiner.add(supplier.getCompanyData().getName());
       });
-      var supplierString =
-          appendSupplierList.toString().substring(0, appendSupplierList.toString().length() - 1);
+      var supplierString = supplierJoiner.toString();
       log.info("Suppliers list: {}", supplierString);
       inputBuilder.supplierName(supplierString);
     }
