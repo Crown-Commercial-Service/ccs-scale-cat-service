@@ -9,7 +9,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPO
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.transaction.Transactional;
 import org.apache.commons.io.FilenameUtils;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,15 +27,14 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -50,9 +51,11 @@ public class ProcurementEventService {
   private static final String ADDITIONAL_INFO_LOT_NUMBER = "Lot Number";
   private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
-  private static final String SUPPLIER_NOT_FOUND_MSG =
+  private static final String ERR_MSG_FMT_SUPPLIER_NOT_FOUND =
       "Organisation id '%s' not found in organisation mappings";
-  public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+  public static final String ERR_MSG_JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+  public static final String ERR_MSG_FMT_DOCUMENT_NOT_FOUND =
+      "Document upload record for ID [%s] not found";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -64,6 +67,7 @@ public class ProcurementEventService {
   private final SupplierService supplierService;
   private final DocumentConfig documentConfig;
   private final AssessmentService assessmentService;
+  private final DocumentUploadService documentUploadService;
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -181,7 +185,8 @@ public class ProcurementEventService {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
+        .getUserId();
     var jaggaerBuyerCompanyId =
         userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
 
@@ -432,7 +437,7 @@ public class ProcurementEventService {
     // Determine Jaggaer supplier id
     var om = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
         .orElseThrow(() -> new IllegalArgumentException(
-            String.format(SUPPLIER_NOT_FOUND_MSG, organisationId)));
+            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, organisationId)));
 
     /*
      * If Event is a Tenders DB only type, suppliers are stored in the Tenders DB only, otherwise
@@ -459,30 +464,14 @@ public class ProcurementEventService {
    * @param eventId
    * @return
    */
+  @Transactional
   public Collection<DocumentSummary> getDocumentSummaries(final Integer procId,
       final String eventId) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-    Collection<DocumentSummary> documents = new ArrayList<>();
 
-    if (exportRfxResponse.getBuyerAttachmentsList().getAttachment() == null) {
-      exportRfxResponse.setBuyerAttachmentsList(
-          BuyerAttachmentsList.builder().attachment(new ArrayList<>()).build());
-    }
-    exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream()
-        .map(ba -> tendersAPIModelUtils.buildDocumentSummary(ba, DocumentAudienceType.BUYER))
-        .forEachOrdered(documents::add);
-
-    if (exportRfxResponse.getSellerAttachmentsList().getAttachment() == null) {
-      exportRfxResponse.setSellerAttachmentsList(
-          SellerAttachmentsList.builder().attachment(new ArrayList<>()).build());
-    }
-    exportRfxResponse.getSellerAttachmentsList().getAttachment().stream()
-        .map(ba -> tendersAPIModelUtils.buildDocumentSummary(ba, DocumentAudienceType.SUPPLIER))
-        .forEachOrdered(documents::add);
-
-    return documents;
+    return event.getDocumentUploads().stream().map(tendersAPIModelUtils::buildDocumentSummary)
+        .collect(Collectors.toSet());
   }
 
   /**
@@ -493,11 +482,13 @@ public class ProcurementEventService {
    * @param multipartFile
    * @param audience
    * @param fileDescription
+   * @param principal
    * @return
    */
+  @Transactional
   public DocumentSummary uploadDocument(final Integer procId, final String eventId,
       final MultipartFile multipartFile, final DocumentAudienceType audience,
-      final String fileDescription) {
+      final String fileDescription, final String principal) {
 
     log.debug("Upload Document to event {}", eventId);
 
@@ -516,19 +507,119 @@ public class ProcurementEventService {
           + " bytes. Maximum allowed upload size is: " + documentConfig.getMaxSize() + " bytes");
     }
 
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+
     // Validate total file size
-    var currentDocuments = getDocumentSummaries(procId, eventId);
     var totalEventFileSize =
-        currentDocuments.stream().map(DocumentSummary::getFileSize).reduce(0L, Long::sum);
+        event.getDocumentUploads().stream().map(DocumentUpload::getSize).reduce(0L, Long::sum);
     if (Long.sum(totalEventFileSize, multipartFile.getSize()) > documentConfig.getMaxTotalSize()) {
       throw new IllegalArgumentException(
           "Uploading file will exceed the maximum allowed total limit of "
               + documentConfig.getMaxTotalSize() + " bytes for event " + eventId
               + " (current total size is " + totalEventFileSize + " bytes, across "
-              + currentDocuments.size() + " files)");
+              + event.getDocumentUploads().size() + " files)");
     }
 
+    return tendersAPIModelUtils.buildDocumentSummary(documentUploadService.uploadDocument(event,
+        multipartFile, audience, fileDescription, principal));
+  }
+
+  /**
+   * Retrieve a document from the Tenders document upload store (DB+S3)
+   *
+   * @param procId
+   * @param eventId
+   * @param documentId
+   * @return
+   */
+  @Transactional
+  public DocumentAttachment getDocument(final Integer procId, final String eventId,
+      final String documentId, final String principal) {
+
+    log.debug("Get Document {} from Event {}", documentId, eventId);
+
     var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var documentUpload = findDocumentUploadInEvent(event, documentId);
+    var documentKey = DocumentKey.fromString(documentId);
+    log.debug("Retrieving Document {}", documentKey.getFileName());
+
+    return DocumentAttachment.builder()
+        .data(documentUploadService.retrieveDocument(documentUpload, principal))
+        .fileName(documentKey.getFileName())
+        .contentType(MediaType.parseMediaType(documentUpload.getMimetype())).build();
+  }
+
+  /**
+   * Delete a document from the Tenders document upload store (DB+S3)
+   *
+   * @param procId
+   * @param eventId
+   * @param documentId
+   */
+  @Transactional
+  public void deleteDocument(final Integer procId, final String eventId, final String documentId) {
+    log.debug("Delete Document {} from Event {}", documentId, eventId);
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var documentUpload = findDocumentUploadInEvent(event, documentId);
+    var documentKey = DocumentKey.fromString(documentId);
+    log.debug("Deleting Document {}", documentKey.getFileName());
+
+    documentUploadService.deleteDocument(documentUpload);
+  }
+
+  /**
+   * Publish an Rfx in Jaggaer
+   *
+   * @param procId
+   * @param eventId
+   */
+  @Transactional
+  public void publishEvent(final Integer procId, final String eventId,
+      final PublishDates publishDates, final String principal) {
+
+    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
+        .getUserId();
+
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+    if (TenderStatus.PLANNED != status) {
+      throw new IllegalArgumentException(
+          "You cannot publish an event unless it is in a 'planned' state");
+    }
+
+    // Fetch and upload all documents
+    procurementEvent.getDocumentUploads().stream().forEach(documentUpload -> {
+      var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
+      var multipartFile = new ByteArrayMultipartFile(
+          documentUploadService.retrieveDocument(documentUpload, principal), docKey.getFileName(),
+          documentUpload.getMimetype());
+
+      eventUploadDocument(procurementEvent, docKey.getFileName(),
+          documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
+    });
+
+    validationService.validatePublishDates(publishDates);
+    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+  }
+
+  /**
+   * Upload a document to the Jaggaer event
+   *
+   * @param event
+   * @param fileName
+   * @param fileDescription
+   * @param audience
+   * @param multipartFile
+   */
+  public void eventUploadDocument(final ProcurementEvent event, final String fileName,
+      final String fileDescription, final DocumentAudienceType audience,
+      final MultipartFile multipartFile) {
+
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
         .rfxReferenceCode(event.getExternalReferenceId()).build();
     var attachment =
@@ -550,54 +641,6 @@ public class ProcurementEventService {
 
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
     jaggaerService.uploadDocument(multipartFile, update);
-
-    var docs = getDocumentSummaries(procId, eventId);
-    return docs.stream().filter(d -> d.getFileName().equals(fileName)).findFirst().orElseThrow(
-        () -> new IllegalStateException("There was an unexpected error uploading the document"));
-  }
-
-  /**
-   * Retrieve a document attached to an Rfx in Jaggaer.
-   *
-   * @param procId
-   * @param eventId
-   * @param documentId
-   * @return
-   */
-  public DocumentAttachment getDocument(final Integer procId, final String eventId,
-      final String documentId) {
-
-    log.debug("Get Document {} from Event {}", documentId, eventId);
-
-    validationService.validateProjectAndEventIds(procId, eventId);
-    var documentKey = DocumentKey.fromString(documentId);
-    log.debug("Retrieving Document {}", documentKey.getFileName());
-    return jaggaerService.getDocument(documentKey.getFileId(), documentKey.getFileName());
-  }
-
-  /**
-   * Publish an Rfx in Jaggaer
-   *
-   * @param procId
-   * @param eventId
-   */
-  public void publishEvent(final Integer procId, final String eventId,
-      final PublishDates publishDates, final String principal) {
-
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-
-    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
-    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-        .get(exportRfxResponse.getRfxSetting().getStatusCode());
-
-    if (TenderStatus.PLANNED != status) {
-      throw new IllegalArgumentException(
-          "You cannot publish an event unless it is in a 'planned' state");
-    }
-    validationService.validatePublishDates(publishDates);
-    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
   }
 
   /**
@@ -732,7 +775,7 @@ public class ProcurementEventService {
         var om = retryableTendersDBDelegate
             .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
             .orElseThrow(() -> new IllegalArgumentException(
-                String.format(SUPPLIER_NOT_FOUND_MSG, s.getCompanyData().getId())));
+                String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId())));
 
         var org = new OrganizationReference();
         org.setId(String.valueOf(om.getOrganisationId()));
@@ -786,6 +829,13 @@ public class ProcurementEventService {
         .rfxReferenceCode(event.getExternalReferenceId()).build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(suppliersList).build();
     jaggaerService.createUpdateRfx(rfx, OperationCode.UPDATE_RESET);
+  }
+
+  DocumentUpload findDocumentUploadInEvent(final ProcurementEvent event, final String documentId) {
+    return event.getDocumentUploads().stream()
+        .filter(du -> Objects.equals(du.getDocumentId(), documentId)).findFirst()
+        .orElseThrow(() -> new ResourceNotFoundException(
+            String.format(ERR_MSG_FMT_DOCUMENT_NOT_FOUND, documentId)));
   }
 
 }
