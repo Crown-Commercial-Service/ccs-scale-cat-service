@@ -1,10 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
@@ -133,18 +130,31 @@ public class RPAGenericService {
   private String validateResponse(final RPAAPIResponse apiResponse) {
     var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
     var maps = (List<Map<String, String>>) convertedObject.get("AutomationOutputData");
-    var automationData = objectMapper.readValue(objectMapper.writeValueAsString(maps.get(2)),
-        AutomationOutputData.class);
 
-    var status = automationData.getCviewDictionary().getStatus();
-    log.info("Status of RPA API call : {} ", status);
+    var responseList = new ArrayList<AutomationOutputData>();
 
-    if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
-      var errorDescription = automationData.getCviewDictionary().getErrorDescription();
-      log.info("Error Description {} ", errorDescription);
-      throw new JaggaerRPAException(errorDescription);
+    for (Map<String, String> map : maps) {
+      var automationData =
+          objectMapper.readValue(objectMapper.writeValueAsString(map), AutomationOutputData.class);
+      responseList.add(automationData);
     }
-    return status;
+
+    var automationFilterData = responseList.stream()
+        .filter(e -> e.getAppName().contentEquals("Microbot : API_ResponsePayload")).findFirst();
+
+    if (automationFilterData.isPresent()) {
+      var automationData = automationFilterData.get();
+      var status = automationData.getCviewDictionary().getStatus();
+      log.info("Status of RPA API call : {} ", status);
+
+      if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
+        var errorDescription = automationData.getCviewDictionary().getErrorDescription();
+        log.info("Error Description {} ", errorDescription);
+        throw new JaggaerRPAException(errorDescription);
+      }
+      return status;
+    }
+    return "Invalid Response";
   }
 
   /**
