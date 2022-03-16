@@ -135,6 +135,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
       getMessage:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}
+      startEvaluation:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
         
       # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:

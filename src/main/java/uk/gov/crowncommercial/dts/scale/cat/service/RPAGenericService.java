@@ -104,6 +104,7 @@ public class RPAGenericService {
     var response =
         webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
             rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), getAccessToken());
+    log.info("RPA Response: {}", objectMapper.writeValueAsString(response));
 
     return validateResponse(response);
   }
@@ -132,18 +133,14 @@ public class RPAGenericService {
   private String validateResponse(final RPAAPIResponse apiResponse) {
     var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
     var maps = (List<Map<String, String>>) convertedObject.get("AutomationOutputData");
-
     var responseList = new ArrayList<AutomationOutputData>();
-
     for (Map<String, String> map : maps) {
       var automationData =
           objectMapper.readValue(objectMapper.writeValueAsString(map), AutomationOutputData.class);
       responseList.add(automationData);
     }
-
     var automationFilterData = responseList.stream()
         .filter(e -> e.getAppName().contentEquals("Microbot : API_ResponsePayload")).findFirst();
-
     if (automationFilterData.isPresent()) {
       var automationData = automationFilterData.get();
       var status = automationData.getCviewDictionary().getStatus();
