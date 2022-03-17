@@ -144,7 +144,7 @@ config:
         source: CaT
         sourceId: 1
         profileName: ITTEvaluation
-        timeoutDuration: 60
+        timeoutDuration: 120
         requestTimeout: 3600000
         
     agreementsService:

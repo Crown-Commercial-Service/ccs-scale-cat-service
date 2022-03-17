@@ -46,8 +46,10 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  * Message Service layer tests
  */
-@SpringBootTest(classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
-    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
+        ApplicationFlagsConfig.class, RPAGenericService.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties({JaggaerAPIConfig.class, RPAAPIConfig.class})
 @ContextConfiguration(classes = {ObjectMapper.class})
 @Slf4j
@@ -293,7 +295,7 @@ class MessageServiceTest {
         .messagingAction(CREATE_MESSAGE).messageSubject(ocds.getTitle())
         .messageBody(ocds.getDescription())
         .messageClassification(nonocds.getClassification().getValue())
-        .supplierName("Bathula Consulting;Doshi Industries");
+        .supplierName("Bathula Consulting~|Doshi Industries");
 
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
@@ -328,7 +330,7 @@ class MessageServiceTest {
   }
 
   @Test
-  public void testMapper() throws JsonMappingException, JsonProcessingException {
+  void testMapper() throws JsonMappingException, JsonProcessingException {
     String resp = "{\n"
         + "    \"processInput\": \"{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"pwd\\\",\\\"Search.ITTCode\\\":\\\"itt_86\\\",\\\"Search.BroadcastMessage\\\":\\\"Yes\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"}\",\n"
         + "    \"processName\": \"BuyerMessaging\",\n" + "    \"profileName\": \"ITTEvaluation\",\n"
@@ -361,7 +363,7 @@ class MessageServiceTest {
   }
 
   @Test
-  public void testRPAProcessInputMapper() throws JsonProcessingException {
+  void testRPAProcessInputMapper() throws JsonProcessingException {
     var input = RPAProcessInput.builder().userName("John").password("vendol").ittCode("itt767");
     RPAProcessInput in = input.messageBody("MessageBody").build();
     String writeValueAsString = new ObjectMapper().writeValueAsString(in);
@@ -406,6 +408,5 @@ class MessageServiceTest {
     assertNotNull(response);
     assertEquals(1, response.getMessages().size());
     assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
-
   }
 }
