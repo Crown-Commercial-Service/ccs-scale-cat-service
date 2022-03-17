@@ -31,5 +31,5 @@ public class Constants {
       MediaType.parseMediaType("application/vnd.oasis.opendocument.text");
 
   public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
-      Set.of(DefineEventType.FCA, DefineEventType.DAA);
+      Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DAA);
 }
