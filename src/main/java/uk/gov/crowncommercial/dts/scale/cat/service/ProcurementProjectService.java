@@ -7,7 +7,6 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
@@ -388,9 +387,7 @@ public class ProcurementProjectService {
     //TODO use prodcument_events table to store status instead of call to Jaggaer
     try {
       var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
-      System.out.println("start "+LocalDateTime.now());
       var status = findTenderStatus(dbEvent, exportRfxResponse);
-      System.out.println("End " + LocalDateTime.now());
       var eventSummary =
           tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(), dbEvent.getEventName(),
               Optional.ofNullable(dbEvent.getExternalReferenceId()),
