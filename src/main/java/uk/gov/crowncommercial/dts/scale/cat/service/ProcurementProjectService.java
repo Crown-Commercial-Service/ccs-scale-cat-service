@@ -7,6 +7,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
@@ -366,35 +367,44 @@ public class ProcurementProjectService {
   private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(final ProjectUserMapping mapping) {
     // Get Project from database
     var projectPackageSummary = new ProjectPackageSummary();
-      var agreementNo = mapping.getProject().getCaNumber();
-      var dbEvent = getCurrentEvent(mapping.getProject());
-      // TODO make single call instead of 2
-      try {
-        var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
-        var lotDetails = agreementsService.getLotDetails(agreementNo, mapping.getProject().getLotNumber());
-        projectPackageSummary.setAgreementName(agreementDetails.getName());
-        projectPackageSummary.setLotName(lotDetails.getName());
-      }catch (Exception e) {
-        //ignore for the moment, replace when single method to get all data from agreement service
-      }
-      // TODO no value for Uri
-      // projectPackageSummary.setUri(getProjectUri);
-      projectPackageSummary.setAgreementId(mapping.getProject().getCaNumber());
-      projectPackageSummary.setLotId(mapping.getProject().getLotNumber());
-      projectPackageSummary.setProjectId(mapping.getProject().getId());
-      projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
-
+    var agreementNo = mapping.getProject().getCaNumber();
+    var dbEvent = getCurrentEvent(mapping.getProject());
+    // TODO make single call instead of 2
+    try {
+      var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+      var lotDetails =
+          agreementsService.getLotDetails(agreementNo, mapping.getProject().getLotNumber());
+      projectPackageSummary.setAgreementName(agreementDetails.getName());
+      projectPackageSummary.setLotName(lotDetails.getName());
+    } catch (Exception e) {
+      //ignore for the moment, replace when single method to get all data from agreement service
+    }
+    // TODO no value for Uri
+    // projectPackageSummary.setUri(getProjectUri);
+    projectPackageSummary.setAgreementId(mapping.getProject().getCaNumber());
+    projectPackageSummary.setLotId(mapping.getProject().getLotNumber());
+    projectPackageSummary.setProjectId(mapping.getProject().getId());
+    projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
+    //TODO use prodcument_events table to store status instead of call to Jaggaer
+    try {
       var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
-      var status = findTenderStatus(dbEvent,exportRfxResponse);
-      var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
-          dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-          ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
+      System.out.println("start "+LocalDateTime.now());
+      var status = findTenderStatus(dbEvent, exportRfxResponse);
+      System.out.println("End " + LocalDateTime.now());
+      var eventSummary =
+          tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(), dbEvent.getEventName(),
+              Optional.ofNullable(dbEvent.getExternalReferenceId()),
+              ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
               Optional.ofNullable(dbEvent.getAssessmentId()));
-    eventSummary.tenderPeriod(new Period1()
-            .startDate(exportRfxResponse.getRfxSetting().getPublishDate())
-            .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
+      eventSummary.tenderPeriod(
+          new Period1().startDate(exportRfxResponse.getRfxSetting().getPublishDate())
+              .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
       projectPackageSummary.activeEvent(eventSummary);
-      return Optional.of(projectPackageSummary);
+    } catch (Exception e) {
+      // No data found in Jagger
+    }
+
+    return Optional.of(projectPackageSummary);
 
   }
 
