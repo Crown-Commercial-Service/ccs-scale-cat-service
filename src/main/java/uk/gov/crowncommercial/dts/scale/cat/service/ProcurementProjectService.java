@@ -402,6 +402,7 @@ public class ProcurementProjectService {
       projectPackageSummary.activeEvent(eventSummary);
     } catch (Exception e) {
       // No data found in Jagger
+      log.debug("Unable to find RFX records for event id, %s",dbEvent.getExternalEventId());
     }
 
     return Optional.of(projectPackageSummary);
