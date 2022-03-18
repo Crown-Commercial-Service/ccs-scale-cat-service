@@ -4,7 +4,6 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -150,8 +149,8 @@ public class ProcurementProjectService {
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
         new CreateEvent(), null, principal);
 
-    //add current user to project
-    addProjectUserMapping(jaggaerUserId, procurementProject,principal);
+    // add current user to project
+    addProjectUserMapping(jaggaerUserId, procurementProject, principal);
 
     return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
         procurementProject.getId(), eventSummary.getId(), projectTitle,
@@ -231,7 +230,8 @@ public class ProcurementProjectService {
    * @param principal
    * @return Collection of project team members
    */
-  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId, final String principal) {
+  public Collection<TeamMember> getProjectTeamMembers(final Integer projectId,
+      final String principal) {
 
     // Get Project (project team)
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -260,9 +260,9 @@ public class ProcurementProjectService {
     combinedIds.addAll(teamIds);
     combinedIds.addAll(emailRecipientIds);
 
-    //update user
-    //TODO Add only valid users
-    updateProjectUserMapping(dbProject, teamIds,principal);
+    // update user
+    // TODO Add only valid users
+    updateProjectUserMapping(dbProject, teamIds, principal);
 
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
@@ -280,7 +280,7 @@ public class ProcurementProjectService {
    * @return Team Member details
    */
   public TeamMember addProjectTeamMember(final Integer projectId, final String userId,
-                                         final UpdateTeamMember updateTeamMember, final String principal) {
+      final UpdateTeamMember updateTeamMember, final String principal) {
 
     log.debug("Add/update Project Team");
 
@@ -330,7 +330,7 @@ public class ProcurementProjectService {
         throw new IllegalArgumentException("Unknown Team Member Update Type");
     }
 
-      addProjectUserMapping(jaggaerUserId,dbProject,principal);
+    addProjectUserMapping(jaggaerUserId, dbProject, principal);
     return getProjectTeamMembers(projectId, principal).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
   }
@@ -343,6 +343,8 @@ public class ProcurementProjectService {
    */
   public Collection<ProjectPackageSummary> getProjects(final String principal) {
 
+    log.debug("Get projects for user: " + principal);
+
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
@@ -350,8 +352,7 @@ public class ProcurementProjectService {
     var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId);
 
     if (!CollectionUtils.isEmpty(projects)) {
-      return projects.stream()
-          .map(project -> convertProjectToProjectPackageSummary(project))
+      return projects.stream().map(this::convertProjectToProjectPackageSummary)
           .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
     }
     return Collections.emptyList();
@@ -363,20 +364,26 @@ public class ProcurementProjectService {
    * @param mapping the mapping
    * @return ProjectPackageSummary
    */
-  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(final ProjectUserMapping mapping) {
+  private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
+      final ProjectUserMapping mapping) {
+
+    log.debug("Convert Project to ProjectPackageSummary: " + mapping.getProject().getId());
+
     // Get Project from database
     var projectPackageSummary = new ProjectPackageSummary();
     var agreementNo = mapping.getProject().getCaNumber();
     var dbEvent = getCurrentEvent(mapping.getProject());
     // TODO make single call instead of 2
     try {
+      log.debug("Get agreement and lots: " + agreementNo);
       var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
       var lotDetails =
           agreementsService.getLotDetails(agreementNo, mapping.getProject().getLotNumber());
       projectPackageSummary.setAgreementName(agreementDetails.getName());
       projectPackageSummary.setLotName(lotDetails.getName());
     } catch (Exception e) {
-      //ignore for the moment, replace when single method to get all data from agreement service
+      // ignore for the moment, replace when single method to get all data from agreement service
+      log.error("Error retrieving agreement and lots: " + e.getMessage());
     }
     // TODO no value for Uri
     // projectPackageSummary.setUri(getProjectUri);
@@ -386,6 +393,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
     //TODO use prodcument_events table to store status instead of call to Jaggaer
     try {
+      log.debug("Get Rfx from Jaggaer: " + dbEvent.getExternalEventId());
       var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
       var status = findTenderStatus(dbEvent, exportRfxResponse);
       var eventSummary =
@@ -401,20 +409,19 @@ public class ProcurementProjectService {
       // No data found in Jagger
       log.debug("Unable to find RFX records for event id, %s",dbEvent.getExternalEventId());
     }
-
     return Optional.of(projectPackageSummary);
-
   }
 
-  private TenderStatus findTenderStatus(ProcurementEvent dbEvent, ExportRfxResponse exportRfxResponse) {
+  private TenderStatus findTenderStatus(final ProcurementEvent dbEvent,
+      final ExportRfxResponse exportRfxResponse) {
     var statusCode = exportRfxResponse.getRfxSetting().getStatusCode();
     String eventType = dbEvent.getEventType();
     // This logic is based on attached excel of SCAT-3671
-    //TODO: some scenarios are have ambiguous and need to check end to this logic
-    //TODO: can it be better?
+    // TODO: some scenarios are have ambiguous and need to check end to this logic
+    // TODO: can it be better?
     switch (statusCode) {
       case 0:
-        switch(eventType) {
+        switch (eventType) {
           case "RFI":
           case "EOI":
           case "FC":
@@ -424,7 +431,7 @@ public class ProcurementProjectService {
         break;
       case 300:
       case 400:
-        switch(eventType) {
+        switch (eventType) {
           case "RFI":
           case "EOI":
             return TenderStatus.PLANNING;
@@ -434,21 +441,21 @@ public class ProcurementProjectService {
         }
         break;
       case 500:
-        switch(eventType) {
+        switch (eventType) {
           case "FC":
           case "DA":
             return TenderStatus.COMPLETE;
         }
         break;
       case 800:
-        switch(eventType) {
+        switch (eventType) {
           case "FC":
           case "DA":
             return TenderStatus.ACTIVE;
         }
         break;
       case 950:
-        switch(eventType) {
+        switch (eventType) {
           case "RFI":
           case "EOI":
             return TenderStatus.PLANNING;
@@ -458,7 +465,7 @@ public class ProcurementProjectService {
         }
         break;
       case 1500:
-        switch(eventType) {
+        switch (eventType) {
           case "RFI":
           case "EOI":
           case "FC":
@@ -467,7 +474,7 @@ public class ProcurementProjectService {
         }
         break;
     }
-  return null;
+    return null;
   }
 
   /**
@@ -544,42 +551,36 @@ public class ProcurementProjectService {
   }
 
 
-  private void addProjectUserMapping(final String jaggaerUserId,
-                                     final ProcurementProject project, final String principal) {
-    var projectUserMapping = ProjectUserMapping.builder()
-            .project(project)
-            .userId(jaggaerUserId)
-            .timestamps(createTimestamps(principal))
-            .build();
+  private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
+      final String principal) {
+    var projectUserMapping = ProjectUserMapping.builder().project(project).userId(jaggaerUserId)
+        .timestamps(createTimestamps(principal)).build();
     retryableTendersDBDelegate.save(projectUserMapping);
   }
 
   private void updateProjectUserMapping(final ProcurementProject project, final Set<String> teamIds,
-                                        final String principal) {
-    var existingMappings = retryableTendersDBDelegate.
-            findProjectUserMappingByProjectId(project.getId());
+      final String principal) {
+    var existingMappings =
+        retryableTendersDBDelegate.findProjectUserMappingByProjectId(project.getId());
     var addMappingList = new ArrayList<ProjectUserMapping>();
 
-    //Add any users, who do not exists in database
-    for (String teamId: teamIds) {
+    // Add any users, who do not exists in database
+    for (String teamId : teamIds) {
       var userMapping = existingMappings.stream()
-              .filter(projectUserMapping -> projectUserMapping.getUserId().equals(teamId)).findFirst();
+          .filter(projectUserMapping -> projectUserMapping.getUserId().equals(teamId)).findFirst();
       if (!userMapping.isPresent()) {
-        addMappingList.add( ProjectUserMapping.builder()
-                .project(project)
-                .userId(teamId)
-                .timestamps(createTimestamps(principal))
-                .build());
+        addMappingList.add(ProjectUserMapping.builder().project(project).userId(teamId)
+            .timestamps(createTimestamps(principal)).build());
       }
     }
-  // remove any users, who are not in users list
-    var deleteMappingList = existingMappings
-            .stream().filter(projectUserMapping -> !teamIds.contains(projectUserMapping.getUserId()))
-            .collect(Collectors.toList());
+    // remove any users, who are not in users list
+    var deleteMappingList = existingMappings.stream()
+        .filter(projectUserMapping -> !teamIds.contains(projectUserMapping.getUserId()))
+        .collect(Collectors.toList());
 
     if (!CollectionUtils.isEmpty(addMappingList))
       retryableTendersDBDelegate.saveAll(addMappingList);
     if (!CollectionUtils.isEmpty(deleteMappingList))
-        retryableTendersDBDelegate.deleteAll(deleteMappingList);
+      retryableTendersDBDelegate.deleteAll(deleteMappingList);
   }
 }
