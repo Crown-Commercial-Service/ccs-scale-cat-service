@@ -135,8 +135,9 @@ public class SupplierService {
 
     // Creating RPA process input string
     var inputBuilder = RPAProcessInput.builder().userName(buyerUser.get().getEmail())
-        .password(rpaAPIConfig.getBuyerPwd()).ittCode(procurementEvent.getExternalReferenceId())
-        .score(scores).comment(comments).supplierName(suppliers);
+        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.get().getUserId()))
+        .ittCode(procurementEvent.getExternalReferenceId()).score(scores).comment(comments)
+        .supplierName(suppliers);
 
     return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
         RPAProcessNameEnum.ASSIGN_SCORE);

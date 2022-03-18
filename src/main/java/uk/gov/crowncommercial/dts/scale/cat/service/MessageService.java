@@ -70,7 +70,8 @@ public class MessageService {
 
     // Creating RPA process input string
     var inputBuilder = RPAProcessInput.builder().userName(buyerUser.get().getEmail())
-        .password(rpaAPIConfig.getBuyerPwd()).ittCode(procurementEvent.getExternalReferenceId())
+        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.get().getUserId()))
+        .ittCode(procurementEvent.getExternalReferenceId())
         .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
         .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
         .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
