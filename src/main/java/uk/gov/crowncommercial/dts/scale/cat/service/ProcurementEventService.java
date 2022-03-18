@@ -651,7 +651,7 @@ public class ProcurementEventService {
 
     var suppliers = event.getCapabilityAssessmentSuppliers();
     supplierOrgMappings.stream().forEach(org -> {
-      if (suppliers.stream().noneMatch(s -> Objects
+      if (suppliers != null && suppliers.stream().noneMatch(s -> Objects
           .equals(s.getOrganisationMapping().getOrganisationId(), org.getOrganisationId()))) {
         log.debug("Creating new SupplierSelection record for organisation [{}]",
             org.getOrganisationId());
