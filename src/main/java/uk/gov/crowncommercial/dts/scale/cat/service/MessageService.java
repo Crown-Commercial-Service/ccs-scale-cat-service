@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -41,7 +40,6 @@ public class MessageService {
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   private final ValidationService validationService;
   private final UserProfileService userService;
-  private final RPAAPIConfig rpaAPIConfig;
   private final JaggaerService jaggaerService;
   private final UserProfileService userProfileService;
   private final ConclaveService conclaveService;
@@ -64,13 +62,14 @@ public class MessageService {
   public String sendOrRespondMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserByEmail(profile);
+    var buyerUser = userService.resolveBuyerUserByEmail(profile)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
 
     // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.get().getEmail())
-        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.get().getUserId()))
+    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
+        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
         .ittCode(procurementEvent.getExternalReferenceId())
         .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
         .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())

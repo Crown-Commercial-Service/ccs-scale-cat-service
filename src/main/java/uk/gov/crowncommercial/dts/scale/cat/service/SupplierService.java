@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
@@ -30,8 +30,8 @@ public class SupplierService {
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final RPAGenericService rpaGenericService;
-  private final RPAAPIConfig rpaAPIConfig;
   private static final String RPA_DELIMITER = "~|";
+  public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
   /**
    * Retrieves suppliers from the Agreements Service based on the CA and Lot and resolves each to a
@@ -99,7 +99,8 @@ public class SupplierService {
   public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
       final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserByEmail(profile);
+    var buyerUser = userService.resolveBuyerUserByEmail(profile)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
       scoreAndCommentMap.put(scoreAndComment.getOrganisationId().replace("GB-COH-", ""),
@@ -134,8 +135,8 @@ public class SupplierService {
     log.info("Supplier scores: {}", scores);
 
     // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.get().getEmail())
-        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.get().getUserId()))
+    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
+        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
         .ittCode(procurementEvent.getExternalReferenceId()).score(scores).comment(comments)
         .supplierName(suppliers);
 
