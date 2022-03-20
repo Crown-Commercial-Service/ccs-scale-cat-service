@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
@@ -230,6 +231,12 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public Set<ProjectUserMapping> findProjectUserMappingByUserId(final String userId) {
     return projectUserMappingRepo.findByUserId(userId);
+  }
+
+  @TendersDBRetryable
+  public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,
+      final Pageable pageable) {
+    return projectUserMappingRepo.findByUserId(userId, pageable);
   }
 
   @TendersDBRetryable

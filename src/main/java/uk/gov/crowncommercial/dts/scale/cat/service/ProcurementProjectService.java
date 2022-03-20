@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -349,7 +351,11 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId);
+    // TODO - due to errors logging in for some users (SCAT-4484), hard-coding to limit the number
+    // of projects returned for now until a better solution is implemented (SCAT-4583)
+    // var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId);
+    var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
+        PageRequest.of(0, 5, Sort.by("timestamps.createdAt").descending()));
 
     if (!CollectionUtils.isEmpty(projects)) {
       return projects.stream().map(this::convertProjectToProjectPackageSummary)
@@ -392,23 +398,34 @@ public class ProcurementProjectService {
     projectPackageSummary.setProjectId(mapping.getProject().getId());
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
 
-    log.debug("Get Rfx from Jaggaer: " + dbEvent.getExternalEventId());
-    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
-    var status = findTenderStatus(dbEvent, exportRfxResponse);
-    var eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
-        dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-        ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
-        Optional.ofNullable(dbEvent.getAssessmentId()));
-    eventSummary
-        .tenderPeriod(new Period1().startDate(exportRfxResponse.getRfxSetting().getPublishDate())
-            .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
+    EventSummary eventSummary;
+
+    if (dbEvent.isTendersDBOnly() || dbEvent.getExternalEventId() == null) {
+      log.debug("Get Event from Tenders DB: {}", dbEvent.getId());
+      eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
+          dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
+          ViewEventType.fromValue(dbEvent.getEventType()), TenderStatus.PLANNING, ReleaseTag.TENDER,
+          Optional.ofNullable(dbEvent.getAssessmentId()));
+    } else {
+      log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
+      var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+      var status = findTenderStatus(dbEvent, exportRfxResponse);
+      eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
+          dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
+          ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
+          Optional.ofNullable(dbEvent.getAssessmentId()));
+      eventSummary
+          .tenderPeriod(new Period1().startDate(exportRfxResponse.getRfxSetting().getPublishDate())
+              .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
+    }
+
     projectPackageSummary.activeEvent(eventSummary);
     return Optional.of(projectPackageSummary);
-
   }
 
   private TenderStatus findTenderStatus(final ProcurementEvent dbEvent,
       final ExportRfxResponse exportRfxResponse) {
+
     var statusCode = exportRfxResponse.getRfxSetting().getStatusCode();
     String eventType = dbEvent.getEventType();
     // This logic is based on attached excel of SCAT-3671
