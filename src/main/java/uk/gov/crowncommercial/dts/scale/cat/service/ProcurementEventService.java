@@ -344,13 +344,12 @@ public class ProcurementEventService {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
-    if (event.isAssessment()) {
-      log.debug("Event {} is an Assessment Type {}, retrieve suppliers from Tenders DB",
-          event.getId(), event.getEventType());
+    if (event.isTendersDBOnly()) {
+      log.debug("Event {} is retrieved from Tenders DB only {}", event.getId(),
+          event.getEventType());
       return getSuppliersFromTendersDB(event);
     }
-    log.debug("Event {} is not an Assessment Type {}, retrieve suppliers from Jaggaer",
-        event.getId(), event.getEventType());
+    log.debug("Event {} is retrieved from Jaggaer {}", event.getId(), event.getEventType());
     return getSuppliersFromJaggaer(event);
   }
 
@@ -398,16 +397,15 @@ public class ProcurementEventService {
     }
 
     /*
-     * If Event is an Assessment Type, suppliers are stored in the Tenders DB only, otherwise they
-     * are stored in Jaggaer.
+     * If Event is a Tenders DB only type, suppliers are stored in the Tenders DB only, otherwise
+     * they are stored in Jaggaer.
      */
-    if (event.isAssessment()) {
-      log.debug("Event {} is an Assessment Type {}, add suppliers to Tenders DB",
-          event.getEventID(), event.getEventType());
+    if (event.isTendersDBOnly()) {
+      log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
+          event.getEventType());
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
     } else {
-      log.debug("Event {} is an not an Assessment Type {}, add suppliers to Jaggaer", event.getId(),
-          event.getEventType());
+      log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
       addSuppliersToJaggaer(event, supplierOrgMappings, overwrite);
     }
 
@@ -437,16 +435,14 @@ public class ProcurementEventService {
             String.format(SUPPLIER_NOT_FOUND_MSG, organisationId)));
 
     /*
-     * If Event is an Assessment Type, suppliers are stored in the Tenders DB only, otherwise they
-     * are stored in Jaggaer.
+     * If Event is a Tenders DB only type, suppliers are stored in the Tenders DB only, otherwise
+     * they are stored in Jaggaer.
      */
-    if (event.isAssessment()) {
-      log.debug("Event {} is an Assessment Type {}, delete supplier from Tenders DB", event.getId(),
-          event.getEventType());
+    if (event.isTendersDBOnly()) {
+      log.debug("Event {} is persisted in Tenders DB only {}", event.getId(), event.getEventType());
       deleteSupplierFromTendersDB(event, om, principal);
     } else {
-      log.debug("Event {} is an Assessment Type {}, delete supplier from Jaggaer", event.getId(),
-          event.getEventType());
+      log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
       deleteSupplierFromJaggaer(event, om);
     }
   }

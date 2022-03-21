@@ -11,10 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -26,6 +23,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
@@ -133,16 +131,12 @@ class ProcurementProjectServiceTest {
     createUpdateProjectResponse.setTenderCode(TENDER_CODE);
     createUpdateProjectResponse.setTenderReferenceCode(TENDER_REF_CODE);
 
-    var procurementProject =
-        ProcurementProject.builder().caNumber(AGREEMENT_DETAILS.getAgreementId())
-            .lotNumber(AGREEMENT_DETAILS.getLotId()).externalProjectId(TENDER_CODE)
-            .externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME).createdBy(PRINCIPAL)
-            .createdAt(Instant.now()).updatedBy(PRINCIPAL).updatedAt(Instant.now())
-            .procurementEvents(Set.of(ProcurementEvent.builder()
-                            .eventType("FC")
-                            .id(1)
-                    .build()))
-             .build();
+    var procurementProject = ProcurementProject.builder()
+        .caNumber(AGREEMENT_DETAILS.getAgreementId()).lotNumber(AGREEMENT_DETAILS.getLotId())
+        .externalProjectId(TENDER_CODE).externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME)
+        .createdBy(PRINCIPAL).createdAt(Instant.now()).updatedBy(PRINCIPAL).updatedAt(Instant.now())
+        .procurementEvents(Set.of(ProcurementEvent.builder().eventType("FC").id(1).build()))
+        .build();
     procurementProject.setId(PROC_PROJECT_ID);
 
     var eventSummary = new EventSummary();
@@ -351,14 +345,12 @@ class ProcurementProjectServiceTest {
     var project = ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJ_NAME)
         .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(retryableTendersDBDelegate.findProjectUserMappingByUserId(JAGGAER_USER.get().getUserId()))
-        .thenReturn(Set.of(ProjectUserMapping.builder()
-                .project(ProcurementProject.builder()
-                        .id(1)
-                        .procurementEvents(events)
-                        .build())
-                .id(1).userId("1234").build()));
-    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse );
+    when(retryableTendersDBDelegate
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+            .thenReturn(List.of(ProjectUserMapping.builder()
+                .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
+                .userId("1234").build()));
+    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
         .thenReturn(Arrays.asList(project));
 
