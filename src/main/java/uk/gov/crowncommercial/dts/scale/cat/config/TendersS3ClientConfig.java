@@ -17,13 +17,14 @@ import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 @RequiredArgsConstructor
 public class TendersS3ClientConfig {
 
+  static final String S3_BUCKET_SERVICE_PATTERN = "[a-z0-9]+-ccs-scale-cat-tenders-s3-documents";
   private final VCAPServices vcapServices;
 
   @Bean
   public AWSS3Service tendersS3Bucket() {
+
     return vcapServices.getAwsS3Services().stream()
-        .filter(b -> "sbx2-ccs-scale-cat-tenders-s3-documents".equals(b.getName())).findFirst()
-        .orElseThrow();
+        .filter(b -> b.getName().matches(S3_BUCKET_SERVICE_PATTERN)).findFirst().orElseThrow();
   }
 
   @Bean("tendersS3Client")
