@@ -410,18 +410,19 @@ public class ProcurementProjectService {
       log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
       try {
-          var status = findTenderStatus(dbEvent, exportRfxResponse);
-          eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
-              dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-              ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
-              Optional.ofNullable(dbEvent.getAssessmentId()));
-          eventSummary
-              .tenderPeriod(new Period1().startDate(exportRfxResponse.getRfxSetting().getPublishDate())
-                  .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
-         } catch (Exception e) {
-          // No data found in Jagger
-          log.debug("Unable to find RFX records for event id : "+dbEvent.getExternalEventId());
-        }
+        var status = findTenderStatus(dbEvent, exportRfxResponse);
+        eventSummary =
+            tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(), dbEvent.getEventName(),
+                Optional.ofNullable(dbEvent.getExternalReferenceId()),
+                ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
+                Optional.ofNullable(dbEvent.getAssessmentId()));
+        eventSummary.tenderPeriod(
+            new Period1().startDate(exportRfxResponse.getRfxSetting().getPublishDate())
+                .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
+      } catch (Exception e) {
+        // No data found in Jagger
+        log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
+      }
     }
 
     projectPackageSummary.activeEvent(eventSummary);
