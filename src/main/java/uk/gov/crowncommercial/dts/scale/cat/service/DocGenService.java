@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +35,6 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 
@@ -95,14 +95,14 @@ public class DocGenService {
       final ByteArrayOutputStream documentOutputStream) {
     var fileName = String.format(PROFORMA_FILENAME_FMT, procurementEvent.getEventID(),
         procurementEvent.getEventType(), procurementEvent.getProject().getProjectName());
+    var fileDescription =
+        procurementEvent.getEventType() + " pro forma for tender: " + procurementEvent.getEventID();
 
     var multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName,
         Constants.MEDIA_TYPE_ODT.toString());
 
-    procurementEventService.uploadDocument(procurementEvent.getProject().getId(),
-        procurementEvent.getEventID(), multipartFile, DocumentAudienceType.SUPPLIER,
-        procurementEvent.getEventType() + " pro forma for tender: "
-            + procurementEvent.getEventID());
+    procurementEventService.eventUploadDocument(procurementEvent, fileName, fileDescription,
+        SUPPLIER, multipartFile);
   }
 
   Object getDataReplacement(final ProcurementEvent event,

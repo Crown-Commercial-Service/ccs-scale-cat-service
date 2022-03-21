@@ -136,7 +136,7 @@ public class EventsController extends AbstractRestController {
     // passed in as string to allow for lower case
     var audienceType = DocumentAudienceType.valueOf(audience.toUpperCase());
     return procurementEventService.uploadDocument(procId, eventId, multipartFile, audienceType,
-        description);
+        description, principal);
   }
 
   @GetMapping(value = "/{eventID}/documents/{documentID}")
@@ -148,13 +148,27 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getDocument invoked on behalf of principal: {}", principal);
 
-    var document = procurementEventService.getDocument(procId, eventId, documentId);
+    var document = procurementEventService.getDocument(procId, eventId, documentId, principal);
     var documentKey = DocumentKey.fromString(documentId);
 
     return ResponseEntity.ok().contentType(document.getContentType())
         .header(HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=\"" + documentKey.getFileName() + "\"")
         .body(document.getData());
+  }
+
+  @DeleteMapping(value = "/{eventID}/documents/{documentID}")
+  public StringValueResponse deleteDocument(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("documentID") final String documentId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteDocument invoked on behalf of principal: {}", principal);
+
+    procurementEventService.deleteDocument(procId, eventId, documentId);
+
+    return new StringValueResponse("OK");
   }
 
   @PutMapping("/{eventID}/publish")

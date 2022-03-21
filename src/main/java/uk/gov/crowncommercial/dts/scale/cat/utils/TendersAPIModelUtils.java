@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
-import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -11,6 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
@@ -120,6 +120,14 @@ public class TendersAPIModelUtils {
     doc.setDescription(attachment.getFileDescription());
     doc.setAudience(audienceType);
     return doc;
+  }
+
+  public DocumentSummary buildDocumentSummary(final DocumentUpload documentUpload) {
+    var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
+
+    return new DocumentSummary().id(documentUpload.getDocumentId()).fileName(docKey.getFileName())
+        .fileSize(documentUpload.getSize()).description(documentUpload.getDocumentDescription())
+        .audience(documentUpload.getAudience());
   }
 
 }
