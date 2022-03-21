@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -36,6 +37,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -70,6 +72,7 @@ class SupplierServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
   private static final String BUYER_USER_NAME = "Venki Bathula";
+  private static final String BUYER_PASSWORD = "PASS12345";
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String JAGGAER_USER_ID = "12345";
@@ -118,6 +121,9 @@ class SupplierServiceTest {
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;
+
+  @MockBean
+  private BuyerUserDetailsRepo buyerDetailsRepo;
 
   private static RPAGenericData request = new RPAGenericData();
   private RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
@@ -194,7 +200,7 @@ class SupplierServiceTest {
         + "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{\\\"isTrue\\\":\\\"true\\\"}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Assign Score for itt_8673 completed by venki.bathula@brickendon.com. Details-\\\\r\\\\nSupplier:Bathula Consulting | Score:45.9 | Comment:Venki Comment | Status:Success\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"VenDol@3211\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"AssignScore\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-03-11T15:38:00.224Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:14.8731423\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-03-11T15:38:02.3610332Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-03-11T15:38:17.2341755Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
         + "    },\n" + "    \"error\": {}\n" + "}";
 
-    inputBuilder.userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd()).ittCode(EXTERNAL_EVENT_ID)
+    inputBuilder.userName(PRINCIPAL).password(BUYER_PASSWORD).ittCode(EXTERNAL_EVENT_ID)
         .score("90.0").comment(COMMENT_1).supplierName(JAGGAER_SUPPLIER_NAME);
 
     request.setProcessName(RPAProcessNameEnum.ASSIGN_SCORE.getValue())
@@ -228,6 +234,8 @@ class SupplierServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
+    when(buyerDetailsRepo.findById(JAGGAER_USER_ID))
+        .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
 
     // Invoke
     var supplierResponse = supplierService.updateSupplierScoreAndComment(PRINCIPAL, PROC_PROJECT_ID,
@@ -259,7 +267,7 @@ class SupplierServiceTest {
         + "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{\\\"isTrue\\\":\\\"true\\\"}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Assign Score for itt_8673 completed by venki.bathula@brickendon.com. Details-\\\\r\\\\nSupplier:Bathula Consulting | Score:45.9 | Comment:Venki Comment | Status:Success\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"VenDol@3211\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"AssignScore\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-03-11T15:38:00.224Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:14.8731423\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-03-11T15:38:02.3610332Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-03-11T15:38:17.2341755Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
         + "    },\n" + "    \"error\": {}\n" + "}";
 
-    inputBuilder.userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd()).ittCode(EXTERNAL_EVENT_ID)
+    inputBuilder.userName(PRINCIPAL).password(BUYER_PASSWORD).ittCode(EXTERNAL_EVENT_ID)
         .score(SCORE_1.toString() + "~|" + SCORE_2.toString()).comment(COMMENT_1 + "~|" + COMMENT_2)
         .supplierName(JAGGAER_SUPPLIER_NAME + "~|" + JAGGAER_SUPPLIER_NAME_1);
 
@@ -294,6 +302,8 @@ class SupplierServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
+    when(buyerDetailsRepo.findById(JAGGAER_USER_ID))
+        .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
 
     // Invoke
     var supplierResponse = supplierService.updateSupplierScoreAndComment(PRINCIPAL, PROC_PROJECT_ID,
