@@ -398,7 +398,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setProjectId(mapping.getProject().getId());
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
 
-    EventSummary eventSummary;
+    EventSummary eventSummary = null;
 
     if (dbEvent.isTendersDBOnly() || dbEvent.getExternalEventId() == null) {
       log.debug("Get Event from Tenders DB: {}", dbEvent.getId());
