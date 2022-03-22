@@ -16,7 +16,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.util.ReflectionTestUtils;
-import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -27,8 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
-@SpringBootTest(classes = {ValidationService.class, ApplicationConfig.class},
-    webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(classes = {ValidationService.class}, webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ValidationServiceTest {
 
@@ -47,6 +45,9 @@ class ValidationServiceTest {
 
   @MockBean
   AssessmentService assessmentService;
+
+  @MockBean
+  Clock clock;
 
   @Test
   void testValidateEventId_success() {

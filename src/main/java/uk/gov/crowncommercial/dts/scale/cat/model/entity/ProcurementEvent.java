@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
 import java.time.Instant;
 import java.util.Set;
 import javax.persistence.*;
@@ -86,18 +87,34 @@ public class ProcurementEvent {
   @Column(name = "procurement_template_payload", insertable = false, updatable = false)
   String procurementTemplatePayloadRaw;
 
+  @ToString.Exclude
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
+      orphanRemoval = true)
+  Set<DocumentUpload> documentUploads;
+
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
   }
 
   /**
-   * Is the event an Assessment Event (e.g. FCA, DAA)?
+   * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
    *
    * @param event
    * @return true if it is, false otherwise
    */
   public boolean isAssessment() {
     return ASSESSMENT_EVENT_TYPES.stream().map(DefineEventType::name)
+        .anyMatch(aet -> aet.equals(getEventType()));
+  }
+
+  /**
+   * Is the event only persisted in Tenders DB (e.g. FCA, DAA)?
+   *
+   * @param event
+   * @return true if it is, false otherwise
+   */
+  public boolean isTendersDBOnly() {
+    return TENDER_DB_ONLY_EVENT_TYPES.stream().map(DefineEventType::name)
         .anyMatch(aet -> aet.equals(getEventType()));
   }
 }

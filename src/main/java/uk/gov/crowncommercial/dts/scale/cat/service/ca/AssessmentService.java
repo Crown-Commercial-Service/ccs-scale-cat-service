@@ -438,14 +438,7 @@ public class AssessmentService {
             String.format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
 
     // Validate that Requirement is valid for Dimension
-    var match = dimension.getAssessmentTaxons().stream().filter(as -> {
-      var req = as.getRequirementTaxons().stream()
-          .filter(rt -> rt.getRequirement().getId().equals(requirement.getRequirementId()))
-          .findAny();
-      return req.isPresent();
-    }).findAny();
-
-    if (match.isEmpty()) {
+    if (!isRequirementInAssessmentTaxon(requirement, dimension.getAssessmentTaxons())) {
       throw new IllegalArgumentException(format("Requirement [%d] does not exist in Dimension [%d]",
           requirement.getRequirementId(), dimensionId));
     }
@@ -857,4 +850,29 @@ public class AssessmentService {
     return criteria;
   }
 
+  /**
+   * Recursive method to check whether a requirement exists within a given taxonomy. Will walk down
+   * the taxon tree, checking against requirement id.
+   *
+   * @param requirement
+   * @param assessmentTaxons
+   * @return <code>true</code> if requirement exists within the taxonomy tree, <code>false</code> if
+   *         not
+   */
+  private boolean isRequirementInAssessmentTaxon(final Requirement requirement,
+      final Set<AssessmentTaxon> assessmentTaxons) {
+
+    var match = assessmentTaxons.stream().filter(as -> {
+      var req = as.getRequirementTaxons().stream()
+          .filter(rt -> rt.getRequirement().getId().equals(requirement.getRequirementId()))
+          .findAny();
+      if (req.isPresent()) {
+        return true;
+      } else {
+        return isRequirementInAssessmentTaxon(requirement, as.getAssessmentTaxons());
+      }
+    }).findAny();
+
+    return match.isPresent();
+  }
 }

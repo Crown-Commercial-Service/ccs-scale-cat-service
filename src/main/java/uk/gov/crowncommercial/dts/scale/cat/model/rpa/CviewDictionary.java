@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.rpa;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -22,4 +21,7 @@ public class CviewDictionary {
 
   @JsonProperty("Status")
   private String status;
+
+  @JsonProperty("isTrue")
+  private String isTrue;
 }

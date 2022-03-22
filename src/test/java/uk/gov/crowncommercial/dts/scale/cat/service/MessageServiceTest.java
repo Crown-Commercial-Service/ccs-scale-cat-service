@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -41,13 +42,16 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  * Message Service layer tests
  */
-@SpringBootTest(classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
-    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
+        ApplicationFlagsConfig.class, RPAGenericService.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties({JaggaerAPIConfig.class, RPAAPIConfig.class})
 @ContextConfiguration(classes = {ObjectMapper.class})
 @Slf4j
@@ -55,6 +59,7 @@ class MessageServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
   private static final String BUYER_USER_NAME = "Venki Bathula";
+  private static final String BUYER_PASSWORD = "PASS12345";
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String JAGGAER_USER_ID = "12345";
@@ -112,14 +117,16 @@ class MessageServiceTest {
   @Autowired
   private MessageService messageService;
 
+  @MockBean
+  private BuyerUserDetailsRepo buyerDetailsRepo;
+
   private RPAGenericData request = new RPAGenericData();
   private RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
   @BeforeEach
   void beforeEach() {
-    inputBuilder =
-        RPAProcessInput.builder().userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd())
-            .ittCode("itt_8673").supplierName("").senderName("").messageReceivedDate("");
+    inputBuilder = RPAProcessInput.builder().userName(PRINCIPAL).password(BUYER_PASSWORD)
+        .ittCode("itt_8673").supplierName("").senderName("").messageReceivedDate("");
 
     request.setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
         .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
@@ -133,6 +140,9 @@ class MessageServiceTest {
 
     when(webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
         rpaAPIConfig.getTimeoutDuration(), uriTemplate)).thenReturn("token");
+
+    when(buyerDetailsRepo.findById(JAGGAER_USER_ID))
+        .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
   }
 
   @BeforeAll
@@ -293,7 +303,7 @@ class MessageServiceTest {
         .messagingAction(CREATE_MESSAGE).messageSubject(ocds.getTitle())
         .messageBody(ocds.getDescription())
         .messageClassification(nonocds.getClassification().getValue())
-        .supplierName("Bathula Consulting;Doshi Industries");
+        .supplierName("Bathula Consulting~|Doshi Industries");
 
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
@@ -328,7 +338,7 @@ class MessageServiceTest {
   }
 
   @Test
-  public void testMapper() throws JsonMappingException, JsonProcessingException {
+  void testMapper() throws JsonMappingException, JsonProcessingException {
     String resp = "{\n"
         + "    \"processInput\": \"{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"pwd\\\",\\\"Search.ITTCode\\\":\\\"itt_86\\\",\\\"Search.BroadcastMessage\\\":\\\"Yes\\\",\\\"Search.MessagingAction\\\":\\\"Create\\\",\\\"Search.MessageSubject\\\":\\\"SIT Test\\\",\\\"Search.MessageBody\\\":\\\"Yes! we need a company registration document.\\\",\\\"Search.MessageClassification\\\":\\\"Technical Clarification\\\",\\\"Search.SupplierName\\\":\\\"\\\",\\\"Search.SenderName\\\":\\\"Venki Bathula\\\",\\\"Search.MessageReceivedDate\\\":\\\"\\\"}\",\n"
         + "    \"processName\": \"BuyerMessaging\",\n" + "    \"profileName\": \"ITTEvaluation\",\n"
@@ -361,7 +371,7 @@ class MessageServiceTest {
   }
 
   @Test
-  public void testRPAProcessInputMapper() throws JsonProcessingException {
+  void testRPAProcessInputMapper() throws JsonProcessingException {
     var input = RPAProcessInput.builder().userName("John").password("vendol").ittCode("itt767");
     RPAProcessInput in = input.messageBody("MessageBody").build();
     String writeValueAsString = new ObjectMapper().writeValueAsString(in);
@@ -406,6 +416,5 @@ class MessageServiceTest {
     assertNotNull(response);
     assertEquals(1, response.getMessages().size());
     assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
-
   }
 }
