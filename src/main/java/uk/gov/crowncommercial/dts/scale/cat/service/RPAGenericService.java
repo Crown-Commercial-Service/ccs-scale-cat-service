@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -31,6 +32,7 @@ public class RPAGenericService {
   private final RPAAPIConfig rpaAPIConfig;
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final BuyerUserDetailsRepo buyerDetailsRepo;
 
   /**
    * @param procurementEvent
@@ -166,5 +168,13 @@ public class RPAGenericService {
   @SneakyThrows
   private Map<String, Object> convertStringToObject(final String inputString) {
     return objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {});
+  }
+
+  public String getBuyerEncryptedPassword(String userId) {
+    var buyerDetails = buyerDetailsRepo.findById(userId);
+    if (buyerDetails.isEmpty()) {
+      throw new JaggaerRPAException("Buyer encrypted password not found");
+    }
+    return buyerDetails.get().getUserPassword();
   }
 }

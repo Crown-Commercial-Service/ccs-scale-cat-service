@@ -223,6 +223,18 @@ config:
         uriTemplate: /user-profiles/contacts?user-id={email}
       getOrganisation:
         uriTemplate: /organisation-profiles/{org-id}
+        
+    documentUpload:
+      timeoutDuration: 10
+      awsRegion: eu-west-2
+      documentStateProcessing: processing
+      documentStateSafe: safe
+      documentStateUnsafe: unsafe
+      postDocument:
+        uriTemplate: /documents
+      getDocumentRecord:
+        uriTemplate: /documents/{document-id}
+      
   #flags:
     # devMode: "SET IN ENV"
 ---

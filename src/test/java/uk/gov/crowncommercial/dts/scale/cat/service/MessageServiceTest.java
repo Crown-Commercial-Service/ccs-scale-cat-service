@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -41,6 +42,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -57,6 +59,7 @@ class MessageServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
   private static final String BUYER_USER_NAME = "Venki Bathula";
+  private static final String BUYER_PASSWORD = "PASS12345";
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String JAGGAER_USER_ID = "12345";
@@ -114,14 +117,16 @@ class MessageServiceTest {
   @Autowired
   private MessageService messageService;
 
+  @MockBean
+  private BuyerUserDetailsRepo buyerDetailsRepo;
+
   private RPAGenericData request = new RPAGenericData();
   private RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
   @BeforeEach
   void beforeEach() {
-    inputBuilder =
-        RPAProcessInput.builder().userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd())
-            .ittCode("itt_8673").supplierName("").senderName("").messageReceivedDate("");
+    inputBuilder = RPAProcessInput.builder().userName(PRINCIPAL).password(BUYER_PASSWORD)
+        .ittCode("itt_8673").supplierName("").senderName("").messageReceivedDate("");
 
     request.setProcessName(RPAProcessNameEnum.BUYER_MESSAGING.getValue())
         .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
@@ -135,6 +140,9 @@ class MessageServiceTest {
 
     when(webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
         rpaAPIConfig.getTimeoutDuration(), uriTemplate)).thenReturn("token");
+
+    when(buyerDetailsRepo.findById(JAGGAER_USER_ID))
+        .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
   }
 
   @BeforeAll
