@@ -649,6 +649,7 @@ public class ProcurementEventService {
    * @param projectId
    * @return
    */
+  @Transactional
   public List<EventSummary> getEventsForProject(final Integer projectId, final String principal) {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
