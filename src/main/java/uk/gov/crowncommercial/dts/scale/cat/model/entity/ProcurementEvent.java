@@ -68,6 +68,15 @@ public class ProcurementEvent {
   @Column(name = "assessment_id")
   Integer assessmentId;
 
+  @Column(name = "tender_status")
+  String tenderStatus;
+
+  @Column(name = "publish_date", updatable = false)
+  Instant publishDate;
+
+  @Column(name = "close_date", updatable = false)
+  Instant closeDate;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
@@ -94,7 +103,6 @@ public class ProcurementEvent {
   /**
    * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
    *
-   * @param event
    * @return true if it is, false otherwise
    */
   public boolean isAssessment() {
@@ -105,7 +113,6 @@ public class ProcurementEvent {
   /**
    * Is the event only persisted in Tenders DB (e.g. FCA, DAA)?
    *
-   * @param event
    * @return true if it is, false otherwise
    */
   public boolean isTendersDBOnly() {

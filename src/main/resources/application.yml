@@ -100,6 +100,54 @@ config:
         1100: WITHDRAWN
         1500: CANCELLED
 
+      rfxStatusAndEventTypeToTenderStatus:
+        0:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            PLANNING
+          DA:
+            PLANNING
+        300:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            ACTIVE
+          DA:
+            ACTIVE
+        500:
+          FC:
+            COMPLETE
+          DA:
+            COMPLETE
+        800:
+          FC:
+            ACTIVE
+          DA:
+            ACTIVE
+        950:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            COMPLETE
+          DA:
+            COMPLETE
+        1500:
+          RFI:
+            CANCELLED
+          EOI:
+            CANCELLED
+          FC:
+            CANCELLED
+          DA:
+            CANCELLED
+
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
