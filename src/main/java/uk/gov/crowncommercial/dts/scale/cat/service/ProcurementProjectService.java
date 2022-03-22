@@ -11,6 +11,8 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -351,7 +353,8 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-     var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId);
+    var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
+        PageRequest.of(0, 50, Sort.by("timestamps.createdAt").descending()));
 
     if (!CollectionUtils.isEmpty(projects)) {
       return projects.stream().map(this::convertProjectToProjectPackageSummary)
