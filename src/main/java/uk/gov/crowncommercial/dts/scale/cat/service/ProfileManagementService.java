@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -101,12 +102,16 @@ public class ProfileManagementService {
       final Pair<Optional<SubUser>, Optional<ReturnCompanyData>> jaggaerUserData,
       final String userId) {
 
-    var expectedSSOData = SSOCodeData.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE)
-        .ssoUserLogin(userId).build();
+    var expectedSSOData =
+        SSOCodeData
+            .builder().ssoCode(Set.of(SSOCode.builder()
+                .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(userId).build()))
+            .build();
 
     // Self-serve Buyer sub-user
     if (sysRoles.get(SYSID_JAGGAER).contains(BUYER)) {
       var jaggaerBuyerSubUser = jaggaerUserData.getFirst().orElseThrow();
+      log.debug("jaggaerBuyerSubUser: {}", jaggaerBuyerSubUser);
       compareSSOData(expectedSSOData, jaggaerBuyerSubUser.getSsoCodeData(), userId);
     }
 
@@ -130,6 +135,7 @@ public class ProfileManagementService {
   private void compareSSOData(final SSOCodeData expected, final SSOCodeData actual,
       final String userId) {
     if (!Objects.equals(expected, actual)) {
+      log.debug("Expected SSO data: {}, Actual SSO data: {}", expected, actual);
       throw new UnmergedJaggaerUserException(format(ERR_MSG_JAGGAER_USER_UNMERGED, userId));
     }
   }
@@ -368,9 +374,7 @@ public class ProfileManagementService {
       companyInfoBuilder.bravoId(existingCompanyInfo.get().getBravoId());
     } else {
       createUpdateCompanyBuilder.operationCode(OperationCode.CREATE);
-      companyInfoBuilder.userAlias(conclaveUser.getUserName())
-          .ssoCodeData(SSOCodeData.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE)
-              .ssoUserLogin(conclaveUser.getUserName()).build());
+      companyInfoBuilder.userAlias(conclaveUser.getUserName());
     }
 
     if (StringUtils.hasText(conclaveUserOrg.getAddress().getCountryCode())) {

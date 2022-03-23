@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -49,8 +50,9 @@ class ProfileManagementServiceTest {
   private static final RolePermissionInfo ROLE_PERMISSION_INFO_SUPPLIER =
       new RolePermissionInfo().roleKey(ROLEKEY_SUPPLIER);
 
-  private static final SSOCodeData SSO_CODE_DATA = SSOCodeData.builder()
-      .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(USERID).build();
+  private static final SSOCodeData SSO_CODE_DATA = SSOCodeData.builder().ssoCode(Set.of(
+      SSOCode.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(USERID).build()))
+      .build();
 
   @MockBean
   private ConclaveService conclaveService;
