@@ -182,7 +182,7 @@ class SupplierServiceTest {
   }
 
   @Test
-  void testUpdateSupplierScoreAndComment() throws JsonProcessingException {
+  void testUpdateSingleSupplierScoreAndComment() throws JsonProcessingException {
     // Stub some objects
     var scoreAndComments = List.of(new ScoreAndCommentNonOCDS().organisationId(SUPPLIER_ORG_ID_1)
         .comment(COMMENT_1).score(90.0));
@@ -312,6 +312,80 @@ class SupplierServiceTest {
     // Assert
     assertNotNull(supplierResponse);
 
+  }
+
+  @Test
+  void testCallOpenEnvelope() throws JsonProcessingException {
+    // Stub some objects
+    var responseString = "{\n"
+        + "    \"processInput\": \"{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"VenDol@3211\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"}\",\n"
+        + "    \"processName\": \"AssignScore\",\n" + "    \"profileName\": \"ITTEvaluation\",\n"
+        + "    \"source\": \"Postman\",\n" + "    \"sourceId\": \"1\",\n"
+        + "    \"retry\": false,\n" + "    \"retryConfigurations\": {\n"
+        + "        \"previousRequestIds\": [],\n" + "        \"noOfTimesRetry\": 0,\n"
+        + "        \"retryCoolOffInterval\": 10000\n" + "    },\n"
+        + "    \"requestTimeout\": 3600000,\n" + "    \"isSync\": true,\n"
+        + "    \"transactionId\": \"e5f4dde5-7329-42ca-b1a9-797b819d8931\",\n"
+        + "    \"status\": \"success\",\n" + "    \"response\": {\n"
+        + "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{\\\"isTrue\\\":\\\"true\\\"}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Assign Score for itt_8673 completed by venki.bathula@brickendon.com. Details-\\\\r\\\\nSupplier:Bathula Consulting | Score:45.9 | Comment:Venki Comment | Status:Success\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"VenDol@3211\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"HPSW0Mx6ZRMXo/ok+T/2u/+BY5gjR1ajS+LgqtyPSRYz/kXgKywqh4AeYduOpypcshDH82OEF6osmnj0b3gNYg==\\\",\\\"Search.ITTCode\\\":\\\"itt_8673\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.Score\\\":\\\"45.9\\\",\\\"Search.Comment\\\":\\\"Venki Comment\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"AssignScore\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-03-11T15:38:00.224Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:14.8731423\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-03-11T15:38:02.3610332Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-03-11T15:38:17.2341755Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
+        + "    },\n" + "    \"error\": {}\n" + "}";
+
+    var scoreBuilder = RPAProcessInput.builder().userName(PRINCIPAL)
+        .password(rpaAPIConfig.getBuyerPwd()).ittCode(EXTERNAL_EVENT_ID)
+        .score(SCORE_1.toString() + "~|" + SCORE_2.toString()).comment(COMMENT_1 + "~|" + COMMENT_2)
+        .supplierName(JAGGAER_SUPPLIER_NAME + "~|" + JAGGAER_SUPPLIER_NAME_1);
+
+    var scoreData = new RPAGenericData().setProcessName(RPAProcessNameEnum.ASSIGN_SCORE.getValue())
+        .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
+        .setRetry(false).setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000)
+        .setSync(true);
+
+    scoreData.setProcessInput(new ObjectMapper().writeValueAsString(scoreBuilder.build()));
+
+    inputBuilder.userName(PRINCIPAL).password(rpaAPIConfig.getBuyerPwd())
+        .ittCode(EXTERNAL_EVENT_ID);
+
+    request.setProcessName(RPAProcessNameEnum.OPEN_ENVELOPE.getValue())
+        .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
+        .setRetry(false).setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000)
+        .setSync(true);
+
+    request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
+
+    RPAAPIResponse responseObject =
+        new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
+
+    log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
+    var jaggerRPACredentials = new HashMap<String, String>();
+    jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
+    jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
+    var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
+    var rfxResponse = prepareSupplierDetails();
+
+    // Mock behaviours
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(retryableTendersDBDelegate
+        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
+            .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
+    when(webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
+        rpaAPIConfig.getTimeoutDuration(), uriTemplate)).thenReturn("token");
+    when(webclientWrapper.postDataWithToken(scoreData, RPAAPIResponse.class, rpaServiceWebClient,
+        rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
+            .thenReturn(responseObject);
+    when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
+        rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
+            .thenReturn(responseObject);
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+        .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
+            .externalEventId(RFX_ID).build());
+
+    // Invoke
+    var supplierResponse = supplierService.callOpenEnvelopeAndUpdateSupplier(PRINCIPAL,
+        rpaAPIConfig.getBuyerPwd(), EXTERNAL_EVENT_ID, scoreBuilder.build());
+
+    // Assert
+    assertNotNull(supplierResponse);
   }
 
   private ExportRfxResponse prepareSupplierDetails() {
