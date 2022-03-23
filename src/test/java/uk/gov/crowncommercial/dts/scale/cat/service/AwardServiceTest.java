@@ -181,7 +181,7 @@ class AwardServiceTest {
     when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
@@ -234,7 +234,7 @@ class AwardServiceTest {
     when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());

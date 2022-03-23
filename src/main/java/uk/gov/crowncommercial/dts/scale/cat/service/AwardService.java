@@ -32,20 +32,20 @@ public class AwardService {
       "Awarding action dropdown button not found";
 
   /**
-   * Pre-Award or Complete Award or Edit-Pre-Award to the supplied suppliers.
+   * Pre-Award or Edit-Pre-Award or Complete Award to the supplied suppliers.
    * 
    * @param profile
    * @param projectId
    * @param eventId
    * @param awardAction
    * @param award
-   * @return
+   * @return status
    */
   public String createOrUpdateAward(final String profile, final Integer projectId,
       final String eventId, final AwardState awardState, final Award2AllOf award,
       final Integer awardId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserByEmail(profile)
+    var buyerUser = userService.resolveBuyerUserBySSOUserLogin(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
     if (award.getSuppliers().size() > 1) {
