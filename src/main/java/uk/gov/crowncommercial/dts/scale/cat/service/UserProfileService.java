@@ -66,8 +66,8 @@ public class UserProfileService {
   }
 
   private Predicate<? super SubUser> getFilterPredicateSSOUserLogin(final String userId) {
-    return su -> su.getSsoCodeData() != null
-        && userId.equalsIgnoreCase(su.getSsoCodeData().getSsoUserLogin());
+    return su -> su.getSsoCodeData() != null && userId.equalsIgnoreCase(
+        su.getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin());
   }
 
   /**
