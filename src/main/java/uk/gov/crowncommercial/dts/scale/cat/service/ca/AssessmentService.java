@@ -409,6 +409,19 @@ public class AssessmentService {
           requirement.getRequirementId(), dimensionId));
     }
 
+    // If no Dimension Weighting has been created yet - add it (the GET Assessment request requires
+    // a Dimension Weighting in place)
+    var dimensionWeighting = assessment.getDimensionWeightings().stream()
+        .filter(dw -> dw.getDimension().getId().equals(dimension.getId())).findAny();
+    if (dimensionWeighting.isEmpty()) {
+      var newDimensionWeighting = new AssessmentDimensionWeighting();
+      newDimensionWeighting.setAssessment(assessment);
+      newDimensionWeighting.setDimension(dimension);
+      newDimensionWeighting.setWeightingPercentage(BigDecimal.ZERO);
+      newDimensionWeighting.setTimestamps(createTimestamps(principal));
+      retryableTendersDBDelegate.save(newDimensionWeighting);
+    }
+
     // Create the AssessmentSelection for the Dimension/Requirement/Assessment if it doesn't exist
     AssessmentSelection selection;
     var response = assessment.getAssessmentSelections().stream()
