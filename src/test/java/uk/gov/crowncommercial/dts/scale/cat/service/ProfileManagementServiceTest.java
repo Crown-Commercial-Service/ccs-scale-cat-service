@@ -67,6 +67,9 @@ class ProfileManagementServiceTest {
   @MockBean
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
+  @MockBean
+  private JaggaerSOAPService jaggaerSOAPService;
+
   @Autowired
   private ProfileManagementService profileManagementService;
 
@@ -133,7 +136,7 @@ class ProfileManagementServiceTest {
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID)).thenReturn(Optional.empty());
 
     var ex = assertThrows(ResourceNotFoundException.class,
@@ -193,7 +196,7 @@ class ProfileManagementServiceTest {
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID))
         .thenReturn(Optional.of(ReturnCompanyData.builder()
             .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));

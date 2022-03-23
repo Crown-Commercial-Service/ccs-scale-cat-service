@@ -65,16 +65,47 @@ public class UserProfileService {
     return su -> userId.equalsIgnoreCase(su.getUserId());
   }
 
+  private Predicate<? super SubUser> getFilterPredicateSSOUserLogin(final String userId) {
+    return su -> su.getSsoCodeData() != null
+        && userId.equalsIgnoreCase(su.getSsoCodeData().getSsoUserLogin());
+  }
+
+  /**
+   * @deprecated Use {@link #resolveBuyerUserBySSOUserLogin(String)} instead.
+   *
+   * @param email
+   * @return
+   */
   @SneakyThrows
+  @Deprecated(forRemoval = true)
   public Optional<SubUser> resolveBuyerUserByEmail(final String email) {
     return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
         .getSecond();
   }
 
   @SneakyThrows
+  public Optional<SubUser> resolveBuyerUserBySSOUserLogin(final String email) {
+    return jaggaerBuyerUserCache
+        .get(new SubUserIdentity(email, getFilterPredicateSSOUserLogin(email))).getSecond();
+  }
+
+  /**
+   * @deprecated Use {@link #resolveBuyerCompanyBySSOUserLogin(String)} instead.
+   *
+   * @param email
+   * @return
+   */
+  @SneakyThrows
+  @Deprecated(forRemoval = true)
   public CompanyInfo resolveBuyerCompanyByEmail(final String email) {
     return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
         .getFirst();
+  }
+
+  @SneakyThrows
+  public CompanyInfo resolveBuyerCompanyBySSOUserLogin(final String email) {
+    return jaggaerBuyerUserCache
+        .get(new SubUserIdentity(email, getFilterPredicateSSOUserLogin(email))).getFirst();
   }
 
   @SneakyThrows
@@ -122,17 +153,18 @@ public class UserProfileService {
   }
 
   /**
-   * Attempt to retrieve supplier company data, first by matching sub-users by email, falling back
-   * to matching the super-user (company) by email. The matching user may be represented by either
-   * the company ({@link CompanyInfo} or a single {@link SubUsers}. The client must determine which.
+   * Attempt to retrieve supplier company data, first by matching sub-users by SSO user login,
+   * falling back to matching the super-user (company) by SSO user login. The matching user may be
+   * represented by either the company ({@link CompanyInfo} or a single {@link SubUsers}. The client
+   * must determine which.
    *
-   * @param email
+   * @param ssoUserLogin
    * @return company / sub-user pair (sub-user may be empty)
    */
-  public Optional<ReturnCompanyData> resolveSupplierData(final String email) {
+  public Optional<ReturnCompanyData> resolveSupplierData(final String ssoUserLogin) {
 
     var getSupplierCompanyBySubUserEndpoint = jaggaerAPIConfig.getGetSupplierSubUserProfile()
-        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, email);
+        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
 
     var supplierCompanyBySubUser = getSupplierDataHelper(getSupplierCompanyBySubUserEndpoint);
 
@@ -142,7 +174,7 @@ public class UserProfileService {
 
     // Try filtering by company (super-user)
     var getSupplierCompanyBySuperUserEndpoint = jaggaerAPIConfig.getGetSupplierCompanyProfile()
-        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, email);
+        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
 
     return getSupplierDataHelper(getSupplierCompanyBySuperUserEndpoint);
   }
