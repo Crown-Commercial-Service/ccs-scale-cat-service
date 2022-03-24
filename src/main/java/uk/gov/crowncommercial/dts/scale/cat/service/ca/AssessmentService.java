@@ -624,15 +624,17 @@ public class AssessmentService {
           dimensionSubmissionTypes.stream().map(DimensionSubmissionType::getSubmissionType)
               .map(SubmissionType::getCode).collect(Collectors.toSet());
 
-      submissionTypes.addAll(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
-        if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
-          throw new ValidationException(
-              format(ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
-        }
-        return dimensionSubmissionTypes.stream()
-            .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
-            .findFirst().get();
-      }).collect(Collectors.toSet()));
+      if (dimensionRequirement.getIncludedCriteria() != null) {
+        submissionTypes.addAll(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+          if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
+            throw new ValidationException(
+                format(ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
+          }
+          return dimensionSubmissionTypes.stream()
+              .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
+              .findFirst().get();
+        }).collect(Collectors.toSet()));
+      }
     }
 
     return submissionTypes;
