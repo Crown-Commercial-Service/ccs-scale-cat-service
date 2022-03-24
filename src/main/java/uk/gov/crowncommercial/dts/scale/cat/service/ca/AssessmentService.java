@@ -338,6 +338,9 @@ public class AssessmentService {
         dimensionWeighting
             .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
       }
+
+
+
       dimensionWeighting
           .setTimestamps(updateTimestamps(dimensionWeighting.getTimestamps(), principal));
       dimensionWeighting.setDimensionSubmissionTypes(
@@ -350,7 +353,10 @@ public class AssessmentService {
     }
 
     // Save Dimension Weighting
-    retryableTendersDBDelegate.save(dimensionWeighting);
+    // Note: Save via an assessment - as we need the assessment to be updated within the transaction
+    // for updateRequirements method to be aware we have already created a dimensionWeighting
+    assessment.getDimensionWeightings().add(dimensionWeighting);
+    retryableTendersDBDelegate.save(assessment);
 
     // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
     // in the request
