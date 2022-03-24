@@ -409,6 +409,19 @@ public class AssessmentService {
           requirement.getRequirementId(), dimensionId));
     }
 
+    // If no Dimension Weighting has been created yet - add it (the GET Assessment request requires
+    // a Dimension Weighting in place)
+    var dimensionWeighting = assessment.getDimensionWeightings().stream()
+        .filter(dw -> dw.getDimension().getId().equals(dimension.getId())).findAny();
+    if (dimensionWeighting.isEmpty()) {
+      var newDimensionWeighting = new AssessmentDimensionWeighting();
+      newDimensionWeighting.setAssessment(assessment);
+      newDimensionWeighting.setDimension(dimension);
+      newDimensionWeighting.setWeightingPercentage(BigDecimal.ZERO);
+      newDimensionWeighting.setTimestamps(createTimestamps(principal));
+      retryableTendersDBDelegate.save(newDimensionWeighting);
+    }
+
     // Create the AssessmentSelection for the Dimension/Requirement/Assessment if it doesn't exist
     AssessmentSelection selection;
     var response = assessment.getAssessmentSelections().stream()
@@ -611,15 +624,17 @@ public class AssessmentService {
           dimensionSubmissionTypes.stream().map(DimensionSubmissionType::getSubmissionType)
               .map(SubmissionType::getCode).collect(Collectors.toSet());
 
-      submissionTypes.addAll(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
-        if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
-          throw new ValidationException(
-              format(ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
-        }
-        return dimensionSubmissionTypes.stream()
-            .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
-            .findFirst().get();
-      }).collect(Collectors.toSet()));
+      if (dimensionRequirement.getIncludedCriteria() != null) {
+        submissionTypes.addAll(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+          if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
+            throw new ValidationException(
+                format(ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
+          }
+          return dimensionSubmissionTypes.stream()
+              .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
+              .findFirst().get();
+        }).collect(Collectors.toSet()));
+      }
     }
 
     return submissionTypes;
