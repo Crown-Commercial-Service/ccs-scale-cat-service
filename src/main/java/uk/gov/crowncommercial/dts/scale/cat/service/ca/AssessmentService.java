@@ -53,6 +53,10 @@ public class AssessmentService {
       "User is not authorised to update this Assessment";
   private static final String ERR_MSG_FMT_ASSESSMENT_SELECTION_NOT_FOUND =
       "Assessment Selection for Assessment [%d], Dimension [%d] and Requirement [%d] not found";
+  private static final String ERR_MSG_FMT_REQUIREMENT_NOT_IN_DIMENSION =
+      "Requirement [%d] does not exist in Dimension [%d]";
+  private static final String ERR_MSG_FMT_DIMENSION_NOT_IN_TOOL =
+      "Dimension [%d] does not exist in Assessment Tool [%d]";
 
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -166,7 +170,7 @@ public class AssessmentService {
                 throw new ValidationException(ERR_MSG_FMT_DIMENSION_ID_NOT_SUPPLIED);
               }
 
-              var dimension = validateDimension(dreq, dreq.getDimensionId());
+              var dimension = validateDimensionInput(entity, dreq, dreq.getDimensionId());
 
               // Build AssessmentDimensionWeighting
               var dimensionWeighting =
@@ -317,13 +321,14 @@ public class AssessmentService {
       throw new AuthorisationFailureException(ERR_MSG_NOT_AUTHORISED);
     }
 
-    var response = assessment.getDimensionWeightings().stream()
-        .filter(dw -> dw.getDimension().getId().equals(dimensionId)).findFirst();
+    // Validate input
+    var dimension = validateDimensionInput(assessment, dimensionRequirement, dimensionId);
 
     AssessmentDimensionWeighting dimensionWeighting;
 
-    // Validates input whether we are creating a new DimensionWeighting below or not
-    var dimension = validateDimension(dimensionRequirement, dimensionId);
+    // Update/Add Dimension Weighting
+    var response = assessment.getDimensionWeightings().stream()
+        .filter(dw -> dw.getDimension().getId().equals(dimensionId)).findFirst();
 
     if (response.isPresent()) {
       dimensionWeighting = response.get();
@@ -344,58 +349,19 @@ public class AssessmentService {
           buildAssessmentDimensionWeighting(assessment, dimension, dimensionRequirement, principal);
     }
 
-    // Verify that the dimension weighting falls within the allowed range
-    if (dimensionWeighting.getWeightingPercentage()
-        .compareTo(dimension.getMinWeightingPercentage()) < 0
-        || dimensionWeighting.getWeightingPercentage()
-            .compareTo(dimension.getMaxWeightingPercentage()) > 0) {
-      throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_WEIGHT_RANGE,
-          dimension.getMinWeightingPercentage().intValue(),
-          dimension.getMaxWeightingPercentage().intValue()));
-    }
-
-    // Verify the total weightings of all dimensions <= 100
-    var totalDimensionWeightings = assessment.getDimensionWeightings().stream().map(dw -> {
-      if (dw.getDimension().getId().equals(dimensionId)) {
-        return new BigDecimal(dimensionRequirement.getWeighting());
-      } else {
-        return dw.getWeightingPercentage();
-      }
-    }).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-    // if we have not persisted the new Dimension yet - add it to the list
-    if (dimensionWeighting.getId() == null) {
-      totalDimensionWeightings =
-          totalDimensionWeightings.add(dimensionWeighting.getWeightingPercentage());
-    }
-
-    if (totalDimensionWeightings.intValue() > 100) {
-      throw new ValidationException(ERR_MSG_DIMENSION_WEIGHT_TOTAL);
-    }
-
+    // Save Dimension Weighting
     retryableTendersDBDelegate.save(dimensionWeighting);
-
-    if (dimensionRequirement.getRequirements() != null) {
-      dimensionRequirement.getRequirements().stream()
-          .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
-    }
 
     // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
     // in the request
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
-      var newList = new HashSet<AssessmentSelection>();
-      assessment.getAssessmentSelections().forEach(as -> {
-        var match = dimensionRequirement.getRequirements().stream().anyMatch(
-            dr -> dr.getRequirementId().equals(as.getRequirementTaxon().getRequirement().getId()));
-        if (match) {
-          newList.add(as);
-        } else {
-          log.debug("Remove AssessmentSelection: " + as.getId() + ", Requirement: "
-              + +as.getRequirementTaxon().getRequirement().getId());
-        }
-      });
       assessment.getAssessmentSelections().clear();
-      assessment.getAssessmentSelections().addAll(newList);
+    }
+
+    // Update/Add Requirements
+    if (dimensionRequirement.getRequirements() != null) {
+      dimensionRequirement.getRequirements().stream()
+          .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
     }
 
     return dimensionId;
@@ -439,8 +405,21 @@ public class AssessmentService {
 
     // Validate that Requirement is valid for Dimension
     if (!isRequirementInAssessmentTaxon(requirement, dimension.getAssessmentTaxons())) {
-      throw new IllegalArgumentException(format("Requirement [%d] does not exist in Dimension [%d]",
+      throw new IllegalArgumentException(format(ERR_MSG_FMT_REQUIREMENT_NOT_IN_DIMENSION,
           requirement.getRequirementId(), dimensionId));
+    }
+
+    // If no Dimension Weighting has been created yet - add it (the GET Assessment request requires
+    // a Dimension Weighting in place)
+    var dimensionWeighting = assessment.getDimensionWeightings().stream()
+        .filter(dw -> dw.getDimension().getId().equals(dimension.getId())).findAny();
+    if (dimensionWeighting.isEmpty()) {
+      var newDimensionWeighting = new AssessmentDimensionWeighting();
+      newDimensionWeighting.setAssessment(assessment);
+      newDimensionWeighting.setDimension(dimension);
+      newDimensionWeighting.setWeightingPercentage(BigDecimal.ZERO);
+      newDimensionWeighting.setTimestamps(createTimestamps(principal));
+      retryableTendersDBDelegate.save(newDimensionWeighting);
     }
 
     // Create the AssessmentSelection for the Dimension/Requirement/Assessment if it doesn't exist
@@ -507,33 +486,97 @@ public class AssessmentService {
    * Retrieve a {@link DimensionEntity} and perform some validation on the request to catch
    * scenarios where the caller has provided superfluous information that doesn't match up (e.g.
    * provided a dimension name that doesn't match the id they provided). We only use IDs but this
-   * may help to catch user errors.
+   * may help to catch user errors. Also validate weighting falls within allowed range.
    *
+   * @param assessment
    * @param dimensionRequirement
    * @param dimensionId if they have provided an ID separately to the DimensionRequirement, e.g. as
    *        a path parameter
    * @return
    */
-  private DimensionEntity validateDimension(final DimensionRequirement dimensionRequirement,
-      final Integer dimensionId) {
+  private DimensionEntity validateDimensionInput(final AssessmentEntity assessment,
+      final DimensionRequirement dimensionRequirement, final Integer dimensionId) {
 
+    // Verify dimension id in body (if supplied) matches id in path
     if (dimensionRequirement.getDimensionId() != null
         && !dimensionRequirement.getDimensionId().equals(dimensionId)) {
       throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_ID_NOT_MATCH_ID,
           dimensionRequirement.getDimensionId(), dimensionId));
     }
 
+    // Verify dimension exists
     var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId)
         .orElseThrow(() -> new ResourceNotFoundException(
             String.format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
 
+    // Verify dimension is valid for tool
+    validateDimensionExistsInTool(assessment.getTool(), dimension);
+
+    // Verify name if supplied is correct (bit redundant as now this is marked read only in API)
     if (dimensionRequirement.getName() != null
         && !dimensionRequirement.getName().equals(dimension.getName())) {
       throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_ID_NOT_MATCH_NAME,
           dimensionRequirement.getName(), dimensionId, dimension.getName()));
     }
 
+    // Verify that the dimension weighting falls within the allowed range
+    var minWeighting = dimension.getMinWeightingPercentage().intValue();
+    var maxWeighting = dimension.getMaxWeightingPercentage().intValue();
+
+    var newWeighting =
+        dimensionRequirement.getWeighting() == null ? 0 : dimensionRequirement.getWeighting();
+
+    if (Integer.compare(newWeighting, minWeighting) < 0
+        || Integer.compare(newWeighting, maxWeighting) > 0) {
+      throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_WEIGHT_RANGE,
+          dimension.getMinWeightingPercentage().intValue(),
+          dimension.getMaxWeightingPercentage().intValue()));
+    }
+
+    // Verify the total weightings of all dimensions will be <= 100 after persisting
+    var totalDimensionWeightings = assessment.getDimensionWeightings().stream().map(dw -> {
+      if (dw.getDimension().getId().equals(dimensionId)) {
+        // Replace existing weighting with new value
+        return new BigDecimal(newWeighting);
+      } else {
+        return dw.getWeightingPercentage();
+      }
+    }).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+
+    // If brand new dimension - add it to the list
+    var existingDimensionWeighting = assessment.getDimensionWeightings().stream()
+        .filter(dw -> dw.getDimension().getId().equals(dimensionId)).findFirst();
+
+    if (existingDimensionWeighting.isEmpty()) {
+      totalDimensionWeightings =
+          totalDimensionWeightings.add(new BigDecimal(dimensionRequirement.getWeighting()));
+    }
+
+    if (totalDimensionWeightings.intValue() > 100) {
+      throw new ValidationException(ERR_MSG_DIMENSION_WEIGHT_TOTAL);
+    }
+
     return dimension;
+  }
+
+  /**
+   * Validate the supplied dimension exists is valid for the tool.
+   *
+   * @param tool
+   * @param dimension
+   */
+  private void validateDimensionExistsInTool(final AssessmentTool tool,
+      final DimensionEntity dimension) {
+    var dimensions = retryableTendersDBDelegate.findDimensionsByToolId(tool.getId());
+
+    var dimensionMatch =
+        dimensions.stream().filter(d -> d.getId().equals(dimension.getId())).findAny();
+
+    if (dimensionMatch.isEmpty()) {
+      throw new IllegalArgumentException(
+          format(ERR_MSG_FMT_DIMENSION_NOT_IN_TOOL, dimension.getId(), tool.getId()));
+    }
   }
 
   /**
@@ -581,15 +624,17 @@ public class AssessmentService {
           dimensionSubmissionTypes.stream().map(DimensionSubmissionType::getSubmissionType)
               .map(SubmissionType::getCode).collect(Collectors.toSet());
 
-      submissionTypes.addAll(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
-        if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
-          throw new ValidationException(
-              format(ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
-        }
-        return dimensionSubmissionTypes.stream()
-            .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
-            .findFirst().get();
-      }).collect(Collectors.toSet()));
+      if (dimensionRequirement.getIncludedCriteria() != null) {
+        submissionTypes.addAll(dimensionRequirement.getIncludedCriteria().stream().map(cd -> {
+          if (!validToolSubmissionTypeIDs.contains(cd.getCriterionId())) {
+            throw new ValidationException(
+                format(ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND, cd.getCriterionId()));
+          }
+          return dimensionSubmissionTypes.stream()
+              .filter(tst -> Objects.equals(tst.getSubmissionType().getCode(), cd.getCriterionId()))
+              .findFirst().get();
+        }).collect(Collectors.toSet()));
+      }
     }
 
     return submissionTypes;

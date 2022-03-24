@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -61,6 +62,8 @@ public class ProfileManagementService {
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
+  private final JaggaerSOAPService jaggaerSOAPService;
+
   public List<RolesEnum> getUserRoles(final String userId) {
     Assert.hasLength(userId, "userId must not be empty");
     var conclaveUser = conclaveService.getUserProfile(userId)
@@ -88,6 +91,7 @@ public class ProfileManagementService {
 
     verifyUserMerged(sysRoles, jaggaerUserData, userId);
 
+    // CON-1680-AC1
     return List.copyOf(sysRoles.get(SYSID_CONCLAVE));
   }
 
@@ -98,12 +102,16 @@ public class ProfileManagementService {
       final Pair<Optional<SubUser>, Optional<ReturnCompanyData>> jaggaerUserData,
       final String userId) {
 
-    var expectedSSOData = SSOCodeData.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE)
-        .ssoUserLogin(userId).build();
+    var expectedSSOData =
+        SSOCodeData
+            .builder().ssoCode(Set.of(SSOCode.builder()
+                .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(userId).build()))
+            .build();
 
     // Self-serve Buyer sub-user
     if (sysRoles.get(SYSID_JAGGAER).contains(BUYER)) {
       var jaggaerBuyerSubUser = jaggaerUserData.getFirst().orElseThrow();
+      log.debug("jaggaerBuyerSubUser: {}", jaggaerBuyerSubUser);
       compareSSOData(expectedSSOData, jaggaerBuyerSubUser.getSsoCodeData(), userId);
     }
 
@@ -127,6 +135,7 @@ public class ProfileManagementService {
   private void compareSSOData(final SSOCodeData expected, final SSOCodeData actual,
       final String userId) {
     if (!Objects.equals(expected, actual)) {
+      log.debug("Expected SSO data: {}, Actual SSO data: {}", expected, actual);
       throw new UnmergedJaggaerUserException(format(ERR_MSG_JAGGAER_USER_UNMERGED, userId));
     }
   }
@@ -191,8 +200,14 @@ public class ProfileManagementService {
           conclaveUserContacts, Optional.empty(), jaggaerAPIConfig.getSelfServiceId(),
           jaggaerAPIConfig.getDefaultBuyerRightsProfile());
 
-      log.debug("Creating buyer user: [{}]", userId);
+      log.debug("Creating buyer user: [{}], request: {}", userId,
+          createUpdateCompanyDataBuilder.build());
       jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+
+      // Temporary - SOAP API workaround for adding SSO data
+      jaggaerSOAPService.updateSubUserSSO(
+          UpdateSubUserSSO.builder().companyBravoID(jaggaerAPIConfig.getSelfServiceId())
+              .subUserLogin(userId).subUserSSOLogin(userId).build());
 
       registerUserResponse.userAction(UserActionEnum.CREATED);
       registerUserResponse.organisationAction(OrganisationActionEnum.PENDING);
@@ -215,6 +230,11 @@ public class ProfileManagementService {
         log.debug("Creating supplier sub-user: [{}]", userId);
         jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
 
+        // Temporary - SOAP API workaround for adding SSO data
+        jaggaerSOAPService.updateSubUserSSO(
+            UpdateSubUserSSO.builder().companyBravoID(String.valueOf(jaggaerSupplierOrgId))
+                .subUserLogin(userId).subUserSSOLogin(userId).build());
+
         registerUserResponse.userAction(UserActionEnum.CREATED);
         registerUserResponse.organisationAction(OrganisationActionEnum.PENDING);
 
@@ -225,6 +245,11 @@ public class ProfileManagementService {
         log.debug("Creating supplier super-user company: [{}]", userId);
         var createUpdateCompanyResponse =
             jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+
+        // Temporary - SOAP API workaround for adding SSO data
+        jaggaerSOAPService.updateSubUserSSO(UpdateSubUserSSO.builder()
+            .companyBravoID(String.valueOf(createUpdateCompanyResponse.getBravoId()))
+            .subUserLogin(userId).subUserSSOLogin(userId).build());
 
         retryableTendersDBDelegate
             .save(OrganisationMapping.builder().organisationId(conclaveUser.getOrganisationId())
@@ -313,20 +338,22 @@ public class ProfileManagementService {
       }
     } else {
       subUsersBuilder.operationCode(OperationCode.CREATE);
-      subUserBuilder.ssoCodeData(SSOCodeData.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE)
-          .ssoUserLogin(conclaveUser.getUserName()).build());
+      // TODO - division + businessUnit hardcoded - API error without
+      subUserBuilder.division("Central Government").businessUnit("Crown Commercial Service");
     }
 
     // TODO - mobilePhoneNumber requires '+' in front of it - include?
+    // TODO - timezone hardcoded
+    // TODO - phone number hardcoded in case of null
     createUpdateCompanyRequestBuilder
         .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
             .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId).build()).build())
-        .subUsers(SubUsers.builder().sendEMail("1")
-            .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
-                .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
-                .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
-                .phoneNumber(userPersonalContacts.getPhone()).language("en_GB").build()))
-            .build());
+        .subUsers(subUsersBuilder.sendEMail("1").subUsers(Set.of(subUserBuilder
+            .name(conclaveUser.getFirstName()).surName(conclaveUser.getLastName())
+            .login(conclaveUser.getUserName()).email(conclaveUser.getUserName())
+            .rightsProfile(rightsProfile)
+            .phoneNumber(Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
+            .language("en_GB").timezoneCode("Europe/London").timezone("GMT").build())).build());
   }
 
   private void createUpdateSuperUserHelper(
@@ -347,9 +374,7 @@ public class ProfileManagementService {
       companyInfoBuilder.bravoId(existingCompanyInfo.get().getBravoId());
     } else {
       createUpdateCompanyBuilder.operationCode(OperationCode.CREATE);
-      companyInfoBuilder.userAlias(conclaveUser.getUserName())
-          .ssoCodeData(SSOCodeData.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE)
-              .ssoUserLogin(conclaveUser.getUserName()).build());
+      companyInfoBuilder.userAlias(conclaveUser.getUserName());
     }
 
     if (StringUtils.hasText(conclaveUserOrg.getAddress().getCountryCode())) {
