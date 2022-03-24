@@ -1,5 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
+import java.util.Set;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -12,7 +14,16 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class SSOCodeData {
 
-  String ssoCodeValue;
-  String ssoUserLogin;
+  @Value
+  @Builder
+  @Jacksonized
+  public static class SSOCode {
+
+    String ssoCodeValue;
+    String ssoUserLogin;
+  }
+
+  @JsonProperty("ssoCode")
+  Set<SSOCode> ssoCode;
 
 }

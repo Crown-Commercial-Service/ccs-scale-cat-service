@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
@@ -29,8 +30,11 @@ public class SupplierService {
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
   private final UserProfileService userService;
+  private final JaggaerService jaggaerService;
   private final RPAGenericService rpaGenericService;
   private static final String RPA_DELIMITER = "~|";
+  private static final String RPA_OPEN_ENVELOPE_ERROR_DESC = "Technical button not found";
+  private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
 
   /**
@@ -98,6 +102,7 @@ public class SupplierService {
    */
   public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
       final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments) {
+    log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserByEmail(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
@@ -134,15 +139,51 @@ public class SupplierService {
     log.info("Supplier comments: {}", comments);
     log.info("Supplier scores: {}", scores);
 
+    var buyerEncryptedPwd = rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId());
     // Creating RPA process input string
     var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
-        .ittCode(procurementEvent.getExternalReferenceId()).score(scores).comment(comments)
-        .supplierName(suppliers);
+        .password(buyerEncryptedPwd).ittCode(procurementEvent.getExternalReferenceId())
+        .score(scores).comment(comments).supplierName(suppliers);
+    try {
+      return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+          RPAProcessNameEnum.ASSIGN_SCORE);
+    } catch (JaggaerRPAException je) {
+      // Start evaluation event
+      if (je.getMessage().contains(RPA_EVALUATE_ERROR_DESC)) {
+        jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
+        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
+            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+      }
+      // Open envelope event
+      else if (je.getMessage().contains(RPA_OPEN_ENVELOPE_ERROR_DESC)) {
+        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
+            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+      } else
+        throw je;
 
-    return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-        RPAProcessNameEnum.ASSIGN_SCORE);
+    }
 
+  }
+
+  /**
+   * Calls RPA to Open Envelope
+   * 
+   * @param userEmail
+   * @param password
+   * @param externalReferenceId
+   * @return
+   */
+  public String callOpenEnvelopeAndUpdateSupplier(final String userEmail, final String password,
+      final String externalReferenceId, final RPAProcessInput processInput) {
+    log.info("Calling OpenEnvelope for {}", externalReferenceId);
+    // Creating RPA process input string
+    var inputBuilder = RPAProcessInput.builder().userName(userEmail).password(password)
+        .ittCode(externalReferenceId);
+    rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
+
+    // Update score and comment again after succesfull above calls
+    log.info("Update SupplierScoreAndComment after OpenEnvelope");
+    return rpaGenericService.callRPAMessageAPI(processInput, RPAProcessNameEnum.ASSIGN_SCORE);
   }
 
 }

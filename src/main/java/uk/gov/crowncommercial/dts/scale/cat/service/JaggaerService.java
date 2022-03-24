@@ -5,10 +5,8 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-
 import java.time.Duration;
 import java.util.Objects;
-
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -37,7 +35,8 @@ public class JaggaerService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final WebclientWrapper webclientWrapper;
-  private static final String MESSAGE_PARAMS = "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
+  private static final String MESSAGE_PARAMS =
+      "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
   /**
    * Create or update a Project.
@@ -52,8 +51,8 @@ public class JaggaerService {
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-            "Unexpected error updating project"));
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating project"));
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
@@ -78,8 +77,8 @@ public class JaggaerService {
             .bodyValue(new CreateUpdateRfx(operationCode, rfx)).retrieve()
             .bodyToMono(CreateUpdateRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-            "Unexpected error updating Rfx"));
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error updating Rfx"));
 
     if (createRfxResponse.getReturnCode() != 0
         || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
@@ -103,8 +102,8 @@ public class JaggaerService {
     return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, eventId).retrieve()
         .bodyToMono(ExportRfxResponse.class)
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-            "Unexpected error retrieving rfx"));
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving rfx"));
   }
 
   /**
@@ -151,9 +150,9 @@ public class JaggaerService {
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
             .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
             .retrieve().bodyToMono(CreateUpdateRfxResponse.class).block())
-        .orElseThrow(() -> new JaggaerApplicationException(
-            "Upload attachment from Jaggaer returned a null response: rfxId:"
-                + rfx.getRfx().getRfxSetting().getRfxId()));
+                .orElseThrow(() -> new JaggaerApplicationException(
+                    "Upload attachment from Jaggaer returned a null response: rfxId:"
+                        + rfx.getRfx().getRfxSetting().getRfxId()));
 
     if (0 != response.getReturnCode()) {
       throw new JaggaerApplicationException(response.getReturnCode(), response.getReturnMessage());
@@ -224,14 +223,13 @@ public class JaggaerService {
    */
   public ProjectListResponse getProjectList(final String jaggaerUserId) {
     final var projectListUri = jaggaerAPIConfig.getGetProjectList().get(ENDPOINT);
-    final String filters = "projectOwnerId=="+jaggaerUserId;
+    final String filters = "projectOwnerId==" + jaggaerUserId;
 
-    return ofNullable(jaggaerWebClient.get().uri(projectListUri,filters)
-        .retrieve()
+    return ofNullable(jaggaerWebClient.get().uri(projectListUri, filters).retrieve()
         .bodyToMono(ProjectListResponse.class)
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-            "Unexpected error retrieving projects"));
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving projects"));
   }
 
   public MessagesResponse getMessages(final String externalEventId, final Integer pageSize) {
@@ -241,21 +239,38 @@ public class JaggaerService {
     final String queryPrams = "start=" + start;
 
     return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, queryPrams, MESSAGE_PARAMS)
-            .retrieve()
-            .bodyToMono(MessagesResponse.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+        .retrieve().bodyToMono(MessagesResponse.class)
+        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error retrieving messages"));
+                "Unexpected error retrieving messages"));
   }
 
   public Message getMessage(final String messageId) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessage().get(ENDPOINT);
 
-    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, messageId, MESSAGE_PARAMS)
-            .retrieve()
-            .bodyToMono(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, messageId, MESSAGE_PARAMS).retrieve()
+        .bodyToMono(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.class)
+        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error retrieving messages"));
+                "Unexpected error retrieving messages"));
+  }
+
+  /**
+   * Start Evaluation Rfx
+   *
+   * @param event
+   * @param jaggaerUserId
+   */
+  public void startEvaluation(final ProcurementEvent event, final String jaggaerUserId) {
+    final var startEvaluationRequest = RfxWorkflowRequest.builder()
+        .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+
+    final var endPoint = jaggaerAPIConfig.getStartEvaluation().get(ENDPOINT);
+    final var evaluationResponse =
+        webclientWrapper.postData(startEvaluationRequest, WorkflowRfxResponse.class,
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+
+    log.debug("Start evaluation event response: {}", evaluationResponse);
   }
 }
