@@ -471,7 +471,7 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
     return event.getDocumentUploads().stream().map(tendersAPIModelUtils::buildDocumentSummary)
-        .collect(Collectors.toSet());
+        .collect(Collectors.toList());
   }
 
   /**
@@ -592,16 +592,17 @@ public class ProcurementEventService {
           "You cannot publish an event unless it is in a 'planned' state");
     }
 
-    // Fetch and upload all documents
-    procurementEvent.getDocumentUploads().stream().forEach(documentUpload -> {
-      var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
-      var multipartFile = new ByteArrayMultipartFile(
-          documentUploadService.retrieveDocument(documentUpload, principal), docKey.getFileName(),
-          documentUpload.getMimetype());
+    // Fetch and upload all SAFE documents
+    procurementEvent.getDocumentUploads().stream()
+        .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
+          var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
+          var multipartFile = new ByteArrayMultipartFile(
+              documentUploadService.retrieveDocument(documentUpload, principal),
+              docKey.getFileName(), documentUpload.getMimetype());
 
-      eventUploadDocument(procurementEvent, docKey.getFileName(),
-          documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-    });
+          eventUploadDocument(procurementEvent, docKey.getFileName(),
+              documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
+        });
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
