@@ -47,7 +47,7 @@ public class StandardWeightedCalculator implements CalculationAdaptor {
         .anyMatch(atst -> SUBMISSION_TYPE_SUBCONTRACTOR.equals(atst.getSubmissionType().getName()));
 
     var dimensionScores = suppliersScores.stream()
-        .filter(ss -> Objects.equals(ss.getSupplier(), supplierId)).findFirst()
+        .filter(ss -> Objects.equals(ss.getSupplier().getId(), supplierId)).findFirst()
         .orElseThrow(() -> new CAException(ERR_MSG_CURRENT_SUPPLIER_NOT_FOUND)).getDimensionScores()
         .stream().filter(ds -> Objects.equals(ds.getDimensionId(), dimensionId)).findFirst()
         .orElseThrow(() -> new CAException(ERR_MSG_DIMENSION_NOT_FOUND));
