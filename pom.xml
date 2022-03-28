@@ -25,6 +25,8 @@
 		<simple-odf.version>0.9.0</simple-odf.version>
 		<jena-core.version>4.4.0</jena-core.version>
 		<commons-io.version>2.11.0</commons-io.version>
+		<aws-java-sdk-s3.version>1.12.177</aws-java-sdk-s3.version>
+		<tika-core.version>2.3.0</tika-core.version>
 	</properties>
 
 	<dependencies>
@@ -147,7 +149,19 @@
 			<groupId>com.jayway.jsonpath</groupId>
 			<artifactId>json-path</artifactId>
 		</dependency>
-
+		
+		<dependency>
+		    <groupId>com.amazonaws</groupId>
+		    <artifactId>aws-java-sdk-s3</artifactId>
+		    <version>${aws-java-sdk-s3.version}</version>
+		</dependency>
+		
+		<dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika-core.version}</version>
+        </dependency>
+		
 		<!-- Test dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -284,8 +298,8 @@
 							<modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.capability.generated</modelPackage>
 							<skipValidateSpec>false</skipValidateSpec>
 							<strictSpec>true</strictSpec>
-							<languageSpecificPrimitives>OneOfintegerstring</languageSpecificPrimitives>
-							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String</typeMappings>
+							<languageSpecificPrimitives>OneOfintegerstring,OneOfstringinteger</languageSpecificPrimitives>
+							<typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String,OneOfstringinteger=String</typeMappings>
 							<importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
 							<verbose>false</verbose>
 							<configOptions>

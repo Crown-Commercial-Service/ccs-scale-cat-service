@@ -1,7 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
+import java.util.Set;
 import org.springframework.http.MediaType;
 import lombok.experimental.UtilityClass;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 
 /**
  * Global constant values
@@ -27,4 +29,11 @@ public class Constants {
 
   public static final MediaType MEDIA_TYPE_ODT =
       MediaType.parseMediaType("application/vnd.oasis.opendocument.text");
+
+  public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
+      Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DAA);
+
+  public static final Set<DefineEventType> TENDER_DB_ONLY_EVENT_TYPES =
+      Set.of(DefineEventType.FCA, DefineEventType.DAA);
+
 }

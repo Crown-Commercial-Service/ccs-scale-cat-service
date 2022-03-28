@@ -11,7 +11,7 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: TRACE
+    uk.gov.crowncommercial.dts.scale.cat: DEBUG
     # org.eclipse.jetty.client: DEBUG
 
 spring:
@@ -114,13 +114,17 @@ config:
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
         templateId: itt_9899
+        
+      # NB: Intention was to search via SSO data (commented out query strings), but this will not work a) because no existing users have it set and b) Jaggaer API seems to fail to filter by it.
       getBuyerCompanyProfile:
-        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id};SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       getSupplierCompanyProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;userEmail=={{PRINCIPAL}}        
+        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       getSupplierSubUserProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
+        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
       createUpdateCompany:
@@ -133,6 +137,12 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
       getMessage:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}
+      startEvaluation:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
+        
+      # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
+      soap:
+        profileManagementEndpoint: /esop/jint/services/ProfileManagement
         
       rpa: 
 #       baseUrl: "SET IN ENV"
@@ -144,7 +154,7 @@ config:
         source: CaT
         sourceId: 1
         profileName: ITTEvaluation
-        timeoutDuration: 60
+        timeoutDuration: 120
         requestTimeout: 3600000
         
     agreementsService:
@@ -175,6 +185,18 @@ config:
         uriTemplate: /user-profiles/contacts?user-id={email}
       getOrganisation:
         uriTemplate: /organisation-profiles/{org-id}
+        
+    documentUpload:
+      timeoutDuration: 10
+      awsRegion: eu-west-2
+      documentStateProcessing: processing
+      documentStateSafe: safe
+      documentStateUnsafe: unsafe
+      postDocument:
+        uriTemplate: /documents
+      getDocumentRecord:
+        uriTemplate: /documents/{document-id}
+      
   #flags:
     # devMode: "SET IN ENV"
 ---

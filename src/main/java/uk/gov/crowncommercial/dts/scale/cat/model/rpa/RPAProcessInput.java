@@ -44,4 +44,10 @@ public class RPAProcessInput {
   @JsonProperty("Search.MessageReceivedDate")
   String messageReceivedDate;
 
+  @JsonProperty("Search.Score")
+  String score;
+
+  @JsonProperty("Search.Comment")
+  String comment;
+
 }

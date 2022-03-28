@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.RequirementScore;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
@@ -64,7 +65,7 @@ public class AssessmentCalculationService {
 
       // Create (if necessary) a new map entry keyed on the supplier ID
       var supplierScores = supplierScoresMap.computeIfAbsent(calcBase.getSupplierId(),
-          supplierId -> new SupplierScores().supplier(supplierId));
+          supplierId -> new SupplierScores().supplier(new Supplier().id(supplierId)));
 
       // Compute the score for the row (requirement)
       var score = dimensionCalculators.get(calcBase.getDimensionName())
@@ -102,14 +103,14 @@ public class AssessmentCalculationService {
       // Certain dimension calculations use data from all supplier scores (e.g. Pricing)
       supplierScores.getDimensionScores().forEach(dimensionScores -> {
         dimensionCalculators.get(dimensionScores.getName()).calculateDimensionScore(suppliersScores,
-            supplierScores.getSupplier(), dimensionScores.getDimensionId(), assessment,
+            supplierScores.getSupplier().getId(), dimensionScores.getDimensionId(), assessment,
             assessmentCalculationBase);
       });
 
       toolCalculators.get(assessment.getTool().getExternalToolId())
           .calculateSupplierTotalScore(supplierScores);
 
-      updateAssessmentResult(assessment, supplierScores.getSupplier(),
+      updateAssessmentResult(assessment, supplierScores.getSupplier().getId(),
           BigDecimal.valueOf(supplierScores.getTotal()), principal);
     });
   }

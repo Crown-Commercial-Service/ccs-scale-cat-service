@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import java.time.Duration;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -22,16 +21,15 @@ import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -150,6 +148,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private SupplierSelectionRepo supplierSelectionRepo;
+
+  @MockBean
+  private DocumentUploadService documentUploadService;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -799,10 +800,32 @@ class ProcurementEventServiceTest {
 
     var publishDates = mock(PublishDates.class);
 
+    var documentData1 = new byte[] {'a', 'b', 'c'};
+    var documentData2 = new byte[] {'1', '2', '3'};
+
     var procurementProject =
         ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
         .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var documentUpload1 = DocumentUpload.builder().id(1).externalStatus(VirusCheckStatus.SAFE)
+        .documentId("YnV5ZXItMjM3MDU4LW5pY2VwZGYucGRm").mimetype("application/pdf")
+        .documentDescription("A PDF").audience(DocumentAudienceType.BUYER).build();
+
+    var documentUpload2 = DocumentUpload.builder().id(2).externalStatus(VirusCheckStatus.SAFE)
+        .documentId("c3VwcGxpZXItNjU5MzUtbmljZXBuZy5wbmc=").mimetype("image/png")
+        .documentDescription("A PNG").audience(DocumentAudienceType.SUPPLIER).build();
+
+    // This should not be uploaded to Jaggaer
+    var documentUpload3 = DocumentUpload.builder().id(2).externalStatus(VirusCheckStatus.UNSAFE)
+        .documentId("c3VwcGxpZXItNjZ5MzUtbmljZXBuZy5wbmc=").mimetype("image/gif")
+        .documentDescription("A GIF").audience(DocumentAudienceType.SUPPLIER).build();
+
+    var documentUploads = Set.of(documentUpload1, documentUpload2, documentUpload3);
+    procurementEvent.setDocumentUploads(documentUploads);
+    documentUpload1.setProcurementEvent(procurementEvent);
+    documentUpload2.setProcurementEvent(procurementEvent);
+    documentUpload3.setProcurementEvent(procurementEvent);
 
     var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
         .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
@@ -814,11 +837,16 @@ class ProcurementEventServiceTest {
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
+    when(documentUploadService.retrieveDocument(documentUpload1, PRINCIPAL))
+        .thenReturn(documentData1);
+    when(documentUploadService.retrieveDocument(documentUpload2, PRINCIPAL))
+        .thenReturn(documentData2);
 
     // Invoke & assert
     procurementEventService.publishEvent(PROC_PROJECT_ID, PROC_EVENT_ID, publishDates, PRINCIPAL);
-    verify(jaggaerService).publishRfx(procurementEvent, publishDates, JAGGAER_USER_ID);
 
+    verify(jaggaerService, times(2)).uploadDocument(any(), any());
+    verify(jaggaerService).publishRfx(procurementEvent, publishDates, JAGGAER_USER_ID);
   }
 
   @Test

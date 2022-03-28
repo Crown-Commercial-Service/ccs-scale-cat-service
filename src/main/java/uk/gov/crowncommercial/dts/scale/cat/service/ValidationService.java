@@ -1,9 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Objects;
-import java.util.Set;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -100,8 +100,8 @@ public class ValidationService {
     // Post MVP - user may have created an assessment before commencing CaT journey so validate
     if (updateEvent.getAssessmentId() != null) {
 
-      if (updateEvent.getEventType() != null && !Set.of(DefineEventType.FCA, DefineEventType.DAA)
-          .contains(updateEvent.getEventType())) {
+      if (updateEvent.getEventType() != null
+          && !ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())) {
         throw new ValidationException(
             "assessmentId is invalid for eventType: " + updateEvent.getEventType());
       }
@@ -112,24 +112,21 @@ public class ValidationService {
 
     if (updateEvent.getAssessmentSupplierTarget() != null) {
 
-      if (updateEvent.getAssessmentId() == null) {
-        throw new ValidationException(
-            "assessmentId must be provided with assessmentSupplierTarget");
-      }
-
-      var assessmentSupplierTarget = updateEvent.getAssessmentSupplierTarget();
-
       // SCAT-3504 AC5. Check existing event type is valid for setting assessmentSupplierTarget
-      if (!Set.of(DefineEventType.FCA.name(), DefineEventType.DAA.name())
-          .contains(existingEvent.getEventType())) {
+      if (!existingEvent.isAssessment()) {
         throw new ValidationException(
             "assessmentSupplierTarget is not applicable for existing eventType: "
                 + existingEvent.getEventType());
       }
 
+      if (updateEvent.getAssessmentId() == null) {
+        throw new ValidationException(
+            "assessmentId must be provided with assessmentSupplierTarget");
+      }
+
       // SCAT-3504 AC4
       if (Objects.equals(DefineEventType.DAA.name(), existingEvent.getEventType())
-          && assessmentSupplierTarget > 1) {
+          && updateEvent.getAssessmentSupplierTarget() > 1) {
         throw new ValidationException("assessmentSupplierTarget must be 1 for event type DAA");
       }
     }
