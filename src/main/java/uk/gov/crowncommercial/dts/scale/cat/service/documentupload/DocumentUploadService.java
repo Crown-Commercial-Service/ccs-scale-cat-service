@@ -83,8 +83,8 @@ public class DocumentUploadService {
             .retrieve().bodyToMono(DocumentStatus.class).block())
                 .orElseThrow(() -> new DocumentUploadApplicationException(""));
 
-    // Create document ID from event ID plus size (may be truncated)
-    var docKey = new DocumentKey(event.getId() + (int) multipartFile.getSize(),
+    // Create document ID based on hash of the external ID
+    var docKey = new DocumentKey(Math.abs(documentStatus.getId().hashCode()),
         multipartFile.getOriginalFilename(), audience);
 
     var documentUpload = DocumentUpload.builder().procurementEvent(event)
@@ -144,7 +144,8 @@ public class DocumentUploadService {
         if (documentUpload.getExternalStatus() == VirusCheckStatus.SAFE) {
           return getFromTendersS3(tendersS3ObjectKey);
         } else {
-          throw new DocumentUploadApplicationException("TODO - ??");
+          throw new DocumentUploadApplicationException(
+              "Requested document is still being processed and is unavilable to download");
         }
 
       case UNSAFE:

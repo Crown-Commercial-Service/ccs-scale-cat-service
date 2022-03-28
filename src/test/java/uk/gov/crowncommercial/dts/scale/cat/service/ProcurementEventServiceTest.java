@@ -22,11 +22,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
@@ -859,18 +856,24 @@ class ProcurementEventServiceTest {
     var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
         .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
-    var documentUpload1 = DocumentUpload.builder().id(1)
+    var documentUpload1 = DocumentUpload.builder().id(1).externalStatus(VirusCheckStatus.SAFE)
         .documentId("YnV5ZXItMjM3MDU4LW5pY2VwZGYucGRm").mimetype("application/pdf")
         .documentDescription("A PDF").audience(DocumentAudienceType.BUYER).build();
 
-    var documentUpload2 = DocumentUpload.builder().id(2)
+    var documentUpload2 = DocumentUpload.builder().id(2).externalStatus(VirusCheckStatus.SAFE)
         .documentId("c3VwcGxpZXItNjU5MzUtbmljZXBuZy5wbmc=").mimetype("image/png")
         .documentDescription("A PNG").audience(DocumentAudienceType.SUPPLIER).build();
 
-    var documentUploads = Set.of(documentUpload1, documentUpload2);
+    // This should not be uploaded to Jaggaer
+    var documentUpload3 = DocumentUpload.builder().id(2).externalStatus(VirusCheckStatus.UNSAFE)
+        .documentId("c3VwcGxpZXItNjZ5MzUtbmljZXBuZy5wbmc=").mimetype("image/gif")
+        .documentDescription("A GIF").audience(DocumentAudienceType.SUPPLIER).build();
+
+    var documentUploads = Set.of(documentUpload1, documentUpload2, documentUpload3);
     procurementEvent.setDocumentUploads(documentUploads);
     documentUpload1.setProcurementEvent(procurementEvent);
     documentUpload2.setProcurementEvent(procurementEvent);
+    documentUpload3.setProcurementEvent(procurementEvent);
 
     var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
         .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
