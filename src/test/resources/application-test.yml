@@ -4,3 +4,7 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: https://dummy.example.com
+          
+config:
+  flags:
+    devMode: true        

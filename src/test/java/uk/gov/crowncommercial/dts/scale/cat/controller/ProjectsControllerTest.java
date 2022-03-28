@@ -19,7 +19,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.Arrays;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +43,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMemberType;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
@@ -227,14 +225,6 @@ class ProjectsControllerTest {
   @Test
   void listProcurementEventTypes_200_OK() throws Exception {
 
-    var expectedJson = "[" + "{\"type\":\"EOI\",\"description\":\"Expression of Interest\","
-        + "\"preMarketActivity\":true},"
-        + "{\"type\":\"RFI\",\"description\":\"Request for Information\","
-        + "\"preMarketActivity\":true},"
-        + "{\"type\":\"CA\",\"description\":\"Capability Assessment\",\"preMarketActivity\":true},"
-        + "{\"type\":\"DA\",\"description\":\"Direct Award\",\"preMarketActivity\":true},"
-        + "{\"type\":\"FC\",\"description\":\"Further Competition\",\"preMarketActivity\":true}]";
-
     when(procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID))
         .thenReturn(TestUtils.getEventTypes());
 
@@ -243,13 +233,14 @@ class ProjectsControllerTest {
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(5))
-        .andExpect(content().string(expectedJson));
+        .andExpect(
+            content().json(objectMapper.writeValueAsString(TestUtils.getEventTypes()), false));
   }
 
   @Test
   void getProjectUsers_200_OK() throws Exception {
 
-    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID, PRINCIPAL))
         .thenReturn(Arrays.asList(TestUtils.getTeamMember()));
 
     mockMvc
@@ -286,7 +277,7 @@ class ProjectsControllerTest {
   @Test
   void getProjectUsers_500_ISE() throws Exception {
 
-    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID))
+    when(procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID, PRINCIPAL))
         .thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
@@ -307,7 +298,7 @@ class ProjectsControllerTest {
     updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
-        updateTeamMember)).thenReturn(TestUtils.getTeamMember());
+        updateTeamMember, PRINCIPAL)).thenReturn(TestUtils.getTeamMember());
 
     mockMvc
         .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
@@ -323,7 +314,7 @@ class ProjectsControllerTest {
         .andExpect(jsonPath("$.nonOCDS.projectOwner", is(false)));
 
     verify(procurementProjectService).addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
-        updateTeamMember);
+        updateTeamMember, PRINCIPAL);
   }
 
   @Test
@@ -351,7 +342,7 @@ class ProjectsControllerTest {
     updateTeamMember.setUserType(UpdateTeamMemberType.TEAM_MEMBER);
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
-        updateTeamMember)).thenThrow(new JaggaerApplicationException("1", "BANG"));
+        updateTeamMember, PRINCIPAL)).thenThrow(new JaggaerApplicationException("1", "BANG"));
 
     mockMvc
         .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)

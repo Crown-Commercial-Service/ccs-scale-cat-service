@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -49,8 +50,9 @@ class ProfileManagementServiceTest {
   private static final RolePermissionInfo ROLE_PERMISSION_INFO_SUPPLIER =
       new RolePermissionInfo().roleKey(ROLEKEY_SUPPLIER);
 
-  private static final SSOCodeData SSO_CODE_DATA = SSOCodeData.builder()
-      .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(USERID).build();
+  private static final SSOCodeData SSO_CODE_DATA = SSOCodeData.builder().ssoCode(Set.of(
+      SSOCode.builder().ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(USERID).build()))
+      .build();
 
   @MockBean
   private ConclaveService conclaveService;
@@ -66,6 +68,9 @@ class ProfileManagementServiceTest {
 
   @MockBean
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
+
+  @MockBean
+  private JaggaerSOAPService jaggaerSOAPService;
 
   @Autowired
   private ProfileManagementService profileManagementService;
@@ -133,7 +138,7 @@ class ProfileManagementServiceTest {
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID)).thenReturn(Optional.empty());
 
     var ex = assertThrows(ResourceNotFoundException.class,
@@ -193,7 +198,7 @@ class ProfileManagementServiceTest {
         .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(userProfileService.resolveBuyerUserByEmail(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
     when(userProfileService.resolveSupplierData(USERID))
         .thenReturn(Optional.of(ReturnCompanyData.builder()
             .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));

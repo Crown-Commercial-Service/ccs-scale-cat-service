@@ -1,6 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
 import java.time.Instant;
+import java.util.Set;
 import javax.persistence.*;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
@@ -8,6 +11,7 @@ import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 
 /**
  * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
@@ -33,6 +37,10 @@ public class ProcurementEvent {
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
+  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "event_id")
+  Set<SupplierSelection> capabilityAssessmentSuppliers;
+
   @Column(name = "ocds_authority_name")
   String ocdsAuthorityName;
 
@@ -54,6 +62,12 @@ public class ProcurementEvent {
   @Column(name = "down_selected_suppliers_ind")
   Boolean downSelectedSuppliers;
 
+  @Column(name = "assessment_supplier_target")
+  Integer assessmentSupplierTarget;
+
+  @Column(name = "assessment_id")
+  Integer assessmentId;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
@@ -73,7 +87,34 @@ public class ProcurementEvent {
   @Column(name = "procurement_template_payload", insertable = false, updatable = false)
   String procurementTemplatePayloadRaw;
 
+  @ToString.Exclude
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
+      orphanRemoval = true)
+  Set<DocumentUpload> documentUploads;
+
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
+  }
+
+  /**
+   * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
+   *
+   * @param event
+   * @return true if it is, false otherwise
+   */
+  public boolean isAssessment() {
+    return ASSESSMENT_EVENT_TYPES.stream().map(DefineEventType::name)
+        .anyMatch(aet -> aet.equals(getEventType()));
+  }
+
+  /**
+   * Is the event only persisted in Tenders DB (e.g. FCA, DAA)?
+   *
+   * @param event
+   * @return true if it is, false otherwise
+   */
+  public boolean isTendersDBOnly() {
+    return TENDER_DB_ONLY_EVENT_TYPES.stream().map(DefineEventType::name)
+        .anyMatch(aet -> aet.equals(getEventType()));
   }
 }

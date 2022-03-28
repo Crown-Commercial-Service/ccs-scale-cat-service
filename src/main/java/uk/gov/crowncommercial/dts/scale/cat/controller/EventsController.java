@@ -38,7 +38,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getEventsForProject invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.getEventsForProject(procId);
+    return procurementEventService.getEventsForProject(procId, principal);
   }
 
   @PostMapping
@@ -85,15 +85,16 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping("/{eventID}/suppliers")
-  public OrganizationReference addSupplier(@PathVariable("procID") final Integer procId,
+  public Collection<OrganizationReference> addSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
-      @RequestBody final OrganizationReference organizationReference,
+      @RequestBody final Collection<OrganizationReference> organizationReferences,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.addSupplier(procId, eventId, organizationReference);
+    return procurementEventService.addSuppliers(procId, eventId, organizationReferences, false,
+        principal);
   }
 
   @DeleteMapping("/{eventID}/suppliers/{supplierID}")
@@ -105,7 +106,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteSupplier invoked on behalf of principal: {}", principal);
 
-    procurementEventService.deleteSupplier(procId, eventId, supplierId);
+    procurementEventService.deleteSupplier(procId, eventId, supplierId, principal);
 
     return "OK";
   }
@@ -135,7 +136,7 @@ public class EventsController extends AbstractRestController {
     // passed in as string to allow for lower case
     var audienceType = DocumentAudienceType.valueOf(audience.toUpperCase());
     return procurementEventService.uploadDocument(procId, eventId, multipartFile, audienceType,
-        description);
+        description, principal);
   }
 
   @GetMapping(value = "/{eventID}/documents/{documentID}")
@@ -147,13 +148,27 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getDocument invoked on behalf of principal: {}", principal);
 
-    var document = procurementEventService.getDocument(procId, eventId, documentId);
+    var document = procurementEventService.getDocument(procId, eventId, documentId, principal);
     var documentKey = DocumentKey.fromString(documentId);
 
     return ResponseEntity.ok().contentType(document.getContentType())
         .header(HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=\"" + documentKey.getFileName() + "\"")
         .body(document.getData());
+  }
+
+  @DeleteMapping(value = "/{eventID}/documents/{documentID}")
+  public StringValueResponse deleteDocument(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("documentID") final String documentId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteDocument invoked on behalf of principal: {}", principal);
+
+    procurementEventService.deleteDocument(procId, eventId, documentId);
+
+    return new StringValueResponse("OK");
   }
 
   @PutMapping("/{eventID}/publish")
@@ -165,10 +180,9 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-    docGenService.generateProformaDocument(procId, eventId);
+    docGenService.generateAndUploadProforma(procId, eventId);
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
 
     return new StringValueResponse("OK");
   }
-
 }

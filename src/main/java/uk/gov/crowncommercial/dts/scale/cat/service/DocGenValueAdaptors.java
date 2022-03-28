@@ -102,7 +102,7 @@ public class DocGenValueAdaptors {
     return (TeamMember) requestCache.computeIfAbsent("CACHE_KEY_PROC_LEAD", k -> {
 
       var projectTeamMembers =
-          procurementProjectService.getProjectTeamMembers(event.getProject().getId());
+          procurementProjectService.getProjectTeamMembers(event.getProject().getId(), "DOC_GEN_ADAPTOR");
       return projectTeamMembers.stream().filter(tm -> tm.getNonOCDS().getProjectOwner()).findFirst()
           .orElseThrow(() -> new TendersDBDataException(
               "Project [" + event.getProject().getId() + "] has no procurement lead"));

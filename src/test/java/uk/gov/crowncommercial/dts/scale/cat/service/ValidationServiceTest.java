@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import javax.validation.ValidationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -15,16 +16,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.util.ReflectionTestUtils;
-import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
-@SpringBootTest(classes = {ValidationService.class, ApplicationConfig.class},
-    webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(classes = {ValidationService.class}, webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ValidationServiceTest {
 
@@ -33,12 +35,19 @@ class ValidationServiceTest {
   private static final String PROC_EVENT_INTERNAL_ID = "2";
   private static final String PROC_EVENT_AUTHORITY = "ocds";
   private static final String PROC_EVENT_PREFIX = "b5fd17";
+  private static final String PRINCIPAL = "jsmith@ccs.org.uk";
 
   @Autowired
   ValidationService validationService;
 
   @MockBean
   RetryableTendersDBDelegate retryableTendersDBDelegate;
+
+  @MockBean
+  AssessmentService assessmentService;
+
+  @MockBean
+  Clock clock;
 
   @Test
   void testValidateEventId_success() {
@@ -119,5 +128,62 @@ class ValidationServiceTest {
         () -> validationService.validatePublishDates(publishDates));
 
     assertEquals("endDate must be in the future", ex.getMessage());
+  }
+
+  @Test
+  void testValidateUpdateEventAssessment_ok() {
+    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10)
+        .eventType(DefineEventType.FCA);
+
+    var procurementEvent = ProcurementEvent.builder().eventType("FCA").build();
+
+    validationService.validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL);
+  }
+
+  @Test
+  void testValidateUpdateEventAssessment_assessmentIdInvalidEventType() {
+    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10)
+        .eventType(DefineEventType.RFI);
+    var procurementEvent = new ProcurementEvent();
+
+    var ex = assertThrows(ValidationException.class, () -> validationService
+        .validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL));
+
+    assertEquals("assessmentId is invalid for eventType: RFI", ex.getMessage());
+  }
+
+  @Test
+  void testValidateUpdateEventAssessment_assSupTgtMissingAssId() {
+    var updateEvent = new UpdateEvent().assessmentSupplierTarget(10);
+    var procurementEvent = ProcurementEvent.builder().eventType("FCA").build();
+
+    var ex = assertThrows(ValidationException.class, () -> validationService
+        .validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL));
+
+    assertEquals("assessmentId must be provided with assessmentSupplierTarget", ex.getMessage());
+  }
+
+  @Test
+  void testValidateUpdateEventAssessment_assSupTgtInvalidExistingEventType() {
+    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10);
+
+    var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
+
+    var ex = assertThrows(ValidationException.class, () -> validationService
+        .validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL));
+
+    assertEquals("assessmentSupplierTarget is not applicable for existing eventType: RFI",
+        ex.getMessage());
+  }
+
+  @Test
+  void testValidateUpdateEventAssessment_assSupTgtInvalidForDAA() {
+    var updateEvent = new UpdateEvent().assessmentId(1).assessmentSupplierTarget(10);
+    var procurementEvent = ProcurementEvent.builder().eventType("DAA").build();
+
+    var ex = assertThrows(ValidationException.class, () -> validationService
+        .validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL));
+
+    assertEquals("assessmentSupplierTarget must be 1 for event type DAA", ex.getMessage());
   }
 }

@@ -25,6 +25,7 @@ public class ProcurementProject {
   @Column(name = "project_id")
   Integer id;
 
+  @ToString.Exclude
   @OneToMany(fetch = FetchType.EAGER, mappedBy = "project")
   Set<ProcurementEvent> procurementEvents;
 

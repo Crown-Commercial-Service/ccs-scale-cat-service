@@ -23,10 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,6 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -60,6 +58,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class EventsControllerTest {
 
   private static final String EVENTS_PATH = "/tenders/projects/{procID}/events";
+  private static final String MESSAGES_PATH = "messages";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String EVENT_ID = "ocds-b5fd17-1";
@@ -110,8 +109,8 @@ class EventsControllerTest {
   @Test
   void createProcurementEvent_200_OK() throws Exception {
 
-    var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+    var eventStatus = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME,
+        Optional.of(JAGGAER_ID), EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
 
     when(procurementEventService.createEvent(eq(PROC_PROJECT_ID), any(CreateEvent.class),
         nullable(Boolean.class), anyString())).thenReturn(eventStatus);
@@ -181,8 +180,8 @@ class EventsControllerTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setName("New name");
 
-    var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME, JAGGAER_ID,
-        EVENT_TYPE, EVENT_STATUS, EVENT_STAGE);
+    var eventSummary = tendersAPIModelUtils.buildEventSummary(EVENT_ID, EVENT_NAME,
+        Optional.of(JAGGAER_ID), EVENT_TYPE, EVENT_STATUS, EVENT_STAGE, Optional.empty());
 
     when(procurementEventService.updateProcurementEvent(PROC_PROJECT_ID, EVENT_ID, updateEvent,
         PRINCIPAL)).thenReturn(eventSummary);
@@ -237,13 +236,15 @@ class EventsControllerTest {
 
     var org = new OrganizationReference();
     org.setId(SUPPLIER_ID);
-    when(procurementEventService.addSupplier(PROC_PROJECT_ID, EVENT_ID, org)).thenReturn(org);
+    when(procurementEventService.addSuppliers(PROC_PROJECT_ID, EVENT_ID, List.of(org), false,
+        PRINCIPAL)).thenReturn(List.of(org));
 
     mockMvc
         .perform(post(EVENTS_PATH + "/{eventID}/suppliers", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(org)))
-        .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(SUPPLIER_ID));
+            .content(objectMapper.writeValueAsString(List.of(org))))
+        .andDo(print()).andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(SUPPLIER_ID));
   }
 
   @Test
@@ -254,8 +255,8 @@ class EventsControllerTest {
             SUPPLIER_ID).with(validJwtReqPostProcessor).contentType(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk()).andExpect(content().string("OK"));
 
-    verify(procurementEventService, times(1)).deleteSupplier(PROC_PROJECT_ID, EVENT_ID,
-        SUPPLIER_ID);
+    verify(procurementEventService, times(1)).deleteSupplier(PROC_PROJECT_ID, EVENT_ID, SUPPLIER_ID,
+        PRINCIPAL);
 
   }
 
@@ -298,7 +299,7 @@ class EventsControllerTest {
             .content(objectMapper.writeValueAsString(publishDates)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
 
-    verify(docGenService).generateProformaDocument(PROC_PROJECT_ID, EVENT_ID);
+    verify(docGenService).generateAndUploadProforma(PROC_PROJECT_ID, EVENT_ID);
     verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
         PRINCIPAL);
   }
@@ -330,6 +331,6 @@ class EventsControllerTest {
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID);
+    verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
   }
 }
