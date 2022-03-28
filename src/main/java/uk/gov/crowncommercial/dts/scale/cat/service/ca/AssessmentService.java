@@ -193,6 +193,9 @@ public class AssessmentService {
     entity.setAssessmentSelections(assessmentSelections);
     entity.setDimensionWeightings(dimensionWeightings);
 
+    // Validate Dimension weightings
+    validateAssessmentDimensionWeightings(entity);
+
     return retryableTendersDBDelegate.save(entity).getId();
   }
 
@@ -339,8 +342,6 @@ public class AssessmentService {
             .setWeightingPercentage(new BigDecimal(dimensionRequirement.getWeighting()));
       }
 
-
-
       dimensionWeighting
           .setTimestamps(updateTimestamps(dimensionWeighting.getTimestamps(), principal));
       dimensionWeighting.setDimensionSubmissionTypes(
@@ -350,12 +351,12 @@ public class AssessmentService {
           + ", Dimension " + dimensionId + " - so creating one");
       dimensionWeighting =
           buildAssessmentDimensionWeighting(assessment, dimension, dimensionRequirement, principal);
+      assessment.getDimensionWeightings().add(dimensionWeighting);
     }
 
-    // Save Dimension Weighting
-    // Note: Save via an assessment - as we need the assessment to be updated within the transaction
-    // for updateRequirements method to be aware we have already created a dimensionWeighting
-    assessment.getDimensionWeightings().add(dimensionWeighting);
+    // Validate Dimension weightings after update
+    validateAssessmentDimensionWeightings(assessment);
+
     retryableTendersDBDelegate.save(assessment);
 
     // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
@@ -538,32 +539,22 @@ public class AssessmentService {
           dimension.getMinWeightingPercentage().intValue(),
           dimension.getMaxWeightingPercentage().intValue()));
     }
+    return dimension;
+  }
+
+  private void validateAssessmentDimensionWeightings(final AssessmentEntity assessment) {
 
     // Verify the total weightings of all dimensions will be <= 100 after persisting
     var totalDimensionWeightings = assessment.getDimensionWeightings().stream().map(dw -> {
-      if (dw.getDimension().getId().equals(dimensionId)) {
-        // Replace existing weighting with new value
-        return new BigDecimal(newWeighting);
-      } else {
-        return dw.getWeightingPercentage();
-      }
+      return dw.getWeightingPercentage();
     }).reduce(BigDecimal.ZERO, BigDecimal::add);
 
 
-    // If brand new dimension - add it to the list
-    var existingDimensionWeighting = assessment.getDimensionWeightings().stream()
-        .filter(dw -> dw.getDimension().getId().equals(dimensionId)).findFirst();
-
-    if (existingDimensionWeighting.isEmpty()) {
-      totalDimensionWeightings =
-          totalDimensionWeightings.add(new BigDecimal(dimensionRequirement.getWeighting()));
-    }
 
     if (totalDimensionWeightings.intValue() > 100) {
       throw new ValidationException(ERR_MSG_DIMENSION_WEIGHT_TOTAL);
     }
 
-    return dimension;
   }
 
   /**
