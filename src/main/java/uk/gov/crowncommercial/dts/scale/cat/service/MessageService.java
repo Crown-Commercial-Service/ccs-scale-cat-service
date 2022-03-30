@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
@@ -248,7 +249,10 @@ public class MessageService {
     }
 
     return new CaTMessage().OCDS(getCaTMessageOCDS(message)).nonOCDS(new CaTMessageNonOCDS()
-        .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection())).read(read));
+        .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection())).read(read)
+        .classification(
+            uk.gov.crowncommercial.dts.scale.cat.model.generated.CaTMessageNonOCDS.ClassificationEnum
+                .fromValue(message.getCategory().getCategoryName())));
   }
 
   private CaTMessageOCDS getCaTMessageOCDS(
@@ -288,6 +292,7 @@ public class MessageService {
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     // TODO fix generated class with correct classes
     return new MessageNonOCDS()
+        .classification(ClassificationEnum.fromValue(message.getCategory().getCategoryName()))
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
         // .attachments( message.getAttachmentList().getAttachment().stream()
         // .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
