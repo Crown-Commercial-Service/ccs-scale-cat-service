@@ -22,7 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -291,7 +291,7 @@ class EventsControllerTest {
   @Test
   void publishEvent_200_OK() throws Exception {
 
-    var publishDates = new PublishDates().endDate(OffsetDateTime.now());
+    var publishDates = new PublishDates().endDate(LocalDateTime.now().atOffset(ZoneOffset.UTC));
 
     mockMvc
         .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
