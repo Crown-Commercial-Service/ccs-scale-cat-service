@@ -388,6 +388,7 @@ class MessageServiceTest {
     var event = new ProcurementEvent();
     event.setExternalReferenceId(RFX_ID);
     var message = builder().messageId(1).sender(Sender.builder().build())
+        .category(MessageCategory.builder().categoryName("Technical Clarification").build())
         .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
         .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
         .receiverList(ReceiverList.builder()
