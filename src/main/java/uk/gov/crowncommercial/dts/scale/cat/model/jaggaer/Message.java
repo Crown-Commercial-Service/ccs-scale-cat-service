@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
 import java.time.OffsetDateTime;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
@@ -26,8 +25,10 @@ public class Message {
   ReceiverList receiverList;
   ReadingList readingList;
   AttachmentList attachmentList;
+  MessageCategory category;
 
 }
+
 
 @Value
 @Builder
