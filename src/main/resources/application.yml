@@ -134,9 +134,9 @@ config:
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
       getMessages:
-        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
+        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}&comp={components}&start={start}
       getMessage:
-        endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}
+        endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
         

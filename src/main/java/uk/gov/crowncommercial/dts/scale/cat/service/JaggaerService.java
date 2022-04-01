@@ -36,7 +36,7 @@ public class JaggaerService {
   private final WebClient jaggaerWebClient;
   private final WebclientWrapper webclientWrapper;
   private static final String MESSAGE_PARAMS =
-      "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
+      "MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
   /**
    * Create or update a Project.
@@ -236,9 +236,8 @@ public class JaggaerService {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
     final int start = (pageSize > 1 ? pageSize + 1 : 1);
     final String filters = "objectReferenceCode==" + externalEventId;
-    final String queryPrams = "start=" + start;
 
-    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, queryPrams, MESSAGE_PARAMS)
+    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, MESSAGE_PARAMS, start)
         .retrieve().bodyToMono(MessagesResponse.class)
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
