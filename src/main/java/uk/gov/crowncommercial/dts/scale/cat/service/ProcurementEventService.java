@@ -1,11 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -132,12 +129,8 @@ public class ProcurementEventService {
 
       var createUpdateRfx = createRfxRequest(project, eventName, principal);
 
-      var createRfxResponse =
-          ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-              .bodyValue(createUpdateRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
-              .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                  .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                      "Unexpected error creating Rfx"));
+      var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
+          createUpdateRfx.getOperationCode());
 
       if (createRfxResponse.getReturnCode() != 0
           || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
@@ -155,10 +148,19 @@ public class ProcurementEventService {
     var ocdsAuthority = ocdsConfig.getAuthority();
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
+    var exportRfxResponse = jaggaerService.getRfx(eventBuilder.build().getExternalEventId());
+    var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+    var status = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
+        rfxStatus.get(eventTypeValue).getValue() :
+        null;
     var event = eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
-        .updatedAt(Instant.now()).build();
+        .updatedAt(Instant.now()).tenderStatus(status)
+        .publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant())
+        .closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant()).build();
 
     ProcurementEvent procurementEvent;
 
@@ -316,16 +318,27 @@ public class ProcurementEventService {
       jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
     }
 
+    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+
     // Save to Tenders DB
     if (updateDB) {
+      var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+          .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+      var tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null ?
+          rfxStatus.get(event.getEventType()).getValue() :
+          null;
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
       event.setAssessmentId(returnAssessmentId);
+      event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      if (tenderStatus != null)
+        event.setTenderStatus(tenderStatus);
       retryableTendersDBDelegate.save(event);
     }
 
     // Build EventSummary response (eventStage is always 'tender')
-    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
     var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
         .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
