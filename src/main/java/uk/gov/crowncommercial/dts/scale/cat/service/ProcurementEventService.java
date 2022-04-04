@@ -149,18 +149,29 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var exportRfxResponse = jaggaerService.getRfx(eventBuilder.build().getExternalEventId());
-    var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
-        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+    var tenderStatus = TenderStatus.PLANNING.getValue();
 
-    var status = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
-        rfxStatus.get(eventTypeValue).getValue() :
-        null;
-    var event = eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
+    if (exportRfxResponse.getRfxSetting() != null) {
+      var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+          .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+      tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
+          rfxStatus.get(eventTypeValue).getValue() :
+          null;
+      if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
+        eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      }
+      if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
+        eventBuilder.closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      }
+    }
+
+    eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
-        .updatedAt(Instant.now()).tenderStatus(status)
-        .publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant())
-        .closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant()).build();
+        .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+    var event = eventBuilder.build();
 
     ProcurementEvent procurementEvent;
 
@@ -322,17 +333,27 @@ public class ProcurementEventService {
 
     // Save to Tenders DB
     if (updateDB) {
-      var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
-          .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-      var tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null ?
-          rfxStatus.get(event.getEventType()).getValue() :
-          null;
+      var tenderStatus = TenderStatus.PLANNING.getValue();
+      if (exportRfxResponse.getRfxSetting() != null) {
+        var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+            .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+        tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null ?
+            rfxStatus.get(event.getEventType()).getValue() :
+            null;
+      }
+
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
       event.setAssessmentId(returnAssessmentId);
-      event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
-      event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
+        event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      }
+      if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
+        event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      }
+
       if (tenderStatus != null)
         event.setTenderStatus(tenderStatus);
       retryableTendersDBDelegate.save(event);
