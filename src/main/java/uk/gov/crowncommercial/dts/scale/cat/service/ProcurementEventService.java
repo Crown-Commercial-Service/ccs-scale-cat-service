@@ -149,16 +149,19 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var exportRfxResponse = jaggaerService.getRfx(eventBuilder.build().getExternalEventId());
-    var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
-        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+x    var tenderStatus =  TenderStatus.PLANNING.getValue();
+    if (exportRfxResponse.getRfxSetting() != null) {
+      var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+          .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-    var status = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
-        rfxStatus.get(eventTypeValue).getValue() :
-        null;
+      tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
+          rfxStatus.get(eventTypeValue).getValue() : null;
+    }
+
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
-        .updatedAt(Instant.now()).tenderStatus(status);
+        .updatedAt(Instant.now()).tenderStatus(tenderStatus);
 
     if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
       eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
@@ -329,12 +332,17 @@ public class ProcurementEventService {
 
     // Save to Tenders DB
     if (updateDB) {
-      var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
-          .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-      var tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null ?
-          rfxStatus.get(event.getEventType()).getValue() :
-          null;
+      var tenderStatus = TenderStatus.PLANNING.getValue();
+      if (exportRfxResponse.getRfxSetting() != null) {
+        var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+            .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+        tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null ?
+            rfxStatus.get(event.getEventType()).getValue() :
+            null;
+      }
+
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
       event.setAssessmentId(returnAssessmentId);
