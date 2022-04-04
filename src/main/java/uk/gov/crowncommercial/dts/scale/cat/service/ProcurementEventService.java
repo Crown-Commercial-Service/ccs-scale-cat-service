@@ -149,26 +149,27 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var exportRfxResponse = jaggaerService.getRfx(eventBuilder.build().getExternalEventId());
-    var tenderStatus =  TenderStatus.PLANNING.getValue();
+    var tenderStatus = TenderStatus.PLANNING.getValue();
+
     if (exportRfxResponse.getRfxSetting() != null) {
       var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
           .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
       tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
-          rfxStatus.get(eventTypeValue).getValue() : null;
+          rfxStatus.get(eventTypeValue).getValue() :
+          null;
+      if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
+        eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      }
+      if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
+        eventBuilder.closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      }
     }
 
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).tenderStatus(tenderStatus);
-
-    if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
-      eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
-    }
-    if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
-      eventBuilder.closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
-    }
 
     var event = eventBuilder.build();
 
