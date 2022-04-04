@@ -309,4 +309,76 @@ class ProfileManagementServiceTest {
 
   }
 
+  /*
+   * CON-1682 AC13
+   */
+  @Test
+  void testRegisterUserRolesConflictConclaveSupplierJaggaerBuyer() {
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID).detail(
+        new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveBuyerUserByEmail(USERID))
+        .thenReturn(Optional.of(SubUser.builder().build()));
+    when(userProfileService.resolveSupplierData(USERID)).thenReturn(Optional.empty());
+
+    var ex = assertThrows(UserRolesConflictException.class,
+        () -> profileManagementService.registerUser(USERID));
+
+    assertEquals(
+        "User [" + USERID
+            + "] has conflicting Conclave/Jaggaer roles (Conclave: [supplier], Jaggaer: [buyer])",
+        ex.getMessage());
+  }
+
+  /*
+   * CON-1682 AC14
+   */
+  @Test
+  void testRegisterUserRolesConflictConclaveBuyerJaggaerSupplier() {
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
+        .detail(new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveSupplierData(USERID))
+        .thenReturn(Optional.of(ReturnCompanyData.builder()
+            .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));
+
+    var ex = assertThrows(UserRolesConflictException.class,
+        () -> profileManagementService.registerUser(USERID));
+
+    assertEquals(
+        "User [" + USERID
+            + "] has conflicting Conclave/Jaggaer roles (Conclave: [buyer], Jaggaer: [supplier])",
+        ex.getMessage());
+  }
+
+  /*
+   * CON-1682 AC13+14 (Mixed Conclave roles)
+   */
+  @Test
+  void testRegisterUserRolesConflictConclaveBuyerSupplierJaggaerSupplier() {
+    var userProfileResponseInfo = new UserProfileResponseInfo().userName(USERID)
+        .detail(new UserResponseDetail().rolePermissionInfo(
+            List.of(ROLE_PERMISSION_INFO_BUYER, ROLE_PERMISSION_INFO_SUPPLIER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty());
+    when(userProfileService.resolveSupplierData(USERID))
+        .thenReturn(Optional.of(ReturnCompanyData.builder()
+            .returnCompanyInfo(CompanyInfo.builder().ssoCodeData(SSO_CODE_DATA).build()).build()));
+
+    var ex = assertThrows(UserRolesConflictException.class,
+        () -> profileManagementService.registerUser(USERID));
+
+    var errMsg1 = "User [" + USERID
+        + "] has conflicting Conclave/Jaggaer roles (Conclave: [buyer, supplier], Jaggaer: [supplier])";
+    var errMsg2 = "User [" + USERID
+        + "] has conflicting Conclave/Jaggaer roles (Conclave: [supplier, buyer], Jaggaer: [supplier])";
+
+    assertTrue(errMsg1.equals(ex.getMessage()) || errMsg2.equals(ex.getMessage()));
+  }
+
 }
