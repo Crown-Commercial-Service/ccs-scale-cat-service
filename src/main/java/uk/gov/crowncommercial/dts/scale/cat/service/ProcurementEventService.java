@@ -149,7 +149,7 @@ public class ProcurementEventService {
     var ocidPrefix = ocdsConfig.getOcidPrefix();
 
     var exportRfxResponse = jaggaerService.getRfx(eventBuilder.build().getExternalEventId());
-x    var tenderStatus =  TenderStatus.PLANNING.getValue();
+    var tenderStatus =  TenderStatus.PLANNING.getValue();
     if (exportRfxResponse.getRfxSetting() != null) {
       var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
           .get(exportRfxResponse.getRfxSetting().getStatusCode());
