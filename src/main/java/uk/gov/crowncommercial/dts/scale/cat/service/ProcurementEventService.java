@@ -155,12 +155,19 @@ public class ProcurementEventService {
     var status = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
         rfxStatus.get(eventTypeValue).getValue() :
         null;
-    var event = eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
+    eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
-        .updatedAt(Instant.now()).tenderStatus(status)
-        .publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant())
-        .closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant()).build();
+        .updatedAt(Instant.now()).tenderStatus(status);
+
+    if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
+      eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+    }
+    if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
+      eventBuilder.closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+    }
+
+    var event = eventBuilder.build();
 
     ProcurementEvent procurementEvent;
 
@@ -331,8 +338,13 @@ public class ProcurementEventService {
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
       event.setAssessmentId(returnAssessmentId);
-      event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
-      event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
+        event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      }
+      if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
+        event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+      }
+
       if (tenderStatus != null)
         event.setTenderStatus(tenderStatus);
       retryableTendersDBDelegate.save(event);
