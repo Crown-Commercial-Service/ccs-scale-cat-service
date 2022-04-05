@@ -7,7 +7,7 @@ branches:
   only:
     - "/^(feature|bugfix)\\/(SCC|SCAT|CON)-[0-9]+.*$/"
     - "/^(release)\\/.*$/"
-    - "/^snyk-upgrade-[a-z0-9]+$/"
+    - "/^snyk-(upgrade|fix)-[a-z0-9]+$/"
     - develop
     - main
 
@@ -27,7 +27,7 @@ deploy:
     script: CF_ENVIRONMENT=sbx2 bash ./deploy.sh
     on:
       all_branches: true
-      condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/(SCC|SCAT|CON)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-upgrade-[a-z0-9]+$"
+      condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/(SCC|SCAT|CON)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-(upgrade|fix)-[a-z0-9]+$"
 
   # DEVELOP
   - provider: script
