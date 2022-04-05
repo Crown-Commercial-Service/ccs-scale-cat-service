@@ -387,7 +387,7 @@ class MessageServiceTest {
 
     var event = new ProcurementEvent();
     event.setExternalReferenceId(RFX_ID);
-    var message = builder().messageId(1).sender(Sender.builder().build())
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID_1).build())
         .category(MessageCategory.builder().categoryName("Technical Clarification").build())
         .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
         .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
@@ -410,6 +410,9 @@ class MessageServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID_1)))
+            .thenReturn(Optional.of(ORG_MAPPING_1));
 
     var response = messageService.getMessagesSummary(messageRequestInfo);
 
