@@ -37,7 +37,9 @@ public class PricingCalculator implements CalculationAdaptor {
   @Override
   public double calculateRequirementScore(final CalculationBase calcBase,
       final Set<CalculationBase> assessmentCalculationBase) {
-    var submissionValue = Double.parseDouble(calcBase.getSubmissionValue());
+    var submissionValue = calcBase.getSubmissionValue() == null ?
+        0 :
+        Double.parseDouble(calcBase.getSubmissionValue());
 
     // ACs 12 & 15
     return submissionValue * calcBase.getRequirementValue().doubleValue();
