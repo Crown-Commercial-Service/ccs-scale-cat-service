@@ -154,11 +154,18 @@ public class ProfileManagementService {
 
     var sysRoles = newSysRolesMappings();
     populateConclaveRoles(sysRoles, conclaveUser);
+    log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, sysRoles.get(SYSID_CONCLAVE)));
     validateBuyerSupplierConclaveRoles(sysRoles.get(SYSID_CONCLAVE), userId);
 
     var jaggaerUserData = populateJaggaerRoles(sysRoles, userId);
+    log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, sysRoles.get(SYSID_JAGGAER)));
 
-    if (!Objects.equals(sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER))) {
+    /**
+     * Validation of Conclave roles takes care of a) empty Cog roles b) +1 Cog roles. Only remaining
+     * conflict case to check is presence of existing Jaggaer roles that do not match Conclave.
+     */
+    if (!sysRoles.get(SYSID_JAGGAER).isEmpty()
+        && !Objects.equals(sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER))) {
       // CON-1682-AC13+AC14
       throw new UserRolesConflictException(format(ERR_MSG_FMT_ROLES_CONFLICT, userId,
           sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER)));
@@ -182,6 +189,7 @@ public class ProfileManagementService {
 
       log.debug("Updating buyer user: [{}]", userId);
       jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+      userProfileService.refreshBuyerCache(userId);
 
       registerUserResponse.userAction(UserActionEnum.EXISTED);
 
@@ -207,6 +215,7 @@ public class ProfileManagementService {
           UpdateSubUserSSO.builder().companyBravoID(jaggaerAPIConfig.getSelfServiceId())
               .subUserLogin(userId).subUserSSOLogin(userId).build());
 
+      userProfileService.refreshBuyerCache(userId);
       registerUserResponse.userAction(UserActionEnum.CREATED);
       registerUserResponse.organisationAction(OrganisationActionEnum.PENDING);
 
@@ -330,9 +339,11 @@ public class ProfileManagementService {
       subUserBuilder.userId(subUser.getUserId());
 
       if (StringUtils.hasText(subUser.getDivision())) {
-        // Attempt to set division and business unit (fails unless FK to current Division)
-        subUserBuilder.division(subUser.getDivision())
-            .businessUnit(conclaveUserOrg.getIdentifier().getLegalName());
+        // TODO - Fails whole op with err 135. Comment out for now until resolution agreed. Attempt
+        // to set division and business unit (fails unless FK to current Division)
+
+        // subUserBuilder.division(subUser.getDivision())
+        // .businessUnit(conclaveUserOrg.getIdentifier().getLegalName());
       }
     } else {
       subUsersBuilder.operationCode(OperationCode.CREATE);
