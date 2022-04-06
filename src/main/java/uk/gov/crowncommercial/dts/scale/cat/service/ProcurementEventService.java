@@ -155,9 +155,9 @@ public class ProcurementEventService {
       var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
           .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-      tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null ?
-          rfxStatus.get(eventTypeValue).getValue() :
-          null;
+      tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null
+          ? rfxStatus.get(eventTypeValue).getValue()
+          : null;
       if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
         eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
       }
@@ -339,9 +339,9 @@ public class ProcurementEventService {
         var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
             .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-        tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null ?
-            rfxStatus.get(event.getEventType()).getValue() :
-            null;
+        tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null
+            ? rfxStatus.get(event.getEventType()).getValue()
+            : null;
       }
 
       event.setUpdatedAt(Instant.now());
@@ -354,8 +354,9 @@ public class ProcurementEventService {
         event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
       }
 
-      if (tenderStatus != null)
+      if (tenderStatus != null) {
         event.setTenderStatus(tenderStatus);
+      }
       retryableTendersDBDelegate.save(event);
     }
 
@@ -703,8 +704,9 @@ public class ProcurementEventService {
       }
 
       return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
-          Optional.ofNullable(event.getExternalEventId()),
-          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE, Optional.empty());
+          Optional.ofNullable(event.getExternalReferenceId()),
+          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
+          Optional.ofNullable(event.getAssessmentId()));
     }).collect(Collectors.toList());
   }
 
