@@ -158,9 +158,7 @@ public class ProfileManagementService {
 
     var jaggaerUserData = populateJaggaerRoles(sysRoles, userId);
 
-    // If same number of roles, but different - 409 conflict with no update.
-    if (sysRoles.get(SYSID_CONCLAVE).size() == sysRoles.get(SYSID_JAGGAER).size()
-        && !Objects.equals(sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER))) {
+    if (!Objects.equals(sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER))) {
       // CON-1682-AC13+AC14
       throw new UserRolesConflictException(format(ERR_MSG_FMT_ROLES_CONFLICT, userId,
           sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER)));
