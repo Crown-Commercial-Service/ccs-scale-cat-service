@@ -28,10 +28,8 @@ public class StandardWeightedCalculator implements CalculationAdaptor {
   public double calculateRequirementScore(final CalculationBase calcBase,
       final Set<CalculationBase> assessmentCalculationBase) {
     // Compute the score for the row
-    var numericSubmissionValue = Double.parseDouble(calcBase.getSubmissionValue());
-
-    return numericSubmissionValue == 0 ? 0
-        : numericSubmissionValue / (double) calcBase.getDimensionDivisor()
+    return calcBase.getSubmissionValue() == null ? 0
+        : Double.parseDouble(calcBase.getSubmissionValue()) / (double) calcBase.getDimensionDivisor()
             * calcBase.getAssessmentSelectionWeightPercentage().doubleValue()
             * calcBase.getAssessmentDimensionWeightPercentage().doubleValue() / 100;
   }
