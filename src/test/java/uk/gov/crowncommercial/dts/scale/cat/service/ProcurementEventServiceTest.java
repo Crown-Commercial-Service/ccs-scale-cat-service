@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -173,20 +172,16 @@ class ProcurementEventServiceTest {
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-    when(jaggaerService.createUpdateRfx(any(Rfx.class), any(OperationCode.class))).thenReturn(
-        createUpdateRfxResponse);
+    when(jaggaerService.createUpdateRfx(any(Rfx.class), any(OperationCode.class)))
+        .thenReturn(createUpdateRfxResponse);
 
     when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
       procurementProject.setId(PROC_PROJECT_ID);
@@ -252,12 +247,8 @@ class ProcurementEventServiceTest {
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -339,20 +330,16 @@ class ProcurementEventServiceTest {
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-    when(jaggaerService.createUpdateRfx(any(Rfx.class), any(OperationCode.class))).thenReturn(
-        createUpdateRfxResponse);
+    when(jaggaerService.createUpdateRfx(any(Rfx.class), any(OperationCode.class)))
+        .thenReturn(createUpdateRfxResponse);
 
     when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
       procurementProject.setId(PROC_PROJECT_ID);
@@ -409,12 +396,8 @@ class ProcurementEventServiceTest {
     updateEvent.setName(UPDATED_EVENT_NAME);
     updateEvent.setEventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE));
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -452,12 +435,8 @@ class ProcurementEventServiceTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setName(UPDATED_EVENT_NAME);
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -494,12 +473,8 @@ class ProcurementEventServiceTest {
     var updateEvent = new UpdateEvent();
     updateEvent.setEventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE));
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -534,12 +509,8 @@ class ProcurementEventServiceTest {
     var updateEvent =
         new UpdateEvent().eventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS));
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -587,12 +558,8 @@ class ProcurementEventServiceTest {
         new UpdateEvent().eventType(DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS))
             .assessmentId(ASSESSMENT_ID).assessmentSupplierTarget(10);
 
-    var rfxSetting =
-        RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME)
-            .statusCode(100)
-            .publishDate(OffsetDateTime.now())
-            .closeDate(OffsetDateTime.now())
-            .build();
+    var rfxSetting = RfxSetting.builder().shortDescription(ORIGINAL_EVENT_NAME).statusCode(100)
+        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -928,12 +895,13 @@ class ProcurementEventServiceTest {
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
     event.setExternalEventId(RFX_ID);
+    event.setExternalReferenceId(RFX_REF_CODE);
     event.setEventName("NAME");
     event.setEventType("RFI");
     event.setOcdsAuthorityName(OCDS_AUTH_NAME);
     event.setOcidPrefix(OCID_PREFIX);
-    Set<ProcurementEvent> events = new HashSet<>();
-    events.add(event);
+    event.setAssessmentId(ASSESSMENT_ID);
+    var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
     var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
@@ -947,11 +915,14 @@ class ProcurementEventServiceTest {
 
     // Verify
     assertEquals(1, response.size());
-    assertEquals("NAME", response.stream().findFirst().get().getTitle());
-    assertEquals(ViewEventType.RFI, response.stream().findFirst().get().getEventType());
-    assertEquals(TenderStatus.ACTIVE, response.stream().findFirst().get().getStatus());
-    assertEquals(RFX_ID, response.stream().findFirst().get().getEventSupportId());
-    assertEquals("ocds-b5fd17-2", response.stream().findFirst().get().getId());
+
+    var eventSummary = response.stream().findFirst().get();
+    assertEquals("NAME", eventSummary.getTitle());
+    assertEquals(ViewEventType.RFI, eventSummary.getEventType());
+    assertEquals(TenderStatus.ACTIVE, eventSummary.getStatus());
+    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
+    assertEquals("ocds-b5fd17-2", eventSummary.getId());
+    assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
   }
 
 }
