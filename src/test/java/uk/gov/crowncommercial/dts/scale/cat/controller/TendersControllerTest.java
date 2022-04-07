@@ -61,8 +61,9 @@ class TendersControllerTest {
     validCATJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
         .jwt(jwt -> jwt.subject(PRINCIPAL));
 
-    validLDJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("JAEGGER_BUYER"))
-        .jwt(jwt -> jwt.subject(PRINCIPAL));
+    validLDJwtReqPostProcessor =
+        jwt().authorities(new SimpleGrantedAuthority("CAT_USER_LOGIN_DIRECTOR"))
+            .jwt(jwt -> jwt.subject(PRINCIPAL));
   }
 
   @Test

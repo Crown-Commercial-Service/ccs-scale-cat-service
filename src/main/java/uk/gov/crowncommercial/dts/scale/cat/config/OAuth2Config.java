@@ -26,9 +26,10 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
   // TODO: Verify and move to SSM
   private static final String[] CAT_ROLES =
-      new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT", "CAT_USER_LOGIN_DIRECTOR"};
+      new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
 
-  private static final String[] LD_ROLES = new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER"};
+  private static final String[] LD_ROLES =
+      new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER", "CAT_USER_LOGIN_DIRECTOR"};
 
   @Override
   protected void configure(final HttpSecurity http) throws Exception {
