@@ -22,6 +22,8 @@ public class AssessmentsController extends AbstractRestController {
   private static final String ERR_FMT_REQ_IDS_NOT_MATCH =
       "requirement-id in body [%s] does not match requirement-id in path [%s]";
 
+  private static final String ERR_EMPTY_BODY = "Empty body";
+
   private final AssessmentService assessmentService;
 
   @GetMapping("/tools/{tool-id}/dimensions")
@@ -86,6 +88,9 @@ public class AssessmentsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createUpdateRequirement invoked on behalf of principal: {}", principal);
 
+    if (requirement.getWeighting() == null) {
+      throw new ValidationException(ERR_EMPTY_BODY);
+    }
     // Requirement id in body is redundant - allow it to be optionally omitted, and use path param
     if (requirement.getRequirementId() == null) {
       requirement.setRequirementId(requirementId);
