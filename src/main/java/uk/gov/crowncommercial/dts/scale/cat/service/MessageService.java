@@ -258,7 +258,10 @@ public class MessageService {
         .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection())).read(read)
         .classification(
             uk.gov.crowncommercial.dts.scale.cat.model.generated.CaTMessageNonOCDS.ClassificationEnum
-                .fromValue(message.getCategory().getCategoryName())));
+                .fromValue(message.getCategory() == null
+                    ? uk.gov.crowncommercial.dts.scale.cat.model.generated.CaTMessageNonOCDS.ClassificationEnum.UNCLASSIFIED
+                        .getValue()
+                    : message.getCategory().getCategoryName())));
   }
 
   private CaTMessageOCDS getCaTMessageOCDS(
@@ -307,7 +310,9 @@ public class MessageService {
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     // TODO fix generated class with correct classes
     return new MessageNonOCDS()
-        .classification(ClassificationEnum.fromValue(message.getCategory().getCategoryName()))
+        .classification(ClassificationEnum
+            .fromValue(message.getCategory() == null ? ClassificationEnum.UNCLASSIFIED.getValue()
+                : message.getCategory().getCategoryName()))
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
         // .attachments( message.getAttachmentList().getAttachment().stream()
         // .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
