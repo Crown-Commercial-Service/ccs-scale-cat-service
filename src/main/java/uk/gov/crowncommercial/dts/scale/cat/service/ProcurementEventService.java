@@ -641,6 +641,39 @@ public class ProcurementEventService {
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+
+    //after publish get rfx details and update tender status, publish date and close date
+    updateStatusAndDates(principal, procurementEvent);
+  }
+
+  private void updateStatusAndDates(String principal, ProcurementEvent procurementEvent) {
+
+    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+
+    var tenderStatus = TenderStatus.PLANNING.getValue();
+    if (exportRfxResponse.getRfxSetting() != null) {
+      var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
+          .get(exportRfxResponse.getRfxSetting().getStatusCode());
+
+      tenderStatus = rfxStatus != null && rfxStatus.get(procurementEvent.getEventType()) != null ?
+          rfxStatus.get(procurementEvent.getEventType()).getValue() :
+          null;
+    }
+
+    procurementEvent.setUpdatedAt(Instant.now());
+    procurementEvent.setUpdatedBy(principal);
+    if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
+      procurementEvent.setPublishDate(
+          exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+    }
+    if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
+      procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+    }
+
+    if (tenderStatus != null) {
+      procurementEvent.setTenderStatus(tenderStatus);
+    }
+    retryableTendersDBDelegate.save(procurementEvent);
   }
 
   /**
