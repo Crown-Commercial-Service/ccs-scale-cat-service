@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
-import java.time.Instant;
 import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.Accessors;
@@ -30,16 +29,7 @@ public class QuestionAndAnswer {
 
   String answer;
 
-  @Column(name = "created_by", updatable = false)
-  String createdBy;
-
-  @Column(name = "created_at", updatable = false)
-  Instant createdAt;
-
-  @Column(name = "updated_by")
-  String updatedBy;
-
-  @Column(name = "updated_at")
-  Instant updatedAt;
+  @Embedded
+  private Timestamps timestamps;
 
 }

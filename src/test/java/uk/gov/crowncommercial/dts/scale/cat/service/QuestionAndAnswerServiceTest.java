@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
@@ -72,8 +73,7 @@ class QuestionAndAnswerServiceTest {
       questionAndAnswer.setId(1);
       questionAndAnswer.setQuestion(QUESTION);
       questionAndAnswer.setAnswer(ANSWER);
-      questionAndAnswer.setCreatedAt(CREATED_DATE);
-      questionAndAnswer.setUpdatedAt(LAST_UPDATED);
+      questionAndAnswer.setTimestamps(Timestamps.createTimestamps(PRINCIPAL));
       return questionAndAnswer;
     });
 
@@ -97,17 +97,22 @@ class QuestionAndAnswerServiceTest {
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
 
     var questionAndAnswer = new QuestionAndAnswer();
+    var ctime = new Timestamps();
+    ctime.setCreatedAt(CREATED_DATE);
+    ctime.setCreatedBy(PRINCIPAL);
+    ctime.setUpdatedAt(LAST_UPDATED);
+    ctime.setUpdatedBy(PRINCIPAL);
 
     when(questionAndAnswerRepo.findByIdAndEventId(QUESTION_ID, EVENT_ID)).then(mock -> {
-      questionAndAnswer.setId(1);
+      questionAndAnswer.setId(1).setTimestamps(ctime);
       return Optional.of(questionAndAnswer);
     });
+
     when(questionAndAnswerRepo.save(any(QuestionAndAnswer.class))).then(mock -> {
       questionAndAnswer.setId(1);
       questionAndAnswer.setQuestion(QUESTION);
       questionAndAnswer.setAnswer(ANSWER);
-      questionAndAnswer.setCreatedAt(CREATED_DATE);
-      questionAndAnswer.setUpdatedAt(LAST_UPDATED);
+      questionAndAnswer.setTimestamps(ctime);
       return questionAndAnswer;
     });
 
@@ -125,11 +130,11 @@ class QuestionAndAnswerServiceTest {
   @Test
   void testGetAllQuestionAndAnswers() throws Exception {
     // Stub some objects
+    Timestamps updateTimestamps =
+        Timestamps.updateTimestamps(Timestamps.createTimestamps(PRINCIPAL), PRINCIPAL);
     var questions = List.of(
-        QuestionAndAnswer.builder().id(1).question(QUESTION).createdAt(CREATED_DATE)
-            .updatedAt(LAST_UPDATED).build(),
-        QuestionAndAnswer.builder().id(2).question(QUESTION).createdAt(CREATED_DATE)
-            .updatedAt(LAST_UPDATED).build());
+        QuestionAndAnswer.builder().id(1).question(QUESTION).timestamps(updateTimestamps).build(),
+        QuestionAndAnswer.builder().id(2).question(QUESTION).timestamps(updateTimestamps).build());
     Set<QuestionAndAnswer> targetSet = new HashSet<>(questions);
 
     // Mock behaviours
