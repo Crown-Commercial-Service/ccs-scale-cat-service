@@ -71,10 +71,10 @@ public class ProcurementEvent {
   @Column(name = "tender_status")
   String tenderStatus;
 
-  @Column(name = "publish_date", updatable = false)
+  @Column(name = "publish_date")
   Instant publishDate;
 
-  @Column(name = "close_date", updatable = false)
+  @Column(name = "close_date")
   Instant closeDate;
 
   @Column(name = "created_by", updatable = false)
