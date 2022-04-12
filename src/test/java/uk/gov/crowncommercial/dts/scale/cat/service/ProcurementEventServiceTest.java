@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import java.time.OffsetDateTime;
 import java.util.*;
+import javax.validation.ValidationException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
@@ -71,7 +73,7 @@ class ProcurementEventServiceTest {
   private static final String DESCRIPTION = "Description";
   private static final String CRITERION_TITLE = "Criteria 1";
   private static final Integer ASSESSMENT_ID = 1;
-  private static final Integer WEIGHTING = 100;
+  private static final Integer WEIGHTING = 10;
   private static final Integer ASSESSMENT_SUPPLIER_TARGET = 10;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
@@ -694,15 +696,11 @@ class ProcurementEventServiceTest {
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     mapping.setOrganisationId(SUPPLIER_ID);
 
-    var assessment = new Assessment();
-    assessment.addDimensionRequirementsItem(new DimensionRequirement().weighting(WEIGHTING));
-
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
-    when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
@@ -716,6 +714,42 @@ class ProcurementEventServiceTest {
         rfxCaptor.getValue().getSuppliersList().getSupplier().get(0).getCompanyData().getId());
 
     assertEquals(SUPPLIER_ID, response.stream().findFirst().get().getId());
+  }
+
+  @Test
+  void testAddSuppliersToTenderDbThenThrowValidationException() throws Exception {
+
+    var org = new OrganizationReference();
+    org.setId(SUPPLIER_ID);
+
+    var event = new ProcurementEvent();
+    event.setExternalEventId(RFX_ID);
+    // event = FCA
+    event.setEventType(UPDATED_EVENT_TYPE_CAP_ASS);
+    event.setAssessmentId(ASSESSMENT_ID);
+
+    var mapping = new OrganisationMapping();
+    mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
+    mapping.setOrganisationId(SUPPLIER_ID);
+
+    var assessment = new Assessment();
+    assessment.addDimensionRequirementsItem(new DimensionRequirement().weighting(WEIGHTING));
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+        .thenReturn(Set.of(mapping));
+    when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
+
+    // Invoke
+    var thrown = Assertions.assertThrows(ValidationException.class, () -> procurementEventService
+        .addSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID, List.of(org), false, PRINCIPAL));
+
+    // Assert
+    Assertions.assertEquals(
+        "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event",
+        thrown.getMessage());
   }
 
   @Test

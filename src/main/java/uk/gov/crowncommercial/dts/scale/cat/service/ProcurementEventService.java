@@ -415,13 +415,6 @@ public class ProcurementEventService {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
-    var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
-    var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
-        .filter(e -> e.getWeighting() != 100).findAny();
-    if (dimensionWeightingCheck.isPresent()) {
-      throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
-    }
-
     var supplierOrgIds = organisationReferences.stream().map(OrganizationReference::getId)
         .collect(Collectors.toSet());
 
@@ -453,6 +446,12 @@ public class ProcurementEventService {
     if (event.isTendersDBOnly()) {
       log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
           event.getEventType());
+      var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+      var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
+          .filter(e -> e.getWeighting() != 100).findAny();
+      if (dimensionWeightingCheck.isPresent()) {
+        throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
+      }
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
     } else {
       log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
