@@ -21,6 +21,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -69,6 +71,7 @@ class ProcurementEventServiceTest {
   private static final String DESCRIPTION = "Description";
   private static final String CRITERION_TITLE = "Criteria 1";
   private static final Integer ASSESSMENT_ID = 1;
+  private static final Integer WEIGHTING = 100;
   private static final Integer ASSESSMENT_SUPPLIER_TARGET = 10;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
@@ -685,16 +688,21 @@ class ProcurementEventServiceTest {
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
     event.setEventType(UPDATED_EVENT_TYPE);
+    event.setAssessmentId(ASSESSMENT_ID);
 
     var mapping = new OrganisationMapping();
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     mapping.setOrganisationId(SUPPLIER_ID);
+
+    var assessment = new Assessment();
+    assessment.addDimensionRequirementsItem(new DimensionRequirement().weighting(WEIGHTING));
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
+    when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
