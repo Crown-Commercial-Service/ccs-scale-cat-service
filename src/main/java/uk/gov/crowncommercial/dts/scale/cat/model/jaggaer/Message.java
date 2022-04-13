@@ -21,6 +21,7 @@ public class Message {
   Integer folderId;
   String direction;
   Integer isBroadcast;
+  Integer parentMessageId;
   OffsetDateTime receiveDate;
   ReceiverList receiverList;
   ReadingList readingList;

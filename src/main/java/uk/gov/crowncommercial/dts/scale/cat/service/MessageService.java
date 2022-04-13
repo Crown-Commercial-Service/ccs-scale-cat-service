@@ -309,7 +309,7 @@ public class MessageService {
   private MessageNonOCDS getMessageNonOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     // TODO fix generated class with correct classes
-    return new MessageNonOCDS()
+    return new MessageNonOCDS().parentId(String.valueOf(message.getParentMessageId()))
         .classification(ClassificationEnum
             .fromValue(message.getCategory() == null ? ClassificationEnum.UNCLASSIFIED.getValue()
                 : message.getCategory().getCategoryName()))
