@@ -133,4 +133,20 @@ public class ValidationService {
 
   }
 
+  /**
+   * Validates the end date
+   *
+   * @param endDate
+   * @throws IllegalArgumentException if the endDate is not in the future
+   */
+  public void validateEndDate(final OffsetDateTime endDate) {
+
+    var now = OffsetDateTime.now(clock);
+
+    if (!endDate.isAfter(now)) {
+      throw new IllegalArgumentException("endDate must be in the future");
+    }
+
+  }
+
 }
