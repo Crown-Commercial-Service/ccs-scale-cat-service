@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
+import com.amazonaws.services.s3.AmazonS3;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -68,6 +69,7 @@ public class ProcurementEventService {
   private final DocumentConfig documentConfig;
   private final AssessmentService assessmentService;
   private final DocumentUploadService documentUploadService;
+  private final AmazonS3 tendersS3Client;
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -913,6 +915,43 @@ public class ProcurementEventService {
         .filter(du -> Objects.equals(du.getDocumentId(), documentId)).findFirst()
         .orElseThrow(() -> new ResourceNotFoundException(
             String.format(ERR_MSG_FMT_DOCUMENT_NOT_FOUND, documentId)));
+  }
+
+  /**
+   * Export buyer attachments
+   * 
+   * @param procId
+   * @param eventId
+   * @param principal
+   * @return list of attachments
+   */
+  public List<DocumentAttachment> exportDocuments(final Integer procId, final String eventId,
+      final String principal) {
+    log.debug("Export all Documents from Event {}", eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+    var attachments = new ArrayList<DocumentAttachment>();
+
+    if (TenderStatus.ACTIVE != status) {
+      // Get documents from S3
+      event.getDocumentUploads().stream().forEach(doc -> {
+        var documentKey = DocumentKey.fromString(doc.getDocumentId());
+        var attachment = DocumentAttachment.builder()
+            .data(documentUploadService.retrieveDocument(doc, principal))
+            .fileName(documentKey.getFileName())
+            .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
+        attachments.add(attachment);
+      });
+    } else {
+      // Get documents from Jaggaer
+      exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream().forEach(doc -> {
+        attachments
+            .add(jaggaerService.getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()));
+      });
+    }
+    return attachments;
   }
 
 }
