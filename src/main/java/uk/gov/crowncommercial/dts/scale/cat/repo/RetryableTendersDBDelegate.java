@@ -108,7 +108,12 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public Optional<DocumentTemplate> findByEventType(final String eventType) {
+  public Optional<DocumentTemplate> findById(final Integer fileId) {
+    return documentTemplateRepo.findById(fileId);
+  }
+
+  @TendersDBRetryable
+  public Set<DocumentTemplate> findByEventType(final String eventType) {
     return documentTemplateRepo.findByEventType(eventType);
   }
 

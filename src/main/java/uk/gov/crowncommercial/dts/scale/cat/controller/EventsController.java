@@ -180,7 +180,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-    docGenService.generateAndUploadProforma(procId, eventId);
+    docGenService.generateAndUploadDocuments(procId, eventId);
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
 
     return new StringValueResponse("OK");

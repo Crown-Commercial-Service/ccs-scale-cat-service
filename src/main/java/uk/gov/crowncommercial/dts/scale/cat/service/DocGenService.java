@@ -15,7 +15,6 @@ import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -30,8 +29,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -56,27 +53,25 @@ public class DocGenService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ObjectMapper objectMapper;
   private final ProcurementEventService procurementEventService;
-  private final DocumentTemplateSourceService documentTemplateSourceService;
+  private final DocumentTemplateResourceService documentTemplateResourceService;
 
-  public void generateAndUploadProforma(final Integer projectId, final String eventId) {
+  public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var proformaTemplate = documentTemplateSourceService
-        .getEventTypeTemplates(procurementEvent.getEventType()).stream().findFirst()
-        .orElseThrow(() -> new UnhandledEdgeCaseException("No template proformas for event type ["
-            + procurementEvent.getEventType() + "] found"));
 
-    uploadProforma(procurementEvent, generateProforma(procurementEvent, proformaTemplate));
+    for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
+        .findByEventType(procurementEvent.getEventType())) {
+      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate));
+    }
   }
 
   @SneakyThrows
-  public ByteArrayOutputStream generateProforma(final ProcurementEvent procurementEvent,
-      final Resource proformaTemplate) {
-    var eventType = procurementEvent.getEventType();
-    var documentTemplate = retryableTendersDBDelegate.findByEventType(eventType)
-        .orElseThrow(() -> new TendersDBDataException(
-            "Document template for event type [" + eventType + "] not found in DB"));
+  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
+      final DocumentTemplate documentTemplate) {
 
-    final var textODT = TextDocument.loadDocument(proformaTemplate.getInputStream());
+    var templateResource =
+        documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
+
+    final var textODT = TextDocument.loadDocument(templateResource.getInputStream());
     final var requestCache = new ConcurrentHashMap<String, Object>();
 
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
