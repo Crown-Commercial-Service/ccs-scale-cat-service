@@ -250,11 +250,8 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var getDataTemplate =
-        !event.isAssessment() && !ViewEventType.TBD.name().equals(event.getEventType());
-
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        getDataTemplate ? criteriaService.getEvalCriteria(projectId, eventId, true)
+        event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
             : Collections.emptySet());
   }
 
