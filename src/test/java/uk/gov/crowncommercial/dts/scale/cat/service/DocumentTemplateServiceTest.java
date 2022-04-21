@@ -183,7 +183,7 @@ class DocumentTemplateServiceTest {
 
     assertArrayEquals(DRAFT_PROFORMA_CONTENT, draftProforma.getData());
     assertEquals(Constants.MEDIA_TYPE_ODT, draftProforma.getContentType());
-    assertEquals(PROC_PROJECT_ID + "-RFI-Test RFI project.odt", draftProforma.getFileName());
+    assertEquals(PROC_PROJECT_ID + "-RFI-Test RFI project-1.odt", draftProforma.getFileName());
   }
 
 }
