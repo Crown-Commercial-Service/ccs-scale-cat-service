@@ -14,9 +14,11 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 @Service
 public class DocumentTemplateResourceService {
 
+  private static final String CLASSPATH_URL_PREFIX = "classpath:";
+
   public Resource getResource(final String url) {
-    if (url.startsWith("classpath:")) {
-      return new ClassPathResource(url);
+    if (url.startsWith(CLASSPATH_URL_PREFIX)) {
+      return new ClassPathResource(url.substring(CLASSPATH_URL_PREFIX.length()));
     }
     try {
       return new UrlResource(url);

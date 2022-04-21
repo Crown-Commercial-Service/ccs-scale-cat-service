@@ -45,7 +45,6 @@ public class DocGenService {
 
   static final String PLACEHOLDER_ERROR = "«ERROR»";
   static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
-  static final String PROFORMA_FILENAME_FMT = "%s-%s-%s.odt";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
   private final ApplicationContext applicationContext;
@@ -60,7 +59,8 @@ public class DocGenService {
 
     for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
         .findByEventType(procurementEvent.getEventType())) {
-      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate));
+      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
+          documentTemplate);
     }
   }
 
@@ -87,9 +87,10 @@ public class DocGenService {
   }
 
   private void uploadProforma(final ProcurementEvent procurementEvent,
-      final ByteArrayOutputStream documentOutputStream) {
-    var fileName = String.format(PROFORMA_FILENAME_FMT, procurementEvent.getEventID(),
-        procurementEvent.getEventType(), procurementEvent.getProject().getProjectName());
+      final ByteArrayOutputStream documentOutputStream, final DocumentTemplate documentTemplate) {
+    var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT,
+        procurementEvent.getProject().getId(), procurementEvent.getEventType(),
+        procurementEvent.getProject().getProjectName(), documentTemplate.getId());
     var fileDescription =
         procurementEvent.getEventType() + " pro forma for tender: " + procurementEvent.getEventID();
 

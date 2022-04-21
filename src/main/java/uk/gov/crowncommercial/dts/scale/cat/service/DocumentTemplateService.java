@@ -30,9 +30,6 @@ public class DocumentTemplateService {
   static final String ERR_MSG_FMT_TEMPLATE_NOT_FOUND =
       "Template [ID: %s, Filename: %s] not found for event type [%s]";
 
-  // {project ID}-{event type}-{project name}.odt
-  static final String FILENAME_FMT_DRAFT = "%d-%s-%s.odt";
-
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ValidationService validationService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
@@ -103,8 +100,9 @@ public class DocumentTemplateService {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var draftDocument = docGenService.generateDocument(event, documentTemplate);
-    var fileName = String.format(FILENAME_FMT_DRAFT, event.getProject().getId(),
-        event.getEventType(), event.getProject().getProjectName());
+    var fileName =
+        String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, event.getProject().getId(),
+            event.getEventType(), event.getProject().getProjectName(), documentKey.getFileId());
 
     return DocumentAttachment.builder().data(draftDocument.toByteArray())
         .contentType(Constants.MEDIA_TYPE_ODT).fileName(fileName).build();
