@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import java.time.Instant;
 import java.util.Set;
 import javax.persistence.*;
@@ -71,10 +72,10 @@ public class ProcurementEvent {
   @Column(name = "tender_status")
   String tenderStatus;
 
-  @Column(name = "publish_date", updatable = false)
+  @Column(name = "publish_date")
   Instant publishDate;
 
-  @Column(name = "close_date", updatable = false)
+  @Column(name = "close_date")
   Instant closeDate;
 
   @Column(name = "created_by", updatable = false)
@@ -112,6 +113,16 @@ public class ProcurementEvent {
    */
   public boolean isAssessment() {
     return ASSESSMENT_EVENT_TYPES.stream().map(DefineEventType::name)
+        .anyMatch(aet -> aet.equals(getEventType()));
+  }
+
+  /**
+   * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
+   *
+   * @return true if it is, false otherwise
+   */
+  public boolean isDataTemplateEvent() {
+    return DATA_TEMPLATE_EVENT_TYPES.stream().map(DefineEventType::name)
         .anyMatch(aet -> aet.equals(getEventType()));
   }
 

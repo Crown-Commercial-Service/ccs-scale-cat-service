@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.transaction.Transactional;
+import javax.validation.ValidationException;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,8 @@ public class ProcurementEventService {
   public static final String ERR_MSG_JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String ERR_MSG_FMT_DOCUMENT_NOT_FOUND =
       "Document upload record for ID [%s] not found";
+  public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
+      "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -247,11 +250,8 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var getDataTemplate =
-        !event.isAssessment() && !ViewEventType.TBD.name().equals(event.getEventType());
-
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        getDataTemplate ? criteriaService.getEvalCriteria(projectId, eventId, true)
+        event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
             : Collections.emptySet());
   }
 
@@ -443,6 +443,12 @@ public class ProcurementEventService {
     if (event.isTendersDBOnly()) {
       log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
           event.getEventType());
+      var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+      var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
+          .filter(e -> e.getWeighting() != 100).findAny();
+      if (dimensionWeightingCheck.isPresent()) {
+        throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
+      }
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
     } else {
       log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
@@ -642,7 +648,7 @@ public class ProcurementEventService {
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
 
-    //after publish get rfx details and update tender status, publish date and close date
+    // after publish get rfx details and update tender status, publish date and close date
     updateStatusAndDates(principal, procurementEvent);
   }
 
@@ -655,16 +661,16 @@ public class ProcurementEventService {
       var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
           .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-      tenderStatus = rfxStatus != null && rfxStatus.get(procurementEvent.getEventType()) != null ?
-          rfxStatus.get(procurementEvent.getEventType()).getValue() :
-          null;
+      tenderStatus = rfxStatus != null && rfxStatus.get(procurementEvent.getEventType()) != null
+          ? rfxStatus.get(procurementEvent.getEventType()).getValue()
+          : null;
     }
 
     procurementEvent.setUpdatedAt(Instant.now());
     procurementEvent.setUpdatedBy(principal);
     if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
-      procurementEvent.setPublishDate(
-          exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      procurementEvent
+          .setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
     }
     if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
       procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());

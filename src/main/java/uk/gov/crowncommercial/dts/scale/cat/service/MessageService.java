@@ -309,13 +309,15 @@ public class MessageService {
   private MessageNonOCDS getMessageNonOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     // TODO fix generated class with correct classes
-    return new MessageNonOCDS()
+    return new MessageNonOCDS().parentId(String.valueOf(message.getParentMessageId()))
         .classification(ClassificationEnum
             .fromValue(message.getCategory() == null ? ClassificationEnum.UNCLASSIFIED.getValue()
                 : message.getCategory().getCategoryName()))
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
-        // .attachments( message.getAttachmentList().getAttachment().stream()
-        // .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
+        .attachments(message.getAttachmentList().getAttachment().stream()
+            .map(att -> new MessageNonOCDSAllOfAttachments().id(Integer.valueOf(att.getFileId()))
+                .name(att.getFileName()))
+            .collect(Collectors.toList()))
         .readList(message.getReadingList().getReading().stream()
             .map(reading -> new ContactPoint1().name(reading.getReaderName()))
             .collect(Collectors.toList()))
