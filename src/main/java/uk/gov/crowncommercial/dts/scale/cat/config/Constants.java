@@ -24,6 +24,9 @@ public class Constants {
   public static final String ERR_MSG_VALIDATION = "Validation error processing the request";
   public static final String ERR_MSG_RESOURCE_NOT_FOUND = "Resource not found";
 
+  // {project ID}-{event type}-{project name}-{template ID}.odt
+  public static final String GENERATED_DOCUMENT_FILENAME_FMT = "%d-%s-%s-%d.odt";
+
   public static final int WEBCLIENT_DEFAULT_RETRIES = 3;
   public static final int WEBCLIENT_DEFAULT_DELAY = 2;
 
