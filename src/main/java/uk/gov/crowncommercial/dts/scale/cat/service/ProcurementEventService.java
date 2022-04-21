@@ -946,10 +946,11 @@ public class ProcurementEventService {
       });
     } else {
       // Get documents from Jaggaer
-      exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream().forEach(doc -> {
-        attachments
-            .add(jaggaerService.getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()));
-      });
+      exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream()
+          .forEach(doc -> attachments.add(DocumentAttachment
+              .builder().fileName(doc.getFileName()).data(jaggaerService
+                  .getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
+              .build()));
     }
     return attachments;
   }

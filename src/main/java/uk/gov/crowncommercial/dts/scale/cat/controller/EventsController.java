@@ -1,12 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import org.apache.commons.io.IOUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -209,7 +212,10 @@ public class EventsController extends AbstractRestController {
       ZipEntry zipEntry = null;
       for (DocumentAttachment documentAttachment : exportDocuments) {
         zipEntry = new ZipEntry(documentAttachment.getFileName());
-        zipOutputStream.write(documentAttachment.getData(), 0, documentAttachment.getData().length);
+        zipOutputStream.putNextEntry(zipEntry);
+        try (InputStream is = new ByteArrayInputStream(documentAttachment.getData())) {
+          IOUtils.copy(is, zipOutputStream);
+        }
       }
       // set zip size in response
       response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
