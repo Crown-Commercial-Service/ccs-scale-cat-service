@@ -358,7 +358,7 @@ public class ProcurementProjectService {
 
     if (!CollectionUtils.isEmpty(projects)) {
       return projects.stream().map(this::convertProjectToProjectPackageSummary)
-          .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
+          .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
     }
     return Collections.emptyList();
   }
