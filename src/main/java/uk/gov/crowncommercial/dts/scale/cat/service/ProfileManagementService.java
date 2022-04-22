@@ -418,7 +418,7 @@ public class ProfileManagementService {
   private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> populateJaggaerRoles(
       final Map<String, Set<RolesEnum>> sysRoles, final String userId) {
 
-    var buyerSubUser = userProfileService.resolveBuyerUserByEmail(userId);
+    var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
     buyerSubUser.ifPresent(su -> sysRoles.get(SYSID_JAGGAER).add(BUYER));
 
     var supplierCompanyData = userProfileService.resolveSupplierData(userId);
