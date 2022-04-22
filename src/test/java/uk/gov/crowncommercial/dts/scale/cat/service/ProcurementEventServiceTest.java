@@ -157,6 +157,9 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentUploadService documentUploadService;
 
+  @MockBean
+  private DocumentTemplateService documentTemplateService;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
@@ -902,7 +905,7 @@ class ProcurementEventServiceTest {
     // Invoke & assert
     procurementEventService.publishEvent(PROC_PROJECT_ID, PROC_EVENT_ID, publishDates, PRINCIPAL);
 
-    verify(jaggaerService, times(2)).uploadDocument(any(), any());
+    verify(jaggaerService, times(2)).eventUploadDocument(any(), any(), any(), any(), any());
     verify(jaggaerService).publishRfx(procurementEvent, publishDates, JAGGAER_USER_ID);
   }
 
