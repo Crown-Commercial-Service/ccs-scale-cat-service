@@ -51,7 +51,7 @@ public class DocGenService {
   private final ValidationService validationService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ObjectMapper objectMapper;
-  private final ProcurementEventService procurementEventService;
+  private final JaggaerService jaggaerService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
 
   public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
@@ -97,8 +97,8 @@ public class DocGenService {
     var multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName,
         Constants.MEDIA_TYPE_ODT.toString());
 
-    procurementEventService.eventUploadDocument(procurementEvent, fileName, fileDescription,
-        SUPPLIER, multipartFile);
+    jaggaerService.eventUploadDocument(procurementEvent, fileName, fileDescription, SUPPLIER,
+        multipartFile);
   }
 
   Object getDataReplacement(final ProcurementEvent event,

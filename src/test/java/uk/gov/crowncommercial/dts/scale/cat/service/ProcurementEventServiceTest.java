@@ -157,6 +157,9 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentUploadService documentUploadService;
 
+  @MockBean
+  private DocumentTemplateService documentTemplateService;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test

@@ -6,6 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_E
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.transaction.Transactional;
 import javax.validation.ValidationException;
 import org.apache.commons.io.FilenameUtils;
@@ -68,6 +69,7 @@ public class ProcurementEventService {
   private final DocumentConfig documentConfig;
   private final AssessmentService assessmentService;
   private final DocumentUploadService documentUploadService;
+  private final DocumentTemplateService dTemplateService;
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -641,7 +643,7 @@ public class ProcurementEventService {
               documentUploadService.retrieveDocument(documentUpload, principal),
               docKey.getFileName(), documentUpload.getMimetype());
 
-          eventUploadDocument(procurementEvent, docKey.getFileName(),
+          jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
               documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
         });
 
@@ -680,42 +682,6 @@ public class ProcurementEventService {
       procurementEvent.setTenderStatus(tenderStatus);
     }
     retryableTendersDBDelegate.save(procurementEvent);
-  }
-
-  /**
-   * Upload a document to the Jaggaer event
-   *
-   * @param event
-   * @param fileName
-   * @param fileDescription
-   * @param audience
-   * @param multipartFile
-   */
-  public void eventUploadDocument(final ProcurementEvent event, final String fileName,
-      final String fileDescription, final DocumentAudienceType audience,
-      final MultipartFile multipartFile) {
-
-    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-        .rfxReferenceCode(event.getExternalReferenceId()).build();
-    var attachment =
-        Attachment.builder().fileName(fileName).fileDescription(fileDescription).build();
-    Rfx rfx;
-
-    switch (audience) {
-      case BUYER:
-        var bal = BuyerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
-        rfx = Rfx.builder().rfxSetting(rfxSetting).buyerAttachmentsList(bal).build();
-        break;
-      case SUPPLIER:
-        var sal = SellerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
-        rfx = Rfx.builder().rfxSetting(rfxSetting).sellerAttachmentsList(sal).build();
-        break;
-      default:
-        throw new IllegalArgumentException("Unsupported audience for document upload");
-    }
-
-    var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
-    jaggaerService.uploadDocument(multipartFile, update);
   }
 
   /**
@@ -923,6 +889,7 @@ public class ProcurementEventService {
    * @param principal
    * @return list of attachments
    */
+  @Transactional
   public List<DocumentAttachment> exportDocuments(final Integer procId, final String eventId,
       final String principal) {
     log.debug("Export all Documents from Event {}", eventId);
@@ -942,9 +909,17 @@ public class ProcurementEventService {
             .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
         attachments.add(attachment);
       });
+      // Get draft documents
+      dTemplateService.getTemplates(procId, eventId).stream().forEach(template -> {
+        attachments.add(dTemplateService.getDraftDocument(procId, eventId,
+            DocumentKey.fromString(template.getId())));
+      });
+
     } else {
       // Get documents from Jaggaer
-      exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream()
+      Stream
+          .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
+              exportRfxResponse.getSellerAttachmentsList().getAttachment().stream())
           .forEach(doc -> attachments.add(DocumentAttachment
               .builder().fileName(doc.getFileName()).data(jaggaerService
                   .getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
