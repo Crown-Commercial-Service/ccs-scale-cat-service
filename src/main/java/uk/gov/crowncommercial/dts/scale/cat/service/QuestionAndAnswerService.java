@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -13,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
 import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
 
@@ -37,39 +37,40 @@ public class QuestionAndAnswerService {
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
     var questionAndAnswer = QuestionAndAnswer.builder().question(qAndA.getQuestion())
-        .answer(qAndA.getAnswer()).createdBy(user.getEmail()).event(procurementEvent)
-        .updatedAt(Instant.now()).createdAt(Instant.now()).build();
+        .answer(qAndA.getAnswer()).timestamps(Timestamps.createTimestamps(user.getEmail()))
+        .event(procurementEvent).build();
 
     if (qaId != null) {
       log.info("Updating Q&A to {}", qaId);
-      QuestionAndAnswer exQuestionAndAnswer =
+      var exQuestionAndAnswer =
           questionAndAnswerRepo.findByIdAndEventId(qaId, procurementEvent.getId()).orElseThrow(
               () -> new ResourceNotFoundException(String.format(Q_AND_A_NOT_FOUND, qaId)));
+
       questionAndAnswer = exQuestionAndAnswer.setQuestion(qAndA.getQuestion())
-          .setAnswer(qAndA.getAnswer()).setUpdatedAt(Instant.now()).setUpdatedBy(user.getEmail());
+          .setAnswer(qAndA.getAnswer()).setTimestamps(
+              Timestamps.updateTimestamps(exQuestionAndAnswer.getTimestamps(), user.getEmail()));
     }
     return convertQandA(questionAndAnswerRepo.save(questionAndAnswer));
   }
 
   public List<QandA> getQuestionAndAnswerByEvent(final Integer projectId, final String eventId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    Set<QuestionAndAnswer> qandAnswers =
-        questionAndAnswerRepo.findByEventId(procurementEvent.getId());
+    var qandAnswers = questionAndAnswerRepo.findByEventId(procurementEvent.getId());
     return covertQandAList(qandAnswers);
   }
 
   private QandA convertQandA(QuestionAndAnswer questionAndAnswer) {
     return new QandA().id(BigDecimal.valueOf(questionAndAnswer.getId()))
         .question(questionAndAnswer.getQuestion()).answer(questionAndAnswer.getAnswer())
-        .lastUpdated(
-            OffsetDateTime.ofInstant(questionAndAnswer.getUpdatedAt(), ZoneId.systemDefault()))
-        .created(
-            OffsetDateTime.ofInstant(questionAndAnswer.getCreatedAt(), ZoneId.systemDefault()));
+        .lastUpdated(questionAndAnswer.getTimestamps().getUpdatedAt() == null ? null
+            : OffsetDateTime.ofInstant(questionAndAnswer.getTimestamps().getUpdatedAt(),
+                ZoneId.systemDefault()))
+        .created(OffsetDateTime.ofInstant(questionAndAnswer.getTimestamps().getCreatedAt(),
+            ZoneId.systemDefault()));
   }
 
   private List<QandA> covertQandAList(Set<QuestionAndAnswer> questionAndAnswerList) {
     return questionAndAnswerList.stream().map(this::convertQandA).collect(Collectors.toList());
   }
-
 
 }
