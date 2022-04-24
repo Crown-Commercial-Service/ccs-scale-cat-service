@@ -29,7 +29,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -109,14 +109,21 @@ public class DocGenService {
       switch (documentTemplateSource.getSourceType()) {
         case JSON:
           final var qstn = getQuestionFromJSONDataTemplate(event, documentTemplateSource);
-          if (qstn.getOptions() != null && !qstn.getOptions().isEmpty()) {
+          final var nonOCDS = qstn.getNonOCDS();
+          if (nonOCDS.getOptions() != null && !nonOCDS.getOptions().isEmpty()) {
             if (documentTemplateSource.getTargetType() == TargetType.SIMPLE
                 || documentTemplateSource.getTargetType() == TargetType.DATETIME) {
-              return qstn.getOptions().stream().findFirst().get().getValue();
+              return nonOCDS.getOptions().stream().findFirst().get().getValue();
             }
-            return qstn.getOptions().stream()
+
+            if (documentTemplateSource.getTargetType() == TargetType.TITLE) {
+              return qstn.getOcds().getTitle();
+            }
+
+            return nonOCDS.getOptions().stream()
                 .filter(o -> Objects.equals(Boolean.TRUE, o.getSelect())
-                    || StringUtils.hasText(o.getText()) || "Value".equals(qstn.getQuestionType()))
+                    || StringUtils.hasText(o.getText())
+                    || "Value".equals(nonOCDS.getQuestionType()))
                 .collect(Collectors.toList());
           }
           return PLACEHOLDER_UNKNOWN;
@@ -137,7 +144,7 @@ public class DocGenService {
     }
   }
 
-  NonOCDS getQuestionFromJSONDataTemplate(final ProcurementEvent event,
+  Requirement getQuestionFromJSONDataTemplate(final ProcurementEvent event,
       final DocumentTemplateSource documentTemplateSource) {
 
     var eventData = event.getProcurementTemplatePayloadRaw();
@@ -145,7 +152,7 @@ public class DocGenService {
     var jsonPathConfig = Configuration.builder().jsonProvider(new JacksonJsonProvider(objectMapper))
         .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
 
-    TypeRef<List<NonOCDS>> typeRef = new TypeRef<>() {};
+    TypeRef<List<Requirement>> typeRef = new TypeRef<>() {};
     return JsonPath.using(jsonPathConfig).parse(eventData)
         .read(documentTemplateSource.getSourcePath(), typeRef).get(0);
   }
