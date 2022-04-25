@@ -91,10 +91,10 @@ public class AssessmentService {
       dd.setWeightingRange(wr);
 
       // Build Options
-      List<DimensionOption> dimensionOptions = new ArrayList<>();
+      Set<DimensionOption> dimensionOptions = new HashSet<>();
       d.getAssessmentTaxons().stream()
           .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
-      dd.setOptions(dimensionOptions);
+      dd.setOptions(new ArrayList<>(dimensionOptions));
 
       // Build Evaluation Criteria
       dd.setEvaluationCriteria(getDimensionCriteria(d));
@@ -741,11 +741,11 @@ public class AssessmentService {
    * @param assessmentTaxon
    * @return
    */
-  private List<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
+  private Set<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
 
     log.debug("Assessment Taxon :" + assessmentTaxon.getName());
-    List<DimensionOption> dimensionOptions =
-        new ArrayList<>(assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
+    Set<DimensionOption> dimensionOptions =
+        assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
           log.debug(" - requirement :" + rt.getRequirement().getName());
           var rtOption = new DimensionOption();
@@ -761,7 +761,7 @@ public class AssessmentService {
           }
           return rtOption;
 
-        }).collect(Collectors.toList()));
+        }).collect(Collectors.toSet());
 
     // Recurse down child Assessment Taxon collection
     if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {

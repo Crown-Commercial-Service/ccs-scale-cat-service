@@ -346,7 +346,7 @@ class ProcurementProjectServiceTest {
         .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate
-        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()),any(Pageable.class)))
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));

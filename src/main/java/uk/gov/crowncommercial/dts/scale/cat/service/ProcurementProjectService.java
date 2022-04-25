@@ -6,6 +6,8 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPO
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
@@ -351,15 +353,12 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    // TODO - due to errors logging in for some users (SCAT-4484), hard-coding to limit the number
-    // of projects returned for now until a better solution is implemented (SCAT-4583)
-    // var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId);
     var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
-        PageRequest.of(0, 5, Sort.by("timestamps.createdAt").descending()));
+        PageRequest.of(0, 50, Sort.by("timestamps.createdAt").descending()));
 
     if (!CollectionUtils.isEmpty(projects)) {
       return projects.stream().map(this::convertProjectToProjectPackageSummary)
-          .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
+          .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
     }
     return Collections.emptyList();
   }
@@ -408,17 +407,16 @@ public class ProcurementProjectService {
           Optional.ofNullable(dbEvent.getAssessmentId()));
     } else {
       log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
-      var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
       try {
-        var status = findTenderStatus(dbEvent, exportRfxResponse);
         eventSummary =
             tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(), dbEvent.getEventName(),
                 Optional.ofNullable(dbEvent.getExternalReferenceId()),
-                ViewEventType.fromValue(dbEvent.getEventType()), status, ReleaseTag.TENDER,
+                ViewEventType.fromValue(dbEvent.getEventType()),
+                TenderStatus.fromValue(dbEvent.getTenderStatus()), ReleaseTag.TENDER,
                 Optional.ofNullable(dbEvent.getAssessmentId()));
-        eventSummary.tenderPeriod(
-            new Period1().startDate(exportRfxResponse.getRfxSetting().getPublishDate())
-                .endDate(exportRfxResponse.getRfxSetting().getCloseDate()));
+        eventSummary.tenderPeriod(new Period1().startDate(
+                OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
+            .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
       } catch (Exception e) {
         // No data found in Jagger
         log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
@@ -429,71 +427,6 @@ public class ProcurementProjectService {
     return Optional.of(projectPackageSummary);
   }
 
-  private TenderStatus findTenderStatus(final ProcurementEvent dbEvent,
-      final ExportRfxResponse exportRfxResponse) {
-
-    var statusCode = exportRfxResponse.getRfxSetting().getStatusCode();
-    String eventType = dbEvent.getEventType();
-    // This logic is based on attached excel of SCAT-3671
-    // TODO: some scenarios are have ambiguous and need to check end to this logic
-    // TODO: can it be better?
-    switch (statusCode) {
-      case 0:
-        switch (eventType) {
-          case "RFI":
-          case "EOI":
-          case "FC":
-          case "DA":
-            return TenderStatus.PLANNING;
-        }
-        break;
-      case 300:
-      case 400:
-        switch (eventType) {
-          case "RFI":
-          case "EOI":
-            return TenderStatus.PLANNING;
-          case "FC":
-          case "DA":
-            return TenderStatus.ACTIVE;
-        }
-        break;
-      case 500:
-        switch (eventType) {
-          case "FC":
-          case "DA":
-            return TenderStatus.COMPLETE;
-        }
-        break;
-      case 800:
-        switch (eventType) {
-          case "FC":
-          case "DA":
-            return TenderStatus.ACTIVE;
-        }
-        break;
-      case 950:
-        switch (eventType) {
-          case "RFI":
-          case "EOI":
-            return TenderStatus.PLANNING;
-          case "FC":
-          case "DA":
-            return TenderStatus.COMPLETE;
-        }
-        break;
-      case 1500:
-        switch (eventType) {
-          case "RFI":
-          case "EOI":
-          case "FC":
-          case "DA":
-            return TenderStatus.CANCELLED;
-        }
-        break;
-    }
-    return null;
-  }
 
   /**
    * Get a Team Member.

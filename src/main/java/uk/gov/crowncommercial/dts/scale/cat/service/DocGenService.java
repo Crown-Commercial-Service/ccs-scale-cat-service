@@ -15,7 +15,6 @@ import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -30,9 +29,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.NonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -48,35 +45,33 @@ public class DocGenService {
 
   static final String PLACEHOLDER_ERROR = "«ERROR»";
   static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
-  static final String PROFORMA_FILENAME_FMT = "%s-%s-%s.odt";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ObjectMapper objectMapper;
-  private final ProcurementEventService procurementEventService;
-  private final DocumentTemplateSourceService documentTemplateSourceService;
+  private final JaggaerService jaggaerService;
+  private final DocumentTemplateResourceService documentTemplateResourceService;
 
-  public void generateAndUploadProforma(final Integer projectId, final String eventId) {
+  public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var proformaTemplate = documentTemplateSourceService
-        .getEventTypeTemplates(procurementEvent.getEventType()).stream().findFirst()
-        .orElseThrow(() -> new UnhandledEdgeCaseException("No template proformas for event type ["
-            + procurementEvent.getEventType() + "] found"));
 
-    uploadProforma(procurementEvent, generateProforma(procurementEvent, proformaTemplate));
+    for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
+        .findByEventType(procurementEvent.getEventType())) {
+      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
+          documentTemplate);
+    }
   }
 
   @SneakyThrows
-  public ByteArrayOutputStream generateProforma(final ProcurementEvent procurementEvent,
-      final Resource proformaTemplate) {
-    var eventType = procurementEvent.getEventType();
-    var documentTemplate = retryableTendersDBDelegate.findByEventType(eventType)
-        .orElseThrow(() -> new TendersDBDataException(
-            "Document template for event type [" + eventType + "] not found in DB"));
+  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
+      final DocumentTemplate documentTemplate) {
 
-    final var textODT = TextDocument.loadDocument(proformaTemplate.getInputStream());
+    var templateResource =
+        documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
+
+    final var textODT = TextDocument.loadDocument(templateResource.getInputStream());
     final var requestCache = new ConcurrentHashMap<String, Object>();
 
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
@@ -92,17 +87,18 @@ public class DocGenService {
   }
 
   private void uploadProforma(final ProcurementEvent procurementEvent,
-      final ByteArrayOutputStream documentOutputStream) {
-    var fileName = String.format(PROFORMA_FILENAME_FMT, procurementEvent.getEventID(),
-        procurementEvent.getEventType(), procurementEvent.getProject().getProjectName());
+      final ByteArrayOutputStream documentOutputStream, final DocumentTemplate documentTemplate) {
+    var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT,
+        procurementEvent.getEventID(), procurementEvent.getEventType(),
+        StringUtils.getFilename(documentTemplate.getTemplateUrl()));
     var fileDescription =
         procurementEvent.getEventType() + " pro forma for tender: " + procurementEvent.getEventID();
 
     var multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName,
         Constants.MEDIA_TYPE_ODT.toString());
 
-    procurementEventService.eventUploadDocument(procurementEvent, fileName, fileDescription,
-        SUPPLIER, multipartFile);
+    jaggaerService.eventUploadDocument(procurementEvent, fileName, fileDescription, SUPPLIER,
+        multipartFile);
   }
 
   Object getDataReplacement(final ProcurementEvent event,
@@ -113,14 +109,21 @@ public class DocGenService {
       switch (documentTemplateSource.getSourceType()) {
         case JSON:
           final var qstn = getQuestionFromJSONDataTemplate(event, documentTemplateSource);
-          if (qstn.getOptions() != null && !qstn.getOptions().isEmpty()) {
+          final var nonOCDS = qstn.getNonOCDS();
+          if (nonOCDS.getOptions() != null && !nonOCDS.getOptions().isEmpty()) {
             if (documentTemplateSource.getTargetType() == TargetType.SIMPLE
                 || documentTemplateSource.getTargetType() == TargetType.DATETIME) {
-              return qstn.getOptions().stream().findFirst().get().getValue();
+              return nonOCDS.getOptions().stream().findFirst().get().getValue();
             }
-            return qstn.getOptions().stream()
+
+            if (documentTemplateSource.getTargetType() == TargetType.TITLE) {
+              return qstn.getOcds().getTitle();
+            }
+
+            return nonOCDS.getOptions().stream()
                 .filter(o -> Objects.equals(Boolean.TRUE, o.getSelect())
-                    || StringUtils.hasText(o.getText()) || "Value".equals(qstn.getQuestionType()))
+                    || StringUtils.hasText(o.getText())
+                    || "Value".equals(nonOCDS.getQuestionType()))
                 .collect(Collectors.toList());
           }
           return PLACEHOLDER_UNKNOWN;
@@ -141,7 +144,7 @@ public class DocGenService {
     }
   }
 
-  NonOCDS getQuestionFromJSONDataTemplate(final ProcurementEvent event,
+  Requirement getQuestionFromJSONDataTemplate(final ProcurementEvent event,
       final DocumentTemplateSource documentTemplateSource) {
 
     var eventData = event.getProcurementTemplatePayloadRaw();
@@ -149,7 +152,7 @@ public class DocGenService {
     var jsonPathConfig = Configuration.builder().jsonProvider(new JacksonJsonProvider(objectMapper))
         .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
 
-    TypeRef<List<NonOCDS>> typeRef = new TypeRef<>() {};
+    TypeRef<List<Requirement>> typeRef = new TypeRef<>() {};
     return JsonPath.using(jsonPathConfig).parse(eventData)
         .read(documentTemplateSource.getSourcePath(), typeRef).get(0);
   }

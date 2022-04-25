@@ -26,6 +26,7 @@ public class JaggaerAPIConfig {
   private String defaultSupplierRightsProfile;
   private Integer timeoutDuration;
   private Map<Integer, TenderStatus> rfxStatusToTenderStatus;
+  private Map<Integer, Map<String, TenderStatus>> rfxStatusAndEventTypeToTenderStatus;
   private Boolean addDivisionToProjectTeam;
   private Long tokenExpirySeconds;
   private Map<String, String> createProject;

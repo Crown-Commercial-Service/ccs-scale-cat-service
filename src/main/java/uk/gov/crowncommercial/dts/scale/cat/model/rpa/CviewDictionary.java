@@ -24,4 +24,6 @@ public class CviewDictionary {
 
   @JsonProperty("isTrue")
   private String isTrue;
+
+  private String errorMessage;
 }

@@ -179,6 +179,16 @@ public class UserProfileService {
     return getSupplierDataHelper(getSupplierCompanyBySuperUserEndpoint);
   }
 
+  /**
+   * Refresh the buyer user cache (for example after a new user has been created / updated)
+   *
+   * @param userId aka email
+   */
+  public void refreshBuyerCache(final String userId) {
+    log.debug("Refreshing Jaggaer buyer cache for user: {}", userId);
+    jaggaerBuyerUserCache.refresh(new SubUserIdentity(userId, getFilterPredicateEmail(userId)));
+  }
+
   private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {
     var response = ofNullable(
         jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)

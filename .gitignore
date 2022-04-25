@@ -48,3 +48,6 @@ build/
 
 # Secrets var file
 **/secret.tfvars
+
+# ODT lock files
+**/.~lock*
