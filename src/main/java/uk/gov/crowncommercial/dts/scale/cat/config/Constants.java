@@ -24,6 +24,11 @@ public class Constants {
   public static final String ERR_MSG_VALIDATION = "Validation error processing the request";
   public static final String ERR_MSG_RESOURCE_NOT_FOUND = "Resource not found";
 
+  /**
+   * {procurement-event-id}-{event-type}-{document-template-filename} (ODT)
+   */
+  public static final String GENERATED_DOCUMENT_FILENAME_FMT = "%s-%s-%s";
+
   public static final int WEBCLIENT_DEFAULT_RETRIES = 3;
   public static final int WEBCLIENT_DEFAULT_DELAY = 2;
 
@@ -32,6 +37,9 @@ public class Constants {
 
   public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
       Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DAA);
+
+  public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES =
+      Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC);
 
   public static final Set<DefineEventType> TENDER_DB_ONLY_EVENT_TYPES =
       Set.of(DefineEventType.FCA, DefineEventType.DAA);

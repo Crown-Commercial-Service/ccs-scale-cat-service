@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import java.time.OffsetDateTime;
 import java.util.*;
+import javax.validation.ValidationException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
@@ -21,6 +23,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -69,6 +73,7 @@ class ProcurementEventServiceTest {
   private static final String DESCRIPTION = "Description";
   private static final String CRITERION_TITLE = "Criteria 1";
   private static final Integer ASSESSMENT_ID = 1;
+  private static final Integer WEIGHTING = 10;
   private static final Integer ASSESSMENT_SUPPLIER_TARGET = 10;
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
@@ -151,6 +156,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private DocumentUploadService documentUploadService;
+
+  @MockBean
+  private DocumentTemplateService documentTemplateService;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -685,6 +693,7 @@ class ProcurementEventServiceTest {
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
     event.setEventType(UPDATED_EVENT_TYPE);
+    event.setAssessmentId(ASSESSMENT_ID);
 
     var mapping = new OrganisationMapping();
     mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
@@ -708,6 +717,42 @@ class ProcurementEventServiceTest {
         rfxCaptor.getValue().getSuppliersList().getSupplier().get(0).getCompanyData().getId());
 
     assertEquals(SUPPLIER_ID, response.stream().findFirst().get().getId());
+  }
+
+  @Test
+  void testAddSuppliersToTenderDbThenThrowValidationException() throws Exception {
+
+    var org = new OrganizationReference();
+    org.setId(SUPPLIER_ID);
+
+    var event = new ProcurementEvent();
+    event.setExternalEventId(RFX_ID);
+    // event = FCA
+    event.setEventType(UPDATED_EVENT_TYPE_CAP_ASS);
+    event.setAssessmentId(ASSESSMENT_ID);
+
+    var mapping = new OrganisationMapping();
+    mapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
+    mapping.setOrganisationId(SUPPLIER_ID);
+
+    var assessment = new Assessment();
+    assessment.addDimensionRequirementsItem(new DimensionRequirement().weighting(WEIGHTING));
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+        .thenReturn(Set.of(mapping));
+    when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
+
+    // Invoke
+    var thrown = Assertions.assertThrows(ValidationException.class, () -> procurementEventService
+        .addSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID, List.of(org), false, PRINCIPAL));
+
+    // Assert
+    Assertions.assertEquals(
+        "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event",
+        thrown.getMessage());
   }
 
   @Test
@@ -860,7 +905,7 @@ class ProcurementEventServiceTest {
     // Invoke & assert
     procurementEventService.publishEvent(PROC_PROJECT_ID, PROC_EVENT_ID, publishDates, PRINCIPAL);
 
-    verify(jaggaerService, times(2)).uploadDocument(any(), any());
+    verify(jaggaerService, times(2)).eventUploadDocument(any(), any(), any(), any(), any());
     verify(jaggaerService).publishRfx(procurementEvent, publishDates, JAGGAER_USER_ID);
   }
 

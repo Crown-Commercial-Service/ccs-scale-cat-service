@@ -128,7 +128,7 @@ class DocumentTemplatesControllerTest {
     var fileContent = new byte[] {1, 2, 3, 'a', 'b', 'c'};
     var fileName = "1234-RFI-TestProject.odt";
     var documentKey = DocumentKey.fromString(DOC_KEY);
-    when(documentTemplateService.getDraftProforma(PROC_PROJECT_ID, EVENT_ID, documentKey))
+    when(documentTemplateService.getDraftDocument(PROC_PROJECT_ID, EVENT_ID, documentKey))
         .thenReturn(DocumentAttachment.builder().data(fileContent)
             .contentType(MediaType.APPLICATION_OCTET_STREAM).fileName(fileName).build());
 

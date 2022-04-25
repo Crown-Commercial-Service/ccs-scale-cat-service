@@ -52,10 +52,10 @@ class AwardServiceTest {
   static final String AGREEMENT_NUMBER = "RM1234";
   static final String LOT_NUMBER = "Lot 2";
 
-  static final String SUPPLIER_ORG_ID_1 = "1234567";
+  static final String SUPPLIER_ORG_ID_1 = "GB-COH-1234567";
   static final LotSupplier LOT_SUPPLIER_1 = LotSupplier.builder()
       .organization(Organization.builder().id(SUPPLIER_ORG_ID_1).build()).build();
-  static final String SUPPLIER_ORG_ID_2 = "7654321";
+  static final String SUPPLIER_ORG_ID_2 = "GB-COH-7654321";
   static final LotSupplier LOT_SUPPLIER_2 = LotSupplier.builder()
       .organization(Organization.builder().id(SUPPLIER_ORG_ID_2).build()).build();
 

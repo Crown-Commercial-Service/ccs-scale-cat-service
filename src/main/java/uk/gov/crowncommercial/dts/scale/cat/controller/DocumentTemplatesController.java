@@ -66,7 +66,7 @@ public class DocumentTemplatesController extends AbstractRestController {
     log.debug("getDraftProforma invoked on behalf of principal: {}", principal);
 
     var documentKey = DocumentKey.fromString(templateId);
-    var docAttachment = documentTemplateService.getDraftProforma(procId, eventId, documentKey);
+    var docAttachment = documentTemplateService.getDraftDocument(procId, eventId, documentKey);
 
     return ResponseEntity.ok().contentType(docAttachment.getContentType())
         .header(HttpHeaders.CONTENT_DISPOSITION,

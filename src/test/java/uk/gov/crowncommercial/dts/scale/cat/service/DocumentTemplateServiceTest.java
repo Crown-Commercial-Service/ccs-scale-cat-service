@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,10 +19,12 @@ import org.springframework.core.io.Resource;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  *
@@ -34,8 +37,7 @@ class DocumentTemplateServiceTest {
   private static final String PROJECT_NAME = "Test RFI project";
   private static final String TEMPLATE_RESOURCE1_FILENAME = "RFI_template1.odt";
   private static final String TEMPLATE_RESOURCE2_FILENAME = "RFI_template2.odt";
-  private static final String TEMPLATE_RESOURCE1_ID =
-      "YnV5ZXItNDA2MzI4NDE4LVJGSV90ZW1wbGF0ZTEub2R0";
+  private static final String TEMPLATE_RESOURCE1_ID = "YnV5ZXItMS1SRklfdGVtcGxhdGUxLm9kdA==";
   private static final String ERR_MSG_TEMPLATE_NOT_FOUND_FOR_EVENT_TYPE =
       "No templates found for event type [RFI]";
   private static final String ERR_MSG_TEMPLATE_NOT_FOUND = "Template [ID: " + TEMPLATE_RESOURCE1_ID
@@ -44,6 +46,11 @@ class DocumentTemplateServiceTest {
   private static final byte[] TEMPLATE_RESOURCE2_CONTENT = new byte[] {'a', 'b', 'c', 1, 2, 3};
   private static final byte[] DRAFT_PROFORMA_CONTENT = new byte[] {'d', 'e', 'f', 4, 5, 6};
 
+  private static final DocumentTemplate DOC_TEMPLATE1 = DocumentTemplate.builder().id(1)
+      .eventType("RFI").templateUrl("https://example.com/" + TEMPLATE_RESOURCE1_FILENAME).build();
+  private static final DocumentTemplate DOC_TEMPLATE2 = DocumentTemplate.builder().id(2)
+      .eventType("RFI").templateUrl("https://example.com/" + TEMPLATE_RESOURCE2_FILENAME).build();
+
   @Autowired
   private DocumentTemplateService documentTemplateService;
 
@@ -51,10 +58,13 @@ class DocumentTemplateServiceTest {
   private ValidationService validationService;
 
   @MockBean
-  private DocumentTemplateSourceService documentTemplateSourceService;
+  private DocumentTemplateResourceService documentTemplateResourceService;
 
   @MockBean
   private DocGenService docGenService;
+
+  @MockBean
+  private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @MockBean(name = "templateResource1")
   private Resource templateResource1;
@@ -84,8 +94,13 @@ class DocumentTemplateServiceTest {
 
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
         .thenReturn(procurementEvent);
-    when(documentTemplateSourceService.getEventTypeTemplates(procurementEvent.getEventType()))
-        .thenReturn(Set.of(templateResource1, templateResource2));
+    when(retryableTendersDBDelegate.findByEventType(procurementEvent.getEventType()))
+        .thenReturn(Set.of(DOC_TEMPLATE1, DOC_TEMPLATE2));
+
+    when(documentTemplateResourceService.getResource(DOC_TEMPLATE1.getTemplateUrl()))
+        .thenReturn(templateResource1);
+    when(documentTemplateResourceService.getResource(DOC_TEMPLATE2.getTemplateUrl()))
+        .thenReturn(templateResource2);
 
     var documentSummaries = documentTemplateService.getTemplates(PROC_PROJECT_ID, EVENT_ID);
 
@@ -94,7 +109,7 @@ class DocumentTemplateServiceTest {
         .audience(DocumentAudienceType.BUYER);
 
     var docSummary2 = new DocumentSummary().fileName(TEMPLATE_RESOURCE2_FILENAME)
-        .id("YnV5ZXItNDA1NDA0ODk3LVJGSV90ZW1wbGF0ZTIub2R0").fileSize(512L)
+        .id("YnV5ZXItMi1SRklfdGVtcGxhdGUyLm9kdA==").fileSize(512L)
         .description("Proforma Bid Pack Document (RFI)").audience(DocumentAudienceType.BUYER);
     assertEquals(2, documentSummaries.size());
     assertEquals(Set.of(docSummary1, docSummary2), documentSummaries);
@@ -107,8 +122,10 @@ class DocumentTemplateServiceTest {
 
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
         .thenReturn(procurementEvent);
-    when(documentTemplateSourceService.getEventTypeTemplates(procurementEvent.getEventType()))
-        .thenReturn(Set.of(templateResource1, templateResource2));
+    when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
+        .thenReturn(Optional.of(DOC_TEMPLATE1));
+    when(documentTemplateResourceService.getResource(DOC_TEMPLATE1.getTemplateUrl()))
+        .thenReturn(templateResource1);
 
     var template = documentTemplateService.getTemplate(PROC_PROJECT_ID, EVENT_ID, documentKey);
 
@@ -136,8 +153,7 @@ class DocumentTemplateServiceTest {
 
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
         .thenReturn(procurementEvent);
-    when(documentTemplateSourceService.getEventTypeTemplates(procurementEvent.getEventType()))
-        .thenReturn(Set.of(templateResource2));
+    when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId())).thenReturn(Optional.empty());
 
     var ex = assertThrows(ResourceNotFoundException.class,
         () -> documentTemplateService.getTemplate(PROC_PROJECT_ID, EVENT_ID, documentKey));
@@ -146,28 +162,28 @@ class DocumentTemplateServiceTest {
   }
 
   @Test
-  void testGetDraftProforma() throws Exception {
+  void testGetDraftDocument() throws Exception {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
     var procurementProject =
         ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJECT_NAME).build();
-    var procurementEvent =
-        ProcurementEvent.builder().eventType("RFI").project(procurementProject).build();
+    var procurementEvent = ProcurementEvent.builder().id(1).ocdsAuthorityName("ocds")
+        .ocidPrefix("b5fd17").eventType("RFI").project(procurementProject).build();
     var draftProformaOutputStream = new ByteArrayOutputStream();
     draftProformaOutputStream.write(DRAFT_PROFORMA_CONTENT);
 
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
         .thenReturn(procurementEvent);
-    when(documentTemplateSourceService.getEventTypeTemplates(procurementEvent.getEventType()))
-        .thenReturn(Set.of(templateResource1, templateResource2));
-    when(docGenService.generateProforma(procurementEvent, templateResource1))
+    when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
+        .thenReturn(Optional.of(DOC_TEMPLATE1));
+    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1))
         .thenReturn(draftProformaOutputStream);
 
     var draftProforma =
-        documentTemplateService.getDraftProforma(PROC_PROJECT_ID, EVENT_ID, documentKey);
+        documentTemplateService.getDraftDocument(PROC_PROJECT_ID, EVENT_ID, documentKey);
 
     assertArrayEquals(DRAFT_PROFORMA_CONTENT, draftProforma.getData());
     assertEquals(Constants.MEDIA_TYPE_ODT, draftProforma.getContentType());
-    assertEquals(PROC_PROJECT_ID + "-RFI-Test RFI project.odt", draftProforma.getFileName());
+    assertEquals(EVENT_ID + "-RFI-RFI_template1.odt", draftProforma.getFileName());
   }
 
 }

@@ -6,7 +6,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_E
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.transaction.Transactional;
+import javax.validation.ValidationException;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,8 @@ public class ProcurementEventService {
   public static final String ERR_MSG_JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String ERR_MSG_FMT_DOCUMENT_NOT_FOUND =
       "Document upload record for ID [%s] not found";
+  public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
+      "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -65,6 +69,7 @@ public class ProcurementEventService {
   private final DocumentConfig documentConfig;
   private final AssessmentService assessmentService;
   private final DocumentUploadService documentUploadService;
+  private final DocumentTemplateService dTemplateService;
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -247,11 +252,8 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    var getDataTemplate =
-        !event.isAssessment() && !ViewEventType.TBD.name().equals(event.getEventType());
-
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
-        getDataTemplate ? criteriaService.getEvalCriteria(projectId, eventId, true)
+        event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
             : Collections.emptySet());
   }
 
@@ -443,6 +445,12 @@ public class ProcurementEventService {
     if (event.isTendersDBOnly()) {
       log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
           event.getEventType());
+      var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+      var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
+          .filter(e -> e.getWeighting() != 100).findAny();
+      if (dimensionWeightingCheck.isPresent()) {
+        throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
+      }
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
     } else {
       log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
@@ -635,14 +643,14 @@ public class ProcurementEventService {
               documentUploadService.retrieveDocument(documentUpload, principal),
               docKey.getFileName(), documentUpload.getMimetype());
 
-          eventUploadDocument(procurementEvent, docKey.getFileName(),
+          jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
               documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
         });
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
 
-    //after publish get rfx details and update tender status, publish date and close date
+    // after publish get rfx details and update tender status, publish date and close date
     updateStatusAndDates(principal, procurementEvent);
   }
 
@@ -655,16 +663,16 @@ public class ProcurementEventService {
       var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
           .get(exportRfxResponse.getRfxSetting().getStatusCode());
 
-      tenderStatus = rfxStatus != null && rfxStatus.get(procurementEvent.getEventType()) != null ?
-          rfxStatus.get(procurementEvent.getEventType()).getValue() :
-          null;
+      tenderStatus = rfxStatus != null && rfxStatus.get(procurementEvent.getEventType()) != null
+          ? rfxStatus.get(procurementEvent.getEventType()).getValue()
+          : null;
     }
 
     procurementEvent.setUpdatedAt(Instant.now());
     procurementEvent.setUpdatedBy(principal);
     if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
-      procurementEvent.setPublishDate(
-          exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
+      procurementEvent
+          .setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
     }
     if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
       procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
@@ -674,42 +682,6 @@ public class ProcurementEventService {
       procurementEvent.setTenderStatus(tenderStatus);
     }
     retryableTendersDBDelegate.save(procurementEvent);
-  }
-
-  /**
-   * Upload a document to the Jaggaer event
-   *
-   * @param event
-   * @param fileName
-   * @param fileDescription
-   * @param audience
-   * @param multipartFile
-   */
-  public void eventUploadDocument(final ProcurementEvent event, final String fileName,
-      final String fileDescription, final DocumentAudienceType audience,
-      final MultipartFile multipartFile) {
-
-    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-        .rfxReferenceCode(event.getExternalReferenceId()).build();
-    var attachment =
-        Attachment.builder().fileName(fileName).fileDescription(fileDescription).build();
-    Rfx rfx;
-
-    switch (audience) {
-      case BUYER:
-        var bal = BuyerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
-        rfx = Rfx.builder().rfxSetting(rfxSetting).buyerAttachmentsList(bal).build();
-        break;
-      case SUPPLIER:
-        var sal = SellerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
-        rfx = Rfx.builder().rfxSetting(rfxSetting).sellerAttachmentsList(sal).build();
-        break;
-      default:
-        throw new IllegalArgumentException("Unsupported audience for document upload");
-    }
-
-    var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
-    jaggaerService.uploadDocument(multipartFile, update);
   }
 
   /**
@@ -907,6 +879,53 @@ public class ProcurementEventService {
         .filter(du -> Objects.equals(du.getDocumentId(), documentId)).findFirst()
         .orElseThrow(() -> new ResourceNotFoundException(
             String.format(ERR_MSG_FMT_DOCUMENT_NOT_FOUND, documentId)));
+  }
+
+  /**
+   * Export buyer attachments
+   * 
+   * @param procId
+   * @param eventId
+   * @param principal
+   * @return list of attachments
+   */
+  @Transactional
+  public List<DocumentAttachment> exportDocuments(final Integer procId, final String eventId,
+      final String principal) {
+    log.debug("Export all Documents from Event {}", eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+    var attachments = new ArrayList<DocumentAttachment>();
+
+    if (TenderStatus.ACTIVE != status) {
+      // Get documents from S3
+      event.getDocumentUploads().stream().forEach(doc -> {
+        var documentKey = DocumentKey.fromString(doc.getDocumentId());
+        var attachment = DocumentAttachment.builder()
+            .data(documentUploadService.retrieveDocument(doc, principal))
+            .fileName(documentKey.getFileName())
+            .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
+        attachments.add(attachment);
+      });
+      // Get draft documents
+      dTemplateService.getTemplates(procId, eventId).stream().forEach(template -> {
+        attachments.add(dTemplateService.getDraftDocument(procId, eventId,
+            DocumentKey.fromString(template.getId())));
+      });
+
+    } else {
+      // Get documents from Jaggaer
+      Stream
+          .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
+              exportRfxResponse.getSellerAttachmentsList().getAttachment().stream())
+          .forEach(doc -> attachments.add(DocumentAttachment
+              .builder().fileName(doc.getFileName()).data(jaggaerService
+                  .getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
+              .build()));
+    }
+    return attachments;
   }
 
 }
