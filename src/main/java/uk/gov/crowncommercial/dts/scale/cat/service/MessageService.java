@@ -89,7 +89,9 @@ public class MessageService {
       if (messageDetails == null) {
         throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
       }
-      var messageRecievedDate = messageDetails.getReceiveDate().format(DATE_TIME_FORMATTER);
+      var messageRecievedDate = rpaGenericService
+          .handleDSTDate(messageDetails.getReceiveDate(), buyerUser.getTimezoneCode())
+          .format(DATE_TIME_FORMATTER);
       log.info("MessageRecievedDate: {}", messageRecievedDate);
       inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
           .senderName(messageDetails.getSender().getName());
