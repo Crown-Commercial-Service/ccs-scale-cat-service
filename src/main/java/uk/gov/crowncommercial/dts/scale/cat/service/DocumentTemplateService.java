@@ -1,8 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Collection;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.HashSet;
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -12,9 +11,11 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  *
@@ -29,11 +30,9 @@ public class DocumentTemplateService {
   static final String ERR_MSG_FMT_TEMPLATE_NOT_FOUND =
       "Template [ID: %s, Filename: %s] not found for event type [%s]";
 
-  // {project ID}-{event type}-{project name}.odt
-  static final String FILENAME_FMT_DRAFT_PROFORMA = "%d-%s-%s.odt";
-
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ValidationService validationService;
-  private final DocumentTemplateSourceService documentTemplateSourceService;
+  private final DocumentTemplateResourceService documentTemplateResourceService;
   private final DocGenService docGenService;
 
   /**
@@ -46,17 +45,23 @@ public class DocumentTemplateService {
   public Collection<DocumentSummary> getTemplates(final Integer procId, final String eventId) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var resources = documentTemplateSourceService.getEventTypeTemplates(event.getEventType());
 
-    return resources.stream().map(r -> {
-      var docKey = new DocumentKey(Math.abs(r.getFilename().hashCode()), r.getFilename(),
+    var documentSummaries = new HashSet<DocumentSummary>();
+    for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
+        .findByEventType(event.getEventType())) {
+
+      var templateResource =
+          documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
+
+      var docKey = new DocumentKey(documentTemplate.getId(), templateResource.getFilename(),
           DocumentAudienceType.BUYER);
-
-      return new DocumentSummary().fileName(r.getFilename()).id(docKey.getDocumentId())
-          .fileSize(getResourceLength(r))
+      documentSummaries.add(new DocumentSummary().fileName(templateResource.getFilename())
+          .id(docKey.getDocumentId()).fileSize(getResourceLength(templateResource))
           .description(String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()))
-          .audience(docKey.getAudience());
-    }).collect(Collectors.toSet());
+          .audience(docKey.getAudience()));
+    }
+
+    return documentSummaries;
   }
 
   /**
@@ -72,52 +77,42 @@ public class DocumentTemplateService {
       final DocumentKey documentKey) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var proformaTemplate = findProformaTemplate(event, documentKey);
+    var documentTemplate = findDocumentTemplate(event, documentKey);
+    var templateResource =
+        documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
 
-    return DocumentAttachment.builder().data(IOUtils.toByteArray(proformaTemplate.getInputStream()))
+    return DocumentAttachment.builder().data(IOUtils.toByteArray(templateResource.getInputStream()))
         .contentType(Constants.MEDIA_TYPE_ODT).build();
   }
 
   /**
-   * Gets a specific template document and delegates to the document generation service to generate
-   * a draft proforma, and returns it
+   * Gets a specific document template resource and delegates to the document generation service to
+   * generate a draft document, and returns it
    *
    * @param procId
    * @param eventId
    * @param documentKey
-   * @return a document attachment containing the draft proforma document
+   * @return a document attachment containing the generated draft document
    */
-  public DocumentAttachment getDraftProforma(final Integer procId, final String eventId,
+  public DocumentAttachment getDraftDocument(final Integer procId, final String eventId,
       final DocumentKey documentKey) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var proformaTemplate = findProformaTemplate(event, documentKey);
-    var draftProformaDocument = docGenService.generateProforma(event, proformaTemplate);
-    var fileName = String.format(FILENAME_FMT_DRAFT_PROFORMA, event.getProject().getId(),
-        event.getEventType(), event.getProject().getProjectName());
+    var documentTemplate = findDocumentTemplate(event, documentKey);
+    var draftDocument = docGenService.generateDocument(event, documentTemplate);
+    var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, event.getEventID(),
+        event.getEventType(), documentKey.getFileName());
 
-    return DocumentAttachment.builder().data(draftProformaDocument.toByteArray())
+    return DocumentAttachment.builder().data(draftDocument.toByteArray())
         .contentType(Constants.MEDIA_TYPE_ODT).fileName(fileName).build();
   }
 
-  private Resource findProformaTemplate(final ProcurementEvent event,
+  private DocumentTemplate findDocumentTemplate(final ProcurementEvent event,
       final DocumentKey documentKey) {
-    var resources = documentTemplateSourceService.getEventTypeTemplates(event.getEventType());
-    validateEventTypeResources(event.getEventType(), resources);
 
-    return resources.stream()
-        .filter(r -> Objects.equals(documentKey.getFileName(), r.getFilename())).findFirst()
-        .orElseThrow(
-            () -> new ResourceNotFoundException(String.format(ERR_MSG_FMT_TEMPLATE_NOT_FOUND,
-                documentKey.getDocumentId(), documentKey.getFileName(), event.getEventType())));
-  }
-
-  private void validateEventTypeResources(final String eventType,
-      final Collection<Resource> resources) {
-    if (resources == null || resources.isEmpty()) {
-      throw new ResourceNotFoundException(
-          String.format(ERR_MSG_FMT_NO_TEMPLATES_FOR_EVENT_TYPE, eventType));
-    }
+    return retryableTendersDBDelegate.findById(documentKey.getFileId()).orElseThrow(
+        () -> new ResourceNotFoundException(String.format(ERR_MSG_FMT_TEMPLATE_NOT_FOUND,
+            documentKey.getDocumentId(), documentKey.getFileName(), event.getEventType())));
   }
 
   @SneakyThrows

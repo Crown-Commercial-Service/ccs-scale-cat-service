@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.lang.String.format;
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.net.URI;
 import java.time.format.DateTimeFormatter;
@@ -18,10 +19,12 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  *
@@ -38,12 +41,16 @@ public class MessageService {
   private static final String RPA_DELIMETER = "~|";
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+  static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
+      "Organisation [%s] not found in Conclave";
+  static final String ERR_MSG_FMT_ORG_MAPPING_MISSING = "Organisation [%s] not found in OrgMapping";
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final JaggaerService jaggaerService;
   private final UserProfileService userProfileService;
   private final ConclaveService conclaveService;
   private final RPAGenericService rpaGenericService;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   private static final String LINK_URI = "/messages/";
   private static final int RECORDS_PER_REQUEST = 100;
@@ -82,7 +89,9 @@ public class MessageService {
       if (messageDetails == null) {
         throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
       }
-      var messageRecievedDate = messageDetails.getReceiveDate().format(DATE_TIME_FORMATTER);
+      var messageRecievedDate = rpaGenericService
+          .handleDSTDate(messageDetails.getReceiveDate(), buyerUser.getTimezoneCode())
+          .format(DATE_TIME_FORMATTER);
       log.info("MessageRecievedDate: {}", messageRecievedDate);
       inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
           .senderName(messageDetails.getSender().getName());
@@ -248,7 +257,13 @@ public class MessageService {
     }
 
     return new CaTMessage().OCDS(getCaTMessageOCDS(message)).nonOCDS(new CaTMessageNonOCDS()
-        .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection())).read(read));
+        .direction(CaTMessageNonOCDS.DirectionEnum.fromValue(message.getDirection())).read(read)
+        .classification(
+            uk.gov.crowncommercial.dts.scale.cat.model.generated.CaTMessageNonOCDS.ClassificationEnum
+                .fromValue(message.getCategory() == null
+                    ? uk.gov.crowncommercial.dts.scale.cat.model.generated.CaTMessageNonOCDS.ClassificationEnum.UNCLASSIFIED
+                        .getValue()
+                    : message.getCategory().getCategoryName())));
   }
 
   private CaTMessageOCDS getCaTMessageOCDS(
@@ -268,7 +283,14 @@ public class MessageService {
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     CaTMessageOCDSAllOfAuthor author;
     if (CaTMessageNonOCDS.DirectionEnum.RECEIVED.getValue().equals(message.getDirection())) {
-      author = new CaTMessageOCDSAllOfAuthor().id(message.getSender().getId())
+      // lookup org-mapping table by jaggaer orgId
+      var supplierOrgMapping = retryableTendersDBDelegate
+          .findOrganisationMappingByExternalOrganisationId(
+              Integer.valueOf(message.getSender().getId()))
+          .orElseThrow(() -> new ResourceNotFoundException(
+              String.format(ERR_MSG_FMT_ORG_MAPPING_MISSING, message.getSender().getId())));
+
+      author = new CaTMessageOCDSAllOfAuthor().id(supplierOrgMapping.getOrganisationId())
           .name(message.getSender().getName());
     } else {
       var jaggaerUser = userProfileService
@@ -277,9 +299,11 @@ public class MessageService {
               String.format("Jaggaer user not found for %s", message.getSenderUser().getId())));
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail())
           .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
-
-      author = new CaTMessageOCDSAllOfAuthor().name(conclaveUser.getUserName())
-          .id(conclaveUser.getOrganisationId());
+      var conclaveOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+          .orElseThrow(() -> new ResourceNotFoundException(
+              format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
+      author = new CaTMessageOCDSAllOfAuthor().name(conclaveOrg.getIdentifier().getLegalName())
+          .id(conclaveOrg.getIdentifier().getScheme() + "-" + conclaveOrg.getIdentifier().getId());
     }
     return author;
   }
@@ -287,10 +311,15 @@ public class MessageService {
   private MessageNonOCDS getMessageNonOCDS(
       final uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message) {
     // TODO fix generated class with correct classes
-    return new MessageNonOCDS()
+    return new MessageNonOCDS().parentId(String.valueOf(message.getParentMessageId()))
+        .classification(ClassificationEnum
+            .fromValue(message.getCategory() == null ? ClassificationEnum.UNCLASSIFIED.getValue()
+                : message.getCategory().getCategoryName()))
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
-        // .attachments( message.getAttachmentList().getAttachment().stream()
-        // .map(object -> new MessageNonOCDSAllOfAttachments()).collect(Collectors.toList()))
+        .attachments(message.getAttachmentList().getAttachment().stream()
+            .map(att -> new MessageNonOCDSAllOfAttachments().id(Integer.valueOf(att.getFileId()))
+                .name(att.getFileName()))
+            .collect(Collectors.toList()))
         .readList(message.getReadingList().getReading().stream()
             .map(reading -> new ContactPoint1().name(reading.getReaderName()))
             .collect(Collectors.toList()))

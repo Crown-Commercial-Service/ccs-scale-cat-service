@@ -64,13 +64,6 @@ config:
       - zip
     maxSize: 314572800 #300MB
     maxTotalSize: 1073741824 #1GB
-    
-    templates:
-      eventTypeProformas:
-        RFI: 
-          - /templates/Proforma RfI.odt
-        EOI: 
-          - /templates/Proforma EoI.odt
 
   external:
     jaggaer:
@@ -99,6 +92,54 @@ config:
         1400: COMPLETE
         1100: WITHDRAWN
         1500: CANCELLED
+
+      rfxStatusAndEventTypeToTenderStatus:
+        0:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            PLANNING
+          DA:
+            PLANNING
+        300:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            ACTIVE
+          DA:
+            ACTIVE
+        500:
+          FC:
+            COMPLETE
+          DA:
+            COMPLETE
+        800:
+          FC:
+            ACTIVE
+          DA:
+            ACTIVE
+        950:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            COMPLETE
+          DA:
+            COMPLETE
+        1500:
+          RFI:
+            CANCELLED
+          EOI:
+            CANCELLED
+          FC:
+            CANCELLED
+          DA:
+            CANCELLED
 
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
@@ -134,9 +175,9 @@ config:
       publishRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
       getMessages:
-        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}
+        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}&comp={components}&start={start}
       getMessage:
-        endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}
+        endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
         

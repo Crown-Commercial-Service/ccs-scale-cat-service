@@ -79,8 +79,9 @@ public class AssessmentCalculationService {
           p -> new DimensionScores().dimensionId(p.getSecond()).name(calcBase.getDimensionName()));
 
       var requirementScore = new RequirementScore().name(calcBase.getRequirementName())
-          .criterion(calcBase.getSubmissionTypeName())
-          .value(Integer.valueOf(calcBase.getSubmissionValue())).score(score);
+          .criterion(calcBase.getSubmissionTypeName()).value(calcBase.getSubmissionValue() == null ?
+              0 :
+              Integer.valueOf(calcBase.getSubmissionValue())).score(score);
       dimensionScores.addRequirementScoresItem(requirementScore);
 
       if (!dimensionScoresExists) {
@@ -151,7 +152,8 @@ public class AssessmentCalculationService {
           var supplierDimensionRequirementTotal = supplierDimensionRequirementTotals
               .computeIfAbsent(cb.getSupplierId(), supplierId -> new HashMap<>());
 
-          supplierDimensionRequirementTotal.merge(dimRqmtKey,
+          supplierDimensionRequirementTotal.merge(dimRqmtKey,cb.getSubmissionValue() == null ?
+              0 :
               Integer.valueOf(cb.getSubmissionValue()), Integer::sum);
         });
 

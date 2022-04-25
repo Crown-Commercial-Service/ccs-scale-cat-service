@@ -6,6 +6,7 @@ import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Objects;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 
@@ -36,7 +38,7 @@ public class JaggaerService {
   private final WebClient jaggaerWebClient;
   private final WebclientWrapper webclientWrapper;
   private static final String MESSAGE_PARAMS =
-      "comp=MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
+      "MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
   /**
    * Create or update a Project.
@@ -236,9 +238,8 @@ public class JaggaerService {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
     final int start = (pageSize > 1 ? pageSize + 1 : 1);
     final String filters = "objectReferenceCode==" + externalEventId;
-    final String queryPrams = "start=" + start;
 
-    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, queryPrams, MESSAGE_PARAMS)
+    return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, MESSAGE_PARAMS, start)
         .retrieve().bodyToMono(MessagesResponse.class)
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
@@ -272,5 +273,41 @@ public class JaggaerService {
             jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
 
     log.debug("Start evaluation event response: {}", evaluationResponse);
+  }
+
+  /**
+   * Upload a document to the Jaggaer event
+   *
+   * @param event
+   * @param fileName
+   * @param fileDescription
+   * @param audience
+   * @param multipartFile
+   */
+  public void eventUploadDocument(final ProcurementEvent event, final String fileName,
+      final String fileDescription, final DocumentAudienceType audience,
+      final MultipartFile multipartFile) {
+
+    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+        .rfxReferenceCode(event.getExternalReferenceId()).build();
+    var attachment =
+        Attachment.builder().fileName(fileName).fileDescription(fileDescription).build();
+    Rfx rfx;
+
+    switch (audience) {
+      case BUYER:
+        var bal = BuyerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
+        rfx = Rfx.builder().rfxSetting(rfxSetting).buyerAttachmentsList(bal).build();
+        break;
+      case SUPPLIER:
+        var sal = SellerAttachmentsList.builder().attachment(Arrays.asList(attachment)).build();
+        rfx = Rfx.builder().rfxSetting(rfxSetting).sellerAttachmentsList(sal).build();
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported audience for document upload");
+    }
+
+    var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
+    this.uploadDocument(multipartFile, update);
   }
 }
