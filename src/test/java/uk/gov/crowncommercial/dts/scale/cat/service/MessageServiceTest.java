@@ -73,12 +73,15 @@ class MessageServiceTest {
   private static final Integer JAGGAER_SUPPLIER_ID_1 = 123457;
   private static final String JAGGAER_SUPPLIER_NAME_1 = "Doshi Industries";
 
+  static final Integer EXT_ORG_ID = 123455;
   static final Integer EXT_ORG_ID_1 = 123456;
   static final Integer EXT_ORG_ID_2 = 123457;
 
-  static final String SUPPLIER_ORG_ID_1 = "1234567";
-  static final String SUPPLIER_ORG_ID_2 = "7654321";
+  static final String SUPPLIER_ORG_ID_1 = "GB-COH-1234567";
+  static final String SUPPLIER_ORG_ID = "1234567";
+  static final String SUPPLIER_ORG_ID_2 = "GB-COH-7654321";
 
+  static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_2 = OrganisationMapping.builder().build();
 
@@ -147,6 +150,8 @@ class MessageServiceTest {
 
   @BeforeAll
   static void beforeClass() {
+    ORG_MAPPING.setOrganisationId(SUPPLIER_ORG_ID);
+    ORG_MAPPING.setExternalOrganisationId(EXT_ORG_ID);
     ORG_MAPPING_1.setOrganisationId(SUPPLIER_ORG_ID_1);
     ORG_MAPPING_1.setExternalOrganisationId(EXT_ORG_ID_1);
     ORG_MAPPING_2.setOrganisationId(SUPPLIER_ORG_ID_1);
@@ -267,7 +272,7 @@ class MessageServiceTest {
 
     // Assert
     Assertions.assertEquals(
-        "Jaggaer RPA application exception, Code: [N/A], Message: [No supplier organisation mappings found in Tenders DB [7654320, 1234567]]",
+        "Jaggaer RPA application exception, Code: [N/A], Message: [No supplier organisation mappings found in Tenders DB [GB-COH-1234567, GB-COH-7654320]]",
         thrown.getMessage());
   }
 
@@ -387,7 +392,7 @@ class MessageServiceTest {
 
     var event = new ProcurementEvent();
     event.setExternalReferenceId(RFX_ID);
-    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID_1).build())
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
         .category(MessageCategory.builder().categoryName("Technical Clarification").build())
         .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
         .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
@@ -411,8 +416,8 @@ class MessageServiceTest {
         .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
     when(retryableTendersDBDelegate
-        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID_1)))
-            .thenReturn(Optional.of(ORG_MAPPING_1));
+        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
 
     var response = messageService.getMessagesSummary(messageRequestInfo);
 

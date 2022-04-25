@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.util.Pair;
@@ -41,10 +43,7 @@ public class RPAGenericService {
    */
   public Pair<List<Supplier>, Set<OrganisationMapping>> getValidSuppliers(
       final ProcurementEvent procurementEvent, final List<String> orgIds) {
-    // ignoring string content from organisation Ids
-    var supplierOrgIds =
-        orgIds.stream().map(ls -> ls.replace("GB-COH-", "")).collect(Collectors.toSet());
-
+    var supplierOrgIds = orgIds.stream().collect(Collectors.toSet());
     // Retrieve and verify Tenders DB org mappings
     var supplierOrgMappings =
         retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
@@ -173,5 +172,10 @@ public class RPAGenericService {
       throw new JaggaerRPAException("Buyer encrypted password not found");
     }
     return buyerDetails.get().getUserPassword();
+  }
+
+  public OffsetDateTime handleDSTDate(OffsetDateTime offsetDate, String zoneId) {
+    var zonedDateTimeBefore = offsetDate.atZoneSameInstant(ZoneId.of(zoneId));
+    return zonedDateTimeBefore.toOffsetDateTime();
   }
 }
