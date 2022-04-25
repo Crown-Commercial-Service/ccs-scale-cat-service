@@ -81,6 +81,11 @@ public class DocGenValueAdaptors {
     return (event, requestCache) -> "PROC_LEAD_ORG_WEBSITE_TODO";
   }
 
+  @Bean("DocumentValueAdaptorCommonGoodsServices")
+  public DocGenValueAdaptor documentValueAdaptorCommonGoodsServices() {
+    return (event, requestCache) -> "project and consulting services";
+  }
+
   private OrganisationProfileResponseInfo getProjectOrgFromConclave(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
 
@@ -101,8 +106,8 @@ public class DocGenValueAdaptors {
 
     return (TeamMember) requestCache.computeIfAbsent("CACHE_KEY_PROC_LEAD", k -> {
 
-      var projectTeamMembers =
-          procurementProjectService.getProjectTeamMembers(event.getProject().getId(), "DOC_GEN_ADAPTOR");
+      var projectTeamMembers = procurementProjectService
+          .getProjectTeamMembers(event.getProject().getId(), "DOC_GEN_ADAPTOR");
       return projectTeamMembers.stream().filter(tm -> tm.getNonOCDS().getProjectOwner()).findFirst()
           .orElseThrow(() -> new TendersDBDataException(
               "Project [" + event.getProject().getId() + "] has no procurement lead"));

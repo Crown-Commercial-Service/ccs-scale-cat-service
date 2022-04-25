@@ -166,8 +166,8 @@ class DocumentTemplateServiceTest {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
     var procurementProject =
         ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJECT_NAME).build();
-    var procurementEvent =
-        ProcurementEvent.builder().eventType("RFI").project(procurementProject).build();
+    var procurementEvent = ProcurementEvent.builder().id(1).ocdsAuthorityName("ocds")
+        .ocidPrefix("b5fd17").eventType("RFI").project(procurementProject).build();
     var draftProformaOutputStream = new ByteArrayOutputStream();
     draftProformaOutputStream.write(DRAFT_PROFORMA_CONTENT);
 
@@ -183,7 +183,7 @@ class DocumentTemplateServiceTest {
 
     assertArrayEquals(DRAFT_PROFORMA_CONTENT, draftProforma.getData());
     assertEquals(Constants.MEDIA_TYPE_ODT, draftProforma.getContentType());
-    assertEquals(PROC_PROJECT_ID + "-RFI-Test RFI project-1.odt", draftProforma.getFileName());
+    assertEquals(EVENT_ID + "-RFI-RFI_template1.odt", draftProforma.getFileName());
   }
 
 }
