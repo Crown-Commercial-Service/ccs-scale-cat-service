@@ -89,7 +89,8 @@ public class DocGenService {
   private void uploadProforma(final ProcurementEvent procurementEvent,
       final ByteArrayOutputStream documentOutputStream, final DocumentTemplate documentTemplate) {
     var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT,
-        procurementEvent.getEventID(), procurementEvent.getEventType(), documentTemplate.getId());
+        procurementEvent.getEventID(), procurementEvent.getEventType(),
+        StringUtils.getFilename(documentTemplate.getTemplateUrl()));
     var fileDescription =
         procurementEvent.getEventType() + " pro forma for tender: " + procurementEvent.getEventID();
 

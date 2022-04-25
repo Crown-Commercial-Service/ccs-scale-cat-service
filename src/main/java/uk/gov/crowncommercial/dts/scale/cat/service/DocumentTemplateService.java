@@ -101,7 +101,7 @@ public class DocumentTemplateService {
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var draftDocument = docGenService.generateDocument(event, documentTemplate);
     var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, event.getEventID(),
-        event.getEventType(), documentKey.getFileId());
+        event.getEventType(), documentKey.getFileName());
 
     return DocumentAttachment.builder().data(draftDocument.toByteArray())
         .contentType(Constants.MEDIA_TYPE_ODT).fileName(fileName).build();
