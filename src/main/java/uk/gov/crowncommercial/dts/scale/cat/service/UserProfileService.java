@@ -19,11 +19,13 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  * User profile service layer. Now utilises Guava's {@link LoadingCache} to provide a basic
@@ -44,6 +46,7 @@ public class UserProfileService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final LoadingCache<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerBuyerUserCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
@@ -161,22 +164,29 @@ public class UserProfileService {
    * @param ssoUserLogin
    * @return company / sub-user pair (sub-user may be empty)
    */
-  public Optional<ReturnCompanyData> resolveSupplierData(final String ssoUserLogin) {
+  public Optional<ReturnCompanyData> resolveSupplierData(final String ssoUserLogin,
+      final String organisationIdentifier) {
 
-    var getSupplierCompanyBySubUserEndpoint = jaggaerAPIConfig.getGetSupplierSubUserProfile()
-        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
+    // Check if we have an organisation mapping record for the user's company
+    var optSupplierOrgMapping =
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
-    var supplierCompanyBySubUser = getSupplierDataHelper(getSupplierCompanyBySubUserEndpoint);
-
-    if (supplierCompanyBySubUser.isPresent()) {
-      return supplierCompanyBySubUser;
+    if (!optSupplierOrgMapping.isPresent()) {
+      return Optional.empty();
     }
+    var supplierOrgMapping = optSupplierOrgMapping.get();
 
-    // Try filtering by company (super-user)
-    var getSupplierCompanyBySuperUserEndpoint = jaggaerAPIConfig.getGetSupplierCompanyProfile()
-        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
+    // Get the supplier org from Jaggaer by the bravoID
+    var getSupplierCompanyEndpoint =
+        jaggaerAPIConfig.getGetSupplierCompanyProfile().get(JaggaerAPIConfig.ENDPOINT).replace(
+            PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
 
-    return getSupplierDataHelper(getSupplierCompanyBySuperUserEndpoint);
+    var supplierCompany = getSupplierDataHelper(getSupplierCompanyEndpoint);
+    if (supplierCompany.isPresent()) {
+      return supplierCompany;
+    } else {
+      throw new TendersDBDataException("TODO - invalid supplier org mapping");
+    }
   }
 
   /**

@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UnmergedJaggaerUserException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
@@ -66,78 +65,35 @@ public class ProfileManagementService {
 
   public List<RolesEnum> getUserRoles(final String userId) {
     Assert.hasLength(userId, "userId must not be empty");
-    var conclaveUser = conclaveService.getUserProfile(userId)
-        // CON-1680-AC2(a)
-        .orElseThrow(
-            () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
+    var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
+        () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
+
+    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+        .orElseThrow(() -> new ResourceNotFoundException(
+            format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 
     var sysRoles = newSysRolesMappings();
     populateConclaveRoles(sysRoles, conclaveUser);
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, sysRoles.get(SYSID_CONCLAVE)));
-    validateBuyerSupplierConclaveRoles(sysRoles.get(SYSID_CONCLAVE), userId);
-    var jaggaerUserData = populateJaggaerRoles(sysRoles, userId);
+
+    populateJaggaerRoles(sysRoles, userId,
+        conclaveService.getOrganisationIdentifer(conclaveUserOrg));
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, sysRoles.get(SYSID_JAGGAER)));
 
     if (sysRoles.get(SYSID_JAGGAER).isEmpty()) {
-      // CON-1680-AC2(b)
+      // CON-1680-AC2
       throw new ResourceNotFoundException(format(ERR_MSG_FMT_JAGGAER_USER_MISSING, userId));
     }
 
-    if (!Objects.equals(sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER))) {
+    if (sysRoles.get(SYSID_CONCLAVE).size() == 1 && !sysRoles.get(SYSID_JAGGAER)
+        .contains(sysRoles.get(SYSID_CONCLAVE).stream().findFirst().get())) {
       // CON-1680-AC5&6
       throw new UserRolesConflictException(format(ERR_MSG_FMT_ROLES_CONFLICT, userId,
           sysRoles.get(SYSID_CONCLAVE), sysRoles.get(SYSID_JAGGAER)));
     }
 
-    verifyUserMerged(sysRoles, jaggaerUserData, userId);
-
-    // CON-1680-AC1
+    // CON-1680-AC1&7
     return List.copyOf(sysRoles.get(SYSID_CONCLAVE));
-  }
-
-  /*
-   * CON-1680-AC8
-   */
-  private void verifyUserMerged(final Map<String, Set<RolesEnum>> sysRoles,
-      final Pair<Optional<SubUser>, Optional<ReturnCompanyData>> jaggaerUserData,
-      final String userId) {
-
-    var expectedSSOData =
-        SSOCodeData
-            .builder().ssoCode(Set.of(SSOCode.builder()
-                .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(userId).build()))
-            .build();
-
-    // Self-serve Buyer sub-user
-    if (sysRoles.get(SYSID_JAGGAER).contains(BUYER)) {
-      var jaggaerBuyerSubUser = jaggaerUserData.getFirst().orElseThrow();
-      log.debug("jaggaerBuyerSubUser: {}", jaggaerBuyerSubUser);
-      compareSSOData(expectedSSOData, jaggaerBuyerSubUser.getSsoCodeData(), userId);
-    }
-
-    if (sysRoles.get(SYSID_JAGGAER).contains(SUPPLIER)) {
-      var jaggaerSupplierData = jaggaerUserData.getSecond().orElseThrow();
-
-      // Supplier sub-user
-      if (jaggaerSupplierData.getReturnSubUser() != null
-          && jaggaerSupplierData.getReturnSubUser().getSubUsers().size() == 1) {
-        var supplierSubUser =
-            jaggaerSupplierData.getReturnSubUser().getSubUsers().stream().findFirst().orElseThrow();
-        compareSSOData(expectedSSOData, supplierSubUser.getSsoCodeData(), userId);
-      } else {
-        // Supplier super-user
-        compareSSOData(expectedSSOData, jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData(),
-            userId);
-      }
-    }
-  }
-
-  private void compareSSOData(final SSOCodeData expected, final SSOCodeData actual,
-      final String userId) {
-    if (!Objects.equals(expected, actual)) {
-      log.debug("Expected SSO data: {}, Actual SSO data: {}", expected, actual);
-      throw new UnmergedJaggaerUserException(format(ERR_MSG_JAGGAER_USER_UNMERGED, userId));
-    }
   }
 
   public RegisterUserResponse registerUser(final String userId) {
@@ -151,13 +107,15 @@ public class ProfileManagementService {
     Assert.hasLength(userId, "userId must not be empty");
     var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
-
+    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+        .orElseThrow(() -> new ResourceNotFoundException(
+            format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
     var sysRoles = newSysRolesMappings();
     populateConclaveRoles(sysRoles, conclaveUser);
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, sysRoles.get(SYSID_CONCLAVE)));
-    validateBuyerSupplierConclaveRoles(sysRoles.get(SYSID_CONCLAVE), userId);
 
-    var jaggaerUserData = populateJaggaerRoles(sysRoles, userId);
+    var jaggaerUserData = populateJaggaerRoles(sysRoles, userId,
+        conclaveService.getOrganisationIdentifer(conclaveUserOrg));
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, sysRoles.get(SYSID_JAGGAER)));
 
     /**
@@ -173,9 +131,6 @@ public class ProfileManagementService {
 
     // Get the conclave user /contacts (inc email, tel etc)
     var conclaveUserContacts = conclaveService.getUserContacts(userId);
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
-        .orElseThrow(() -> new ResourceNotFoundException(
-            format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
     var registerUserResponse = new RegisterUserResponse();
     var createUpdateCompanyDataBuilder = CreateUpdateCompanyRequest.builder();
 
@@ -224,8 +179,9 @@ public class ProfileManagementService {
     } else if (sysRoles.get(SYSID_CONCLAVE).contains(SUPPLIER)
         && !sysRoles.get(SYSID_JAGGAER).contains(SUPPLIER)) {
 
-      var orgMapping = retryableTendersDBDelegate
-          .findOrganisationMappingByOrgId(conclaveUser.getOrganisationId());
+      // Now searched by org (legal) identifer (SCHEME-ID)
+      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(
+          conclaveService.getOrganisationIdentifer(conclaveUserOrg));
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
@@ -258,10 +214,10 @@ public class ProfileManagementService {
             .companyBravoID(String.valueOf(createUpdateCompanyResponse.getBravoId()))
             .subUserLogin(userId).subUserSSOLogin(userId).build());
 
-        retryableTendersDBDelegate
-            .save(OrganisationMapping.builder().organisationId(conclaveUser.getOrganisationId())
-                .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
-                .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
+        retryableTendersDBDelegate.save(OrganisationMapping.builder()
+            .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+            .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
+            .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
 
         registerUserResponse.userAction(UserActionEnum.CREATED);
         registerUserResponse.organisationAction(OrganisationActionEnum.CREATED);
@@ -306,20 +262,6 @@ public class ProfileManagementService {
     return registerUserResponse;
   }
 
-  private void validateBuyerSupplierConclaveRoles(final Collection<RolesEnum> roleKeys,
-      final String userId) {
-    if (roleKeys == null || roleKeys.isEmpty()) {
-      // CON-1680-AC4
-      // CON-1682-AC12
-      throw new UserRolesConflictException(format(ERR_MSG_FMT_NO_ROLES, userId));
-    }
-
-    if (roleKeys.size() >= 2) {
-      // CON-1680-AC7
-      log.warn(format(MSG_FMT_BOTH_ROLES, userId));
-    }
-  }
-
   private void createUpdateSubUserHelper(
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyRequestBuilder,
       final UserProfileResponseInfo conclaveUser,
@@ -357,12 +299,15 @@ public class ProfileManagementService {
     createUpdateCompanyRequestBuilder
         .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
             .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId).build()).build())
-        .subUsers(subUsersBuilder.sendEMail("1").subUsers(Set.of(subUserBuilder
-            .name(conclaveUser.getFirstName()).surName(conclaveUser.getLastName())
-            .login(conclaveUser.getUserName()).email(conclaveUser.getUserName())
-            .rightsProfile(rightsProfile)
-            .phoneNumber(Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
-            .language("en_GB").timezoneCode("Europe/London").timezone("GMT").build())).build());
+        .subUsers(
+            subUsersBuilder
+                .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
+                    .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
+                    .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
+                    .phoneNumber(
+                        Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
+                    .language("en_GB").timezoneCode("Europe/London").timezone("GMT").build()))
+                .build());
   }
 
   private void createUpdateSuperUserHelper(
@@ -401,8 +346,8 @@ public class ProfileManagementService {
         .userSurName(conclaveUser.getLastName()).userEmail(conclaveUser.getUserName())
         .userPhone(userPersonalContacts.getPhone());
 
-    createUpdateCompanyRequestBuilder.company(
-        createUpdateCompanyBuilder.sendEMail("1").companyInfo(companyInfoBuilder.build()).build());
+    createUpdateCompanyRequestBuilder
+        .company(createUpdateCompanyBuilder.companyInfo(companyInfoBuilder.build()).build());
   }
 
   private void populateConclaveRoles(final Map<String, Set<RolesEnum>> sysRoles,
@@ -416,15 +361,39 @@ public class ProfileManagementService {
   }
 
   private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> populateJaggaerRoles(
-      final Map<String, Set<RolesEnum>> sysRoles, final String userId) {
+      final Map<String, Set<RolesEnum>> sysRoles, final String userId,
+      final String organisationIdentifier) {
 
+    // SSO verification built-in to search
     var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
     buyerSubUser.ifPresent(su -> sysRoles.get(SYSID_JAGGAER).add(BUYER));
 
-    var supplierCompanyData = userProfileService.resolveSupplierData(userId);
-    supplierCompanyData.ifPresent(rcd -> sysRoles.get(SYSID_JAGGAER).add(SUPPLIER));
+    // SSO verification required
+    var optSupplierCompanyData =
+        userProfileService.resolveSupplierData(userId, organisationIdentifier);
 
-    return Pair.of(buyerSubUser, supplierCompanyData);
+    if (optSupplierCompanyData.isPresent()) {
+      var supplierCompanyData = optSupplierCompanyData.get();
+
+      // Explicit SSO verification required
+      var expectedSSOData =
+          SSOCodeData
+              .builder().ssoCode(Set.of(SSOCode.builder()
+                  .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(userId).build()))
+              .build();
+
+      // Check the super-user and sub-user for matching SSO
+      if (Objects.equals(expectedSSOData,
+          supplierCompanyData.getReturnCompanyInfo().getSsoCodeData())
+          || supplierCompanyData.getReturnSubUser().getSubUsers() != null
+              && supplierCompanyData.getReturnSubUser().getSubUsers().stream()
+                  .anyMatch(subUser -> Objects.equals(expectedSSOData, subUser.getSsoCodeData()))) {
+        sysRoles.get(SYSID_JAGGAER).add(SUPPLIER);
+        return Pair.of(buyerSubUser, optSupplierCompanyData);
+      }
+    }
+    return Pair.of(buyerSubUser, Optional.empty());
+
   }
 
   private Map<String, Set<RolesEnum>> newSysRolesMappings() {

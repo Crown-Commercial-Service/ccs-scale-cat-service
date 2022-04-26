@@ -161,7 +161,7 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id};SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       getSupplierCompanyProfile:
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;userEmail=={{PRINCIPAL}}        
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;BRAVOID=={{PRINCIPAL}}        
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       getSupplierSubUserProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
