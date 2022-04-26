@@ -19,7 +19,6 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
@@ -177,16 +176,28 @@ public class UserProfileService {
     var supplierOrgMapping = optSupplierOrgMapping.get();
 
     // Get the supplier org from Jaggaer by the bravoID
-    var getSupplierCompanyEndpoint =
-        jaggaerAPIConfig.getGetSupplierCompanyProfile().get(JaggaerAPIConfig.ENDPOINT).replace(
-            PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+    var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
+        .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT)
+        .replace(PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
 
-    var supplierCompany = getSupplierDataHelper(getSupplierCompanyEndpoint);
+    var supplierCompany = getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
     if (supplierCompany.isPresent()) {
       return supplierCompany;
-    } else {
-      throw new TendersDBDataException("TODO - invalid supplier org mapping");
     }
+    // Fall back on SSO super user search in case Tenders DB org mapping missing
+    var getSupplierCompanyBySSOUserLoginEndpoint =
+        jaggaerAPIConfig.getGetSupplierCompanyProfileBySSOUserLogin().get(JaggaerAPIConfig.ENDPOINT)
+            .replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
+
+    var supplierCompanyBySSO = getSupplierDataHelper(getSupplierCompanyBySSOUserLoginEndpoint);
+
+    if (supplierCompanyBySSO.isPresent()) {
+      log.warn("Tenders DB: missing org mapping for supplier org: [{}] - creating",
+          organisationIdentifier);
+      // TODO - should we create the org mapping record here?
+      return supplierCompanyBySSO;
+    }
+    return Optional.empty();
   }
 
   /**
