@@ -310,4 +310,28 @@ public class JaggaerService {
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
     this.uploadDocument(multipartFile, update);
   }
+
+  /**
+   * extend Rfx
+   *
+   * @param event
+   * @param endDdate
+   * @param jaggaerUserId
+   */
+  public CreateUpdateRfxResponse extendRfx(final RfxRequest rfx,
+      final OperationCode operationCode) {
+
+    final var extendRfxResponse = webclientWrapper.postData(new ExtendEventRfx(operationCode, rfx),
+        CreateUpdateRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+        jaggaerAPIConfig.getCreateRfx().get(ENDPOINT));
+
+    if (extendRfxResponse.getReturnCode() != 0
+        || !Constants.OK_MSG.equals(extendRfxResponse.getReturnMessage())) {
+      log.error(extendRfxResponse.toString());
+      throw new JaggaerApplicationException(extendRfxResponse.getReturnCode(),
+          extendRfxResponse.getReturnMessage());
+    }
+    log.info("Extended event: {}", extendRfxResponse);
+    return extendRfxResponse;
+  }
 }
