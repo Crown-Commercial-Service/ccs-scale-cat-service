@@ -5,7 +5,6 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -142,20 +141,23 @@ public class ProfileManagementService {
     var conclaveUserContacts = conclaveService.getUserContacts(userId);
     var registerUserResponse = new RegisterUserResponse();
     var createUpdateCompanyDataBuilder = CreateUpdateCompanyRequest.builder();
+    var returnRoles = new ArrayList<RegisterUserResponse.RolesEnum>();
 
-    if (sysRoles.get(SYSID_CONCLAVE).size() == 1 && sysRoles.get(SYSID_CONCLAVE).contains(BUYER)
-        && sysRoles.get(SYSID_JAGGAER).size() == 1 && sysRoles.get(SYSID_JAGGAER).contains(BUYER)) {
+    if (sysRoles.get(SYSID_CONCLAVE).contains(BUYER) && sysRoles.get(SYSID_JAGGAER).size() == 1
+        && sysRoles.get(SYSID_JAGGAER).contains(BUYER)) {
 
-      // CON-1682-AC1: Update Jaggaer Buyer
+      // CON-1682-AC1&17(buyer): Update Jaggaer Buyer
       updateBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, jaggaerUserData.getFirst(), registerUserResponse);
+      returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
+
     } else if (sysRoles.get(SYSID_CONCLAVE).size() == 1
         && sysRoles.get(SYSID_CONCLAVE).contains(BUYER) && !sysRoles.get(SYSID_JAGGAER).isEmpty()) {
 
       // CON-1682-AC2: Create Jaggaer Buyer
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
-
+      returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
       // TODO: Notify John G via email / Salesforce..??
 
     } else if (sysRoles.get(SYSID_CONCLAVE).containsAll(Set.of(BUYER, SUPPLIER))
@@ -166,20 +168,15 @@ public class ProfileManagementService {
           createUpdateCompanyDataBuilder, registerUserResponse);
       throw new LoginDirectorEdgeCaseException("CON1682-AC15: Dual Conclave roles, buyer created");
 
-    } else if (sysRoles.get(SYSID_CONCLAVE).containsAll(Set.of(BUYER, SUPPLIER))
-        && sysRoles.get(SYSID_JAGGAER).contains(BUYER)) {
-
-      // CON-1682-AC17(buyer): Update Jaggaer Buyer
-      updateBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, jaggaerUserData.getFirst(), registerUserResponse);
-
-    } else if (sysRoles.get(SYSID_CONCLAVE).containsAll(Set.of(BUYER, SUPPLIER))
+    } else if (sysRoles.get(SYSID_CONCLAVE).contains(SUPPLIER)
+        && sysRoles.get(SYSID_JAGGAER).size() == 1
         && sysRoles.get(SYSID_JAGGAER).contains(SUPPLIER)) {
 
-      // CON-1682-AC17(supplier): Update Jaggaer Buyer
+      // CON-1682-AC8&17(supplier): Update Jaggaer Supplier
       var jaggaerSupplierData = jaggaerUserData.getSecond().orElseThrow();
       updateSupplier(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, jaggaerSupplierData, registerUserResponse);
+      returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
 
     } else if (sysRoles.get(SYSID_CONCLAVE).contains(SUPPLIER)
         && !sysRoles.get(SYSID_JAGGAER).contains(SUPPLIER)) {
@@ -219,20 +216,13 @@ public class ProfileManagementService {
         registerUserResponse.userAction(UserActionEnum.CREATED);
         registerUserResponse.organisationAction(OrganisationActionEnum.CREATED);
       }
+      returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
 
-    } else if (sysRoles.get(SYSID_CONCLAVE).contains(SUPPLIER)
-        && sysRoles.get(SYSID_JAGGAER).contains(SUPPLIER)) {
-
-      var jaggaerSupplierData = jaggaerUserData.getSecond().orElseThrow();
-      updateSupplier(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, jaggaerSupplierData, registerUserResponse);
     } else {
       throw new UserRolesConflictException(format(ERR_MSG_FMT_NO_ROLES, userId));
     }
 
-    registerUserResponse.roles(sysRoles.get(SYSID_CONCLAVE).stream()
-        .map(role -> RegisterUserResponse.RolesEnum.fromValue(role.getValue()))
-        .collect(Collectors.toList()));
+    registerUserResponse.roles(returnRoles);
     return registerUserResponse;
   }
 
