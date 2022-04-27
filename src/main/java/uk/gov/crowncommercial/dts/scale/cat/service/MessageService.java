@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
@@ -44,6 +45,7 @@ public class MessageService {
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
       "Organisation [%s] not found in Conclave";
   static final String ERR_MSG_FMT_ORG_MAPPING_MISSING = "Organisation [%s] not found in OrgMapping";
+  static final String ERR_MSG_DOC_NOT_FOUND = "Document [%s] not found in message attachments list";
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final JaggaerService jaggaerService;
@@ -233,6 +235,25 @@ public class MessageService {
 
     return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
         .OCDS(getMessageOCDS(response)).nonOCDS(getMessageNonOCDS(response));
+  }
+
+  public DocumentAttachment downloadAttachment(final Integer procId, final String eventId,
+      final String messageId, final String principal, final String documentId) {
+
+    userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+    validationService.validateProjectAndEventIds(procId, eventId);
+
+    log.debug("Requested messageId {} and documentId {}", messageId, documentId);
+    var response = jaggaerService.getMessage(messageId);
+    var eDocument = response.getAttachmentList().getAttachment().stream()
+        .filter(doc -> doc.getFileId().equals(documentId)).findFirst().orElseThrow(
+            () -> new ResourceNotFoundException(String.format(ERR_MSG_DOC_NOT_FOUND, documentId)));
+    var docAttachment = jaggaerService.getDocument(Integer.parseInt(eDocument.getFileId()),
+        eDocument.getFileName());
+
+    return DocumentAttachment.builder().fileName(eDocument.getFileName())
+        .contentType(docAttachment.getContentType()).data(docAttachment.getData()).build();
   }
 
   private List<CaTMessage> getCatMessages(

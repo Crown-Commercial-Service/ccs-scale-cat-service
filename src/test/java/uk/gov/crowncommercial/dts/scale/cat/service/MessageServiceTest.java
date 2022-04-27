@@ -18,6 +18,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -28,6 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -84,6 +86,9 @@ class MessageServiceTest {
   static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_2 = OrganisationMapping.builder().build();
+
+  static final Integer FILE_ID = 1234567;
+  static final String FILE_NAME = "filename.dox";
 
   static final ProcurementProject project = ProcurementProject.builder().build();
 
@@ -425,5 +430,42 @@ class MessageServiceTest {
     assertNotNull(response);
     assertEquals(1, response.getMessages().size());
     assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
+  }
+
+  @Test
+  void testGetAttachments() throws Exception {
+    // Stub some objects
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+        .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+        .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+        .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+        .attachmentList(AttachmentList.builder()
+            .attachment(Arrays
+                .asList(Attachment.builder().fileId(FILE_ID + "").fileName(FILE_NAME).build()))
+            .build())
+        .receiverList(ReceiverList.builder()
+            .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+        .build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+        .thenReturn(event);
+    when(jaggaerService.getMessage("1")).thenReturn(message);
+    when(jaggaerService.getDocument(FILE_ID, FILE_NAME)).thenReturn(DocumentAttachment.builder()
+        .fileName(FILE_NAME).contentType(MediaType.APPLICATION_OCTET_STREAM).build());
+    when(retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+
+    var response = messageService.downloadAttachment(PROC_PROJECT_ID, EVENT_OCID, "1", PRINCIPAL,
+        FILE_ID + "");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(FILE_NAME, response.getFileName());
   }
 }

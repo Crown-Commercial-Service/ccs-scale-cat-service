@@ -35,11 +35,13 @@ public class JaggaerAPIConfig {
   private Map<String, String> createRfx;
   private Map<String, String> getBuyerCompanyProfile;
   private Map<String, String> exportRfx;
-  private Map<String, String> getSupplierCompanyProfile;
+  private Map<String, String> getSupplierCompanyProfileByBravoID;
+  private Map<String, String> getSupplierCompanyProfileBySSOUserLogin;
   private Map<String, String> getSupplierSubUserProfile;
   private Map<String, String> createUpdateCompany;
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;
+  private Map<String, String> extendRfx;
   private Map<String, String> getMessages;
   private Map<String, String> getMessage;
   // Temporary - SOAP config

@@ -3,11 +3,11 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
-import com.google.common.base.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -46,7 +46,7 @@ public class TendersController extends AbstractRestController {
 
     log.info("getUserRoles invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    if (!Objects.equal(principal, userId)) {
+    if (!Objects.equals(principal, userId)) {
       // CON-1680-AC3
       throw new AuthorisationFailureException(
           "Authenticated user does not match requested user-id");
@@ -63,7 +63,7 @@ public class TendersController extends AbstractRestController {
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    if (!Objects.equal(principal, userId)) {
+    if (!Objects.equals(principal, userId)) {
       // CON-1682-AC11
       throw new AuthorisationFailureException(
           "Authenticated user does not match requested user-id");
