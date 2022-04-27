@@ -232,13 +232,13 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}/publish/extend")
-  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId,
+  public StringValueResponse extendEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody @Valid final ExtendCriteria extendCriteria,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
-    log.info("publishEvent invoked on behalf of principal: {}", principal);
+    log.info("extendEvent invoked on behalf of principal: {}", principal);
 
     procurementEventService.extendEvent(procId, eventId, extendCriteria, principal);
     return new StringValueResponse("OK");
