@@ -156,13 +156,13 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
         templateId: itt_9899
         
-      # NB: Intention was to search via SSO data (commented out query strings), but this will not work a) because no existing users have it set and b) Jaggaer API seems to fail to filter by it.
+      # TODO / NB: Search via SSO data directly only works for super users (i.e. suppliers)
       getBuyerCompanyProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
-        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id};SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
-      getSupplierCompanyProfile:
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;userEmail=={{PRINCIPAL}}        
-        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
+      getSupplierCompanyProfileByBravoID:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;BRAVOID=={{PRINCIPAL}}        
+      getSupplierCompanyProfileBySSOUserLogin:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID   
       getSupplierSubUserProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID

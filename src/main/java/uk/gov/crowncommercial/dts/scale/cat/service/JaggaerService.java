@@ -8,6 +8,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPO
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -122,8 +123,14 @@ public class JaggaerService {
 
     log.debug("Create update company response: {}", createUpdateCompanyResponse);
 
-    if (!"0".equals(createUpdateCompanyResponse.getReturnCode())) {
+    var jaggaerSuccessCodes = Set.of("0", "1");
+
+    if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+          createUpdateCompanyResponse.getReturnMessage());
+    }
+    if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
+      log.warn("Create / update company operation succeeded with warnings: [{}]",
           createUpdateCompanyResponse.getReturnMessage());
     }
     return createUpdateCompanyResponse;
@@ -225,7 +232,7 @@ public class JaggaerService {
    */
   public ProjectListResponse getProjectList(final String jaggaerUserId) {
     final var projectListUri = jaggaerAPIConfig.getGetProjectList().get(ENDPOINT);
-    final String filters = "projectOwnerId==" + jaggaerUserId;
+    final var filters = "projectOwnerId==" + jaggaerUserId;
 
     return ofNullable(jaggaerWebClient.get().uri(projectListUri, filters).retrieve()
         .bodyToMono(ProjectListResponse.class)
@@ -236,8 +243,8 @@ public class JaggaerService {
 
   public MessagesResponse getMessages(final String externalEventId, final Integer pageSize) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
-    final int start = (pageSize > 1 ? pageSize + 1 : 1);
-    final String filters = "objectReferenceCode==" + externalEventId;
+    final var start = pageSize > 1 ? pageSize + 1 : 1;
+    final var filters = "objectReferenceCode==" + externalEventId;
 
     return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, MESSAGE_PARAMS, start)
         .retrieve().bodyToMono(MessagesResponse.class)

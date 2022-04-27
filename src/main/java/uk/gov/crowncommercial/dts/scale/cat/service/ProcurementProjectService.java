@@ -136,7 +136,7 @@ public class ProcurementProjectService {
      * self-service company).
      */
     var organisationMapping =
-        retryableTendersDBDelegate.findOrganisationMappingByOrgId(conclaveOrgId);
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(conclaveOrgId);
 
     // Adapt save strategy based on org mapping status (new/existing)
     if (organisationMapping.isEmpty()) {
@@ -408,14 +408,13 @@ public class ProcurementProjectService {
     } else {
       log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
-        eventSummary =
-            tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(), dbEvent.getEventName(),
-                Optional.ofNullable(dbEvent.getExternalReferenceId()),
-                ViewEventType.fromValue(dbEvent.getEventType()),
-                TenderStatus.fromValue(dbEvent.getTenderStatus()), ReleaseTag.TENDER,
-                Optional.ofNullable(dbEvent.getAssessmentId()));
-        eventSummary.tenderPeriod(new Period1().startDate(
-                OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
+        eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
+            dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
+            ViewEventType.fromValue(dbEvent.getEventType()),
+            TenderStatus.fromValue(dbEvent.getTenderStatus()), ReleaseTag.TENDER,
+            Optional.ofNullable(dbEvent.getAssessmentId()));
+        eventSummary.tenderPeriod(new Period1()
+            .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
             .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
       } catch (Exception e) {
         // No data found in Jagger
@@ -426,7 +425,6 @@ public class ProcurementProjectService {
     projectPackageSummary.activeEvent(eventSummary);
     return Optional.of(projectPackageSummary);
   }
-
 
   /**
    * Get a Team Member.
@@ -501,7 +499,6 @@ public class ProcurementProjectService {
         "Could not find current event for project " + project.getId());
   }
 
-
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
       final String principal) {
     var projectUserMapping = ProjectUserMapping.builder().project(project).userId(jaggaerUserId)
@@ -529,9 +526,11 @@ public class ProcurementProjectService {
         .filter(projectUserMapping -> !teamIds.contains(projectUserMapping.getUserId()))
         .collect(Collectors.toList());
 
-    if (!CollectionUtils.isEmpty(addMappingList))
+    if (!CollectionUtils.isEmpty(addMappingList)) {
       retryableTendersDBDelegate.saveAll(addMappingList);
-    if (!CollectionUtils.isEmpty(deleteMappingList))
+    }
+    if (!CollectionUtils.isEmpty(deleteMappingList)) {
       retryableTendersDBDelegate.deleteAll(deleteMappingList);
+    }
   }
 }
