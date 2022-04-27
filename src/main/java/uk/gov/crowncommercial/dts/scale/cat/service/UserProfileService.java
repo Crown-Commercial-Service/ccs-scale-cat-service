@@ -170,20 +170,18 @@ public class UserProfileService {
     var optSupplierOrgMapping =
         retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
-    if (!optSupplierOrgMapping.isPresent()) {
-      return Optional.empty();
-    }
-    var supplierOrgMapping = optSupplierOrgMapping.get();
+    if (optSupplierOrgMapping.isPresent()) {
 
-    // Get the supplier org from Jaggaer by the bravoID
-    var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
-        .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT)
-        .replace(PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+      var supplierOrgMapping = optSupplierOrgMapping.get();
 
-    var supplierCompany = getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
-    if (supplierCompany.isPresent()) {
-      return supplierCompany;
+      // Get the supplier org from Jaggaer by the bravoID
+      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
+          .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
+              PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+
+      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
     }
+
     // Fall back on SSO super user search in case Tenders DB org mapping missing
     var getSupplierCompanyBySSOUserLoginEndpoint =
         jaggaerAPIConfig.getGetSupplierCompanyProfileBySSOUserLogin().get(JaggaerAPIConfig.ENDPOINT)
@@ -192,8 +190,7 @@ public class UserProfileService {
     var supplierCompanyBySSO = getSupplierDataHelper(getSupplierCompanyBySSOUserLoginEndpoint);
 
     if (supplierCompanyBySSO.isPresent()) {
-      log.warn("Tenders DB: missing org mapping for supplier org: [{}] - creating",
-          organisationIdentifier);
+      log.warn("Tenders DB: missing org mapping for supplier org: [{}]", organisationIdentifier);
       // TODO - should we create the org mapping record here?
       return supplierCompanyBySSO;
     }
