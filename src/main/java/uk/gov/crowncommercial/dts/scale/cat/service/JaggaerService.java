@@ -41,6 +41,9 @@ public class JaggaerService {
   private static final String MESSAGE_PARAMS =
       "MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
+  private static final String ERRCODE_SUBUSER_EXISTS = "112(loginSubUser)";
+  private static final String ERRCODE_SUPERUSER_EXISTS = "112(USER_ALIAS)";
+
   /**
    * Create or update a Project.
    *
@@ -123,12 +126,21 @@ public class JaggaerService {
 
     log.debug("Create update company response: {}", createUpdateCompanyResponse);
 
-    var jaggaerSuccessCodes = Set.of("0", "1");
+    // Super user exists is code "-996"...
+    var jaggaerSuccessCodes = Set.of("0", "1", "-996");
 
     if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
           createUpdateCompanyResponse.getReturnMessage());
     }
+
+    if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
+        || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+      throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+          "Jaggaer sub or super user already exists: "
+              + createUpdateCompanyResponse.getReturnMessage());
+    }
+
     if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
       log.warn("Create / update company operation succeeded with warnings: [{}]",
           createUpdateCompanyResponse.getReturnMessage());
