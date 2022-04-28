@@ -743,7 +743,7 @@ class ProcurementEventServiceTest {
         .thenReturn(event);
     when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
-    when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
+    when(assessmentService.getAssessment(ASSESSMENT_ID, Optional.empty())).thenReturn(assessment);
 
     // Invoke
     var thrown = Assertions.assertThrows(ValidationException.class, () -> procurementEventService

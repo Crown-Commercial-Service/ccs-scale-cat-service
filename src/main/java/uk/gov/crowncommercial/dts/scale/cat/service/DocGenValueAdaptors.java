@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.context.annotation.Bean;
@@ -25,65 +26,66 @@ public class DocGenValueAdaptors {
 
   @Bean("DocumentValueAdaptorExternalEventID")
   public DocGenValueAdaptor documentValueAdaptorExternalEventID() {
-    return (event, requestCache) -> event.getEventID();
+    return (event, requestCache) -> List.of(event.getEventID());
   }
 
   @Bean("DocumentValueAdaptorLotName")
   public DocGenValueAdaptor documentValueAdaptorLotName() {
-    return (event, requestCache) -> agreementService
-        .getLotDetails(event.getProject().getCaNumber(), event.getProject().getLotNumber())
-        .getName();
+    return (event,
+        requestCache) -> List.of(agreementService
+            .getLotDetails(event.getProject().getCaNumber(), event.getProject().getLotNumber())
+            .getName());
   }
 
   @Bean("DocumentValueAdaptorCAName")
   public DocGenValueAdaptor documentValueAdaptorCAName() {
-    return (event, requestCache) -> agreementService
-        .getAgreementDetails(event.getProject().getCaNumber()).getName();
+    return (event, requestCache) -> List
+        .of(agreementService.getAgreementDetails(event.getProject().getCaNumber()).getName());
   }
 
   @Bean("DocumentValueAdaptorOrgIDType")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgIDType() {
-    return (event, requestCache) -> getProjectOrgFromConclave(event, requestCache).getIdentifier()
-        .getScheme();
+    return (event, requestCache) -> List
+        .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getScheme());
   }
 
   @Bean("DocumentValueAdaptorOrgID")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgID() {
-    return (event, requestCache) -> getProjectOrgFromConclave(event, requestCache).getIdentifier()
-        .getId();
+    return (event, requestCache) -> List
+        .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getId());
   }
 
   @Bean("DocumentValueAdaptorProcLead")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLead() {
-    return (event, requestCache) -> getProcurementProjectLead(event, requestCache).getOCDS()
-        .getContact().getName();
+    return (event, requestCache) -> List
+        .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getName());
   }
 
   @Bean("DocumentValueAdaptorProcLeadTel")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLeadTel() {
-    return (event, requestCache) -> getProcurementProjectLead(event, requestCache).getOCDS()
-        .getContact().getTelephone();
+    return (event, requestCache) -> List
+        .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getTelephone());
   }
 
   @Bean("DocumentValueAdaptorProcLeadEmail")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLeadEmail() {
-    return (event, requestCache) -> getProcurementProjectLead(event, requestCache).getOCDS()
-        .getContact().getEmail();
+    return (event, requestCache) -> List
+        .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getEmail());
   }
 
   @Bean("DocumentValueAdaptorProcLeadOrgWebsite")
   public DocGenValueAdaptor documentValueAdaptorProcLeadOrgWebsite() {
-    return (event, requestCache) -> "PROC_LEAD_ORG_WEBSITE_TODO";
+    return (event, requestCache) -> List.of("");
   }
 
   @Bean("DocumentValueAdaptorCommonGoodsServices")
   public DocGenValueAdaptor documentValueAdaptorCommonGoodsServices() {
-    return (event, requestCache) -> "project and consulting services";
+    return (event, requestCache) -> List.of("project and consulting services");
   }
 
   private OrganisationProfileResponseInfo getProjectOrgFromConclave(final ProcurementEvent event,
