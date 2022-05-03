@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import org.springframework.data.util.Pair;
@@ -59,8 +60,9 @@ public class UserProfileService {
     Predicate<? super SubUser> filterPredicate;
   }
 
-  private Predicate<? super SubUser> getFilterPredicateEmail(final String email) {
-    return su -> email.equalsIgnoreCase(su.getEmail());
+  private Predicate<? super SubUser> getFilterPredicateEmailAndRightsProfile(final String email) {
+    return su -> Objects.equals(email, su.getEmail())
+        && Objects.equals(jaggaerAPIConfig.getDefaultBuyerRightsProfile(), su.getRightsProfile());
   }
 
   private Predicate<? super SubUser> getFilterPredicateUserId(final String userId) {
@@ -81,7 +83,8 @@ public class UserProfileService {
   @SneakyThrows
   @Deprecated(forRemoval = true)
   public Optional<SubUser> resolveBuyerUserByEmail(final String email) {
-    return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
+    return jaggaerBuyerUserCache
+        .get(new SubUserIdentity(email, getFilterPredicateEmailAndRightsProfile(email)))
         .getSecond();
   }
 
@@ -100,8 +103,8 @@ public class UserProfileService {
   @SneakyThrows
   @Deprecated(forRemoval = true)
   public CompanyInfo resolveBuyerCompanyByEmail(final String email) {
-    return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
-        .getFirst();
+    return jaggaerBuyerUserCache
+        .get(new SubUserIdentity(email, getFilterPredicateEmailAndRightsProfile(email))).getFirst();
   }
 
   @SneakyThrows
@@ -204,7 +207,8 @@ public class UserProfileService {
    */
   public void refreshBuyerCache(final String userId) {
     log.debug("Refreshing Jaggaer buyer cache for user: {}", userId);
-    jaggaerBuyerUserCache.refresh(new SubUserIdentity(userId, getFilterPredicateEmail(userId)));
+    jaggaerBuyerUserCache
+        .refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
   }
 
   private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {
