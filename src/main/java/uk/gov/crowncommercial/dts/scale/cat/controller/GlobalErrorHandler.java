@@ -51,7 +51,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     return ResponseEntity.status(INTERNAL_SERVER_ERROR)
         .body(tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
-            Constants.ERR_MSG_DEFAULT, Objects.isNull(exception)? "":  exception.getMessage()));
+            Constants.ERR_MSG_DEFAULT, Objects.isNull(exception) ? "" : exception.getMessage()));
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -91,7 +91,7 @@ public class GlobalErrorHandler implements ErrorController {
   }
 
   @ResponseStatus(CONFLICT)
-  @ExceptionHandler({UserRolesConflictException.class, UnmergedJaggaerUserException.class})
+  @ExceptionHandler({UserRolesConflictException.class})
   public Errors handleUserRolesConflictException(final UserRolesConflictException exception) {
 
     log.debug("Profile management conflict exception (" + exception.getClass().getName() + "): "
@@ -115,7 +115,7 @@ public class GlobalErrorHandler implements ErrorController {
   @ExceptionHandler({ResourceNotFoundException.class})
   public Errors handleResourceNotFoundException(final ResourceNotFoundException exception) {
 
-    log.info("Requested resource not found", exception);
+    log.info("Resource not found: {}", exception.getMessage());
 
     return tendersAPIModelUtils.buildDefaultErrors(NOT_FOUND.toString(),
         Constants.ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
@@ -171,6 +171,16 @@ public class GlobalErrorHandler implements ErrorController {
 
     return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
         Constants.ERR_MSG_UPSTREAM, exception.getMessage());
+  }
+
+  @ResponseStatus(I_AM_A_TEAPOT)
+  @ExceptionHandler({LoginDirectorEdgeCaseException.class})
+  public Errors handleLoginDirectorEdgeCaseException(
+      final LoginDirectorEdgeCaseException exception) {
+    log.warn(exception.getMessage());
+
+    return tendersAPIModelUtils.buildDefaultErrors(I_AM_A_TEAPOT.toString(),
+        "Login Director Edgecase Scenario", exception.getMessage());
   }
 
 }

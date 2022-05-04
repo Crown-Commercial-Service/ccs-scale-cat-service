@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import org.springframework.data.util.Pair;
@@ -24,6 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  * User profile service layer. Now utilises Guava's {@link LoadingCache} to provide a basic
@@ -44,6 +46,7 @@ public class UserProfileService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final LoadingCache<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerBuyerUserCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
@@ -57,8 +60,9 @@ public class UserProfileService {
     Predicate<? super SubUser> filterPredicate;
   }
 
-  private Predicate<? super SubUser> getFilterPredicateEmail(final String email) {
-    return su -> email.equalsIgnoreCase(su.getEmail());
+  private Predicate<? super SubUser> getFilterPredicateEmailAndRightsProfile(final String email) {
+    return su -> Objects.equals(email, su.getEmail())
+        && Objects.equals(jaggaerAPIConfig.getDefaultBuyerRightsProfile(), su.getRightsProfile());
   }
 
   private Predicate<? super SubUser> getFilterPredicateUserId(final String userId) {
@@ -79,7 +83,8 @@ public class UserProfileService {
   @SneakyThrows
   @Deprecated(forRemoval = true)
   public Optional<SubUser> resolveBuyerUserByEmail(final String email) {
-    return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
+    return jaggaerBuyerUserCache
+        .get(new SubUserIdentity(email, getFilterPredicateEmailAndRightsProfile(email)))
         .getSecond();
   }
 
@@ -98,8 +103,8 @@ public class UserProfileService {
   @SneakyThrows
   @Deprecated(forRemoval = true)
   public CompanyInfo resolveBuyerCompanyByEmail(final String email) {
-    return jaggaerBuyerUserCache.get(new SubUserIdentity(email, getFilterPredicateEmail(email)))
-        .getFirst();
+    return jaggaerBuyerUserCache
+        .get(new SubUserIdentity(email, getFilterPredicateEmailAndRightsProfile(email))).getFirst();
   }
 
   @SneakyThrows
@@ -161,22 +166,38 @@ public class UserProfileService {
    * @param ssoUserLogin
    * @return company / sub-user pair (sub-user may be empty)
    */
-  public Optional<ReturnCompanyData> resolveSupplierData(final String ssoUserLogin) {
+  public Optional<ReturnCompanyData> resolveSupplierData(final String ssoUserLogin,
+      final String organisationIdentifier) {
 
-    var getSupplierCompanyBySubUserEndpoint = jaggaerAPIConfig.getGetSupplierSubUserProfile()
-        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
+    // Check if we have an organisation mapping record for the user's company
+    var optSupplierOrgMapping =
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
-    var supplierCompanyBySubUser = getSupplierDataHelper(getSupplierCompanyBySubUserEndpoint);
+    if (optSupplierOrgMapping.isPresent()) {
 
-    if (supplierCompanyBySubUser.isPresent()) {
-      return supplierCompanyBySubUser;
+      var supplierOrgMapping = optSupplierOrgMapping.get();
+
+      // Get the supplier org from Jaggaer by the bravoID
+      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
+          .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
+              PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+
+      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
     }
 
-    // Try filtering by company (super-user)
-    var getSupplierCompanyBySuperUserEndpoint = jaggaerAPIConfig.getGetSupplierCompanyProfile()
-        .get(JaggaerAPIConfig.ENDPOINT).replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
+    // Fall back on SSO super user search in case Tenders DB org mapping missing
+    var getSupplierCompanyBySSOUserLoginEndpoint =
+        jaggaerAPIConfig.getGetSupplierCompanyProfileBySSOUserLogin().get(JaggaerAPIConfig.ENDPOINT)
+            .replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
 
-    return getSupplierDataHelper(getSupplierCompanyBySuperUserEndpoint);
+    var supplierCompanyBySSO = getSupplierDataHelper(getSupplierCompanyBySSOUserLoginEndpoint);
+
+    if (supplierCompanyBySSO.isPresent()) {
+      log.warn("Tenders DB: missing org mapping for supplier org: [{}]", organisationIdentifier);
+      // TODO - should we create the org mapping record here?
+      return supplierCompanyBySSO;
+    }
+    return Optional.empty();
   }
 
   /**
@@ -186,7 +207,8 @@ public class UserProfileService {
    */
   public void refreshBuyerCache(final String userId) {
     log.debug("Refreshing Jaggaer buyer cache for user: {}", userId);
-    jaggaerBuyerUserCache.refresh(new SubUserIdentity(userId, getFilterPredicateEmail(userId)));
+    jaggaerBuyerUserCache
+        .refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
   }
 
   private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {

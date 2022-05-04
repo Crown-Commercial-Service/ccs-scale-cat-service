@@ -151,7 +151,7 @@ class ProcurementProjectServiceTest {
             .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
             .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
 
-    when(retryableTendersDBDelegate.findOrganisationMappingByOrgId(CONCLAVE_ORG_ID))
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
@@ -209,7 +209,7 @@ class ProcurementProjectServiceTest {
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
             .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
             .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
-    when(retryableTendersDBDelegate.findOrganisationMappingByOrgId(CONCLAVE_ORG_ID))
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
@@ -346,7 +346,7 @@ class ProcurementProjectServiceTest {
         .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate
-        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()),any(Pageable.class)))
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));
