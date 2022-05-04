@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
+import static org.springframework.util.StringUtils.hasText;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.BUYER;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
@@ -8,7 +9,6 @@ import java.util.*;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
@@ -53,6 +53,7 @@ public class ProfileManagementService {
       "User [%s] is not merged in Jaggaer (no SSO data)";
   static final String MSG_FMT_SYS_ROLES = "%s user [%s] has roles %s";
   static final String MSG_FMT_BOTH_ROLES = "User [%s] is both buyer AND supplier in Conclave";
+  static final Set<String> ISO_COUNTRIES = Set.of(Locale.getISOCountries());
 
   private final ConclaveService conclaveService;
   private final ConclaveAPIConfig conclaveAPIConfig;
@@ -268,10 +269,9 @@ public class ProfileManagementService {
       final RegisterUserResponse registerUserResponse) {
 
     // Determine whether supplier represented by super or sub user
-    if (jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData() != null
-        && Objects.equals(conclaveUser.getUserName(),
-            jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData().getSsoCode().stream()
-                .findFirst().orElseGet(() -> SSOCode.builder().build()).getSsoUserLogin())) {
+    if (ssoCodeDataExists(jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData())
+        && Objects.equals(conclaveUser.getUserName(), jaggaerSupplierData.getReturnCompanyInfo()
+            .getSsoCodeData().getSsoCode().stream().findFirst().orElseThrow().getSsoUserLogin())) {
 
       // CON-1682-AC8: Update supplier super-user
       createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
@@ -280,13 +280,11 @@ public class ProfileManagementService {
       log.debug("Updating supplier super-user company: [{}]", conclaveUser.getUserName());
       jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
     } else {
-      var jaggaerSupplierSubUser =
-          jaggaerSupplierData.getReturnSubUser().getSubUsers().stream()
-              .filter(
-                  subUser -> Objects.equals(conclaveUser.getUserName(),
-                      subUser.getSsoCodeData().getSsoCode().stream().findFirst()
-                          .orElseGet(() -> SSOCode.builder().build()).getSsoUserLogin()))
-              .findFirst();
+      var jaggaerSupplierSubUser = jaggaerSupplierData.getReturnSubUser().getSubUsers().stream()
+          .filter(subUser -> ssoCodeDataExists(subUser.getSsoCodeData())
+              && Objects.equals(conclaveUser.getUserName(), subUser.getSsoCodeData().getSsoCode()
+                  .stream().findFirst().orElseThrow().getSsoUserLogin()))
+          .findFirst();
 
       // CON-1682-AC16: Update supplier sub-user
       createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
@@ -366,9 +364,9 @@ public class ProfileManagementService {
           .ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
     }
 
-    if (StringUtils.hasText(conclaveUserOrg.getAddress().getCountryCode())) {
-      companyInfoBuilder.isoCountry(conclaveUserOrg.getAddress().getCountryCode());
-    }
+    // Jaggaer will only accept ISO country codes (e.g. GB)
+    parseCountryCode(conclaveUserOrg.getAddress().getCountryCode())
+        .ifPresent(companyInfoBuilder::isoCountry);
 
     companyInfoBuilder.companyName(conclaveUserOrg.getIdentifier().getLegalName())
         .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg)).type(companyType)
@@ -376,7 +374,7 @@ public class ProfileManagementService {
         .webSite("https://conclave-org-contacts.todo.com")
         .address(conclaveUserOrg.getAddress().getStreetAddress())
         .city(conclaveUserOrg.getAddress().getLocality())
-        .province(conclaveUserOrg.getAddress().getRegion())
+        // TODO - Jaggaer rejects .province(conclaveUserOrg.getAddress().getRegion())
         .zip(conclaveUserOrg.getAddress().getPostalCode()).userName(conclaveUser.getFirstName())
         .userSurName(conclaveUser.getLastName()).userEmail(conclaveUser.getUserName())
         .userPhone(userPersonalContacts.getPhone());
@@ -425,8 +423,26 @@ public class ProfileManagementService {
     return Pair.of(buyerSubUser, Optional.empty());
   }
 
-  private SSOCodeData buildSSOCodeData(final String userId) {
+  static SSOCodeData buildSSOCodeData(final String userId) {
     return SSOCodeData.builder().ssoCode(Set.of(SSOCode.builder()
         .ssoCodeValue(JaggaerAPIConfig.SSO_CODE_VALUE).ssoUserLogin(userId).build())).build();
+  }
+
+  static boolean ssoCodeDataExists(final SSOCodeData ssoCodeData) {
+    return ssoCodeData != null && ssoCodeData.getSsoCode() != null
+        && !ssoCodeData.getSsoCode().isEmpty();
+  }
+
+  static Optional<String> parseCountryCode(final String countryCode) {
+    if (hasText(countryCode) && ISO_COUNTRIES.contains(countryCode)) {
+      return Optional.of(countryCode);
+    }
+    if (hasText(countryCode) && countryCode.contains("-")) {
+      var countryCodePrefix = countryCode.substring(0, countryCode.indexOf('-'));
+      if (ISO_COUNTRIES.contains(countryCodePrefix)) {
+        return Optional.of(countryCodePrefix);
+      }
+    }
+    return Optional.empty();
   }
 }
