@@ -970,4 +970,34 @@ class ProcurementEventServiceTest {
     assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
   }
 
+  @Test
+  void testExtendEvent() throws Exception {
+    var extendCriteria = new ExtendCriteria().endDate(OffsetDateTime.now());
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxSetting = RfxSetting.builder().statusCode(800).rfxId(RFX_ID)
+        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    var response = new CreateUpdateRfxResponse();
+    response.setRfxId(RFX_ID);
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+    when(jaggaerService.extendRfx(any(), any())).thenReturn(response);
+
+    // Invoke & assert
+    var extendResponse = procurementEventService.extendEvent(PROC_PROJECT_ID, PROC_EVENT_ID,
+        extendCriteria, PRINCIPAL);
+    assertEquals(response.getRfxId(), extendResponse.getRfxId());
+  }
+
 }

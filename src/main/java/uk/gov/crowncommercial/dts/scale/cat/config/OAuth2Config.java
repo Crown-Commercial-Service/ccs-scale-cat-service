@@ -28,8 +28,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
   private static final String[] CAT_ROLES =
       new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
 
-  private static final String[] LD_ROLES =
-      new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER", "CAT_USER_LOGIN_DIRECTOR"};
+  private static final String[] LD_ROLES = new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER"};
 
   @Override
   protected void configure(final HttpSecurity http) throws Exception {

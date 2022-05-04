@@ -928,4 +928,41 @@ public class ProcurementEventService {
     return attachments;
   }
 
+
+  /**
+   * Extend an Rfx in Jaggaer
+   *
+   * @param procId
+   * @param eventId
+   */
+  @Transactional
+  public CreateUpdateRfxResponse extendEvent(final Integer procId, final String eventId,
+      final ExtendCriteria extendCriteria, final String principal) {
+
+    userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
+        .getUserId();
+
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var rfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(rfxResponse.getRfxSetting().getStatusCode());
+
+    if (TenderStatus.ACTIVE != status) {
+      throw new IllegalArgumentException(
+          "You cannot extend an event unless it is in a 'active' state");
+    }
+
+    validationService.validateEndDate(extendCriteria.getEndDate());
+    var rfx = RfxRequest.builder()
+        .rfxSetting(RfxSettingRequest.builder().rfxId(rfxResponse.getRfxSetting().getRfxId())
+            .rfxReferenceCode(rfxResponse.getRfxSetting().getRfxReferenceCode())
+            .closeDate(extendCriteria.getEndDate().toInstant()).build())
+        .build();
+    var response = jaggaerService.extendRfx(rfx, OperationCode.UPDATE);
+    // after extend get rfx details and update tender status, publish date and close date
+    updateStatusAndDates(principal, procurementEvent);
+    return response;
+  }
+
 }

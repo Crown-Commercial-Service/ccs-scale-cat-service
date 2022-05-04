@@ -128,4 +128,8 @@ public class ConclaveService {
     }
     return userContactPoints.build();
   }
+
+  public String getOrganisationIdentifer(final OrganisationProfileResponseInfo org) {
+    return org.getIdentifier().getScheme() + '-' + org.getIdentifier().getId();
+  }
 }

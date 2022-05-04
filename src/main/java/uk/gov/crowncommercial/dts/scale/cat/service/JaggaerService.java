@@ -8,6 +8,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPO
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -39,6 +40,9 @@ public class JaggaerService {
   private final WebclientWrapper webclientWrapper;
   private static final String MESSAGE_PARAMS =
       "MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
+
+  private static final String ERRCODE_SUBUSER_EXISTS = "112(loginSubUser)";
+  private static final String ERRCODE_SUPERUSER_EXISTS = "112(USER_ALIAS)";
 
   /**
    * Create or update a Project.
@@ -122,8 +126,23 @@ public class JaggaerService {
 
     log.debug("Create update company response: {}", createUpdateCompanyResponse);
 
-    if (!"0".equals(createUpdateCompanyResponse.getReturnCode())) {
+    // Super user exists is code "-996"...
+    var jaggaerSuccessCodes = Set.of("0", "1", "-996");
+
+    if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+          createUpdateCompanyResponse.getReturnMessage());
+    }
+
+    if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
+        || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+      throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+          "Jaggaer sub or super user already exists: "
+              + createUpdateCompanyResponse.getReturnMessage());
+    }
+
+    if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
+      log.warn("Create / update company operation succeeded with warnings: [{}]",
           createUpdateCompanyResponse.getReturnMessage());
     }
     return createUpdateCompanyResponse;
@@ -225,7 +244,7 @@ public class JaggaerService {
    */
   public ProjectListResponse getProjectList(final String jaggaerUserId) {
     final var projectListUri = jaggaerAPIConfig.getGetProjectList().get(ENDPOINT);
-    final String filters = "projectOwnerId==" + jaggaerUserId;
+    final var filters = "projectOwnerId==" + jaggaerUserId;
 
     return ofNullable(jaggaerWebClient.get().uri(projectListUri, filters).retrieve()
         .bodyToMono(ProjectListResponse.class)
@@ -236,8 +255,8 @@ public class JaggaerService {
 
   public MessagesResponse getMessages(final String externalEventId, final Integer pageSize) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessages().get(ENDPOINT);
-    final int start = (pageSize > 1 ? pageSize + 1 : 1);
-    final String filters = "objectReferenceCode==" + externalEventId;
+    final var start = pageSize > 1 ? pageSize + 1 : 1;
+    final var filters = "objectReferenceCode==" + externalEventId;
 
     return ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, MESSAGE_PARAMS, start)
         .retrieve().bodyToMono(MessagesResponse.class)
@@ -309,5 +328,29 @@ public class JaggaerService {
 
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
     this.uploadDocument(multipartFile, update);
+  }
+
+  /**
+   * extend Rfx
+   *
+   * @param event
+   * @param endDdate
+   * @param jaggaerUserId
+   */
+  public CreateUpdateRfxResponse extendRfx(final RfxRequest rfx,
+      final OperationCode operationCode) {
+
+    final var extendRfxResponse = webclientWrapper.postData(new ExtendEventRfx(operationCode, rfx),
+        CreateUpdateRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+        jaggaerAPIConfig.getCreateRfx().get(ENDPOINT));
+
+    if (extendRfxResponse.getReturnCode() != 0
+        || !Constants.OK_MSG.equals(extendRfxResponse.getReturnMessage())) {
+      log.error(extendRfxResponse.toString());
+      throw new JaggaerApplicationException(extendRfxResponse.getReturnCode(),
+          extendRfxResponse.getReturnMessage());
+    }
+    log.info("Extended event: {}", extendRfxResponse);
+    return extendRfxResponse;
   }
 }
