@@ -1,12 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
@@ -106,6 +104,33 @@ public class TendersAPIModelUtils {
     eventDetail.setOCDS(eventDetailOCDS);
 
     return eventDetail;
+  }
+
+  /*
+   * SCAT-4788 - need to call this to populate EventSummary.dashboardStatus and
+   * EventDetail.nonOCDS.dashboardStatus
+   */
+  public DashboardStatus getDashboardStatus(final RfxSetting rfxSetting,
+      final ProcurementEvent procurementEvent) {
+
+    var tenderStatus = procurementEvent.getTenderStatus();
+
+    if (Constants.TENDER_DB_ONLY_EVENT_TYPES
+        .contains(DefineEventType.fromValue(procurementEvent.getEventType()))) {
+      // No rfx, use procurement event status
+      if (!Objects.equals("CLOSED", tenderStatus) && !Objects.equals("COMPLETE", tenderStatus)) {
+        return DashboardStatus.ASSESSMENT;
+      }
+      if (Objects.equals("COMPLETE", tenderStatus)) {
+        return DashboardStatus.COMPLETE;
+      }
+      return DashboardStatus.CLOSED;
+    }
+
+    // TODO: Event types: EOI,RFI,FC OR DA etc
+
+    return DashboardStatus.CLOSED;
+
   }
 
   public DocumentSummary buildDocumentSummary(final Attachment attachment,

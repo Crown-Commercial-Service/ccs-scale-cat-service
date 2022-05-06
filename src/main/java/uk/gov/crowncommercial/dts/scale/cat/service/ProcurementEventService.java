@@ -14,7 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -61,7 +60,6 @@ public class ProcurementEventService {
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;
-  private final WebClient jaggaerWebClient;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ValidationService validationService;
@@ -654,7 +652,8 @@ public class ProcurementEventService {
     updateStatusAndDates(principal, procurementEvent);
   }
 
-  private void updateStatusAndDates(String principal, ProcurementEvent procurementEvent) {
+  private void updateStatusAndDates(final String principal,
+      final ProcurementEvent procurementEvent) {
 
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
 
@@ -883,7 +882,7 @@ public class ProcurementEventService {
 
   /**
    * Export buyer attachments
-   * 
+   *
    * @param procId
    * @param eventId
    * @param principal
@@ -927,7 +926,6 @@ public class ProcurementEventService {
     }
     return attachments;
   }
-
 
   /**
    * Extend an Rfx in Jaggaer
