@@ -51,6 +51,7 @@ public class BuyerUserScheduler {
   private XSSFSheet sheet;
   private static final String SHEET_NAME = "Buyers_Details";
 
+  // TODO cron pattern should be applied after decision
   @Scheduled(fixedDelayString = "PT1M")
   public void scheduleSelfServiceBuyers() {
     log.info("- Scheduler started to get Self Service Buyers -");
