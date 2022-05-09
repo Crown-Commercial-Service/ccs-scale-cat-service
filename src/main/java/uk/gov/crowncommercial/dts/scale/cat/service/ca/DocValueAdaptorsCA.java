@@ -152,10 +152,4 @@ public class DocValueAdaptorsCA {
     return placeholderValues;
   }
 
-  public static void main(final String[] args) {
-    List.of("0: None", "1: Baseline Personnel Security Standard (BPSS)",
-        "2: Counter Terrorist Check (CTC)", "3: Security Check (SC)", "4: Developed Vetting (DV)")
-        .stream().sorted(Comparator.reverseOrder()).forEach(System.out::println);
-  }
-
 }
