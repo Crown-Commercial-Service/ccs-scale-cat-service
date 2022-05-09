@@ -56,33 +56,32 @@ public class BuyerUserScheduler {
     log.info("- Scheduler started to get Self Service Buyers -");
     var buyersInJaggaer = this.getSelfServiceBuyers();
 
-    if (!"0".equals(buyersInJaggaer.getReturnCode())
+    if (buyersInJaggaer == null || !"0".equals(buyersInJaggaer.getReturnCode())
         || !"OK".equals(buyersInJaggaer.getReturnMessage())) {
       log.info("Invalid response in scheduler");
+    } else if (buyersInJaggaer.getReturnCompanyData().size() != 1) {
+      log.info("Empty details in User-pool scheduler");
+    } else {
+      var buyersInTender = buyerDetailsRepo.findAll();
+      var usersToAdd = new ArrayList<SubUser>();
+
+      buyersInJaggaer.getReturnCompanyData().stream()
+          .forEach(e -> usersToAdd.addAll(e.getReturnSubUser().getSubUsers().stream()
+              .filter(ssoDataUser -> ssoDataUser.getSsoCodeData() != null)
+              .filter(subUser -> buyersInTender.stream()
+                  .noneMatch(supplier -> supplier.getUserId().equals(subUser.getUserId())))
+              .collect(Collectors.toList())));
+
+      log.info("Scheduler - Save unmatched Self Service Buyers in DB - userCount {}",
+          usersToAdd.size());
+      var savedUsers = buyerDetailsRepo.saveAll(usersToAdd.stream()
+          .map(e -> BuyerUserDetails.builder().userId(e.getUserId())
+              .userPassword(RandomStringUtils.randomAlphanumeric(8)).createdAt(Instant.now())
+              .createdBy("Scheduler").build())
+          .collect(Collectors.toList()));
+
+      generateExcelSheet(savedUsers);
     }
-
-    if (buyersInJaggaer.getReturnCompanyData().size() != 1) {
-      log.info("Empty details in User-pool");
-    }
-
-    var buyersInTender = buyerDetailsRepo.findAll();
-    var usersToAdd = new ArrayList<SubUser>();
-
-    buyersInJaggaer.getReturnCompanyData().stream()
-        .forEach(e -> usersToAdd.addAll(e.getReturnSubUser().getSubUsers().stream()
-            .filter(ssoDataUser -> ssoDataUser.getSsoCodeData() != null)
-            .filter(subUser -> buyersInTender.stream()
-                .noneMatch(supplier -> supplier.getUserId().equals(subUser.getUserId())))
-            .collect(Collectors.toList())));
-
-    log.info("Save unmatched Self Service Buyers in DB - userCount {}", usersToAdd.size());
-    var savedUsers = buyerDetailsRepo.saveAll(usersToAdd.stream()
-        .map(e -> BuyerUserDetails.builder().userId(e.getUserId())
-            .userPassword(RandomStringUtils.random(8)).createdAt(Instant.now())
-            .createdBy("Scheduler").build())
-        .collect(Collectors.toList()));
-
-    generateExcelSheet(savedUsers);
   }
 
   private void generateExcelSheet(List<BuyerUserDetails> usersList) {
