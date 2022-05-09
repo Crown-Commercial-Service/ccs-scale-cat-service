@@ -518,6 +518,24 @@ public class ProcurementEventService {
   }
 
   /**
+   * Returns a list of document attachments at the event level.
+   *
+   * @param procId
+   * @param eventId
+   * @return
+   */
+  @Transactional
+  public Collection<ResponseSummary> getSupplierResponses(final Integer procId,
+      final String eventId) {
+
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+
+    return Arrays.asList( new ResponseSummary());
+  }
+
+  /**
    * Uploads a document to a Jaggaer Rfx.
    *
    * @param procId

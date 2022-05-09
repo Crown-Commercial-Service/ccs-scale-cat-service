@@ -243,4 +243,14 @@ public class EventsController extends AbstractRestController {
     procurementEventService.extendEvent(procId, eventId, extendCriteria, principal);
     return new StringValueResponse("OK");
   }
+  @GetMapping("/{eventID}/responses")
+  public Collection<ResponseSummary> getSupplierResponses(
+      @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getDocumentSummaries invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.getSupplierResponses(procId, eventId);
+  }
 }
