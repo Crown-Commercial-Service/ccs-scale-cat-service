@@ -98,7 +98,7 @@ public class RPAGenericService {
         .setProcessName(processName.getValue()).setProfileName(rpaAPIConfig.getProfileName())
         .setSource(rpaAPIConfig.getSource()).setSourceId(rpaAPIConfig.getSourceId())
         .setRequestTimeout(rpaAPIConfig.getRequestTimeout()).setSync(true);
-    log.info("RPA Request: {}", objectMapper.writeValueAsString(request));
+    log.info("RPA Request: {}", request.toString());
 
     var response =
         webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,

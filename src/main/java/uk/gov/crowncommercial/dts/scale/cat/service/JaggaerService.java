@@ -353,4 +353,18 @@ public class JaggaerService {
     log.info("Extended event: {}", extendRfxResponse);
     return extendRfxResponse;
   }
+
+  /**
+   * Get SelfServiceBuyers
+   * 
+   * @return GetCompanyDataResponse
+   */
+  public GetCompanyDataResponse getSelfServiceBuyers() {
+    final var selfServiceUsersUrl = jaggaerAPIConfig.getGetBuyerCompanyProfile().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(selfServiceUsersUrl).retrieve()
+        .bodyToMono(GetCompanyDataResponse.class)
+        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving self service buyers"));
+  }
 }
