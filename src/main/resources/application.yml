@@ -182,7 +182,9 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
-        
+      invalidateEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/invalidate
+          
       # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:
         profileManagementEndpoint: /esop/jint/services/ProfileManagement

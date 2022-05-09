@@ -1021,11 +1021,11 @@ class ProcurementEventServiceTest {
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
 
     // Mock behaviours
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID)).thenReturn(
-        event);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
-    when(organisationMappingRepo.findByExternalOrganisationId(
-        supplier.getCompanyData().getId())).thenReturn(Optional.of(organisationMapping));
+    when(organisationMappingRepo.findByExternalOrganisationId(supplier.getCompanyData().getId()))
+        .thenReturn(Optional.of(organisationMapping));
 
     var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
 
@@ -1038,4 +1038,36 @@ class ProcurementEventServiceTest {
     assertEquals(ResponseSummary.ResponseStateEnum.SUBMITTED, responseSummary.getResponseState());
     assertEquals(ResponseSummary.ReadStateEnum.READ, responseSummary.getReadState());
   }
+
+  void testTerminateEvent() throws Exception {
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+    var rfxSetting = RfxSetting.builder().statusCode(800).rfxId(RFX_ID)
+        .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    var request =
+        InvalidateEventRequest.builder().invalidateReason(TerminationType.CANCELLED.getValue())
+            .rfxId(procurementEvent.getExternalEventId())
+            .rfxReferenceCode(procurementEvent.getExternalReferenceId())
+            .operatorUser(OwnerUser.builder().id(JAGGAER_USER_ID).build()).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+
+    // Invoke
+    procurementEventService.terminateEvent(PROC_PROJECT_ID, PROC_EVENT_ID,
+        TerminationType.CANCELLED, PRINCIPAL);
+
+    // Verify
+    verify(jaggaerService).invalidateEvent(request);
+  }
+
 }
