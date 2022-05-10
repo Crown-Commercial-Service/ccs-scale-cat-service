@@ -91,7 +91,7 @@ config:
         950: COMPLETE
         1400: COMPLETE
         1100: WITHDRAWN
-        1500: CANCELLED
+        1000: CANCELLED
 
       rfxStatusAndEventTypeToTenderStatus:
         0:
@@ -131,7 +131,7 @@ config:
             COMPLETE
           DA:
             COMPLETE
-        1500:
+        1000:
           RFI:
             CANCELLED
           EOI:

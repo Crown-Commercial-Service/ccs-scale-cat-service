@@ -257,13 +257,14 @@ public class EventsController extends AbstractRestController {
 
   @PutMapping("/{eventID}/terminate")
   public StringValueResponse terminateEvent(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId, @RequestBody @Valid final TerminationType type,
+      @PathVariable("eventID") final String eventId,
+      @RequestBody @Valid final TerminationEvent type,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
 
-    procurementEventService.terminateEvent(procId, eventId, type, principal);
+    procurementEventService.terminateEvent(procId, eventId, type.getTerminationType(), principal);
     return new StringValueResponse("OK");
   }
 }
