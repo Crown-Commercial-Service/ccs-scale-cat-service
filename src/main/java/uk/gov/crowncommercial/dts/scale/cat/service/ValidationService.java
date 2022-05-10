@@ -4,6 +4,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_E
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -107,7 +108,7 @@ public class ValidationService {
       }
 
       // Verify the assessment with that ID already exists
-      assessmentService.getAssessment(updateEvent.getAssessmentId(), principal);
+      assessmentService.getAssessment(updateEvent.getAssessmentId(), Optional.empty());
     }
 
     if (updateEvent.getAssessmentSupplierTarget() != null) {
