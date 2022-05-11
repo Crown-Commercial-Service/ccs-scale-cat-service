@@ -123,8 +123,8 @@ public class ProcurementEventService {
         returnAssessmentId = newAssessmentId;
         log.debug("Created new empty assessment: {}", newAssessmentId);
       } else {
-        var validatedAssessment =
-            assessmentService.getAssessment(createEvent.getNonOCDS().getAssessmentId(), principal);
+        var validatedAssessment = assessmentService
+            .getAssessment(createEvent.getNonOCDS().getAssessmentId(), Optional.empty());
         eventBuilder.assessmentId(validatedAssessment.getAssessmentId());
         returnAssessmentId = validatedAssessment.getAssessmentId();
         log.debug("Linking existing assessment: {} to new event",
@@ -445,7 +445,7 @@ public class ProcurementEventService {
     if (event.isTendersDBOnly()) {
       log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
           event.getEventType());
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
       var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
           .filter(e -> e.getWeighting() != 100).findAny();
       if (dimensionWeightingCheck.isPresent()) {
@@ -654,7 +654,8 @@ public class ProcurementEventService {
     updateStatusAndDates(principal, procurementEvent);
   }
 
-  private void updateStatusAndDates(String principal, ProcurementEvent procurementEvent) {
+  private void updateStatusAndDates(final String principal,
+      final ProcurementEvent procurementEvent) {
 
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
 
@@ -700,7 +701,7 @@ public class ProcurementEventService {
       TenderStatus statusCode;
 
       if (event.getExternalEventId() == null) {
-        var assessment = assessmentService.getAssessment(event.getAssessmentId(), principal);
+        var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
         statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
       } else {
         var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
@@ -883,7 +884,7 @@ public class ProcurementEventService {
 
   /**
    * Export buyer attachments
-   * 
+   *
    * @param procId
    * @param eventId
    * @param principal
@@ -927,7 +928,6 @@ public class ProcurementEventService {
     }
     return attachments;
   }
-
 
   /**
    * Extend an Rfx in Jaggaer

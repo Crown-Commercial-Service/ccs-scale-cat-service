@@ -3,13 +3,12 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
+import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -29,9 +28,10 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 
@@ -43,9 +43,10 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 @Slf4j
 public class DocGenService {
 
-  static final String PLACEHOLDER_ERROR = "«ERROR»";
-  static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
+  public static final String PLACEHOLDER_ERROR = "«ERROR»";
+  public static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+  static final String PERIOD_FMT = "%d years, %d months, %d days";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -65,6 +66,7 @@ public class DocGenService {
   }
 
   @SneakyThrows
+  @Transactional
   public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
       final DocumentTemplate documentTemplate) {
 
@@ -101,63 +103,50 @@ public class DocGenService {
         multipartFile);
   }
 
-  Object getDataReplacement(final ProcurementEvent event,
+  List<String> getDataReplacement(final ProcurementEvent event,
       final DocumentTemplateSource documentTemplateSource,
       final ConcurrentMap<String, Object> requestCache) {
 
     try {
       switch (documentTemplateSource.getSourceType()) {
+
+        // All paths are indefinite, therefore List<String> will always be returned.
         case JSON:
-          final var qstn = getQuestionFromJSONDataTemplate(event, documentTemplateSource);
-          final var nonOCDS = qstn.getNonOCDS();
-          if (nonOCDS.getOptions() != null && !nonOCDS.getOptions().isEmpty()) {
-            if (documentTemplateSource.getTargetType() == TargetType.SIMPLE
-                || documentTemplateSource.getTargetType() == TargetType.DATETIME) {
-              return nonOCDS.getOptions().stream().findFirst().get().getValue();
-            }
-
-            if (documentTemplateSource.getTargetType() == TargetType.TITLE) {
-              return qstn.getOcds().getTitle();
-            }
-
-            return nonOCDS.getOptions().stream()
-                .filter(o -> Objects.equals(Boolean.TRUE, o.getSelect())
-                    || StringUtils.hasText(o.getText())
-                    || "Value".equals(nonOCDS.getQuestionType()))
-                .collect(Collectors.toList());
-          }
-          return PLACEHOLDER_UNKNOWN;
+          return getQuestionFromJSONDataTemplate(event, documentTemplateSource);
 
         case JAVA:
           return getValueFromBean(event, documentTemplateSource, requestCache);
 
         case SQL:
-          return getValueFromDB(event, documentTemplateSource);
+          return List.of(getValueFromDB(event, documentTemplateSource));
 
         default:
           log.warn("Unrecognised source type - unable to process");
-          return PLACEHOLDER_ERROR;
+          return List.of(PLACEHOLDER_ERROR);
       }
     } catch (Exception ex) {
-      log.error("Error in doc gen value retrieval", new DocGenValueException(ex));
-      return PLACEHOLDER_ERROR;
+      log.error("Error in doc gen value retrieval for: " + documentTemplateSource,
+          new DocGenValueException(ex));
+      return List.of(PLACEHOLDER_ERROR);
     }
   }
 
-  Requirement getQuestionFromJSONDataTemplate(final ProcurementEvent event,
+  List<String> getQuestionFromJSONDataTemplate(final ProcurementEvent event,
       final DocumentTemplateSource documentTemplateSource) {
 
     var eventData = event.getProcurementTemplatePayloadRaw();
 
-    var jsonPathConfig = Configuration.builder().jsonProvider(new JacksonJsonProvider(objectMapper))
-        .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
+    var jsonPathConfig =
+        Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST)
+            .jsonProvider(new JacksonJsonProvider(objectMapper))
+            .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
 
-    TypeRef<List<Requirement>> typeRef = new TypeRef<>() {};
+    TypeRef<List<String>> typeRef = new TypeRef<>() {};
     return JsonPath.using(jsonPathConfig).parse(eventData)
-        .read(documentTemplateSource.getSourcePath(), typeRef).get(0);
+        .read(documentTemplateSource.getSourcePath(), typeRef);
   }
 
-  String getValueFromBean(final ProcurementEvent event,
+  List<String> getValueFromBean(final ProcurementEvent event,
       final DocumentTemplateSource documentTemplateSource,
       final ConcurrentMap<String, Object> requestCache) {
 
@@ -182,20 +171,29 @@ public class DocGenService {
   }
 
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
-      final Object dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+      final List<String> dataReplacement, final TextDocument textODT)
+      throws InvalidNavigationException {
 
-    log.trace("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
-        + "] to replace with: [" + dataReplacement + "]");
+    log.debug("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
+        + "] to replace with: " + dataReplacement);
 
     try {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
-          replaceText(documentTemplateSource, dataReplacement, textODT);
+          replaceText(documentTemplateSource,
+              dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN), textODT);
           break;
 
         case DATETIME:
-          var formattedDatetime = DATE_FMT.format(OffsetDateTime.parse((String) dataReplacement));
+          var formattedDatetime = DATE_FMT.format(OffsetDateTime.parse(dataReplacement.get(0)));
           replaceText(documentTemplateSource, formattedDatetime, textODT);
+          break;
+
+        case DURATION:
+          var period = Period.parse(dataReplacement.get(0));
+          var formattedPeriod =
+              String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+          replaceText(documentTemplateSource, formattedPeriod, textODT);
           break;
 
         case TABLE:
@@ -209,25 +207,24 @@ public class DocGenService {
           log.warn("Unrecognised target type - assume simple text");
       }
     } catch (Exception ex) {
-      log.error("Error in doc gen placeholder replacement", new DocGenValueException(ex));
+      log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
     }
 
   }
 
   void replaceText(final DocumentTemplateSource documentTemplateSource,
-      final Object dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+      final String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
 
     var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
     while (textNavigation.hasNext()) {
       var item = (TextSelection) textNavigation.nextSelection();
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
-      item.replaceWith((String) dataReplacement);
+      item.replaceWith(dataReplacement);
     }
   }
 
-  @SuppressWarnings("unchecked")
   void replaceList(final DocumentTemplateSource documentTemplateSource,
-      final Object dataReplacement, final TextDocument textODT) {
+      final List<String> dataReplacement, final TextDocument textODT) {
 
     var listIterator = textODT.getListIterator();
     while (listIterator.hasNext()) {
@@ -242,32 +239,31 @@ public class DocGenService {
       }
       if (foundList) {
         list.removeItem(0);
-        ((Collection<Option>) dataReplacement).stream().forEach(o -> list.addItem(o.getValue()));
+        list.addItems(dataReplacement.toArray(new String[0]));
       }
     }
   }
 
-  @SuppressWarnings("unchecked")
   void populateTableColumn(final DocumentTemplateSource documentTemplateSource,
-      final Object dataReplacement, final TextDocument textODT) {
+      final List<String> dataReplacement, final TextDocument textODT) {
     var table = textODT.getTableByName(documentTemplateSource.getTableName());
     if (table != null) {
-      var options = (List<Option>) dataReplacement;
       // Append rows if necessary (assume header row present)
-      if (table.getRowCount() - 1 < options.size()) {
-        table.appendRows(options.size() - table.getRowCount());
+      if (table.getRowCount() - 1 < dataReplacement.size()) {
+        table.appendRows(dataReplacement.size() - table.getRowCount());
       }
 
       var columnIndex = -1;
-      for (var r = 1; r <= options.size(); r++) {
+      for (var r = 1; r <= dataReplacement.size(); r++) {
         var row = table.getRowByIndex(r);
 
         if (columnIndex == -1) {
-          // Find the right column..
+          // Find the right column by searching for the placeholder
           for (var c = 0; c < row.getCellCount(); c++) {
             var checkCell = table.getCellByPosition(c, r);
+
             if (StringUtils.hasText(checkCell.getDisplayText())
-                && checkCell.getDisplayText().matches(documentTemplateSource.getPlaceholder())) {
+                && checkCell.getDisplayText().contains(documentTemplateSource.getPlaceholder())) {
               columnIndex = c;
               break;
             }
@@ -275,15 +271,30 @@ public class DocGenService {
         }
         if (columnIndex > -1) {
           var cell = table.getCellByPosition(columnIndex, r);
-          var option = options.get(r - 1);
-          cell.setDisplayText(documentTemplateSource.getOptionsProperty() == OptionsProperty.VALUE
-              ? option.getValue()
-              : option.getText());
+          var datum = dataReplacement.get(r - 1);
+
+          // Copy the cell text to the one below, so placeholders are present in next row
+          var cellDisplayText = cell.getDisplayText();
+          if (r < dataReplacement.size()) {
+            var cellDown = table.getCellByPosition(columnIndex, r + 1);
+
+            // Check if row number cell, if so increment
+            if (columnIndex == 0 && "[0-9]+".matches(cellDisplayText)) {
+              cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
+            } else {
+              cellDown.setDisplayText(cellDisplayText);
+            }
+          }
+
+          // Replace placeholder ONLY in the cell's display text
+
+          // TODO: Remove OptionsProperty - redundant.
+          cell.setDisplayText(
+              cellDisplayText.replace(documentTemplateSource.getPlaceholder(), datum));
         }
       }
     } else {
       log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
     }
   }
-
 }
