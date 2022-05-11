@@ -160,6 +160,9 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
+  @MockBean
+  private RetryableTendersDBDelegate retryableTendersDBDelegate;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
@@ -998,6 +1001,53 @@ class ProcurementEventServiceTest {
     var extendResponse = procurementEventService.extendEvent(PROC_PROJECT_ID, PROC_EVENT_ID,
         extendCriteria, PRINCIPAL);
     assertEquals(response.getRfxId(), extendResponse.getRfxId());
+  }
+
+  @Test
+  void testSupplierResponses() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
+
+    var rfxResponse = new ExportRfxResponse();
+    var rfxSetting = RfxSetting.builder().statusCode(0)
+        .rfxId(RFX_ID)
+        .build();
+
+    var supplier = Supplier.builder()
+        .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
+        .status("Replied")
+        .build();
+
+    var organisationMapping = OrganisationMapping.builder()
+        .organisationId("GB-COH-05684804")
+        .build();
+    rfxResponse.setRfxSetting(rfxSetting);
+    rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(retryableTendersDBDelegate.findOrganisationMappingByExternalOrganisationId(
+        supplier.getCompanyData().getId())).thenReturn(Optional.of(organisationMapping));
+
+
+    var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
+
+    // Verify
+    assertEquals(1, response.size());
+
+    var responseSummary = response.stream().findFirst().get();
+    assertEquals("GB-COH-05684804", responseSummary.getSupplier().getId());
+    assertEquals("Test Supplier 1", responseSummary.getSupplier().getName());
+    assertEquals(ResponseSummary.ResponseStateEnum.SUBMITTED, responseSummary.getResponseState());
+    assertEquals(ResponseSummary.ReadStateEnum.READ, responseSummary.getReadState());
+
+
+
   }
 
 }

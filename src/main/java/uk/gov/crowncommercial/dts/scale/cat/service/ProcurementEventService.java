@@ -57,6 +57,7 @@ public class ProcurementEventService {
       "Document upload record for ID [%s] not found";
   public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
       "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
+  public static final String REPLIED = "Replied";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -528,11 +529,29 @@ public class ProcurementEventService {
   public Collection<ResponseSummary> getSupplierResponses(final Integer procId,
       final String eventId) {
 
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
 
-    return Arrays.asList( new ResponseSummary());
+    return exportRfxResponse.getSuppliersList().getSupplier().stream()
+        .map(supplier -> convertToResponseSummary(supplier)).collect(Collectors.toList());
+  }
+
+  private ResponseSummary convertToResponseSummary(final Supplier supplier) {
+
+    var organisationMapping = retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
+        .orElseThrow(() -> new IllegalArgumentException(
+            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
+
+    return new ResponseSummary().supplier(
+        new OrganizationReference1().id(organisationMapping.getOrganisationId())
+            .name(supplier.getCompanyData().getName())).responseState(
+        REPLIED.equals(supplier.getStatus().trim()) ?
+            ResponseSummary.ResponseStateEnum.SUBMITTED :
+            ResponseSummary.ResponseStateEnum.DRAFT).readState(
+        REPLIED.equals(supplier.getStatus().trim()) ?
+            ResponseSummary.ReadStateEnum.READ :
+            ResponseSummary.ReadStateEnum.UNREAD);
   }
 
   /**
@@ -851,10 +870,9 @@ public class ProcurementEventService {
 
   /**
    * Delete supplier from Tenders DB.
-   *
    * @param event
-   * @param supplierOrgMappings
-   * @param overwrite
+   * @param supplierOrgMapping
+   * @param principal
    */
   private void deleteSupplierFromTendersDB(final ProcurementEvent event,
       final OrganisationMapping supplierOrgMapping, final String principal) {
