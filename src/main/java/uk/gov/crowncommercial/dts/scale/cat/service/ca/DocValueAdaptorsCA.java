@@ -1,13 +1,14 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Criterion;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionDefinition;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Requirement;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RequirementTaxonRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenValueAdaptor;
 
@@ -19,85 +20,100 @@ import uk.gov.crowncommercial.dts.scale.cat.service.DocGenValueAdaptor;
 public class DocValueAdaptorsCA {
 
   enum RequirementProperty {
-    CLUSTER, ROLE_FAMILY, ROLE, QNTY;
+    CLUSTER, FAMILY, NAME, QNTY;
   }
 
   static final String DIMENSION_RESOURCE_QUANTITIES = "Resource Quantities";
-  static final String DIMENSION_SERVICE_CAPABILITY = "Service Capabilty";
+  static final String DIMENSION_SERVICE_CAPABILITY = "Service Capability";
   static final String DIMENSION_LOCATION = "Location";
   static final String DIMENSION_SC = "Security Clearance";
 
+  static final String CACHE_KEY_ASSESSMENT = "CACHE_KEY_ASSESSMENT";
+  static final String CACHE_KEY_PREFIX_DIMENSION_DEFS = "CACHE_KEY_DIMENSION_DEFS_";
+
   private final AssessmentService assessmentService;
-  private final RequirementTaxonRepo requirementTaxonRepo;
 
   @Bean("DocumentValueAdaptorResQntyDDaTCluster")
   public DocGenValueAdaptor documentValueAdaptorResQntyDDaTCluster() {
     return (event, requestCache) -> {
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions = getDimensionDefinition(assessment.getExternalToolId(),
+          DIMENSION_RESOURCE_QUANTITIES, requestCache);
 
-      // Get assessment, scores not required (e.g for FC) - bit of a cheat, could go straight to DB
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_RESOURCE_QUANTITIES,
-          RequirementProperty.CLUSTER);
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.CLUSTER);
     };
   }
 
-  @Bean("documentValueAdaptorResQntyDDaTFamily")
+  @Bean("DocumentValueAdaptorResQntyDDaTFamily")
   public DocGenValueAdaptor documentValueAdaptorResQntyDDaTFamily() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_RESOURCE_QUANTITIES,
-          RequirementProperty.ROLE_FAMILY);
+
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions = getDimensionDefinition(assessment.getExternalToolId(),
+          DIMENSION_RESOURCE_QUANTITIES, requestCache);
+
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.FAMILY);
     };
   }
 
   @Bean("DocumentValueAdaptorResQntyDDaTRole")
   public DocGenValueAdaptor documentValueAdaptorResQntyDDaTRole() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_RESOURCE_QUANTITIES,
-          RequirementProperty.ROLE);
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions = getDimensionDefinition(assessment.getExternalToolId(),
+          DIMENSION_RESOURCE_QUANTITIES, requestCache);
+
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.NAME);
     };
   }
 
   @Bean("DocumentValueAdaptorResQntyDDaTRoleQnty")
   public DocGenValueAdaptor documentValueAdaptorResQntyDDaTRoleQnty() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_RESOURCE_QUANTITIES,
-          RequirementProperty.QNTY);
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions = getDimensionDefinition(assessment.getExternalToolId(),
+          DIMENSION_RESOURCE_QUANTITIES, requestCache);
+
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.QNTY);
     };
   }
 
   @Bean("DocumentValueAdaptorSvcCapDomain")
   public DocGenValueAdaptor documentValueAdaptorSvcCapDomain() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_SERVICE_CAPABILITY,
-          RequirementProperty.CLUSTER);
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions = getDimensionDefinition(assessment.getExternalToolId(),
+          DIMENSION_SERVICE_CAPABILITY, requestCache);
+
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.CLUSTER);
     };
   }
 
   @Bean("DocumentValueAdaptorSvcCapName")
   public DocGenValueAdaptor documentValueAdaptorSvcCapName() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_SERVICE_CAPABILITY,
-          RequirementProperty.ROLE);
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions = getDimensionDefinition(assessment.getExternalToolId(),
+          DIMENSION_SERVICE_CAPABILITY, requestCache);
+
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.NAME);
     };
   }
 
   @Bean("DocumentValueAdaptorLocationName")
   public DocGenValueAdaptor documentValueAdaptorLocationName() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-      return getCAPlaceholderValues(assessment, DIMENSION_LOCATION, RequirementProperty.ROLE);
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
+      var dimensionDefinitions =
+          getDimensionDefinition(assessment.getExternalToolId(), DIMENSION_LOCATION, requestCache);
+      return getCAPlaceholderValues(assessment, dimensionDefinitions, RequirementProperty.NAME);
     };
   }
 
   @Bean("DocumentValueAdaptorHighestVettingLevel")
   public DocGenValueAdaptor documentValueAdaptorHighestVettingLevel() {
     return (event, requestCache) -> {
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
+      var assessment = getAssessment(event.getAssessmentId(), requestCache);
       var placeholderValues = new ArrayList<String>();
 
       /*
@@ -116,12 +132,27 @@ public class DocValueAdaptorsCA {
     };
   }
 
-  private List<String> getCAPlaceholderValues(final Assessment assessment, final String dimension,
-      final RequirementProperty ddatProperty) {
+  private Assessment getAssessment(final Integer assessmentId,
+      final ConcurrentMap<String, Object> requestCache) {
+    return (Assessment) requestCache.computeIfAbsent(CACHE_KEY_ASSESSMENT,
+        k -> assessmentService.getAssessment(assessmentId, Optional.empty()));
+  }
+
+  private DimensionDefinition getDimensionDefinition(final String toolId, final String dimension,
+      final ConcurrentMap<String, Object> requestCache) {
+    return (DimensionDefinition) requestCache.computeIfAbsent(
+        CACHE_KEY_PREFIX_DIMENSION_DEFS + dimension,
+        k -> assessmentService.getDimensions(Integer.valueOf(toolId)).stream()
+            .filter(dd -> Objects.equals(dd.getName(), dimension)).findFirst().orElseThrow());
+  }
+
+  private List<String> getCAPlaceholderValues(final Assessment assessment,
+      final DimensionDefinition dimensionDefinitions, final RequirementProperty ddatProperty) {
     var placeholderValues = new ArrayList<String>();
 
-    assessment.getDimensionRequirements().stream().filter(dr -> dimension.equals(dr.getName()))
-        .findFirst().ifPresent(dimensionResQnts -> {
+    assessment.getDimensionRequirements().stream()
+        .filter(dr -> Objects.equals(dimensionDefinitions.getName(), dr.getName())).findFirst()
+        .ifPresent(dimensionResQnts -> {
 
           /*
            * For each requirement ID, return the requirement group name or fetch the assessment
@@ -136,14 +167,16 @@ public class DocValueAdaptorsCA {
                   // value array
                   placeholderValues.add(
                       Objects.toString(rqmt.getWeighting(), DocGenService.PLACEHOLDER_UNKNOWN));
-                } else if (ddatProperty == RequirementProperty.ROLE) {
+                } else if (ddatProperty == RequirementProperty.NAME) {
                   placeholderValues.add(rqmt.getName());
                 } else {
-                  var requirementTaxon = requirementTaxonRepo.getById(rqmt.getRequirementId());
-                  var groups = assessmentService.recurseUpTree(requirementTaxon.getTaxon(),
-                      new ArrayList<>());
 
-                  placeholderValues.add(groups.stream().filter(
+                  // Use the dimension definition to get cluster or role family
+                  var rqmtOption = dimensionDefinitions.getOptions().stream().filter(
+                      dimOpt -> Objects.equals(dimOpt.getRequirementId(), rqmt.getRequirementId()))
+                      .findFirst().orElseThrow();
+
+                  placeholderValues.add(rqmtOption.getGroups().stream().filter(
                       g -> g.getLevel() == (ddatProperty == RequirementProperty.CLUSTER ? 1 : 2))
                       .findFirst().orElseThrow().getName());
                 }
