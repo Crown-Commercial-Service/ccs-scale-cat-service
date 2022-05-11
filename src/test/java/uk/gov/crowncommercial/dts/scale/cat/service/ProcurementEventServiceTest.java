@@ -160,9 +160,6 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
-  @MockBean
-  private RetryableTendersDBDelegate retryableTendersDBDelegate;
-
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
@@ -1031,7 +1028,7 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
-    when(retryableTendersDBDelegate.findOrganisationMappingByExternalOrganisationId(
+    when(organisationMappingRepo.findByExternalOrganisationId(
         supplier.getCompanyData().getId())).thenReturn(Optional.of(organisationMapping));
 
 
