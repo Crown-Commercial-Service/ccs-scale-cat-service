@@ -24,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -533,14 +534,14 @@ public class ProcurementEventService {
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
 
     return exportRfxResponse.getSuppliersList().getSupplier().stream()
-        .map(supplier -> convertToResponseSummary(supplier)).collect(Collectors.toList());
+        .map(this::convertToResponseSummary).collect(Collectors.toList());
   }
 
   private ResponseSummary convertToResponseSummary(final Supplier supplier) {
 
     var organisationMapping = retryableTendersDBDelegate
         .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
-        .orElseThrow(() -> new IllegalArgumentException(
+        .orElseThrow(() -> new TendersDBDataException(
             String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
 
     return new ResponseSummary().supplier(

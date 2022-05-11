@@ -1009,28 +1009,23 @@ class ProcurementEventServiceTest {
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(0)
-        .rfxId(RFX_ID)
-        .build();
+    var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
 
     var supplier = Supplier.builder()
         .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-        .status("Replied")
-        .build();
+        .status("Replied").build();
 
-    var organisationMapping = OrganisationMapping.builder()
-        .organisationId("GB-COH-05684804")
-        .build();
+    var organisationMapping =
+        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
 
     // Mock behaviours
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-        .thenReturn(event);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID)).thenReturn(
+        event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
     when(organisationMappingRepo.findByExternalOrganisationId(
         supplier.getCompanyData().getId())).thenReturn(Optional.of(organisationMapping));
-
 
     var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
 
@@ -1042,9 +1037,5 @@ class ProcurementEventServiceTest {
     assertEquals("Test Supplier 1", responseSummary.getSupplier().getName());
     assertEquals(ResponseSummary.ResponseStateEnum.SUBMITTED, responseSummary.getResponseState());
     assertEquals(ResponseSummary.ReadStateEnum.READ, responseSummary.getReadState());
-
-
-
   }
-
 }
