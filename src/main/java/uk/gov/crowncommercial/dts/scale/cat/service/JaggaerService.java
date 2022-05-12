@@ -353,4 +353,18 @@ public class JaggaerService {
     log.info("Extended event: {}", extendRfxResponse);
     return extendRfxResponse;
   }
+
+  /**
+   * Invalidate Event Rfx
+   *
+   * @param event
+   * @param jaggaerUserId
+   * @param TerminationType
+   */
+  public void invalidateEvent(final InvalidateEventRequest request) {
+    final var endPoint = jaggaerAPIConfig.getInvalidateEvent().get(ENDPOINT);
+    final var response = webclientWrapper.postData(request, WorkflowRfxResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+    log.debug("Invalidate event response: {}", response);
+  }
 }

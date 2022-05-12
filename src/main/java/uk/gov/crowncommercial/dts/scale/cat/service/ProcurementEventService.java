@@ -1002,4 +1002,37 @@ public class ProcurementEventService {
     return response;
   }
 
+  /**
+   * Terminate Event in Jaggaer
+   *
+   * @param procId
+   * @param eventId
+   * @param reasonType
+   */
+  @Transactional
+  public void terminateEvent(final Integer procId, final String eventId, final TerminationType type,
+      final String principal) {
+    var user = userProfileService.resolveBuyerUserByEmail(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
+        .getUserId();
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var rfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+        .get(rfxResponse.getRfxSetting().getStatusCode());
+
+    if (TenderStatus.ACTIVE != status) {
+      throw new IllegalArgumentException(
+          "You cannot terminate an event unless it is in a 'active' state");
+    }
+
+    final var invalidateEventRequest =
+        InvalidateEventRequest.builder().invalidateReason(type.getValue())
+            .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+            .operatorUser(OwnerUser.builder().id(user).build()).build();
+    log.info("Invalidate event request: {}", invalidateEventRequest);
+    jaggaerService.invalidateEvent(invalidateEventRequest);
+    // update status
+    updateStatusAndDates(principal, event);
+  }
+
 }
