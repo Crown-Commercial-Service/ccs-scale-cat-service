@@ -357,14 +357,25 @@ public class JaggaerService {
   /**
    * Invalidate Event Rfx
    *
-   * @param event
-   * @param jaggaerUserId
-   * @param TerminationType
+   * @param InvalidateEventRequest
    */
   public void invalidateEvent(final InvalidateEventRequest request) {
     final var endPoint = jaggaerAPIConfig.getInvalidateEvent().get(ENDPOINT);
     final var response = webclientWrapper.postData(request, WorkflowRfxResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.debug("Invalidate event response: {}", response);
+  }
+
+  /**
+   * Get Project
+   *
+   * @param externalProjectId
+   */
+  public Project getProject(String externalProjectId) {
+    return ofNullable(jaggaerWebClient.get()
+        .uri(jaggaerAPIConfig.getGetProject().get(ENDPOINT), externalProjectId).retrieve()
+        .bodyToMono(Project.class).block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving project"));
   }
 }
