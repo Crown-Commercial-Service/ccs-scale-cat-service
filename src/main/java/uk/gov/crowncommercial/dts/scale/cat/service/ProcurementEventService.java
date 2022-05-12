@@ -271,7 +271,15 @@ public class ProcurementEventService {
 
     log.debug("Update Event {}", updateEvent);
 
+    //You cannot move to a TBD event from any other event
+    validationService.validateEventType(updateEvent.getEventType());
+
     var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+
+    //If event status is AWARD, you cannot do (DA, FC, EOI, RFI)
+    validationService.validateEventTypeBeforeUpdate(exportRfxResponse,updateEvent.getEventType());
+
     validationService.validateUpdateEventAssessment(updateEvent, event, principal);
 
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
@@ -331,7 +339,7 @@ public class ProcurementEventService {
       jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
     }
 
-    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+     exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
     // Save to Tenders DB
     if (updateDB) {
