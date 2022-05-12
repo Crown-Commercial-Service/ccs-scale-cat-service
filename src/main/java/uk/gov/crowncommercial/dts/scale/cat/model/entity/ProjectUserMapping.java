@@ -1,9 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import javax.persistence.*;
 
 /**
  * JPA entity representing a mapping between a project and its users
@@ -32,5 +31,7 @@ public class ProjectUserMapping {
 
   @Embedded
   private Timestamps timestamps;
+
+  boolean deleted;
 
 }

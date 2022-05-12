@@ -34,10 +34,8 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
@@ -359,6 +357,94 @@ class ProcurementProjectServiceTest {
     assertNotNull(response);
     assertEquals(1, response.size());
 
+  }
+
+  @Test
+  void testDeleteUserMapping() {
+    var procurementProject = ProcurementProject.builder().externalProjectId(TENDER_CODE)
+        .externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME).createdBy(PRINCIPAL)
+        .procurementEvents(Set.of(ProcurementEvent.builder().eventType("FC").id(1).build()))
+        .build();
+    procurementProject.setId(PROC_PROJECT_ID);
+    var tender = Tender.builder().projectOwner(ProjectOwner.builder().id("2").build()).build();
+    var pro = Project.builder().tender(tender).build();
+
+    var userMapping = ProjectUserMapping.builder().id(1).userId("12345").project(procurementProject)
+        .timestamps(Timestamps.createTimestamps(PRINCIPAL)).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID))
+        .thenReturn(Optional.of(procurementProject));
+    when(retryableTendersDBDelegate.save(any(ProjectUserMapping.class))).thenReturn(userMapping);
+    when(jaggaerWebClient.get()
+        .uri(jaggaerAPIConfig.getGetProject().get("endpoint"),
+            procurementProject.getExternalProjectId())
+        .retrieve().bodyToMono(eq(Project.class))
+        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).thenReturn(pro);
+    when(retryableTendersDBDelegate.findProjectUserMappingByProjectIdAndUserId(PROC_PROJECT_ID,
+        "12345")).thenReturn(Optional.of(userMapping));
+
+    procurementProjectService.deleteTeamMember(PROC_PROJECT_ID, PRINCIPAL, PRINCIPAL);
+
+    // Verify
+    verify(retryableTendersDBDelegate).findProjectUserMappingByProjectIdAndUserId(
+        procurementProject.getId(), JAGGAER_USER.get().getUserId());
+    verify(retryableTendersDBDelegate).save(any(ProjectUserMapping.class));
+  }
+
+  @Test
+  void testGetTeamMembers() {
+    var procurementProject = ProcurementProject.builder().externalProjectId(TENDER_CODE)
+        .externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME).createdBy(PRINCIPAL)
+        .procurementEvents(Set.of(
+            ProcurementEvent.builder().eventType("FC").id(1).externalEventId("itt_123").build()))
+        .build();
+    procurementProject.setId(PROC_PROJECT_ID);
+    var tender = Tender.builder().projectOwner(ProjectOwner.builder().id("2").build()).build();
+    var team =
+        ProjectTeam.builder().user(new HashSet<>(Arrays.asList(User.builder().id("1").build(),
+            User.builder().id("2").build(), User.builder().id("3").build()))).build();
+    var pro = Project.builder().tender(tender).projectTeam(team).build();
+    var userMapping = ProjectUserMapping.builder().id(1).userId("12345").project(procurementProject)
+        .timestamps(Timestamps.createTimestamps(PRINCIPAL)).build();
+    var userMapping1 =
+        ProjectUserMapping.builder().id(2).userId("12346").project(procurementProject).deleted(true)
+            .timestamps(Timestamps.createTimestamps(PRINCIPAL)).build();
+    var userMapping2 = ProjectUserMapping.builder().id(3).userId("12347")
+        .project(procurementProject).timestamps(Timestamps.createTimestamps(PRINCIPAL)).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID))
+        .thenReturn(Optional.of(procurementProject));
+    when(retryableTendersDBDelegate.save(any(ProjectUserMapping.class))).thenReturn(userMapping);
+    when(jaggaerWebClient.get()
+        .uri(jaggaerAPIConfig.getGetProject().get("endpoint"),
+            procurementProject.getExternalProjectId())
+        .retrieve().bodyToMono(eq(Project.class))
+        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).thenReturn(pro);
+    when(retryableTendersDBDelegate.findProjectUserMappingByProjectIdAndUserId(PROC_PROJECT_ID,
+        "12345")).thenReturn(Optional.of(userMapping));
+    when(userProfileService.resolveBuyerUserByUserId(any()))
+        .thenReturn(Optional.of(SubUsers.SubUser.builder().phoneNumber("123456").build()));
+    when(conclaveService.getUserProfile(any()))
+        .thenReturn(Optional.of(new UserProfileResponseInfo()));
+
+    var exportRfxResponse = new ExportRfxResponse();
+    exportRfxResponse.setRfxSetting(RfxSetting.builder().statusCode(0).build());
+    exportRfxResponse.setEmailRecipientList(EmailRecipientList.builder()
+        .emailRecipient(
+            Arrays.asList(EmailRecipient.builder().user(User.builder().id("6").build()).build()))
+        .build());
+
+    when(jaggaerService.getRfx("itt_123")).thenReturn(exportRfxResponse);
+    when(retryableTendersDBDelegate.findProjectUserMappingByProjectId(PROC_PROJECT_ID))
+        .thenReturn(new HashSet<>(Arrays.asList(userMapping, userMapping1, userMapping2)));
+
+    // Invoke
+    var members = procurementProjectService.getProjectTeamMembers(PROC_PROJECT_ID, PRINCIPAL);
+    assertEquals(3, members.size());
   }
 
   /**
