@@ -735,20 +735,23 @@ public class ProcurementEventService {
     return events.stream().map(event -> {
 
       TenderStatus statusCode;
-
+      RfxSetting rfxSetting=null;
       if (event.getExternalEventId() == null) {
         var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
         statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
       } else {
-        var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+         var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+         statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
             .get(exportRfxResponse.getRfxSetting().getStatusCode());
+         rfxSetting=exportRfxResponse.getRfxSetting();
       }
+      var eventSummary=tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
+              Optional.ofNullable(event.getExternalReferenceId()),
+              ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
+              Optional.ofNullable(event.getAssessmentId()));
 
-      return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
-          Optional.ofNullable(event.getExternalReferenceId()),
-          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
-          Optional.ofNullable(event.getAssessmentId()));
+      eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting,event));
+      return eventSummary;
     }).collect(Collectors.toList());
   }
 
