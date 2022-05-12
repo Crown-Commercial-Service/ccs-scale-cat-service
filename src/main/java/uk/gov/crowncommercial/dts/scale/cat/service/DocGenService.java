@@ -8,6 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -65,6 +66,7 @@ public class DocGenService {
   }
 
   @SneakyThrows
+  @Transactional
   public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
       final DocumentTemplate documentTemplate) {
 

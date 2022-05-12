@@ -219,8 +219,8 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersDBRetryable
-  public void saveAll(final List<ProjectUserMapping> projectUserMappings) {
-    projectUserMappingRepo.saveAll(projectUserMappings);
+  public List<ProjectUserMapping> saveAll(final List<ProjectUserMapping> projectUserMappings) {
+    return projectUserMappingRepo.saveAll(projectUserMappings);
   }
 
   @TendersDBRetryable
@@ -237,6 +237,12 @@ public class RetryableTendersDBDelegate {
   public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,
       final Pageable pageable) {
     return projectUserMappingRepo.findByUserId(userId, pageable);
+  }
+
+  @TendersDBRetryable
+  public Optional<ProjectUserMapping> findProjectUserMappingByProjectIdAndUserId(
+      final Integer projectId, final String userId) {
+    return projectUserMappingRepo.findByProjectIdAndUserId(projectId, userId);
   }
 
   @TendersDBRetryable

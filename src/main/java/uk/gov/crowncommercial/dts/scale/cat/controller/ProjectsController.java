@@ -25,7 +25,8 @@ public class ProjectsController extends AbstractRestController {
   private final ProcurementProjectService procurementProjectService;
 
   @GetMapping
-  public Collection<ProjectPackageSummary> getProjects(final JwtAuthenticationToken authentication){
+  public Collection<ProjectPackageSummary> getProjects(
+      final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjects invoked on behalf of principal: {}", principal);
     return procurementProjectService.getProjects(principal);
@@ -76,7 +77,7 @@ public class ProjectsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjectUsers invoked on behalf of principal: {}", principal);
 
-    return procurementProjectService.getProjectTeamMembers(procId,principal);
+    return procurementProjectService.getProjectTeamMembers(procId, principal);
   }
 
   @PutMapping("/{proc-id}/users/{user-id}")
@@ -88,7 +89,18 @@ public class ProjectsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("addProjectUser invoked on behalf of principal: {}", principal);
 
-    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember,principal);
+    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember,
+        principal);
+  }
+
+  @DeleteMapping("/{proc-id}/users/{user-id}")
+  public String deleteTeamMember(@PathVariable("proc-id") final Integer procId,
+      @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteTeamMember invoked on behalf of principal: {}", principal);
+    procurementProjectService.deleteTeamMember(procId, userId, principal);
+    return Constants.OK_MSG;
   }
 
 }

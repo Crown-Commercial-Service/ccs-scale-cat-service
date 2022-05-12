@@ -10,4 +10,9 @@ import lombok.extern.jackson.Jacksonized;
 public class Supplier {
 
   CompanyData companyData;
+  Integer invited;
+  String status;
+  Integer statusCode;
+  Integer supplierStatus;
+
 }
