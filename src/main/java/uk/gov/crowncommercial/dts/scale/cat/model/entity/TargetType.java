@@ -5,6 +5,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
  */
 public enum TargetType {
 
-  SIMPLE, LIST, TABLE, DATETIME, TITLE;
+  // Single value types
+  SIMPLE, DATETIME, DURATION,
+
+  // Multi-value types
+  LIST, TABLE;
 
 }

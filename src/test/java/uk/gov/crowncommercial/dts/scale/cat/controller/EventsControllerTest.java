@@ -333,4 +333,15 @@ class EventsControllerTest {
 
     verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
   }
+
+  @Test void getSupplierResponses_200_OK() throws Exception {
+
+    mockMvc.perform(get(EVENTS_PATH + "/{eventID}/responses", PROC_PROJECT_ID, EVENT_ID).with(
+            validJwtReqPostProcessor).contentType(APPLICATION_JSON)).andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON));
+
+    verify(procurementEventService, times(1)).getSupplierResponses(PROC_PROJECT_ID, EVENT_ID);
+
+  }
 }

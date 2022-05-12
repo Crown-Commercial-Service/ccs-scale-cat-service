@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.List;
+import java.util.Optional;
 import javax.validation.ValidationException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
@@ -63,7 +64,7 @@ public class AssessmentsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getAssessment invoked on behalf of principal: {}", principal);
 
-    return assessmentService.getAssessment(assessmentId, principal);
+    return assessmentService.getAssessment(assessmentId, Optional.of(principal));
   }
 
   @PutMapping("/{assessment-id}/dimensions/{dimension-id}")
