@@ -377,11 +377,7 @@ class ProcurementProjectServiceTest {
     when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID))
         .thenReturn(Optional.of(procurementProject));
     when(retryableTendersDBDelegate.save(any(ProjectUserMapping.class))).thenReturn(userMapping);
-    when(jaggaerWebClient.get()
-        .uri(jaggaerAPIConfig.getGetProject().get("endpoint"),
-            procurementProject.getExternalProjectId())
-        .retrieve().bodyToMono(eq(Project.class))
-        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).thenReturn(pro);
+    when(jaggaerService.getProject(procurementProject.getExternalProjectId())).thenReturn(pro);
     when(retryableTendersDBDelegate.findProjectUserMappingByProjectIdAndUserId(PROC_PROJECT_ID,
         "12345")).thenReturn(Optional.of(userMapping));
 

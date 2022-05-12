@@ -347,13 +347,7 @@ public class ProcurementProjectService {
     var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
         .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
-
-    var jaggaerProject = ofNullable(jaggaerWebClient.get()
-        .uri(jaggaerAPIConfig.getGetProject().get(ENDPOINT), dbProject.getExternalProjectId())
-        .retrieve().bodyToMono(Project.class)
-        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                "Unexpected error retrieving project"));
+    var jaggaerProject = jaggaerService.getProject(dbProject.getExternalProjectId());
 
     // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
@@ -528,22 +522,16 @@ public class ProcurementProjectService {
 
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
       final String principal) {
-
-    var existingUserMapping = retryableTendersDBDelegate
-        .findProjectUserMappingByProjectIdAndUserId(project.getId(), jaggaerUserId);
-    ProjectUserMapping projectUserMapping;
-    if (existingUserMapping.isPresent()) {
-      // Update existed deleted userMapping
-      projectUserMapping = existingUserMapping.get();
-      projectUserMapping.setDeleted(false);
-      projectUserMapping.setTimestamps(
-          Timestamps.updateTimestamps(projectUserMapping.getTimestamps(), principal));
-      retryableTendersDBDelegate.save(existingUserMapping.get());
-    } else {
-      projectUserMapping = ProjectUserMapping.builder().project(project).userId(jaggaerUserId)
-          .timestamps(createTimestamps(principal)).build();
-      retryableTendersDBDelegate.save(projectUserMapping);
-    }
+    retryableTendersDBDelegate
+        .findProjectUserMappingByProjectIdAndUserId(project.getId(), jaggaerUserId)
+        .ifPresentOrElse(userMapping -> {
+          // Update existed deleted userMapping
+          userMapping.setDeleted(false);
+          userMapping
+              .setTimestamps(Timestamps.updateTimestamps(userMapping.getTimestamps(), principal));
+          retryableTendersDBDelegate.save(userMapping);
+        }, () -> retryableTendersDBDelegate.save(ProjectUserMapping.builder().project(project)
+            .userId(jaggaerUserId).timestamps(createTimestamps(principal)).build()));
   }
 
   private void deleteProjectUserMapping(final String jaggaerUserId,
