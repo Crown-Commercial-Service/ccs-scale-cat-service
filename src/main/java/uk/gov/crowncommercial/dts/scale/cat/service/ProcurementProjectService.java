@@ -583,4 +583,10 @@ public class ProcurementProjectService {
     }
     return existingMappings;
   }
+
+  public void closeProcurementProject(final Integer projectId, final TenderStatus TenderStatus,
+      final String principal) {
+
+    //TODO what is the corresponding method in Jaggaer?
+  }
 }

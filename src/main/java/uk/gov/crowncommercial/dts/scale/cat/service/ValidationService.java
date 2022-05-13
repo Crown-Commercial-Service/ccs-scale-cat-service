@@ -32,6 +32,7 @@ public class ValidationService {
   private final AssessmentService assessmentService;
   private final Clock clock;
   private static final Integer AWARD_STATUS = 500;
+  private static final Integer ABANDONED_STATUS = 1500;
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -155,6 +156,12 @@ public class ValidationService {
   }
 
   public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+    // cannot move to a TBD event from any other event
+    if (ViewEventType.TBD.name().equals(eventType.getValue())) {
+      throw new IllegalArgumentException(
+          "Cannot update an existing event type of '" + eventType.getValue() + "'");
+    }
+    // If event status is AWARD, you cannot do (DA, FC, EOI, RFI)
     if (exportRfxResponse.getRfxSetting().getStatusCode().equals(AWARD_STATUS)
         && NOT_ALLOWED_EVENTS_AFTER_AWARD.contains(eventType)) {
       throw new IllegalArgumentException(
@@ -162,11 +169,8 @@ public class ValidationService {
     }
   }
 
-  public void validateEventType(final DefineEventType eventType) {
-    if (ViewEventType.TBD.name().equals(eventType.getValue())) {
-      throw new IllegalArgumentException(
-          "Cannot update an existing event type of '" + eventType.getValue() + "'");
-    }
+  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+    return exportRfxResponse.getRfxSetting().getStatusCode().equals(ABANDONED_STATUS);
   }
 
 }

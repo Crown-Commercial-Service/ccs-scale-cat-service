@@ -203,7 +203,7 @@ config:
         requestTimeout: 3600000
         
     agreementsService:
-      # baseUrl: "SET IN ENV"
+      baseUrl: https://dev-ccs-scale-shared-agreements-service.london.cloudapps.digital/
       # apiKey: "SET IN ENV"
       timeoutDuration: 10
       getAgreementDetail:
@@ -286,4 +286,9 @@ spring:
       on-profile:
         - local-pg
   datasource:
-    url: jdbc:postgresql://127.0.0.1:5432/cat
+    url: jdbc:postgresql://127.0.0.1:6665/rdsbroker_2778c990_6a49_41fe_9465_0e648aadcb37
+    username: uxkg7hj2dwyysklo
+    password: dBh6VnCWhQV4tkWXWb1Vhjbb2bVFAwe7
+#    url: jdbc:postgresql://127.0.0.1:6675/rdsbroker_23298427_3eae_499e_9222_9b3b5eb79843
+#    username: unlipcwpurpril1a
+#    password: i2Gf0t33gr03H6uRpMA8wmKyo4jxMV7E

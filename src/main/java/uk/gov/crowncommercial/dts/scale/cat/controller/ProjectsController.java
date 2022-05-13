@@ -60,6 +60,19 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
+  @PutMapping("/{procID}/close")
+  public String closeProcurementProject(@PathVariable("procID") final Integer procId,
+      @RequestBody final TenderStatus tenderStatus,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("closeProcurementProject invoked on behalf of principal: {}", principal);
+
+    procurementProjectService.closeProcurementProject(procId, tenderStatus, principal);
+
+    return Constants.OK_MSG;
+  }
+
   @GetMapping("/{proc-id}/event-types")
   public Collection<EventType> listProcurementEventTypes(
       @PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
