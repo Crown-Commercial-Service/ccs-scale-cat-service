@@ -1,12 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.utils;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.util.*;
-
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -18,6 +14,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
+import java.time.OffsetDateTime;
+import java.util.*;
+
 /**
  * Utility methods for building and manipulating the sources generated from the Tenders API
  */
@@ -26,11 +25,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 @Slf4j
 public class TendersAPIModelUtils {
 
-  private static final List<String> EVALUATING_STATUS_LIST = new ArrayList<>(List.of("Qualification Evaluation","Technical Evaluation",
-          "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed"));
-  private static final List<String> PRE_AWARD_STATUS_LIST= new ArrayList<>(List.of("Final Evaluation - Pre-Awarded","Awarding Approval"));
-
-  private static final List<String> AWARD_STATUS_LIST= new ArrayList<>(List.of("Awarded","Mixed Awarding"));
+  private static final List<String> EVALUATING_STATUS_LIST = List.of("Qualification Evaluation","Technical Evaluation",
+          "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed");
+  private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval");
+  private static final List<String> AWARD_STATUS_LIST= List.of("Awarded","Mixed Awarding");
   private static final String TO_BE_EVALUATED_STATUS = "To Be Evaluated";
   private static final String EVALUATED_STATUS = "Final Evaluation";
   private static final String CLOSED_STATUS = "CLOSED";
@@ -68,7 +66,6 @@ public class TendersAPIModelUtils {
     eventSummary.setEventStage(stage);
     eventSummary.setStatus(status);
     eventSummary.setEventType(type);
-    //eventSummary.setDashboardStatus();
 
     supportID.ifPresent(eventSummary::setEventSupportId);
     assessmentId.ifPresent(eventSummary::setAssessmentId);
@@ -129,34 +126,34 @@ public class TendersAPIModelUtils {
    * SCAT-4788 - need to call this to populate EventSummary.dashboardStatus and
    * EventDetail.nonOCDS.dashboardStatus
    */
-  public DashboardStatus getDashboardStatus(final RfxSetting rfxSetting,
-                                            final ProcurementEvent procurementEvent) {
+  public DashboardStatus getDashboardStatus(
+      final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
     var tenderStatus = procurementEvent.getTenderStatus();
     if (Objects.nonNull(tenderStatus)) {
-      if (Objects.equals(CLOSED_STATUS, tenderStatus) || Objects.equals(COMPLETE_STATUS, tenderStatus)) {
-        if (Objects.equals(COMPLETE_STATUS, tenderStatus)) {
-          return DashboardStatus.COMPLETE;
-        } else if (Objects.equals(CLOSED_STATUS, tenderStatus)) {
-          return DashboardStatus.CLOSED;
+      if (Objects.equals(COMPLETE_STATUS, tenderStatus)) {
+        return DashboardStatus.COMPLETE;
+      } else if (Objects.equals(CLOSED_STATUS, tenderStatus)) {
+        return DashboardStatus.CLOSED;
+      } else // No rfx, use procurement event status
+      if (Constants.TENDER_DB_ONLY_EVENT_TYPES.contains(
+          DefineEventType.fromValue(procurementEvent.getEventType()))) {
+        return DashboardStatus.ASSESSMENT;
+      } else // TODO: Event types: EOI,RFI,FC OR DA etc
+      if (Constants.TENDER_NON_DB_EVENT_TYPES.contains(
+              DefineEventType.fromValue(procurementEvent.getEventType()))
+          && Objects.nonNull(rfxSetting)) {
+
+        if (Objects.isNull(rfxSetting.getPublishDate())) {
+          return DashboardStatus.IN_PROGRESS;
+        } else if (Objects.nonNull(rfxSetting.getCloseDate())
+            && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now())) {
+          return DashboardStatus.PUBLISHED;
+        } else {
+          return evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
         }
-      } else  // No rfx, use procurement event status
-        if (Constants.TENDER_DB_ONLY_EVENT_TYPES
-                .contains(DefineEventType.fromValue(procurementEvent.getEventType()))) {
-          return DashboardStatus.ASSESSMENT;
-        } else // TODO: Event types: EOI,RFI,FC OR DA etc
-          if (Constants.TENDER_NON_DB_EVENT_TYPES
-                  .contains(DefineEventType.fromValue(procurementEvent.getEventType()))) {
-            if (Objects.nonNull(rfxSetting)) {
-              if (Objects.isNull(rfxSetting.getPublishDate())) {
-                return DashboardStatus.IN_PROGRESS;
-              } else if (Objects.nonNull(rfxSetting.getCloseDate()) && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now())) {
-                return DashboardStatus.PUBLISHED;
-              } else {
-                return evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
-              }
-            }
-          }
+
+      }
     }
     log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
