@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -1018,11 +1017,18 @@ class ProcurementEventServiceTest {
     var supplier = Supplier.builder()
         .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
         .status("Replied").build();
-
+    var supplierResponseCounters = SupplierResponseCounters.builder()
+        .lastRound(LastRound.builder()
+            .numSupplInvited(8)
+            .numSupplResponded(1)
+            .numSupplNotResponded(7)
+            .build())
+        .build();
     var organisationMapping =
         OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
+    rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
@@ -1034,13 +1040,13 @@ class ProcurementEventServiceTest {
     var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
-    assertEquals(1, response.size());
+    assertNotNull( response);
 
-    var responseSummary = response.stream().findFirst().get();
-    assertEquals("GB-COH-05684804", responseSummary.getSupplier().getId());
-    assertEquals("Test Supplier 1", responseSummary.getSupplier().getName());
-    assertEquals(ResponseSummary.ResponseStateEnum.SUBMITTED, responseSummary.getResponseState());
-    assertEquals(ResponseSummary.ReadStateEnum.READ, responseSummary.getReadState());
+    assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
+    assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
+    assertEquals(1, response.getResponded());
+    assertEquals(8, response.getInvited());
+    assertEquals(7, response.getNoResponse());
   }
 
   void testTerminateEvent() throws Exception {
