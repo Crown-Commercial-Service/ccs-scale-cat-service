@@ -13,6 +13,7 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TableDefinition;
 
 import javax.validation.ValidationException;
 
@@ -122,5 +123,6 @@ public class Requirement {
     String value;
     Boolean select;
     String text;
+    TableDefinition tableDefinition;
   }
 }
