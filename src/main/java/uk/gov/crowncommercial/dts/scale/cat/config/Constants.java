@@ -44,4 +44,8 @@ public class Constants {
   public static final Set<DefineEventType> TENDER_DB_ONLY_EVENT_TYPES =
       Set.of(DefineEventType.FCA, DefineEventType.DAA);
 
+  public static final Set<DefineEventType> TENDER_NON_DB_EVENT_TYPES =
+          Set.of(DefineEventType.EOI, DefineEventType.RFI, DefineEventType.FC,DefineEventType.DA);
+
+
 }

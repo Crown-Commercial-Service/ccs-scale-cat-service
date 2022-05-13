@@ -14,7 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -63,7 +62,6 @@ public class ProcurementEventService {
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;
-  private final WebClient jaggaerWebClient;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ValidationService validationService;
@@ -734,24 +732,39 @@ public class ProcurementEventService {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
-    return events.stream().map(event -> {
+    return events.stream()
+        .map(
+            event -> {
+              TenderStatus statusCode;
+              RfxSetting rfxSetting = null;
+              if (event.getExternalEventId() == null) {
+                var assessment =
+                    assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
+                statusCode =
+                    TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
+              } else {
+                var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+                statusCode =
+                    jaggaerAPIConfig
+                        .getRfxStatusToTenderStatus()
+                        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+                rfxSetting = exportRfxResponse.getRfxSetting();
+              }
+              var eventSummary =
+                  tendersAPIModelUtils.buildEventSummary(
+                      event.getEventID(),
+                      event.getEventName(),
+                      Optional.ofNullable(event.getExternalReferenceId()),
+                      ViewEventType.fromValue(event.getEventType()),
+                      statusCode,
+                      EVENT_STAGE,
+                      Optional.ofNullable(event.getAssessmentId()));
 
-      TenderStatus statusCode;
-
-      if (event.getExternalEventId() == null) {
-        var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-        statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
-      } else {
-        var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-            .get(exportRfxResponse.getRfxSetting().getStatusCode());
-      }
-
-      return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
-          Optional.ofNullable(event.getExternalReferenceId()),
-          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
-          Optional.ofNullable(event.getAssessmentId()));
-    }).collect(Collectors.toList());
+              eventSummary.setDashboardStatus(
+                  tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+              return eventSummary;
+            })
+        .collect(Collectors.toList());
   }
 
   /**
