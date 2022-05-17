@@ -128,6 +128,7 @@ public class CriteriaService {
                 .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                     : questionNonOCDSOptions.getSelected())
                 .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                .tableDefinition(questionNonOCDSOptions.getTableDefinition())
                 .build())
             .collect(Collectors.toList()));
 
