@@ -96,12 +96,12 @@ public class ProcurementEventService {
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     List<Supplier> suppliers = null;
+
     // check any events before
-    var procurementEvents =
-        retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
-      if (CollectionUtils.isEmpty(procurementEvents)) {
-        log.info("No events exists for this project");
-      } else {
+    var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    if (CollectionUtils.isEmpty(procurementEvents)) {
+      log.info("No events exists for this project");
+    } else {
         //copy suppliers & close event
         var existingEvent = procurementEvents.stream().iterator().next();
         var exportRfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
