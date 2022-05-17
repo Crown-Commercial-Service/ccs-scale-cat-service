@@ -14,7 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -63,7 +62,6 @@ public class ProcurementEventService {
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;
-  private final WebClient jaggaerWebClient;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ValidationService validationService;
@@ -527,32 +525,37 @@ public class ProcurementEventService {
    * @return
    */
   @Transactional
-  public Collection<ResponseSummary> getSupplierResponses(final Integer procId,
+  public ResponseSummary getSupplierResponses(final Integer procId,
       final String eventId) {
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
-
-    return exportRfxResponse.getSuppliersList().getSupplier().stream()
-        .map(this::convertToResponseSummary).collect(Collectors.toList());
+    final var lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
+    var responseSummary = new ResponseSummary()
+        .invited(lastRound.getNumSupplInvited())
+        .responded(lastRound.getNumSupplResponded())
+        .noResponse(lastRound.getNumSupplNotResponded())
+        .declined(lastRound.getNumSupplRespDeclined());
+    return responseSummary.responders( exportRfxResponse.getSuppliersList().getSupplier().stream()
+        .map(this::convertToResponders).collect(Collectors.toList()));
   }
 
-  private ResponseSummary convertToResponseSummary(final Supplier supplier) {
 
+  private Responders convertToResponders(final Supplier supplier) {
     var organisationMapping = retryableTendersDBDelegate
         .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
         .orElseThrow(() -> new TendersDBDataException(
             String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
 
-    return new ResponseSummary().supplier(
-        new OrganizationReference1().id(organisationMapping.getOrganisationId())
-            .name(supplier.getCompanyData().getName())).responseState(
-        REPLIED.equals(supplier.getStatus().trim()) ?
-            ResponseSummary.ResponseStateEnum.SUBMITTED :
-            ResponseSummary.ResponseStateEnum.DRAFT).readState(
-        REPLIED.equals(supplier.getStatus().trim()) ?
-            ResponseSummary.ReadStateEnum.READ :
-            ResponseSummary.ReadStateEnum.UNREAD);
+    return new Responders()
+        .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
+            .name(supplier.getCompanyData().getName()))
+        .responseState(REPLIED.equals(supplier.getStatus().trim()) ?
+            Responders.ResponseStateEnum.SUBMITTED :
+            Responders.ResponseStateEnum.DRAFT)
+        .readState(REPLIED.equals(supplier.getStatus().trim()) ?
+            Responders.ReadStateEnum.READ :
+            Responders.ReadStateEnum.UNREAD);
   }
 
   /**
@@ -734,24 +737,39 @@ public class ProcurementEventService {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
-    return events.stream().map(event -> {
+    return events.stream()
+        .map(
+            event -> {
+              TenderStatus statusCode;
+              RfxSetting rfxSetting = null;
+              if (event.getExternalEventId() == null) {
+                var assessment =
+                    assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
+                statusCode =
+                    TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
+              } else {
+                var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+                statusCode =
+                    jaggaerAPIConfig
+                        .getRfxStatusToTenderStatus()
+                        .get(exportRfxResponse.getRfxSetting().getStatusCode());
+                rfxSetting = exportRfxResponse.getRfxSetting();
+              }
+              var eventSummary =
+                  tendersAPIModelUtils.buildEventSummary(
+                      event.getEventID(),
+                      event.getEventName(),
+                      Optional.ofNullable(event.getExternalReferenceId()),
+                      ViewEventType.fromValue(event.getEventType()),
+                      statusCode,
+                      EVENT_STAGE,
+                      Optional.ofNullable(event.getAssessmentId()));
 
-      TenderStatus statusCode;
-
-      if (event.getExternalEventId() == null) {
-        var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-        statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
-      } else {
-        var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-            .get(exportRfxResponse.getRfxSetting().getStatusCode());
-      }
-
-      return tendersAPIModelUtils.buildEventSummary(event.getEventID(), event.getEventName(),
-          Optional.ofNullable(event.getExternalReferenceId()),
-          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
-          Optional.ofNullable(event.getAssessmentId()));
-    }).collect(Collectors.toList());
+              eventSummary.setDashboardStatus(
+                  tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+              return eventSummary;
+            })
+        .collect(Collectors.toList());
   }
 
   /**

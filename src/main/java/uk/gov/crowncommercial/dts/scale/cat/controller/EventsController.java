@@ -245,7 +245,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/responses")
-  public Collection<ResponseSummary> getSupplierResponses(
+  public ResponseSummary getSupplierResponses(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
       final JwtAuthenticationToken authentication) {
 

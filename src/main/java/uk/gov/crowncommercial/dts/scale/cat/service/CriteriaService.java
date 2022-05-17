@@ -128,6 +128,7 @@ public class CriteriaService {
                 .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                     : questionNonOCDSOptions.getSelected())
                 .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                .tableDefinition(questionNonOCDSOptions.getTableDefinition())
                 .build())
             .collect(Collectors.toList()));
 
@@ -248,10 +249,9 @@ public class CriteriaService {
         .multiAnswer(r.getNonOCDS().getMultiAnswer())
         .length(r.getNonOCDS().getLength())
         .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
-        .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream().map(o ->
-            new QuestionNonOCDSOptions().value(o.getValue())
-                     .selected(o.getSelect() == null? Boolean.FALSE:o.getSelect())
-                .text(o.getText())).collect(Collectors.toList()));
+        .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream()
+            .map(this::getQuestionNonOCDSOptions
+        ).collect(Collectors.toList()));
     if (Objects.nonNull(r.getNonOCDS().getDependency())) {
       questionNonOCDS.dependency(dependencyMapper.convertToQuestionNonOCDSDependency(r));
     }
@@ -280,5 +280,18 @@ public class CriteriaService {
 
     return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
 
+  }
+
+  private QuestionNonOCDSOptions getQuestionNonOCDSOptions(Requirement.Option o) {
+    QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions().value(o.getValue())
+        .selected(o.getSelect() == null ? Boolean.FALSE : o.getSelect()).text(o.getText());
+
+    if (o.getTableDefinition() != null) {
+      questionNonOCDSOptions.tableDefinition(
+          new TableDefinition().editableRows(o.getTableDefinition().getEditableRows())
+              .editableCols(o.getTableDefinition().getEditableCols())
+              .titles(o.getTableDefinition().getTitles()).data(o.getTableDefinition().getData()));
+    }
+    return questionNonOCDSOptions;
   }
 }
