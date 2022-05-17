@@ -21,8 +21,8 @@ public class DocumentUploadClientConfig {
 
   private final DocumentUploadAPIConfig documentUploadAPIConfig;
 
-  @Bean("documentUploadWebClient")
-  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
+  @Bean("docUploadSvcUploadWebclient")
+  public WebClient uploadWebClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
 
     var sslContextFactory = new SslContextFactory.Client(true);
 
@@ -33,7 +33,25 @@ public class DocumentUploadClientConfig {
         new JettyClientHttpConnector(new HttpClient(sslContextFactory));
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(documentUploadAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+        .baseUrl(documentUploadAPIConfig.getUploadBaseUrl())
+        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+        .defaultHeader("x-api-key", documentUploadAPIConfig.getApiKey()).build();
+  }
+
+  @Bean("docUploadSvcGetWebclient")
+  public WebClient getWebClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
+
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
+
+    ClientHttpConnector jettyHttpClientConnector =
+        new JettyClientHttpConnector(new HttpClient(sslContextFactory));
+
+    return WebClient.builder().clientConnector(jettyHttpClientConnector)
+        .baseUrl(documentUploadAPIConfig.getGetBaseUrl())
+        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
         .defaultHeader("x-api-key", documentUploadAPIConfig.getApiKey()).build();
   }
 

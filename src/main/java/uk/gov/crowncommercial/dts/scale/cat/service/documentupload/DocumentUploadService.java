@@ -52,7 +52,8 @@ public class DocumentUploadService {
   private final AmazonS3 tendersS3Client;
   private final AWSS3Service tendersS3Service;
   private final DocumentUploadAPIConfig apiConfig;
-  private final WebClient documentUploadWebClient;
+  private final WebClient docUploadSvcUploadWebclient;
+  private final WebClient docUploadSvcGetWebclient;
   private final WebclientWrapper webclientWrapper;
   private final DocumentUploadRepo documentUploadRepo;
   private final ProcurementEventRepo procurementEventRepo;
@@ -78,7 +79,7 @@ public class DocumentUploadService {
     parts.add("documentFile", multipartFile.getResource());
 
     final var documentStatus = ofNullable(
-        documentUploadWebClient.post().uri(apiConfig.getPostDocument().get(KEY_URI_TEMPLATE))
+        docUploadSvcUploadWebclient.post().uri(apiConfig.getPostDocument().get(KEY_URI_TEMPLATE))
             .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
             .retrieve().bodyToMono(DocumentStatus.class).block())
                 .orElseThrow(() -> new DocumentUploadApplicationException(""));
@@ -184,7 +185,7 @@ public class DocumentUploadService {
         }
 
         var documentStatusResponse = webclientWrapper.getOptionalResource(DocumentStatus.class,
-            documentUploadWebClient, apiConfig.getTimeoutDuration(),
+            docUploadSvcGetWebclient, apiConfig.getTimeoutDuration(),
             apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
             unprocessedDocUpload.getExternalDocumentId());
 
