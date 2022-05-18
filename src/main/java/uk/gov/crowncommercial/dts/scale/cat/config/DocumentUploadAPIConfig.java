@@ -9,13 +9,14 @@ import lombok.Data;
  *
  */
 @Configuration
-@ConfigurationProperties(prefix = "config.external.document-upload", ignoreUnknownFields = true)
+@ConfigurationProperties(prefix = "config.external.doc-upload-svc", ignoreUnknownFields = true)
 @Data
 public class DocumentUploadAPIConfig {
 
   public static final String KEY_URI_TEMPLATE = "uriTemplate";
 
-  private String baseUrl;
+  private String uploadBaseUrl;
+  private String getBaseUrl;
   private String apiKey;
 
   // AWS-S3

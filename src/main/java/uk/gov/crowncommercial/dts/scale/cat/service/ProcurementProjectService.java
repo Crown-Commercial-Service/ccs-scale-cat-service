@@ -583,4 +583,21 @@ public class ProcurementProjectService {
     }
     return existingMappings;
   }
+
+  /**
+   *
+   * @param projectId
+   * @param tenderStatus
+   * @param principal
+   */
+  public void closeProcurementProject(final Integer projectId, final TenderStatus tenderStatus,
+      final String principal) {
+    var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    if (CollectionUtils.isEmpty(procurementEvents)) {
+      log.info("No events exists for this project");
+    } else {
+      procurementEventService.terminateEvent(projectId,
+          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal);
+    }
+  }
 }

@@ -249,9 +249,8 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/responses")
-  public ResponseSummary getSupplierResponses(
-      @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-      final JwtAuthenticationToken authentication) {
+  public ResponseSummary getSupplierResponses(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getDocumentSummaries invoked on behalf of principal: {}", principal);
@@ -259,7 +258,7 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.getSupplierResponses(procId, eventId);
   }
 
-  @PutMapping("/{eventID}/terminate")
+  @PutMapping("/{eventID}/termination")
   public StringValueResponse terminateEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody @Valid final TerminationEvent type,
