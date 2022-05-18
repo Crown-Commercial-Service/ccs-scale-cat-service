@@ -39,6 +39,7 @@ public class AssessmentService {
       "Dimension name provided [%s] does not match actual dimension name for id [%d] - expected [%s]";
   private static final String ERR_MSG_FMT_DIMENSION_ID_NOT_MATCH_ID =
       "Dimension-id [%d] does not match dimension-id [%d]";
+  private static final String ERR_MSG_FMT_DIMENSION_INVALID_ID = "Invalid Dimension-id [%d]";
   private static final String ERR_MSG_FMT_SUBMISSION_TYPE_NOT_FOUND =
       "Submission Type for Criterion [%s] not found";
   private static final String ERR_MSG_FMT_DIMENSION_SELECTION_TYPE_NOT_FOUND =
@@ -712,6 +713,7 @@ public class AssessmentService {
             asd.setRequirementValidValueCode(validValue.getKey().getValueCode());
             break;
           case INTEGER:
+            this.checkNegNumber(Integer.valueOf(c.getValue()));
             asd.setRequirementValue(new BigDecimal(c.getValue()));
             break;
           default:
@@ -913,5 +915,16 @@ public class AssessmentService {
     }).findAny();
 
     return match.isPresent();
+  }
+
+  /**
+   * Checks the dimensionId is a valid positive integer
+   * 
+   * @param BigDecimal value
+   */
+  private void checkNegNumber(Integer value) {
+    if (Integer.signum(value) == -1) {
+      throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_INVALID_ID, value));
+    }
   }
 }
