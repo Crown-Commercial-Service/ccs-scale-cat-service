@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
@@ -58,6 +59,19 @@ public class ProjectsController extends AbstractRestController {
         principal);
 
     return Constants.OK_MSG;
+  }
+
+  @PutMapping("/{procID}/close")
+  public StringValueResponse closeProcurementProject(@PathVariable("procID") final Integer procId,
+      @RequestBody final TenderStatus tenderStatus,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("closeProcurementProject invoked on behalf of principal: {}", principal);
+
+    procurementProjectService.closeProcurementProject(procId, tenderStatus, principal);
+
+    return new StringValueResponse("OK");
   }
 
   @GetMapping("/{proc-id}/event-types")

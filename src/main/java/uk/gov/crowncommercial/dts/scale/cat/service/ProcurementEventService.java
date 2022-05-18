@@ -12,6 +12,7 @@ import javax.validation.ValidationException;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
@@ -94,6 +95,19 @@ public class ProcurementEventService {
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    List<Supplier> suppliers = null;
+
+    // check any events before
+    var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    if (CollectionUtils.isEmpty(procurementEvents)) {
+      log.info("No events exists for this project");
+    } else {
+        //copy suppliers & close event
+        var existingEvent = procurementEvents.stream().iterator().next();
+        var exportRfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
+        suppliers = exportRfxResponse.getSuppliersList().getSupplier();
+        this.terminateEvent(projectId,existingEvent.getEventID(), TerminationType.CANCELLED, principal);
+      }
 
     // Set defaults if no values supplied
     var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
@@ -132,7 +146,7 @@ public class ProcurementEventService {
       }
     } else {
 
-      var createUpdateRfx = createRfxRequest(project, eventName, principal);
+      var createUpdateRfx = createRfxRequest(project, eventName, principal,suppliers);
 
       var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
           createUpdateRfx.getOperationCode());
@@ -199,7 +213,7 @@ public class ProcurementEventService {
    * Create Jaggaer request object.
    */
   private CreateUpdateRfx createRfxRequest(final ProcurementProject project, final String eventName,
-      final String principal) {
+      final String principal, final List<Supplier> suppliers) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
@@ -233,7 +247,7 @@ public class ProcurementEventService {
         new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
     var suppliersList = SuppliersList.builder()
-        .supplier(supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
+        .supplier(suppliers != null ? suppliers: supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
         .build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
@@ -271,9 +285,24 @@ public class ProcurementEventService {
 
     log.debug("Update Event {}", updateEvent);
 
+
     var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+
+    // validate different rules before update
+    validationService.validateEventTypeBeforeUpdate(exportRfxResponse,updateEvent.getEventType());
+
     validationService.validateUpdateEventAssessment(updateEvent, event, principal);
 
+    //  event is ABANDONED AND no new event is created THEN project = closed
+    if (validationService.isEventAbandoned(exportRfxResponse,updateEvent.getEventType()))  {
+      var procurementEvents =
+          retryableTendersDBDelegate.findProcurementEventsByProjectId(procId);
+      if (procurementEvents != null && procurementEvents.size() == 1 ){
+        this.terminateEvent(procId,eventId,TerminationType.CANCELLED,principal);
+//        procurementProjectService.closeProcurementProject(procId,TenderStatus.CANCELLED,principal);
+      }
+    }
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
         .rfxReferenceCode(event.getExternalReferenceId()).build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).build();
@@ -331,7 +360,7 @@ public class ProcurementEventService {
       jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
     }
 
-    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+     exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
     // Save to Tenders DB
     if (updateDB) {
