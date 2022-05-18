@@ -1,14 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.Collection;
-import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -17,14 +10,21 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
-import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
-import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
  *
@@ -36,9 +36,13 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 @Validated
 public class EventsController extends AbstractRestController {
 
+  public static final String UNDERSCORE_STRING = "_";
   private final ProcurementEventService procurementEventService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
+
+  private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
+  private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
 
   @GetMapping
   public List<EventSummary> getEventsForProject(@PathVariable("procID") final Integer procId,
@@ -266,5 +270,115 @@ public class EventsController extends AbstractRestController {
 
     procurementEventService.terminateEvent(procId, eventId, type.getTerminationType(), principal);
     return new StringValueResponse("OK");
+  }
+
+  @GetMapping("/{eventID}/responses/export")
+  public  ResponseEntity<StreamingResponseBody> exportAllResponses(
+          @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+          HttpServletResponse response, final JwtAuthenticationToken authentication){
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getDocumentSummaries invoked on behalf of principal: {}", principal);
+
+    List<SupplierAttachmentResponse> supplierAttachmentResponseList=procurementEventService.getSupplierAttachmentResponses(procId, eventId);
+
+    StreamingResponseBody streamResponseBody =
+        out -> {
+          final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
+          ZipEntry zipEntry = null;
+
+          for (SupplierAttachmentResponse supplierAttachmentResponse :
+              supplierAttachmentResponseList) {
+
+            List<ParameterInfo> parameterInfoList =
+                supplierAttachmentResponse.getParameterInfoList();
+           
+            for (ParameterInfo parameterInfo : parameterInfoList) {
+              for (AttachmentInfo attachmentInfo : parameterInfo.getAttachmentInfoList()) {
+                var docAttachment =
+                    procurementEventService.downloadAttachment(
+                        Integer.parseInt(attachmentInfo.getAttachmentId()),
+                        attachmentInfo.getAttachmentName());
+
+                var filename=String.join("_",supplierAttachmentResponse.getSupplierId().toString(),attachmentInfo.getParameterId().toString(),supplierAttachmentResponse.getSupplierName());
+                filename=filename.concat(attachmentInfo.getAttachmentName().substring(attachmentInfo.getAttachmentName().indexOf('.')));
+
+                zipEntry =
+                    new ZipEntry(filename);
+
+                zipOutputStream.putNextEntry(zipEntry);
+                try (InputStream is = new ByteArrayInputStream(docAttachment.getData())) {
+                  IOUtils.copy(is, zipOutputStream);
+                }
+              }
+            }
+          }
+          // set zip size in response
+          response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
+
+          if (zipOutputStream != null) {
+            zipOutputStream.close();
+          }
+        };
+
+    response.setContentType("application/zip");
+    response.setHeader("Content-Disposition",
+            "attachment; filename=" + String.format(EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME,eventId) + ".zip");
+    response.addHeader("Pragma", "no-cache");
+    response.addHeader("Expires", "0");
+    return ResponseEntity.ok(streamResponseBody);
+
+  }
+
+  @GetMapping("/{eventID}/responses/{supplierID}/export")
+  public  ResponseEntity<StreamingResponseBody> exportSupplierResponse(
+          @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+          @PathVariable("supplierID") final String supplierId,
+          HttpServletResponse response, final JwtAuthenticationToken authentication){
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getResponses invoked on behalf of principal: {}", principal);
+
+    SupplierAttachmentResponse supplierAttachmentResponse = procurementEventService.getSupplierAttachmentResponse(procId, eventId,supplierId);
+
+    StreamingResponseBody streamResponseBody = out -> {
+      final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
+      ZipEntry zipEntry = null;
+
+      List<ParameterInfo> parameterInfoList =
+              supplierAttachmentResponse.getParameterInfoList();
+
+      for (ParameterInfo parameterInfo : parameterInfoList) {
+        for (AttachmentInfo attachmentInfo : parameterInfo.getAttachmentInfoList()) {
+          var docAttachment =
+                  procurementEventService.downloadAttachment(
+                          Integer.parseInt(attachmentInfo.getAttachmentId()),
+                          attachmentInfo.getAttachmentName());
+
+          var filename=String.join("_",supplierAttachmentResponse.getSupplierId().toString(),attachmentInfo.getParameterId().toString(),supplierAttachmentResponse.getSupplierName());
+          filename=filename.concat(attachmentInfo.getAttachmentName().substring(attachmentInfo.getAttachmentName().indexOf('.')));
+
+          zipEntry =
+                  new ZipEntry(filename);
+
+          zipOutputStream.putNextEntry(zipEntry);
+          try (InputStream is = new ByteArrayInputStream(docAttachment.getData())) {
+            IOUtils.copy(is, zipOutputStream);
+          }
+        }
+      }
+      // set zip size in response
+      response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
+      if (zipOutputStream != null) {
+        zipOutputStream.close();
+      }
+    };
+    response.setContentType("application/zip");
+    response.setHeader("Content-Disposition",
+            "attachment; filename=" + String.format(EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME,eventId,supplierAttachmentResponse.getSupplierName().replaceAll("\\s","_")) + ".zip");
+    response.addHeader("Pragma", "no-cache");
+    response.addHeader("Expires", "0");
+    return ResponseEntity.ok(streamResponseBody);
+
   }
 }
