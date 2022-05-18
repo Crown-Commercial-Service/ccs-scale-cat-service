@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
@@ -25,7 +26,8 @@ public class ProjectsController extends AbstractRestController {
   private final ProcurementProjectService procurementProjectService;
 
   @GetMapping
-  public Collection<ProjectPackageSummary> getProjects(final JwtAuthenticationToken authentication){
+  public Collection<ProjectPackageSummary> getProjects(
+      final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjects invoked on behalf of principal: {}", principal);
     return procurementProjectService.getProjects(principal);
@@ -59,6 +61,19 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
+  @PutMapping("/{procID}/close")
+  public StringValueResponse closeProcurementProject(@PathVariable("procID") final Integer procId,
+      @RequestBody final TenderStatus tenderStatus,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("closeProcurementProject invoked on behalf of principal: {}", principal);
+
+    procurementProjectService.closeProcurementProject(procId, tenderStatus, principal);
+
+    return new StringValueResponse("OK");
+  }
+
   @GetMapping("/{proc-id}/event-types")
   public Collection<EventType> listProcurementEventTypes(
       @PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
@@ -76,7 +91,7 @@ public class ProjectsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjectUsers invoked on behalf of principal: {}", principal);
 
-    return procurementProjectService.getProjectTeamMembers(procId,principal);
+    return procurementProjectService.getProjectTeamMembers(procId, principal);
   }
 
   @PutMapping("/{proc-id}/users/{user-id}")
@@ -88,7 +103,18 @@ public class ProjectsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("addProjectUser invoked on behalf of principal: {}", principal);
 
-    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember,principal);
+    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember,
+        principal);
+  }
+
+  @DeleteMapping("/{proc-id}/users/{user-id}")
+  public String deleteTeamMember(@PathVariable("proc-id") final Integer procId,
+      @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteTeamMember invoked on behalf of principal: {}", principal);
+    procurementProjectService.deleteTeamMember(procId, userId, principal);
+    return Constants.OK_MSG;
   }
 
 }

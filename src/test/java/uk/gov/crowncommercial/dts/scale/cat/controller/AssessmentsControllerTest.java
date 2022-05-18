@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,7 +157,8 @@ class AssessmentsControllerTest {
     requirement.setValues(List.of(criterion));
     dimensionRequirement.setRequirements(List.of(requirement));
 
-    when(assessmentService.getAssessment(ASSESSMENT_ID, PRINCIPAL)).thenReturn(assessment);
+    when(assessmentService.getAssessment(ASSESSMENT_ID, Optional.of(PRINCIPAL)))
+        .thenReturn(assessment);
 
     mockMvc
         .perform(get(ASSESSMENTS_PATH + "/{assessmentID}", ASSESSMENT_ID)

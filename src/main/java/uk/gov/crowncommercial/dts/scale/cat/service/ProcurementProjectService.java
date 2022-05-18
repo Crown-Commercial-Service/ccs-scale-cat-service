@@ -24,10 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
@@ -261,16 +258,18 @@ public class ProcurementProjectService {
         .getEmailRecipient().stream().map(e -> e.getUser().getId()).collect(Collectors.toSet());
     final Set<String> combinedIds = new HashSet<>();
     combinedIds.add(projectOwner.getId());
-    combinedIds.addAll(teamIds);
     combinedIds.addAll(emailRecipientIds);
 
     // update user
     // TODO Add only valid users
-    updateProjectUserMapping(dbProject, teamIds, principal);
-
+    var existingList = updateProjectUserMapping(dbProject, teamIds, principal);
+    var finalTeamIds =
+        teamIds.stream().filter(e -> existingList.stream().filter(ProjectUserMapping::isDeleted)
+            .noneMatch(k -> e.equals(k.getUserId()))).collect(Collectors.toSet());
+    combinedIds.addAll(finalTeamIds);
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
-        .map(i -> getTeamMember(i, teamIds, emailRecipientIds, projectOwner.getId()))
+        .map(i -> getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId()))
         .filter(Objects::nonNull).collect(Collectors.toSet());
   }
 
@@ -337,6 +336,28 @@ public class ProcurementProjectService {
     addProjectUserMapping(jaggaerUserId, dbProject, principal);
     return getProjectTeamMembers(projectId, principal).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
+  }
+
+  public void deleteTeamMember(final Integer projectId, final String userId,
+      final String principal) {
+
+    log.debug("delete Project Team member");
+    var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+        .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
+        .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
+    var jaggaerUserId = jaggaerUser.getUserId();
+    var jaggaerProject = jaggaerService.getProject(dbProject.getExternalProjectId());
+
+    // Get Project Owner
+    var projectOwner = jaggaerProject.getTender().getProjectOwner();
+    if (projectOwner.getId().equals(jaggaerUserId)) {
+      log.warn("Unable to delete project owner");
+      throw new IllegalArgumentException("Unable to delete project owner");
+    }
+
+    // update team member as deleted
+    deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
   }
 
   /**
@@ -501,13 +522,40 @@ public class ProcurementProjectService {
 
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
       final String principal) {
-    var projectUserMapping = ProjectUserMapping.builder().project(project).userId(jaggaerUserId)
-        .timestamps(createTimestamps(principal)).build();
-    retryableTendersDBDelegate.save(projectUserMapping);
+    retryableTendersDBDelegate
+        .findProjectUserMappingByProjectIdAndUserId(project.getId(), jaggaerUserId)
+        .ifPresentOrElse(userMapping -> {
+          // Update existed deleted userMapping
+          userMapping.setDeleted(false);
+          userMapping
+              .setTimestamps(Timestamps.updateTimestamps(userMapping.getTimestamps(), principal));
+          retryableTendersDBDelegate.save(userMapping);
+        }, () -> retryableTendersDBDelegate.save(ProjectUserMapping.builder().project(project)
+            .userId(jaggaerUserId).timestamps(createTimestamps(principal)).build()));
   }
 
-  private void updateProjectUserMapping(final ProcurementProject project, final Set<String> teamIds,
-      final String principal) {
+  private void deleteProjectUserMapping(final String jaggaerUserId,
+      final ProcurementProject project, final String principal) {
+
+    var projectUserMapping = retryableTendersDBDelegate
+        .findProjectUserMappingByProjectIdAndUserId(project.getId(), jaggaerUserId);
+
+    if (!projectUserMapping.isPresent()) {
+      var error = String.format("ProjectUserMapping not found for project %s and userId %s",
+          project.getId(), jaggaerUserId);
+      log.warn(error);
+      throw new ResourceNotFoundException(error);
+    }
+
+    var userMapping = projectUserMapping.get();
+    userMapping.setDeleted(true);
+    userMapping.setTimestamps(Timestamps.updateTimestamps(userMapping.getTimestamps(), principal));
+    retryableTendersDBDelegate.save(userMapping);
+  }
+
+  private Set<ProjectUserMapping> updateProjectUserMapping(final ProcurementProject project,
+      final Set<String> teamIds, final String principal) {
+
     var existingMappings =
         retryableTendersDBDelegate.findProjectUserMappingByProjectId(project.getId());
     var addMappingList = new ArrayList<ProjectUserMapping>();
@@ -521,16 +569,35 @@ public class ProcurementProjectService {
             .timestamps(createTimestamps(principal)).build());
       }
     }
-    // remove any users, who are not in users list
-    var deleteMappingList = existingMappings.stream()
+
+    // update deleted users, who are not in users list
+    addMappingList.addAll(existingMappings.stream()
         .filter(projectUserMapping -> !teamIds.contains(projectUserMapping.getUserId()))
-        .collect(Collectors.toList());
+        .map(m -> ProjectUserMapping.builder().id(m.getId()).project(m.getProject())
+            .userId(m.getUserId()).deleted(true)
+            .timestamps(Timestamps.updateTimestamps(m.getTimestamps(), principal)).build())
+        .collect(Collectors.toList()));
 
     if (!CollectionUtils.isEmpty(addMappingList)) {
-      retryableTendersDBDelegate.saveAll(addMappingList);
+      existingMappings.addAll(retryableTendersDBDelegate.saveAll(addMappingList));
     }
-    if (!CollectionUtils.isEmpty(deleteMappingList)) {
-      retryableTendersDBDelegate.deleteAll(deleteMappingList);
+    return existingMappings;
+  }
+
+  /**
+   *
+   * @param projectId
+   * @param tenderStatus
+   * @param principal
+   */
+  public void closeProcurementProject(final Integer projectId, final TenderStatus tenderStatus,
+      final String principal) {
+    var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    if (CollectionUtils.isEmpty(procurementEvents)) {
+      log.info("No events exists for this project");
+    } else {
+      procurementEventService.terminateEvent(projectId,
+          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal);
     }
   }
 }

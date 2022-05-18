@@ -222,11 +222,12 @@ public class AssessmentService {
    * Get Assessment details.
    *
    * @param assessmentId
-   * @param principal
+   * @param principalForScores if provided, scores will be calculated and persisted for this user
    * @return
    */
   @Transactional
-  public Assessment getAssessment(final Integer assessmentId, final String principal) {
+  public Assessment getAssessment(final Integer assessmentId,
+      final Optional<String> principalForScores) {
 
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
         .orElseThrow(() -> new ResourceNotFoundException(
@@ -279,14 +280,14 @@ public class AssessmentService {
 
     }).collect(Collectors.toList());
 
-    // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    var scores = assessmentCalculationService.calculateSupplierScores(assessment, principal);
-
     var response = new Assessment();
+    // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
+    principalForScores.ifPresent(principal -> response
+        .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
+
     response.setExternalToolId(assessment.getTool().getExternalToolId());
     response.setAssessmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
-    response.setScores(scores);
     response.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
 
     return response;
@@ -481,12 +482,11 @@ public class AssessmentService {
                 && s.getRequirementTaxon().getRequirement().getId().equals(requirementId))
             .findFirst();
 
-    if (assessmentSelection.isPresent()) {
-      assessment.getAssessmentSelections().remove(assessmentSelection.get());
-    } else {
+    if (!assessmentSelection.isPresent()) {
       throw new ResourceNotFoundException(format(ERR_MSG_FMT_ASSESSMENT_SELECTION_NOT_FOUND,
           assessmentId, dimensionId, requirementId));
     }
+    assessment.getAssessmentSelections().remove(assessmentSelection.get());
   }
 
   /**
@@ -545,11 +545,9 @@ public class AssessmentService {
   private void validateAssessmentDimensionWeightings(final AssessmentEntity assessment) {
 
     // Verify the total weightings of all dimensions will be <= 100 after persisting
-    var totalDimensionWeightings = assessment.getDimensionWeightings().stream().map(dw -> {
-      return dw.getWeightingPercentage();
-    }).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-
+    var totalDimensionWeightings = assessment.getDimensionWeightings().stream()
+        .map(AssessmentDimensionWeighting::getWeightingPercentage)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
     if (totalDimensionWeightings.intValue() > 100) {
       throw new ValidationException(ERR_MSG_DIMENSION_WEIGHT_TOTAL);
@@ -782,7 +780,7 @@ public class AssessmentService {
    * @param optionGroups
    * @return
    */
-  private List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
+  List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
       final List<DimensionOptionGroups> optionGroups) {
 
     log.debug("  - traverse up taxon tree :" + assessmentTaxon.getName());
@@ -910,9 +908,8 @@ public class AssessmentService {
           .findAny();
       if (req.isPresent()) {
         return true;
-      } else {
-        return isRequirementInAssessmentTaxon(requirement, as.getAssessmentTaxons());
       }
+      return isRequirementInAssessmentTaxon(requirement, as.getAssessmentTaxons());
     }).findAny();
 
     return match.isPresent();

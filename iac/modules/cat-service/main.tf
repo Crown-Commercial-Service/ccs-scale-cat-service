@@ -99,8 +99,12 @@ data "aws_ssm_parameter" "jaggaer_rpa_buyer_password_temp" {
 }
 
 # Document Upload Service
-data "aws_ssm_parameter" "document_upload_service_base_url" {
-  name = "/cat/${var.environment}/document-upload-service-base-url"
+data "aws_ssm_parameter" "document_upload_service_upload_base_url" {
+  name = "/cat/${var.environment}/document-upload-service-upload-base-url"
+}
+
+data "aws_ssm_parameter" "document_upload_service_get_base_url" {
+  name = "/cat/${var.environment}/document-upload-service-get-base-url"
 }
 
 data "aws_ssm_parameter" "document_upload_service_api_key" {
@@ -155,11 +159,12 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.rpa.buyer-pwd" : data.aws_ssm_parameter.jaggaer_rpa_buyer_password_temp.value
 
     # Document Upload Service
-    "config.external.document-upload.base-url" : data.aws_ssm_parameter.document_upload_service_base_url.value
-    "config.external.document-upload.api-key" : data.aws_ssm_parameter.document_upload_service_api_key.value
-    "config.external.document-upload.aws-access-key-id" : data.aws_ssm_parameter.document_upload_service_aws_access_key_id.value
-    "config.external.document-upload.aws-secret-key" : data.aws_ssm_parameter.document_upload_service_aws_secret_key.value
-    "config.external.document-upload.s3-bucket" : data.aws_ssm_parameter.document_upload_service_s3_bucket.value
+    "config.external.doc-upload-svc.upload-base-url" : data.aws_ssm_parameter.document_upload_service_upload_base_url.value
+    "config.external.doc-upload-svc.get-base-url" : data.aws_ssm_parameter.document_upload_service_get_base_url.value
+    "config.external.doc-upload-svc.api-key" : data.aws_ssm_parameter.document_upload_service_api_key.value
+    "config.external.doc-upload-svc.aws-access-key-id" : data.aws_ssm_parameter.document_upload_service_aws_access_key_id.value
+    "config.external.doc-upload-svc.aws-secret-key" : data.aws_ssm_parameter.document_upload_service_aws_secret_key.value
+    "config.external.doc-upload-svc.s3-bucket" : data.aws_ssm_parameter.document_upload_service_s3_bucket.value
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"
