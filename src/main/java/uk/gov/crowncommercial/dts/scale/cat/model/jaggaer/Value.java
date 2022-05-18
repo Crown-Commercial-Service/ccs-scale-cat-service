@@ -1,0 +1,13 @@
+package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
+
+import lombok.Builder;
+import lombok.extern.jackson.Jacksonized;
+
+@lombok.Value
+@Builder
+@Jacksonized
+public class Value {
+    String value;
+    String id;
+    String secureToken;
+}
