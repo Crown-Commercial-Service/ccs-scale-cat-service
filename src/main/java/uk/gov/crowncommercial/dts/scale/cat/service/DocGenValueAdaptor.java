@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 
@@ -9,6 +10,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 @FunctionalInterface
 public interface DocGenValueAdaptor {
 
-  String getValue(ProcurementEvent event, ConcurrentMap<String, Object> requestCache);
+  List<String> getValue(ProcurementEvent event, ConcurrentMap<String, Object> requestCache);
 
 }

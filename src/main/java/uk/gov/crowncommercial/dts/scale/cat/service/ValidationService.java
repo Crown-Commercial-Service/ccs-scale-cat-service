@@ -1,9 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.NOT_ALLOWED_EVENTS_AFTER_AWARD;
+
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
@@ -26,6 +31,8 @@ public class ValidationService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AssessmentService assessmentService;
   private final Clock clock;
+  private static final Integer AWARD_STATUS = 500;
+  private static final Integer ABANDONED_STATUS = 1500;
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -107,7 +114,7 @@ public class ValidationService {
       }
 
       // Verify the assessment with that ID already exists
-      assessmentService.getAssessment(updateEvent.getAssessmentId(), principal);
+      assessmentService.getAssessment(updateEvent.getAssessmentId(), Optional.empty());
     }
 
     if (updateEvent.getAssessmentSupplierTarget() != null) {
@@ -146,7 +153,24 @@ public class ValidationService {
     if (!endDate.isAfter(now)) {
       throw new IllegalArgumentException("endDate must be in the future");
     }
+  }
 
+  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+    // cannot move to a TBD event from any other event
+    if (ViewEventType.TBD.name().equals(eventType.getValue())) {
+      throw new IllegalArgumentException(
+          "Cannot update an existing event type of '" + eventType.getValue() + "'");
+    }
+    // If event status is AWARD, you cannot do (DA, FC, EOI, RFI)
+    if (exportRfxResponse.getRfxSetting().getStatusCode().equals(AWARD_STATUS)
+        && NOT_ALLOWED_EVENTS_AFTER_AWARD.contains(eventType)) {
+      throw new IllegalArgumentException(
+          "Cannot update an existing event type of '" + eventType.getValue() + "'");
+    }
+  }
+
+  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+    return exportRfxResponse.getRfxSetting().getStatusCode().equals(ABANDONED_STATUS);
   }
 
 }

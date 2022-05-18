@@ -91,7 +91,7 @@ config:
         950: COMPLETE
         1400: COMPLETE
         1100: WITHDRAWN
-        1500: CANCELLED
+        1000: CANCELLED
 
       rfxStatusAndEventTypeToTenderStatus:
         0:
@@ -131,7 +131,7 @@ config:
             COMPLETE
           DA:
             COMPLETE
-        1500:
+        1000:
           RFI:
             CANCELLED
           EOI:
@@ -182,7 +182,9 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
-        
+      invalidateEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/invalidate
+          
       # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:
         profileManagementEndpoint: /esop/jint/services/ProfileManagement
@@ -229,7 +231,7 @@ config:
       getOrganisation:
         uriTemplate: /organisation-profiles/{org-id}
         
-    documentUpload:
+    docUploadSvc:
       timeoutDuration: 10
       awsRegion: eu-west-2
       documentStateProcessing: processing

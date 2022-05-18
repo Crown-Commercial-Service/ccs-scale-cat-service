@@ -7,12 +7,6 @@ import lombok.extern.jackson.Jacksonized;
 @Value
 @Builder
 @Jacksonized
-public class Supplier {
-
-  CompanyData companyData;
-  Integer invited;
-  String status;
-  Integer statusCode;
-  Integer supplierStatus;
-
+public class SupplierResponseCounters {
+    LastRound lastRound;
 }

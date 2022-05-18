@@ -16,4 +16,6 @@ public class ExportRfxResponse {
   SuppliersList suppliersList;
   BuyerAttachmentsList buyerAttachmentsList;
   SellerAttachmentsList sellerAttachmentsList;
+  TechEnvelope techEnvelope;
+  SupplierResponseCounters supplierResponseCounters;
 }
