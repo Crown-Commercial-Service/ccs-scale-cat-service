@@ -1108,9 +1108,6 @@ public class ProcurementEventService {
   public SupplierAttachmentResponse getSupplierAttachmentResponse(
       final Integer procId, final String eventId, final String supplierId) {
 
-    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
-
     // Determine Jaggaer supplier id
     var supplierOrganisationMapping =
         retryableTendersDBDelegate
@@ -1119,16 +1116,6 @@ public class ProcurementEventService {
                 () ->
                     new IllegalArgumentException(
                         String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
-
-    Optional<Supplier> requestSupplier =
-        exportRfxResponse.getSuppliersList().getSupplier().stream()
-            .filter(
-                supplier ->
-                    supplier
-                        .getCompanyData()
-                        .getId()
-                        .equals(supplierOrganisationMapping.getExternalOrganisationId()))
-            .findFirst();
 
     List<SupplierAttachmentResponse> supplierAttachmentResponsesList =
         getSupplierAttachmentResponses(
@@ -1145,12 +1132,16 @@ public class ProcurementEventService {
     var supplierList = exportRfxResponse.getSuppliersList();
 
     if (ObjectUtils.allNotNull(
-        exportRfxResponse.getOffersList(), exportRfxResponse.getOffersList())) {
+        exportRfxResponse.getOffersList(), exportRfxResponse.getOffersList().getOffer())) {
 
       List<Offer> offersWithParameters =
           getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
-      List<SupplierAttachmentResponse> supplierAttachmentResponsesList = new ArrayList<>();
 
+      if (CollectionUtils.isEmpty(offersWithParameters)) {
+        throw new ResourceNotFoundException(
+            String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+      }
+      List<SupplierAttachmentResponse> supplierAttachmentResponsesList = new ArrayList<>();
       for (Offer offer : offersWithParameters) {
         var supplierAttachmentResponse =
             SupplierAttachmentResponse.builder()
@@ -1180,7 +1171,7 @@ public class ProcurementEventService {
       }
       return supplierAttachmentResponsesList;
     } else {
-      throw new IllegalArgumentException(
+      throw new ResourceNotFoundException(
           String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
     }
   }
@@ -1199,7 +1190,7 @@ public class ProcurementEventService {
                               offer.getTechOffer(),
                               offer.getTechOffer().getParameterResponses(),
                               offer.getTechOffer().getParameterResponses().getParameter()))
-                          && offer.getTechOffer().getParameterResponses().getParameter().size() > 0)
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
               .collect(Collectors.toList());
 
     } else {
@@ -1214,7 +1205,7 @@ public class ProcurementEventService {
                               offer.getTechOffer().getParameterResponses().getParameter()))
                           && (offer.getSupplierId().intValue()
                               == Integer.valueOf(supplierId).intValue())
-                          && offer.getTechOffer().getParameterResponses().getParameter().size() > 0)
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
               .collect(Collectors.toList());
     }
     return offersWithParameters;
@@ -1244,14 +1235,12 @@ public class ProcurementEventService {
     return parameter.getValues().getValue().stream()
         .map(
             value -> {
-              AttachmentInfo attachmentInfo =
-                  AttachmentInfo.builder()
+                 return  AttachmentInfo.builder()
                       .parameterId(parameter.getParameterId())
                       .attachmentId(value.getId())
                       .attachmentName(value.getValue())
                       .secureToken(value.getSecureToken())
                       .build();
-              return attachmentInfo;
             })
         .collect(Collectors.toList());
   }

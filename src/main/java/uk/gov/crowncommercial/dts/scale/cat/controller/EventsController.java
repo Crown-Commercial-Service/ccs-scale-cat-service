@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +37,6 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Validated
 public class EventsController extends AbstractRestController {
 
-  public static final String UNDERSCORE_STRING = "_";
   private final ProcurementEventService procurementEventService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
@@ -289,28 +289,7 @@ public class EventsController extends AbstractRestController {
           for (SupplierAttachmentResponse supplierAttachmentResponse :
               supplierAttachmentResponseList) {
 
-            List<ParameterInfo> parameterInfoList =
-                supplierAttachmentResponse.getParameterInfoList();
-           
-            for (ParameterInfo parameterInfo : parameterInfoList) {
-              for (AttachmentInfo attachmentInfo : parameterInfo.getAttachmentInfoList()) {
-                var docAttachment =
-                    procurementEventService.downloadAttachment(
-                        Integer.parseInt(attachmentInfo.getAttachmentId()),
-                        attachmentInfo.getAttachmentName());
-
-                var filename=String.join("_",supplierAttachmentResponse.getSupplierId().toString(),attachmentInfo.getParameterId().toString(),supplierAttachmentResponse.getSupplierName());
-                filename=filename.concat(attachmentInfo.getAttachmentName().substring(attachmentInfo.getAttachmentName().indexOf('.')));
-
-                zipEntry =
-                    new ZipEntry(filename);
-
-                zipOutputStream.putNextEntry(zipEntry);
-                try (InputStream is = new ByteArrayInputStream(docAttachment.getData())) {
-                  IOUtils.copy(is, zipOutputStream);
-                }
-              }
-            }
+            zipEntry = getZipEntryForSupplierResponse(supplierAttachmentResponse, zipOutputStream, zipEntry);
           }
           // set zip size in response
           response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
@@ -321,10 +300,10 @@ public class EventsController extends AbstractRestController {
         };
 
     response.setContentType("application/zip");
-    response.setHeader("Content-Disposition",
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=" + String.format(EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME,eventId) + ".zip");
-    response.addHeader("Pragma", "no-cache");
-    response.addHeader("Expires", "0");
+    response.addHeader(HttpHeaders.PRAGMA, "no-cache");
+    response.addHeader(HttpHeaders.EXPIRES, "0");
     return ResponseEntity.ok(streamResponseBody);
 
   }
@@ -344,28 +323,7 @@ public class EventsController extends AbstractRestController {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
       ZipEntry zipEntry = null;
 
-      List<ParameterInfo> parameterInfoList =
-              supplierAttachmentResponse.getParameterInfoList();
-
-      for (ParameterInfo parameterInfo : parameterInfoList) {
-        for (AttachmentInfo attachmentInfo : parameterInfo.getAttachmentInfoList()) {
-          var docAttachment =
-                  procurementEventService.downloadAttachment(
-                          Integer.parseInt(attachmentInfo.getAttachmentId()),
-                          attachmentInfo.getAttachmentName());
-
-          var filename=String.join("_",supplierAttachmentResponse.getSupplierId().toString(),attachmentInfo.getParameterId().toString(),supplierAttachmentResponse.getSupplierName());
-          filename=filename.concat(attachmentInfo.getAttachmentName().substring(attachmentInfo.getAttachmentName().indexOf('.')));
-
-          zipEntry =
-                  new ZipEntry(filename);
-
-          zipOutputStream.putNextEntry(zipEntry);
-          try (InputStream is = new ByteArrayInputStream(docAttachment.getData())) {
-            IOUtils.copy(is, zipOutputStream);
-          }
-        }
-      }
+      zipEntry = getZipEntryForSupplierResponse(supplierAttachmentResponse, zipOutputStream, zipEntry);
       // set zip size in response
       response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
       if (zipOutputStream != null) {
@@ -373,11 +331,46 @@ public class EventsController extends AbstractRestController {
       }
     };
     response.setContentType("application/zip");
-    response.setHeader("Content-Disposition",
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=" + String.format(EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME,eventId,supplierAttachmentResponse.getSupplierName().replaceAll("\\s","_")) + ".zip");
-    response.addHeader("Pragma", "no-cache");
-    response.addHeader("Expires", "0");
+    response.addHeader(HttpHeaders.PRAGMA, "no-cache");
+    response.addHeader(HttpHeaders.EXPIRES, "0");
     return ResponseEntity.ok(streamResponseBody);
 
+  }
+
+  private ZipEntry getZipEntryForSupplierResponse(SupplierAttachmentResponse supplierAttachmentResponse, ZipOutputStream zipOutputStream, ZipEntry zipEntry) throws IOException {
+    List<ParameterInfo> parameterInfoList =
+            supplierAttachmentResponse.getParameterInfoList();
+
+    for (ParameterInfo parameterInfo : parameterInfoList) {
+      for (AttachmentInfo attachmentInfo : parameterInfo.getAttachmentInfoList()) {
+        var docAttachment  =
+                procurementEventService.downloadAttachment(
+                        Integer.parseInt(attachmentInfo.getAttachmentId()),
+                        attachmentInfo.getAttachmentName());
+
+        var filename =
+            String.join(
+                "_",
+                supplierAttachmentResponse.getSupplierId().toString(),
+                attachmentInfo.getParameterId().toString(),
+                supplierAttachmentResponse.getSupplierName());
+        filename =
+            filename.concat(
+                attachmentInfo
+                    .getAttachmentName()
+                    .substring(attachmentInfo.getAttachmentName().indexOf('.')));
+
+        zipEntry =
+                new ZipEntry(filename);
+
+        zipOutputStream.putNextEntry(zipEntry);
+        try (InputStream is = new ByteArrayInputStream(docAttachment.getData())) {
+          IOUtils.copy(is, zipOutputStream);
+        }
+      }
+    }
+    return zipEntry;
   }
 }
