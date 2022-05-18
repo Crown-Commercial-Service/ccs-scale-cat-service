@@ -33,6 +33,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.Procur
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
@@ -1695,5 +1696,123 @@ class ProcurementEventServiceTest {
     var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
     return rfxSetting;
+  }
+
+  @Test
+  void testSupplierResponsesAttachment() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
+
+    var rfxResponse = new ExportRfxResponse();
+    var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
+
+    var supplier =
+        Supplier.builder()
+            .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
+            .status("Replied")
+            .build();
+    var supplier2 =
+        Supplier.builder()
+            .companyData(CompanyData.builder().id(5684805).name("Test Supplier 2").build())
+            .status("Not Replied")
+            .build();
+
+    var supplierResponseCounters =
+        SupplierResponseCounters.builder()
+            .lastRound(
+                LastRound.builder()
+                    .numSupplInvited(8)
+                    .numSupplResponded(1)
+                    .numSupplNotResponded(7)
+                    .build())
+            .build();
+
+    var organisationMapping =
+        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+
+    var organisationMappingSecondSupplier =
+        OrganisationMapping.builder().organisationId("GB-COH-05684805").build();
+
+    rfxResponse.setRfxSetting(rfxSetting);
+    rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
+    rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
+    rfxResponse.setOffersList(getOfferList());
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(event);
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(organisationMappingRepo.findByExternalOrganisationId(supplier.getCompanyData().getId()))
+        .thenReturn(Optional.of(organisationMapping));
+    when(organisationMappingRepo.findByExternalOrganisationId(supplier2.getCompanyData().getId()))
+        .thenReturn(Optional.of(organisationMappingSecondSupplier));
+
+    var supplierAttachmentResponseList =
+        procurementEventService.getSupplierAttachmentResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
+
+    // Verify
+    assertNotNull(supplierAttachmentResponseList);
+
+    assertEquals(1, supplierAttachmentResponseList.size());
+    assertEquals(5684804, supplierAttachmentResponseList.get(0).getSupplierId());
+    assertNotNull(supplierAttachmentResponseList.get(0).getParameterInfoList());
+    assertEquals(
+        6666, supplierAttachmentResponseList.get(0).getParameterInfoList().get(0).getParameterId());
+    assertNotNull(
+        supplierAttachmentResponseList
+            .get(0)
+            .getParameterInfoList()
+            .get(0)
+            .getAttachmentInfoList());
+    assertEquals(
+        "123456",
+        supplierAttachmentResponseList
+            .get(0)
+            .getParameterInfoList()
+            .get(0)
+            .getAttachmentInfoList()
+            .get(0)
+            .getAttachmentId());
+    assertEquals(
+        "TestFileName",
+        supplierAttachmentResponseList
+            .get(0)
+            .getParameterInfoList()
+            .get(0)
+            .getAttachmentInfoList()
+            .get(0)
+            .getAttachmentName());
+    assertEquals(
+        "SAMPLETOKEN",
+        supplierAttachmentResponseList
+            .get(0)
+            .getParameterInfoList()
+            .get(0)
+            .getAttachmentInfoList()
+            .get(0)
+            .getSecureToken());
+  }
+
+  private OffersList getOfferList() {
+
+    Value testValue =
+        Value.builder().id("123456").value("TestFileName").secureToken("SAMPLETOKEN").build();
+    Values values = Values.builder().value(List.of(testValue)).build();
+    Parameter parameter =
+        Parameter.builder()
+            .parameterId(6666)
+            .parameterType("ATTACH")
+            .values(values)
+            .questionType("LOCAL")
+            .build();
+    ParameterResponses parameterResponses =
+        ParameterResponses.builder().parameter(List.of(parameter)).build();
+    TechOffer techOffer = TechOffer.builder().parameterResponses(parameterResponses).build();
+    Offer offer = Offer.builder().supplierId(5684804).techOffer(techOffer).build();
+    OffersList offersList = OffersList.builder().offer(List.of(offer)).build();
+
+    return offersList;
   }
 }

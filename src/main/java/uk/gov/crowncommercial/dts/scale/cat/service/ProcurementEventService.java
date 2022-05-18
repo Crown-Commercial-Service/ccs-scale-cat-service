@@ -1,22 +1,14 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.util.Objects.requireNonNullElse;
-import static java.util.Optional.ofNullable;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.transaction.Transactional;
-import javax.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -25,17 +17,27 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
-import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
-import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import javax.transaction.Transactional;
+import javax.validation.ValidationException;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.Objects.requireNonNullElse;
+import static java.util.Optional.ofNullable;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 
 /**
  *
@@ -59,6 +61,9 @@ public class ProcurementEventService {
   public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
       "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
   public static final String REPLIED = "Replied";
+
+  private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
+          "No Supplier Responses found for the given event '%s'  ";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -1082,4 +1087,164 @@ public class ProcurementEventService {
     updateStatusAndDates(principal, event);
   }
 
+  /**
+   * @param procId
+   * @param eventId
+   * @return
+   */
+  @Transactional
+  public List<SupplierAttachmentResponse> getSupplierAttachmentResponses(
+      final Integer procId, final String eventId) {
+    return getSupplierAttachmentResponses(procId, eventId, null);
+  }
+
+  /**
+   * @param procId
+   * @param eventId
+   * @param supplierId
+   * @return
+   */
+  @Transactional
+  public SupplierAttachmentResponse getSupplierAttachmentResponse(
+      final Integer procId, final String eventId, final String supplierId) {
+
+    // Determine Jaggaer supplier id
+    var supplierOrganisationMapping =
+        retryableTendersDBDelegate
+            .findOrganisationMappingByOrganisationId(supplierId)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
+
+    List<SupplierAttachmentResponse> supplierAttachmentResponsesList =
+        getSupplierAttachmentResponses(
+            procId, eventId, supplierOrganisationMapping.getExternalOrganisationId().toString());
+
+    return supplierAttachmentResponsesList.stream().findFirst().get();
+  }
+
+  private List<SupplierAttachmentResponse> getSupplierAttachmentResponses(
+      final Integer procId, final String eventId, final String supplierId) {
+
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var supplierList = exportRfxResponse.getSuppliersList();
+
+    if (ObjectUtils.allNotNull(
+        exportRfxResponse.getOffersList(), exportRfxResponse.getOffersList().getOffer())) {
+
+      List<Offer> offersWithParameters =
+          getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
+
+      if (CollectionUtils.isEmpty(offersWithParameters)) {
+        throw new ResourceNotFoundException(
+            String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+      }
+      List<SupplierAttachmentResponse> supplierAttachmentResponsesList = new ArrayList<>();
+      for (Offer offer : offersWithParameters) {
+        var supplierAttachmentResponse =
+            SupplierAttachmentResponse.builder()
+                .supplierId(offer.getSupplierId())
+                .supplierName(getSupplierName(supplierList, offer.getSupplierId()))
+                .parameterInfoList(new ArrayList<>())
+                .build();
+        var attachmentParametersOnly =
+            offer.getTechOffer().getParameterResponses().getParameter().stream()
+                .filter(parameter -> parameter.getParameterType().equals("ATTACH"))
+                .collect(Collectors.toList());
+
+        var parameterInfoList =
+            attachmentParametersOnly.stream()
+                .map(
+                    parameter -> {
+                      return ParameterInfo.builder()
+                          .parameterId(parameter.getParameterId())
+                          .attachmentInfoList(getAttachmentInfoForParameter(parameter))
+                          .build();
+                    })
+                .collect(Collectors.toList());
+
+        supplierAttachmentResponse.getParameterInfoList().addAll(parameterInfoList);
+
+        supplierAttachmentResponsesList.add(supplierAttachmentResponse);
+      }
+      return supplierAttachmentResponsesList;
+    } else {
+      throw new ResourceNotFoundException(
+          String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+    }
+  }
+
+  private List<Offer> getOffersWithSupplierAttachments(
+      ExportRfxResponse exportRfxResponse, String supplierId) {
+    List<Offer> offersWithParameters;
+
+    if (Objects.isNull(supplierId)) {
+      offersWithParameters =
+          exportRfxResponse.getOffersList().getOffer().stream()
+              .filter(
+                  offer ->
+                      (ObjectUtils.allNotNull(
+                              offer,
+                              offer.getTechOffer(),
+                              offer.getTechOffer().getParameterResponses(),
+                              offer.getTechOffer().getParameterResponses().getParameter()))
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+              .collect(Collectors.toList());
+
+    } else {
+      offersWithParameters =
+          exportRfxResponse.getOffersList().getOffer().stream()
+              .filter(
+                  offer ->
+                      (ObjectUtils.allNotNull(
+                              offer,
+                              offer.getTechOffer(),
+                              offer.getTechOffer().getParameterResponses(),
+                              offer.getTechOffer().getParameterResponses().getParameter()))
+                          && (offer.getSupplierId().intValue()
+                              == Integer.valueOf(supplierId).intValue())
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+              .collect(Collectors.toList());
+    }
+    return offersWithParameters;
+  }
+
+  public DocumentAttachment downloadAttachment(final Integer attachmentId, final String fileName) {
+
+    var docAttachment = jaggaerService.getDocument(attachmentId, fileName);
+    return DocumentAttachment.builder()
+        .fileName(fileName)
+        .contentType(docAttachment.getContentType())
+        .data(docAttachment.getData())
+        .build();
+  }
+
+  private String getSupplierName(SuppliersList supplierList, Integer supplierId) {
+    Optional<String> supplierName =
+        supplierList.getSupplier().stream()
+            .filter(supplier -> supplier.getCompanyData().getId().equals(supplierId))
+            .map(supplier -> supplier.getCompanyData().getName())
+            .findFirst();
+    return supplierName.isPresent() ? supplierName.get() : null;
+  }
+
+  private List<AttachmentInfo> getAttachmentInfoForParameter(Parameter parameter) {
+
+    return parameter.getValues().getValue().stream()
+        .map(
+            value -> {
+                 return  AttachmentInfo.builder()
+                      .parameterId(parameter.getParameterId())
+                      .attachmentId(value.getId())
+                      .attachmentName(value.getValue())
+                      .secureToken(value.getSecureToken())
+                      .build();
+            })
+        .collect(Collectors.toList());
+  }
 }
+
+
+
