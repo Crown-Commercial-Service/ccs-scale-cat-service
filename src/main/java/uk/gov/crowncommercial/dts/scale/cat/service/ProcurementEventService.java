@@ -31,6 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 import javax.transaction.Transactional;
 import javax.validation.ValidationException;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -559,37 +560,68 @@ public class ProcurementEventService {
    * @return
    */
   @Transactional
-  public ResponseSummary getSupplierResponses(final Integer procId,
-      final String eventId) {
+  public ResponseSummary getSupplierResponses(final Integer procId, final String eventId) {
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+
     final var lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
-    var responseSummary = new ResponseSummary()
-        .invited(lastRound.getNumSupplInvited())
-        .responded(lastRound.getNumSupplResponded())
-        .noResponse(lastRound.getNumSupplNotResponded())
-        .declined(lastRound.getNumSupplRespDeclined());
-    return responseSummary.responders( exportRfxResponse.getSuppliersList().getSupplier().stream()
-        .map(this::convertToResponders).collect(Collectors.toList()));
+    var responseSummary =
+        new ResponseSummary()
+            .invited(lastRound.getNumSupplInvited())
+            .responded(lastRound.getNumSupplResponded())
+            .noResponse(lastRound.getNumSupplNotResponded())
+            .declined(lastRound.getNumSupplRespDeclined());
+
+    return responseSummary.responders(
+        exportRfxResponse.getSuppliersList().getSupplier().stream()
+            .map(
+                supplier ->
+                    this.convertToResponders(
+                        supplier,
+                        getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)))
+            .collect(Collectors.toList()));
   }
 
+  private OffsetDateTime getSupplierResponseDate(OffersList offerList, Supplier supplier) {
+    if (Objects.nonNull(offerList) && Objects.nonNull(offerList.getOffer())) {
+      Optional<Offer> respondedSupplier =
+          offerList.getOffer().stream()
+              .filter(offer -> offer.getSupplierId().equals(supplier.getCompanyData().getId()))
+              .findFirst();
+      if (respondedSupplier.isPresent()) {
+        return respondedSupplier.get().getLastUpdateDate();
+      }
+    }
+    // it won' happen in ideal case but to be safe side
+    return null;
+  }
 
-  private Responders convertToResponders(final Supplier supplier) {
-    var organisationMapping = retryableTendersDBDelegate
-        .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
-        .orElseThrow(() -> new TendersDBDataException(
-            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
+  private Responders convertToResponders(
+      final Supplier supplier, OffsetDateTime respondedDateTime) {
+    var organisationMapping =
+        retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
+            .orElseThrow(
+                () ->
+                    new TendersDBDataException(
+                        String.format(
+                            ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
 
     return new Responders()
-        .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
-            .name(supplier.getCompanyData().getName()))
-        .responseState(REPLIED.equals(supplier.getStatus().trim()) ?
-            Responders.ResponseStateEnum.SUBMITTED :
-            Responders.ResponseStateEnum.DRAFT)
-        .readState(REPLIED.equals(supplier.getStatus().trim()) ?
-            Responders.ReadStateEnum.READ :
-            Responders.ReadStateEnum.UNREAD);
+        .supplier(
+            new OrganizationReference1()
+                .id(organisationMapping.getOrganisationId())
+                .name(supplier.getCompanyData().getName()))
+        .responseState(
+            REPLIED.equals(supplier.getStatus().trim())
+                ? Responders.ResponseStateEnum.SUBMITTED
+                : Responders.ResponseStateEnum.DRAFT)
+        .readState(
+            REPLIED.equals(supplier.getStatus().trim())
+                ? Responders.ReadStateEnum.READ
+                : Responders.ReadStateEnum.UNREAD)
+        .responseDate(null != respondedDateTime ? respondedDateTime.toLocalDate() : null);
   }
 
   /**
