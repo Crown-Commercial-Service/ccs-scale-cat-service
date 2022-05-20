@@ -1246,7 +1246,7 @@ class ProcurementEventServiceTest {
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("To Be Evaluated").build();
+            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("To be Evaluated").build();
 
     var procurementProject =
             ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
