@@ -40,8 +40,10 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
+  private static final String SUPPLIERS_FOR_DIMENSION_PATH = ASSESSMENTS_PATH+"/tools/{tool-id}/dimensions/{dimension-id}/data";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer ASSESSMENT_ID = 1;
+  private static final Integer LOT_ID = 1;
   private static final Integer DIMENSION_ID = 1;
   private static final String DIMENSION_NAME = "Security Clearance";
   private static final CriteriaSelectionType CRITERIA_TYPE = CriteriaSelectionType.SELECT;
@@ -204,6 +206,19 @@ class AssessmentsControllerTest {
 
     verify(assessmentService, times(1)).createAssessment(assessment, PRINCIPAL);
   }
+
+  @Test
+  void testGetSupplierByToolIdAndDimensionId_200_OK() throws Exception {
+
+    var suppliers = "1,2,3,4";
+
+    when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID))
+        .thenReturn(suppliers);
+
+    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH,TOOL_ID,DIMENSION_ID).with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+        .andDo(print()).andExpect(status().isOk());
+  }
+
 
   private List<CriterionDefinition> getTestCriteria() {
     var criterion = new CriterionDefinition();

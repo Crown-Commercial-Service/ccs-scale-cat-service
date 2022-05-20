@@ -4,12 +4,15 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.List;
 import java.util.Optional;
 import javax.validation.ValidationException;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
@@ -24,6 +27,7 @@ public class AssessmentsController extends AbstractRestController {
       "requirement-id in body [%s] does not match requirement-id in path [%s]";
 
   private static final String ERR_EMPTY_BODY = "Empty body";
+  private static final String NOT_SUPPORTED_MIME_TYPE  = "Mime Type application/json not supported";
 
   private final AssessmentService assessmentService;
 
@@ -118,5 +122,25 @@ public class AssessmentsController extends AbstractRestController {
     assessmentService.deleteRequirement(assessmentId, dimensionId, requirementId, principal);
 
     return Constants.OK_MSG;
+  }
+
+  @GetMapping("/tools/{tool-id}/dimensions/{dimension-id}/data")
+  public ResponseEntity<String> getSupplierDimensionData(
+      final @PathVariable("tool-id") Integer toolId,
+      final @PathVariable("dimension-id") Integer dimensionId,
+      @RequestParam(name = "mime-type", required = false, defaultValue = "text/csv")
+          String mimeType, @RequestParam(name = "lot-id", required = false) Integer lotId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getSupplierDimensionData invoked on behalf of principal: {}", principal);
+
+    if (mimeType.equals(APPLICATION_JSON_VALUE)) {
+      throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
+    }
+
+    var suppliers = assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
+
+    return ResponseEntity.ok(suppliers);
   }
 }

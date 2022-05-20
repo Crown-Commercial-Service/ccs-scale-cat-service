@@ -36,6 +36,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentResultRepo assessmentResultRepo;
   private final ProjectUserMappingRepo projectUserMappingRepo;
   private final SupplierSelectionRepo supplierSelectionRepo;
+  private final SupplierSubmissionRepo supplierSubmissionRepo;
 
   @TendersDBRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -184,6 +185,18 @@ public class RetryableTendersDBDelegate {
   @TendersDBRetryable
   public Optional<AssessmentTaxon> findAssessmentTaxonById(final Integer assessmentTaxonId) {
     return assessmentTaxonRepo.findById(assessmentTaxonId);
+  }
+
+  @TendersDBRetryable
+  public Set<Integer> findAssessmentTaxonByToolIdAndDimensionId(final Integer assessmentToolId,
+      final Integer dimensionId) {
+    return supplierSubmissionRepo.findSupplierByToolIdAndDimensionId(assessmentToolId, dimensionId);
+  }
+
+  @TendersDBRetryable public Set<Integer> findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
+      final Integer assessmentToolId, final Integer dimensionId, final Integer lotId) {
+    return supplierSubmissionRepo.findSupplierByToolIdAndDimensionIdAndLotId(assessmentToolId,
+        dimensionId, lotId);
   }
 
   @TendersDBRetryable
