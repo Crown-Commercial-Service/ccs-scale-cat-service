@@ -1,11 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -1030,7 +1029,7 @@ class ProcurementEventServiceTest {
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
     rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
-
+    rfxResponse.setOffersList(getOfferList());
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
@@ -1045,10 +1044,58 @@ class ProcurementEventServiceTest {
 
     assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
     assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
+    assertEquals(LocalDate.now(),response.getResponders().get(0).getResponseDate());
     assertEquals(1, response.getResponded());
     assertEquals(8, response.getInvited());
     assertEquals(7, response.getNoResponse());
   }
+
+  @Test
+  void testSupplierResponsesWithNoOffers() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(PROC_EVENT_ID);
+    event.setEventType(ORIGINAL_EVENT_TYPE);
+
+    var rfxResponse = new ExportRfxResponse();
+    var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
+
+    var supplier = Supplier.builder()
+            .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
+            .status("Replied").build();
+    var supplierResponseCounters = SupplierResponseCounters.builder()
+            .lastRound(LastRound.builder()
+                    .numSupplInvited(8)
+                    .numSupplResponded(1)
+                    .numSupplNotResponded(7)
+                    .build())
+            .build();
+    var organisationMapping =
+            OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+    rfxResponse.setRfxSetting(rfxSetting);
+    rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
+    rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+            .thenReturn(event);
+    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(organisationMappingRepo.findByExternalOrganisationId(supplier.getCompanyData().getId()))
+            .thenReturn(Optional.of(organisationMapping));
+
+    var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
+
+    // Verify
+    assertNotNull( response);
+
+    assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
+    assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
+    assertNull(response.getResponders().get(0).getResponseDate());
+    assertEquals(1, response.getResponded());
+    assertEquals(8, response.getInvited());
+    assertEquals(7, response.getNoResponse());
+  }
+
 
   void testTerminateEvent() throws Exception {
 
@@ -1810,7 +1857,7 @@ class ProcurementEventServiceTest {
     ParameterResponses parameterResponses =
         ParameterResponses.builder().parameter(List.of(parameter)).build();
     TechOffer techOffer = TechOffer.builder().parameterResponses(parameterResponses).build();
-    Offer offer = Offer.builder().supplierId(5684804).techOffer(techOffer).build();
+    Offer offer = Offer.builder().supplierId(5684804).lastUpdateDate(OffsetDateTime.now()).techOffer(techOffer).build();
     OffersList offersList = OffersList.builder().offer(List.of(offer)).build();
 
     return offersList;
