@@ -19,9 +19,11 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicati
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
@@ -122,14 +124,15 @@ public class CriteriaService {
       log.error("'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
+    validationService.validateMinMaxValue(requirement.getOcds().getMaxValue(),
+        requirement.getOcds().getMinValue(), requirement.getNonOCDS().getQuestionType());
     requirement.getNonOCDS()
         .updateOptions(options.stream()
             .map(questionNonOCDSOptions -> Requirement.Option.builder()
                 .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                     : questionNonOCDSOptions.getSelected())
                 .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-                .tableDefinition(questionNonOCDSOptions.getTableDefinition())
-                .build())
+                .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
             .collect(Collectors.toList()));
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)

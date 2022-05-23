@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -185,5 +186,14 @@ class ValidationServiceTest {
         .validateUpdateEventAssessment(updateEvent, procurementEvent, PRINCIPAL));
 
     assertEquals("assessmentSupplierTarget must be 1 for event type DAA", ex.getMessage());
+  }
+
+  @Test
+  void testValidationMinMaxValue() {
+    var maxValue = BigDecimal.valueOf(100);
+    var minValue = BigDecimal.valueOf(107);
+    var ex = assertThrows(ValidationException.class,
+        () -> validationService.validateMinMaxValue(maxValue, minValue, "Monetary"));
+    assertEquals("Max Value 100 should greater than Min value 107", ex.getMessage());
   }
 }
