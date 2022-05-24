@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -127,7 +128,8 @@ public class AssessmentsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
-  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
+  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {
+      MediaType.TEXT_PLAIN_VALUE})
   public void getSupplierDimensionData(final @PathVariable("tool-id") Integer toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
       @RequestParam(name = "lot-id", required = false) Integer lotId,

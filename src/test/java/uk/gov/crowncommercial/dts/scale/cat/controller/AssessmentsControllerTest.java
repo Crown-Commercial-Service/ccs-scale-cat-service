@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
@@ -215,8 +216,9 @@ class AssessmentsControllerTest {
     when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID))
         .thenReturn(suppliers);
 
-    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH+LOT_ID,TOOL_ID,DIMENSION_ID).with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().isOk());
+    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH + LOT_ID, TOOL_ID, DIMENSION_ID).with(
+            validJwtReqPostProcessor).accept(MediaType.TEXT_PLAIN_VALUE)).andDo(print())
+        .andExpect(status().isOk());
   }
 
 
