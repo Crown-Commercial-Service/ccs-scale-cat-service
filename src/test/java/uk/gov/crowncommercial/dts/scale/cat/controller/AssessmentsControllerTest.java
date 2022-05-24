@@ -40,7 +40,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
-  private static final String SUPPLIERS_FOR_DIMENSION_PATH = ASSESSMENTS_PATH+"/tools/{tool-id}/dimensions/{dimension-id}/data";
+  private static final String SUPPLIERS_FOR_DIMENSION_PATH = ASSESSMENTS_PATH+"/tools/{tool-id}/dimensions/{dimension-id}/data?lot-id=";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer ASSESSMENT_ID = 1;
   private static final Integer LOT_ID = 1;
@@ -215,7 +215,7 @@ class AssessmentsControllerTest {
     when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID))
         .thenReturn(suppliers);
 
-    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH,TOOL_ID,DIMENSION_ID).with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH+LOT_ID,TOOL_ID,DIMENSION_ID).with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk());
   }
 
