@@ -177,9 +177,8 @@ public class ValidationService {
     return exportRfxResponse.getRfxSetting().getStatusCode().equals(ABANDONED_STATUS);
   }
 
-  public void validateMinMaxValue(BigDecimal maxValue, BigDecimal minValue, String questionType) {
-    if (ObjectUtils.allNotNull(maxValue, minValue, questionType)
-        && questionType.contentEquals(MONETARY_QUESTION_TYPE) && maxValue.compareTo(minValue) < 0) {
+  public void validateMinMaxValue(BigDecimal maxValue, BigDecimal minValue) {
+    if (ObjectUtils.allNotNull(maxValue, minValue) && maxValue.compareTo(minValue) < 0) {
       throw new ValidationException(
           String.format("Max Value %s should greater than Min value %s", maxValue, minValue));
     }

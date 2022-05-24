@@ -193,7 +193,7 @@ class ValidationServiceTest {
     var maxValue = BigDecimal.valueOf(100);
     var minValue = BigDecimal.valueOf(107);
     var ex = assertThrows(ValidationException.class,
-        () -> validationService.validateMinMaxValue(maxValue, minValue, "Monetary"));
+        () -> validationService.validateMinMaxValue(maxValue, minValue));
     assertEquals("Max Value 100 should greater than Min value 107", ex.getMessage());
   }
 }
