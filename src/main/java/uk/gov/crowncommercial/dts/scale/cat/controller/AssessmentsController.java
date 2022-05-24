@@ -127,14 +127,13 @@ public class AssessmentsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
-  @GetMapping("/tools/{tool-id}/dimensions/{dimension-id}/data")
-  public void getSupplierDimensionData(
-      final @PathVariable("tool-id") Integer toolId,
+  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
+  public void getSupplierDimensionData(final @PathVariable("tool-id") Integer toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
-      @RequestParam(name = "mime-type", required = false, defaultValue = "text/csv")
-          String mimeType, @RequestParam(name = "lot-id", required = false) Integer lotId,
-      HttpServletResponse response, final JwtAuthenticationToken authentication)
-      throws IOException {
+      @RequestParam(name = "lot-id", required = false) Integer lotId,
+      @RequestHeader(name = "mime-type", required = false, defaultValue = "text/csv")
+          String mimeType, HttpServletResponse response,
+      final JwtAuthenticationToken authentication) throws IOException {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSupplierDimensionData invoked on behalf of principal: {}", principal);
@@ -144,12 +143,11 @@ public class AssessmentsController extends AbstractRestController {
     }
 
     var suppliers = assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
-    response.setContentType("text/csv");
+    response.setContentType(mimeType);
     response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
         "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId));
     response.addHeader(HttpHeaders.PRAGMA, "no-cache");
     response.addHeader(HttpHeaders.EXPIRES, "0");
     response.getWriter().write(suppliers);
-
   }
 }
