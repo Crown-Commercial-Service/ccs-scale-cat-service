@@ -4,6 +4,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -21,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
@@ -124,8 +126,8 @@ public class CriteriaService {
       log.error("'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
-    validationService.validateMinMaxValue(requirement.getOcds().getMaxValue(),
-        requirement.getOcds().getMinValue(), requirement.getNonOCDS().getQuestionType());
+
+    validateQuestionsValues(group, requirement);
     requirement.getNonOCDS()
         .updateOptions(options.stream()
             .map(questionNonOCDSOptions -> Requirement.Option.builder()
@@ -161,6 +163,34 @@ public class CriteriaService {
     retryableTendersDBDelegate.save(event);
 
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
+  }
+
+  public void validateQuestionsValues(RequirementGroup group, Requirement requirement) {
+    if (Objects.equals(group.getOcds().getId(), "Group 21")) {
+      BigDecimal maxValue;
+      BigDecimal minValue;
+      if (Objects.nonNull(requirement.getNonOCDS().getDependency())) {
+        // Min value check
+        String questionId = requirement.getNonOCDS().getDependency().getRelationships().stream()
+            .map(Relationships::getDependentOnID).findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Max value question not found"));
+        var maxValueRequirement = group.getOcds().getRequirements().stream()
+            .filter(question -> Objects.equals(question.getOcds().getId(), questionId)).findFirst()
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
+        maxValue = maxValueRequirement.getOcds().getMaxValue();
+        minValue = requirement.getOcds().getMinValue();
+      } else {
+        // Max value check
+        var minValueRequirement = group.getOcds().getRequirements().stream()
+            .filter(question -> !question.getOcds().getId().equals(requirement.getOcds().getId()))
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Min value question not found"));
+        maxValue = requirement.getOcds().getMaxValue();
+        minValue = minValueRequirement.getOcds().getMinValue();
+      }
+      validationService.validateMinMaxValue(maxValue, minValue);
+    }
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
@@ -297,4 +327,5 @@ public class CriteriaService {
     }
     return questionNonOCDSOptions;
   }
+
 }
