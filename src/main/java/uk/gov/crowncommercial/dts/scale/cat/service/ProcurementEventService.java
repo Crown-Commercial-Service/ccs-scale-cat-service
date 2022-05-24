@@ -414,7 +414,7 @@ public class ProcurementEventService {
    * @param eventId
    * @return
    */
-  public Collection<OrganizationReference> getSuppliers(final Integer procId,
+  public EventSuppliers getSuppliers(final Integer procId,
       final String eventId) {
 
     log.debug("Get suppliers for event '{}'", eventId);
@@ -438,28 +438,28 @@ public class ProcurementEventService {
    *
    * @param procId
    * @param eventId
-   * @param organisationReferences
+   * @param eventSuppliers
    * @param overwrite if <code>true</code> will replace the list of suppliers, otherwise it will
    *        just add to the list.
    * @return
    */
-  public Collection<OrganizationReference> addSuppliers(final Integer procId, final String eventId,
-      final Collection<OrganizationReference> organisationReferences, final boolean overwrite,
+  public EventSuppliers addSuppliers(final Integer procId, final String eventId,
+      final EventSuppliers eventSuppliers, final boolean overwrite,
       final String principal) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
-    var supplierOrgIds = organisationReferences.stream().map(OrganizationReference::getId)
+    var supplierOrgIds = eventSuppliers.getSuppliers().stream().map(OrganizationReference1::getId)
         .collect(Collectors.toSet());
 
     var supplierOrgMappings =
         retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
 
     // Validate suppliers exist in Organisation Mapping Table
-    if (supplierOrgMappings.size() != organisationReferences.size()) {
+    if (supplierOrgMappings.size() != eventSuppliers.getSuppliers().size()) {
 
       var missingSuppliers = new ArrayList<String>();
-      organisationReferences.stream().forEach(or -> {
+      eventSuppliers.getSuppliers().stream().forEach(or -> {
         if (supplierOrgMappings.parallelStream()
             .filter(som -> som.getOrganisationId().equals(or.getId())).findFirst().isEmpty()) {
           missingSuppliers.add(or.getId());
@@ -473,6 +473,9 @@ public class ProcurementEventService {
       }
     }
 
+    if (eventSuppliers.getJustification() != null) {
+      event.setSupplierSelectionJustification(eventSuppliers.getJustification());
+    }
     /*
      * If Event is a Tenders DB only type, suppliers are stored in the Tenders DB only, otherwise
      * they are stored in Jaggaer.
@@ -492,7 +495,7 @@ public class ProcurementEventService {
       addSuppliersToJaggaer(event, supplierOrgMappings, overwrite);
     }
 
-    return organisationReferences;
+    return eventSuppliers;
   }
 
   /**
@@ -904,9 +907,9 @@ public class ProcurementEventService {
    * @param event
    * @return
    */
-  private List<OrganizationReference> getSuppliersFromTendersDB(final ProcurementEvent event) {
+  private EventSuppliers getSuppliersFromTendersDB(final ProcurementEvent event) {
 
-    return event.getCapabilityAssessmentSuppliers().stream().map(s -> {
+    var suppliers = event.getCapabilityAssessmentSuppliers().stream().map(s -> {
 
       // TODO - Conclave does not work with DUNS numbers (which we have in organisation_mapping
       // table)
@@ -917,11 +920,13 @@ public class ProcurementEventService {
       // () -> new ResourceNotFoundException(String.format(SUPPLIER_NOT_FOUND_CONCLAVE_MSG,
       // s.getOrganisationMapping().getOrganisationId())));
 
-      var orgRef = new OrganizationReference();
+      var orgRef = new OrganizationReference1();
       orgRef.setId(String.valueOf(s.getOrganisationMapping().getOrganisationId()));
       // orgRef.setName(org.getIdentifier().getLegalName()); // see comment above
       return orgRef;
     }).collect(Collectors.toList());
+    return new EventSuppliers().suppliers(suppliers)
+        .justification(event.getSupplierSelectionJustification());
   }
 
   /**
@@ -930,10 +935,10 @@ public class ProcurementEventService {
    * @param event
    * @return
    */
-  private List<OrganizationReference> getSuppliersFromJaggaer(final ProcurementEvent event) {
+  private EventSuppliers getSuppliersFromJaggaer(final ProcurementEvent event) {
 
     var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
-    var orgs = new ArrayList<OrganizationReference>();
+    var orgs = new ArrayList<OrganizationReference1>();
 
     if (existingRfx.getSuppliersList().getSupplier() != null) {
       existingRfx.getSuppliersList().getSupplier().stream().map(s -> {
@@ -943,14 +948,15 @@ public class ProcurementEventService {
             .orElseThrow(() -> new IllegalArgumentException(
                 String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId())));
 
-        var org = new OrganizationReference();
+        var org = new OrganizationReference1();
         org.setId(String.valueOf(om.getOrganisationId()));
         org.setName(s.getCompanyData().getName());
         return org;
       }).forEachOrdered(orgs::add);
     }
 
-    return orgs;
+    return new EventSuppliers().suppliers(orgs)
+        .justification(event.getSupplierSelectionJustification());
   }
 
   /**

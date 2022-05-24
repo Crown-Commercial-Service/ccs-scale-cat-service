@@ -216,17 +216,19 @@ class EventsControllerTest {
   @Test
   void getSuppliers_200_OK() throws Exception {
 
-    var org = new OrganizationReference();
+    var response = new EventSuppliers();
+    var org = new OrganizationReference1();
     org.setId(SUPPLIER_ID);
-    Collection<OrganizationReference> orgs = Arrays.asList(org);
-    when(procurementEventService.getSuppliers(PROC_PROJECT_ID, EVENT_ID)).thenReturn(orgs);
+    List<OrganizationReference1> orgs = Arrays.asList(org);
+    response.suppliers(orgs);
+    when(procurementEventService.getSuppliers(PROC_PROJECT_ID, EVENT_ID)).thenReturn(response);
 
     mockMvc
         .perform(get(EVENTS_PATH + "/{eventID}/suppliers", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
-        .andExpect(jsonPath("$[0].id").value(SUPPLIER_ID));
+        .andExpect(jsonPath("$.suppliers.[0].id").value(SUPPLIER_ID));
 
     verify(procurementEventService, times(1)).getSuppliers(PROC_PROJECT_ID, EVENT_ID);
   }
@@ -234,17 +236,21 @@ class EventsControllerTest {
   @Test
   void addSupplier_200_OK() throws Exception {
 
-    var org = new OrganizationReference();
+    var eventSuppliers = new EventSuppliers();
+    var org = new OrganizationReference1();
     org.setId(SUPPLIER_ID);
-    when(procurementEventService.addSuppliers(PROC_PROJECT_ID, EVENT_ID, List.of(org), false,
-        PRINCIPAL)).thenReturn(List.of(org));
+    List<OrganizationReference1> orgs = Arrays.asList(org);
+    eventSuppliers.suppliers(orgs);
+
+    when(procurementEventService.addSuppliers(PROC_PROJECT_ID, EVENT_ID, eventSuppliers, false,
+        PRINCIPAL)).thenReturn(eventSuppliers);
 
     mockMvc
         .perform(post(EVENTS_PATH + "/{eventID}/suppliers", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(List.of(org))))
+            .content(objectMapper.writeValueAsString(eventSuppliers)))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").value(SUPPLIER_ID));
+        .andExpect(jsonPath("$.suppliers.[0].id").value(SUPPLIER_ID));
   }
 
   @Test
