@@ -145,7 +145,7 @@ public class AssessmentsController extends AbstractRestController {
     }
 
     var suppliers = assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
-    response.setContentType(mimeType);
+    response.setContentType(MediaType.valueOf("text/csv").getType());
     response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
         "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId));
     response.addHeader(HttpHeaders.PRAGMA, "no-cache");
