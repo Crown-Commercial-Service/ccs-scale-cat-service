@@ -117,6 +117,8 @@ public class CriteriaService {
         .filter(r -> Objects.equals(r.getOcds().getId(), questionId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
+    validateProjectDurationQuestion(question, group, requirement);
+
     var options = question.getNonOCDS().getOptions();
     if (options == null) {
       log.error("'options' property not included in request for event {}", eventId);
@@ -158,6 +160,14 @@ public class CriteriaService {
     retryableTendersDBDelegate.save(event);
 
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
+  }
+
+  private void validateProjectDurationQuestion(Question question, RequirementGroup group, Requirement requirement) {
+    if( Objects.equals(group.getOcds().getId(),"Group 10") && Objects.equals(requirement.getOcds().getId(),"Question 12") &&
+            requirement.getOcds().getId().equalsIgnoreCase(question.getOCDS().getId())
+                     ){
+       validationService.validateProjectDuration(question.getNonOCDS().getOptions());
+    }
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {

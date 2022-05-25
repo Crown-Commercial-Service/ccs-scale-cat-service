@@ -1,21 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
@@ -25,6 +17,13 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Service layer tests
@@ -155,5 +154,42 @@ class CriteriaServiceTest {
     InputStream is = classloader.getResourceAsStream(filePath);
     TemplateCriteria criteria = objectMapper.readValue(is, TemplateCriteria.class);
     return DataTemplate.builder().criteria(Arrays.asList(criteria)).build();
+  }
+
+
+  @Test
+  void testValidateProjectDurationQuestionWhenItInvalid() throws Exception {
+
+
+    var procurementProject = ProcurementProject.builder()
+            .caNumber(AGREEMENT_NO).build();
+
+    ProcurementEvent event = new ProcurementEvent();
+    event.setProject(procurementProject);
+    event.setProcurementTemplatePayload(
+            getDataTemplate("criteria-service-test-data/criteria-invalid-project-duration.json"));
+
+    Requirement1 questionOCDS = new Requirement1();
+    questionOCDS.setId("Question 12");
+    questionOCDS.setDataType(DataType.STRING);
+    questionOCDS.setTitle("Enter how long you think the project will run for");
+
+    QuestionNonOCDS questionNonOCDS = new QuestionNonOCDS();
+    questionNonOCDS.setQuestionType(QuestionType.DURATION);
+    QuestionNonOCDSOptions option = new QuestionNonOCDSOptions();
+    option.setValue("P3Y6M10D");
+    option.setSelected(true);
+    questionNonOCDS.setOptions(Arrays.asList(option));
+
+    Question question = new Question();
+    question.setOCDS(questionOCDS);
+    question.setNonOCDS(questionNonOCDS);
+
+    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
+
+    criteriaService.putQuestionOptionDetails(question, PROJECT_ID, EVENT_OCID, "Criterion 3",
+                    "Group 10", "Question 12");
+
+    verify(validationService, times(1)).validateProjectDuration(List.of(option));
   }
 }
