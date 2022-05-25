@@ -93,11 +93,6 @@ data "aws_ssm_parameter" "jaggaer_rpa_encryption_iv" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-rpa-encryption-iv"
 }
 
-# TEMPORARY - to be replaced by RPA creds management
-data "aws_ssm_parameter" "jaggaer_rpa_buyer_password_temp" {
-  name = "/cat/${var.environment}/jaggaer-rpa-buyer-password-temp"
-}
-
 # Document Upload Service
 data "aws_ssm_parameter" "document_upload_service_upload_base_url" {
   name = "/cat/${var.environment}/document-upload-service-upload-base-url"
@@ -154,9 +149,6 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.rpa.user-pwd" : data.aws_ssm_parameter.jaggaer_rpa_password.value
     "config.external.jaggaer.rpa.encrpytion-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
     "config.external.jaggaer.rpa.encrpytion-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
-
-    # RPA-TEMP
-    "config.external.jaggaer.rpa.buyer-pwd" : data.aws_ssm_parameter.jaggaer_rpa_buyer_password_temp.value
 
     # Document Upload Service
     "config.external.doc-upload-svc.upload-base-url" : data.aws_ssm_parameter.document_upload_service_upload_base_url.value

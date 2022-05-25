@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-
 import lombok.Data;
 
 /**
@@ -19,7 +18,6 @@ public class RPAAPIConfig {
   private String accessUrl;
   private String userName;
   private String userPwd;
-  private String buyerPwd;
 
   // RPA input keys
   private String source;
