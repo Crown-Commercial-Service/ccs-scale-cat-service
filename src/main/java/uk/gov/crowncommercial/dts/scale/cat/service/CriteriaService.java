@@ -43,6 +43,7 @@ public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
+  private static final String MONETARY_QUESTION_TYPE = "Monetary";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -168,7 +169,7 @@ public class CriteriaService {
 
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
       List<QuestionNonOCDSOptions> options) {
-    if (Objects.equals(group.getOcds().getId(), "Group 21")) {
+    if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
       String maxValue;
       String minValue;
       if (Objects.nonNull(requirement.getNonOCDS().getDependency())) {

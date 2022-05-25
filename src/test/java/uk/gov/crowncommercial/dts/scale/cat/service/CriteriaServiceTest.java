@@ -158,7 +158,7 @@ class CriteriaServiceTest {
 
   @Test
   void testValidateMinMaxContractValues() {
-    var minRNonocd = Requirement.NonOCDS.builder()
+    var minRNonocd = Requirement.NonOCDS.builder().questionType("Monetary")
         .options(Arrays.asList(Option.builder().value("107").build()))
         .dependency(Dependency.builder()
             .relationships(
@@ -168,7 +168,7 @@ class CriteriaServiceTest {
     var minROcd = Requirement.OCDS.builder().id("Question 2").build();
     var minRe = Requirement.builder().ocds(minROcd).nonOCDS(minRNonocd).build();
 
-    var maxRNonocd = Requirement.NonOCDS.builder()
+    var maxRNonocd = Requirement.NonOCDS.builder().questionType("Monetary")
         .options(Arrays.asList(Option.builder().value("100").build())).build();
     var maxROcd = Requirement.OCDS.builder().id("Question 1").build();
     var maxRe = Requirement.builder().ocds(maxROcd).nonOCDS(maxRNonocd).build();
