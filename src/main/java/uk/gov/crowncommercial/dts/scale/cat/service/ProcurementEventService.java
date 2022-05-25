@@ -109,14 +109,11 @@ public class ProcurementEventService {
     } else {
       //copy suppliers & close event
       var existingEvent = project.getProcurementEvents().stream().iterator().next();
+      terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED,
+          principal);
+
       var rfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
       suppliers = rfxResponse.getSuppliersList().getSupplier();
-      var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-          .get(rfxResponse.getRfxSetting().getStatusCode());
-      if (TenderStatus.ACTIVE == status) {
-        this.terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED,
-            principal);
-      }
     }
 
     // Set defaults if no values supplied
