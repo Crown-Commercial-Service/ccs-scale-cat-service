@@ -1,37 +1,36 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.time.Duration.ofSeconds;
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 
 /**
  *
@@ -123,6 +122,8 @@ public class CriteriaService {
         .filter(r -> Objects.equals(r.getOcds().getId(), questionId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
+    validateProjectDurationQuestion(question, group, requirement);
+
     var options = question.getNonOCDS().getOptions();
     if (options == null) {
       log.error("'options' property not included in request for event {}", eventId);
@@ -165,6 +166,15 @@ public class CriteriaService {
     retryableTendersDBDelegate.save(event);
 
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
+  }
+
+  private void validateProjectDurationQuestion(
+      Question question, RequirementGroup group, Requirement requirement) {
+    if (Objects.equals(group.getOcds().getId(), "Group 10")
+        && Objects.equals(requirement.getOcds().getId(), "Question 12")
+        && requirement.getOcds().getId().equalsIgnoreCase(question.getOCDS().getId())) {
+      validationService.validateProjectDuration(question.getNonOCDS().getOptions());
+    }
   }
 
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
@@ -342,5 +352,4 @@ public class CriteriaService {
     }
     return questionNonOCDSOptions;
   }
-
 }
