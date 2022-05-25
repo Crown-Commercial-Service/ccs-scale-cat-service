@@ -104,16 +104,20 @@ public class ProcurementEventService {
     List<Supplier> suppliers = null;
 
     // check any events before
-    var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
-    if (CollectionUtils.isEmpty(procurementEvents)) {
+    if (CollectionUtils.isEmpty(project.getProcurementEvents())) {
       log.info("No events exists for this project");
     } else {
-        //copy suppliers & close event
-        var existingEvent = procurementEvents.stream().iterator().next();
-        var exportRfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
-        suppliers = exportRfxResponse.getSuppliersList().getSupplier();
-        this.terminateEvent(projectId,existingEvent.getEventID(), TerminationType.CANCELLED, principal);
+      //copy suppliers & close event
+      var existingEvent = project.getProcurementEvents().stream().iterator().next();
+      var rfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
+      suppliers = rfxResponse.getSuppliersList().getSupplier();
+      var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+          .get(rfxResponse.getRfxSetting().getStatusCode());
+      if (TenderStatus.ACTIVE == status) {
+        this.terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED,
+            principal);
       }
+    }
 
     // Set defaults if no values supplied
     var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
