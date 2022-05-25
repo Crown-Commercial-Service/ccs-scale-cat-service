@@ -2,8 +2,12 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +18,10 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.ValidationException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Optional;
 
@@ -128,9 +135,9 @@ public class AssessmentsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
-  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {
-      "text/csv"})
-  public void getSupplierDimensionData(final @PathVariable("tool-id") Integer toolId,
+  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
+  public ResponseEntity<InputStreamResource> getSupplierDimensionData(
+      final @PathVariable("tool-id") Integer toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
       @RequestParam(name = "lot-id", required = false) Integer lotId,
       @RequestHeader(name = "mime-type", required = false, defaultValue = "text/csv")
@@ -144,12 +151,24 @@ public class AssessmentsController extends AbstractRestController {
       throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
     }
 
-    var suppliers = assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
-    response.setContentType("text/csv");
-    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-        "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId));
-    response.addHeader(HttpHeaders.PRAGMA, "no-cache");
-    response.addHeader(HttpHeaders.EXPIRES, "0");
-    response.getWriter().write(suppliers);
+    var supplierSubmissions =
+        assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
+
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (CSVPrinter csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
+      csvPrinter.printRecord("SupplierId");
+      for (Integer supplier : supplierSubmissions) {
+        csvPrinter.printRecord(supplier);
+      }
+      csvPrinter.flush();
+    } catch (IOException e) {
+      throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
+    }
+
+    return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId))
+        .contentType(MediaType.parseMediaType("text/csv"))
+        .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
   }
 }

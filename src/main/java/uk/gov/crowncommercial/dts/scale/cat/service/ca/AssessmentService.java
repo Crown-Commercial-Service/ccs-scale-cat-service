@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -937,8 +938,8 @@ public class AssessmentService {
    * @param lotId
    * @return
    */
-  public String getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
-      Integer lotId) {
+  public Set<Integer> getSupplierDimensionData(final Integer toolId,
+      final Integer dimensionId, Integer lotId) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
     var assessmentTool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
@@ -947,15 +948,16 @@ public class AssessmentService {
     var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
 
-    Set<Integer> supplierSubmissions ;
+    Set<Integer> supplierSubmissions;
 
     if (lotId != null && lotId > 0) {
-      supplierSubmissions = retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(assessmentTool.getId(),
-          dimension.getId(),lotId);
+      supplierSubmissions =
+          retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
+              assessmentTool.getId(), dimension.getId(), lotId);
     } else {
-      supplierSubmissions = retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionId(assessmentTool.getId(),
-          dimension.getId());
+      supplierSubmissions = retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionId(
+          assessmentTool.getId(), dimension.getId());
     }
-    return supplierSubmissions.stream().map(i -> i.toString()).collect(Collectors.joining(", "));
+return supplierSubmissions;
   }
 }

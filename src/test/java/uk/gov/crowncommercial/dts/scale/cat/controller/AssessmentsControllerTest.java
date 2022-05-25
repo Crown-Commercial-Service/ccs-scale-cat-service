@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -210,14 +211,13 @@ class AssessmentsControllerTest {
 
   @Test
   void testGetSupplierByToolIdAndDimensionId_200_OK() throws Exception {
-
-    var suppliers = "1,2,3,4";
+    var suppliers = new HashSet(Arrays.asList(1,2,3,4,5,6));
 
     when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID))
         .thenReturn(suppliers);
 
     mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH + LOT_ID, TOOL_ID, DIMENSION_ID).with(
-            validJwtReqPostProcessor).accept(MediaType.TEXT_PLAIN_VALUE)).andDo(print())
+            validJwtReqPostProcessor).accept(MediaType.parseMediaType("text/csv"))).andDo(print())
         .andExpect(status().isOk());
   }
 
