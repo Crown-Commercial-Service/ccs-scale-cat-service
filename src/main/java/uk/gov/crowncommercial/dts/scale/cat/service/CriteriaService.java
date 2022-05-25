@@ -164,11 +164,12 @@ public class CriteriaService {
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
   }
 
-  private void validateProjectDurationQuestion(Question question, RequirementGroup group, Requirement requirement) {
-    if( Objects.equals(group.getOcds().getId(),"Group 10") && Objects.equals(requirement.getOcds().getId(),"Question 12") &&
-            requirement.getOcds().getId().equalsIgnoreCase(question.getOCDS().getId())
-                     ){
-       validationService.validateProjectDuration(question.getNonOCDS().getOptions());
+  private void validateProjectDurationQuestion(
+      Question question, RequirementGroup group, Requirement requirement) {
+    if (Objects.equals(group.getOcds().getId(), "Group 10")
+        && Objects.equals(requirement.getOcds().getId(), "Question 12")
+        && requirement.getOcds().getId().equalsIgnoreCase(question.getOCDS().getId())) {
+      validationService.validateProjectDuration(question.getNonOCDS().getOptions());
     }
   }
 

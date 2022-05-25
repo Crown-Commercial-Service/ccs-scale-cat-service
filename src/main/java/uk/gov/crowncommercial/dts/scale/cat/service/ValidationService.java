@@ -37,7 +37,7 @@ public class ValidationService {
   private static final Integer AWARD_STATUS = 500;
   private static final Integer ABANDONED_STATUS = 1500;
 
-  private static final Period FOUR_YEAR_PERIOD=java.time.Period.parse("P4Y");
+  private static final Period FOUR_YEAR_PERIOD=Period.parse("P4Y");
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -179,8 +179,8 @@ public class ValidationService {
     if (!CollectionUtils.isEmpty(optionList) && optionList.size() == 1) {
       QuestionNonOCDSOptions projectDurationOptionValue = optionList.get(0);
       try {
-        Period projectDuration = Period.parse(projectDurationOptionValue.getValue());
-        LocalDate now = LocalDate.now();
+        var projectDuration = Period.parse(projectDurationOptionValue.getValue());
+        var now = LocalDate.now();
         if (now.plus(projectDuration).isAfter(now.plus(FOUR_YEAR_PERIOD))) {
           throw new ValidationException(String.format("Project Duration is greater than 4 years"));
         }
@@ -192,8 +192,7 @@ public class ValidationService {
                 projectDurationOptionValue.getValue()));
       }
     } else {
-      throw new ValidationException(
-          String.format("Invalid Input provided for Project Duration"));
+      throw new ValidationException(String.format("Invalid Input provided for Project Duration"));
     }
   }
 
