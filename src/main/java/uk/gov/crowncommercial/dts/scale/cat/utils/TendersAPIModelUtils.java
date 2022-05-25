@@ -29,7 +29,7 @@ public class TendersAPIModelUtils {
           "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed");
   private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval");
   private static final List<String> AWARD_STATUS_LIST= List.of("Awarded","Mixed Awarding");
-  private static final String TO_BE_EVALUATED_STATUS = "To Be Evaluated";
+  private static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";
   private static final String EVALUATED_STATUS = "Final Evaluation";
   private static final String CLOSED_STATUS = "CLOSED";
   private static final String COMPLETE_STATUS = "COMPLETE";
@@ -131,9 +131,9 @@ public class TendersAPIModelUtils {
 
     var tenderStatus = procurementEvent.getTenderStatus();
     if (Objects.nonNull(tenderStatus)) {
-      if (Objects.equals(COMPLETE_STATUS, tenderStatus)) {
+      if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {
         return DashboardStatus.COMPLETE;
-      } else if (Objects.equals(CLOSED_STATUS, tenderStatus)) {
+      } else if (tenderStatus.strip().equalsIgnoreCase(CLOSED_STATUS)) {
         return DashboardStatus.CLOSED;
       } else // No rfx, use procurement event status
       if (Constants.TENDER_DB_ONLY_EVENT_TYPES.contains(
@@ -160,20 +160,23 @@ public class TendersAPIModelUtils {
   }
 
   private DashboardStatus evaluateDashboardStatusFromRfxSettingStatus(RfxSetting rfxSetting) {
-      if (rfxSetting.getStatus().equals(TO_BE_EVALUATED_STATUS)) {
-        return DashboardStatus.TO_BE_EVALUATED;
+    if (rfxSetting.getStatus().strip().equalsIgnoreCase(TO_BE_EVALUATED_STATUS)) {
+      return DashboardStatus.TO_BE_EVALUATED;
+    } else {
+      if (EVALUATING_STATUS_LIST.stream()
+          .anyMatch(rfxSetting.getStatus().strip()::equalsIgnoreCase)) {
+        return DashboardStatus.EVALUATING;
+      } else if (EVALUATED_STATUS.equalsIgnoreCase(rfxSetting.getStatus().strip())) {
+        return DashboardStatus.EVALUATED;
       } else {
-        if (EVALUATING_STATUS_LIST.contains(rfxSetting.getStatus())) {
-          return DashboardStatus.EVALUATING;
-        } else if(EVALUATED_STATUS.equals(rfxSetting.getStatus())) {
-            return DashboardStatus.EVALUATED;
-        } else {
-            if(PRE_AWARD_STATUS_LIST.contains(rfxSetting.getStatus())){
-              return DashboardStatus.PRE_AWARD;
-            }else if(AWARD_STATUS_LIST.contains(rfxSetting.getStatus())) {
-              return DashboardStatus.AWARDED;
-            }
+        if (PRE_AWARD_STATUS_LIST.stream()
+            .anyMatch(rfxSetting.getStatus().strip()::equalsIgnoreCase)) {
+          return DashboardStatus.PRE_AWARD;
+        } else if (AWARD_STATUS_LIST.stream()
+            .anyMatch(rfxSetting.getStatus().strip()::equalsIgnoreCase)) {
+          return DashboardStatus.AWARDED;
         }
+      }
     }
     log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
