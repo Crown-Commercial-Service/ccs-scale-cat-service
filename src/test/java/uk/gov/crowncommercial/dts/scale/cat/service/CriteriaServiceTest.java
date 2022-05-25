@@ -159,26 +159,28 @@ class CriteriaServiceTest {
   @Test
   void testValidateMinMaxContractValues() {
     var minRNonocd = Requirement.NonOCDS.builder()
+        .options(Arrays.asList(Option.builder().value("107").build()))
         .dependency(Dependency.builder()
             .relationships(
                 Arrays.asList(Relationships.builder().dependentOnID("Question 1").build()))
             .build())
         .build();
-    var minROcd =
-        Requirement.OCDS.builder().minValue(BigDecimal.valueOf(107)).id("Question 2").build();
+    var minROcd = Requirement.OCDS.builder().id("Question 2").build();
     var minRe = Requirement.builder().ocds(minROcd).nonOCDS(minRNonocd).build();
 
-    var maxRNonocd = Requirement.NonOCDS.builder().build();
-    var maxROcd =
-        Requirement.OCDS.builder().maxValue(BigDecimal.valueOf(100)).id("Question 1").build();
+    var maxRNonocd = Requirement.NonOCDS.builder()
+        .options(Arrays.asList(Option.builder().value("100").build())).build();
+    var maxROcd = Requirement.OCDS.builder().id("Question 1").build();
     var maxRe = Requirement.builder().ocds(maxROcd).nonOCDS(maxRNonocd).build();
 
     var ocds = RequirementGroup.OCDS.builder().id("Group 21")
         .requirements(new HashSet<Requirement>(Arrays.asList(minRe, maxRe))).build();
     RequirementGroup group = RequirementGroup.builder().ocds(ocds).build();
 
-    criteriaService.validateQuestionsValues(group, minRe);
-    criteriaService.validateQuestionsValues(group, maxRe);
+    criteriaService.validateQuestionsValues(group, minRe,
+        Arrays.asList(new QuestionNonOCDSOptions().value("107")));
+    criteriaService.validateQuestionsValues(group, maxRe,
+        Arrays.asList(new QuestionNonOCDSOptions().value("100")));
     // Verify
     verify(validationService, times(2)).validateMinMaxValue(BigDecimal.valueOf(100),
         BigDecimal.valueOf(107));

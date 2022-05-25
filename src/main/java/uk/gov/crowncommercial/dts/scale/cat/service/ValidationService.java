@@ -179,8 +179,8 @@ public class ValidationService {
 
   public void validateMinMaxValue(BigDecimal maxValue, BigDecimal minValue) {
     if (ObjectUtils.allNotNull(maxValue, minValue) && maxValue.compareTo(minValue) < 0) {
-      throw new ValidationException(
-          String.format("Max Value %s should greater than Min value %s", maxValue, minValue));
+      throw new ValidationException(String
+          .format("Max Value %s should greater than or equal to Min value %s", maxValue, minValue));
     }
   }
 

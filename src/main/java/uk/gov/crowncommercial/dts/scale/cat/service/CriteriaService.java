@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -127,7 +128,7 @@ public class CriteriaService {
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
 
-    validateQuestionsValues(group, requirement);
+    validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
         .updateOptions(options.stream()
             .map(questionNonOCDSOptions -> Requirement.Option.builder()
@@ -165,10 +166,11 @@ public class CriteriaService {
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
   }
 
-  public void validateQuestionsValues(RequirementGroup group, Requirement requirement) {
+  public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
+      List<QuestionNonOCDSOptions> options) {
     if (Objects.equals(group.getOcds().getId(), "Group 21")) {
-      BigDecimal maxValue;
-      BigDecimal minValue;
+      String maxValue;
+      String minValue;
       if (Objects.nonNull(requirement.getNonOCDS().getDependency())) {
         // Min value check
         String questionId = requirement.getNonOCDS().getDependency().getRelationships().stream()
@@ -178,19 +180,31 @@ public class CriteriaService {
             .filter(question -> Objects.equals(question.getOcds().getId(), questionId)).findFirst()
             .orElseThrow(
                 () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
-        maxValue = maxValueRequirement.getOcds().getMaxValue();
-        minValue = requirement.getOcds().getMinValue();
+        maxValue = getOptionsValue(maxValueRequirement);
+        minValue = options.stream().findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Requested Value should not be null"))
+            .getValue();
       } else {
         // Max value check
         var minValueRequirement = group.getOcds().getRequirements().stream()
             .filter(question -> !question.getOcds().getId().equals(requirement.getOcds().getId()))
             .findFirst()
             .orElseThrow(() -> new ResourceNotFoundException("Min value question not found"));
-        maxValue = requirement.getOcds().getMaxValue();
-        minValue = minValueRequirement.getOcds().getMinValue();
+        maxValue = options.stream().findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Requested Value should not be null"))
+            .getValue();
+        minValue = getOptionsValue(minValueRequirement);
       }
-      validationService.validateMinMaxValue(maxValue, minValue);
+      if (ObjectUtils.allNotNull(maxValue, minValue)) {
+        validationService.validateMinMaxValue(new BigDecimal(maxValue), new BigDecimal(minValue));
+      }
     }
+  }
+
+  private String getOptionsValue(Requirement requirement) {
+    var option = requirement.getNonOCDS().getOptions().stream().findFirst()
+        .orElseThrow(() -> new ResourceNotFoundException("Option value not found"));
+    return option.getValue();
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
