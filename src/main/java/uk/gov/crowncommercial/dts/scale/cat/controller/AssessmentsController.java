@@ -129,7 +129,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {
-      MediaType.TEXT_PLAIN_VALUE})
+      "text/csv"})
   public void getSupplierDimensionData(final @PathVariable("tool-id") Integer toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
       @RequestParam(name = "lot-id", required = false) Integer lotId,
@@ -145,7 +145,7 @@ public class AssessmentsController extends AbstractRestController {
     }
 
     var suppliers = assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
-    response.setContentType(MediaType.valueOf("text/csv").getType());
+    response.setContentType("text/csv");
     response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
         "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId));
     response.addHeader(HttpHeaders.PRAGMA, "no-cache");
