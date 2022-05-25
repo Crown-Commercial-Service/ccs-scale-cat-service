@@ -97,6 +97,9 @@ public class ProcurementEvent {
   @Column(name = "procurement_template_payload", insertable = false, updatable = false)
   String procurementTemplatePayloadRaw;
 
+  @Column(name = "supplier_selection_justification")
+  String supplierSelectionJustification;
+
   @ToString.Exclude
   @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
       orphanRemoval = true)
