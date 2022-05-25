@@ -87,7 +87,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/suppliers")
-  public Collection<OrganizationReference> getSuppliers(
+  public EventSuppliers getSuppliers(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
       final JwtAuthenticationToken authentication) {
 
@@ -98,15 +98,15 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping("/{eventID}/suppliers")
-  public Collection<OrganizationReference> addSupplier(@PathVariable("procID") final Integer procId,
+  public EventSuppliers addSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
-      @RequestBody final Collection<OrganizationReference> organizationReferences,
+      @RequestBody final EventSuppliers eventSuppliers,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.addSuppliers(procId, eventId, organizationReferences, false,
+    return procurementEventService.addSuppliers(procId, eventId, eventSuppliers, false,
         principal);
   }
 

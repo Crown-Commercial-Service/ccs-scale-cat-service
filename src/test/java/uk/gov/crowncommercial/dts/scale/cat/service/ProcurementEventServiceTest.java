@@ -682,16 +682,19 @@ class ProcurementEventServiceTest {
     var response = procurementEventService.getSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
-    assertEquals(1, response.size());
-    assertEquals(SUPPLIER_ID, response.stream().findFirst().get().getId());
+    assertEquals(1, response.getSuppliers().size());
+    assertEquals(SUPPLIER_ID, response.getSuppliers().stream().findFirst().get().getId());
 
   }
 
   @Test
   void testAddSuppliersToJaggaer() throws Exception {
 
-    var org = new OrganizationReference();
+    var eventSuppliers = new EventSuppliers();
+    var org = new OrganizationReference1();
     org.setId(SUPPLIER_ID);
+    List<OrganizationReference1> orgs = Arrays.asList(org);
+    eventSuppliers.suppliers(orgs);
 
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
@@ -711,7 +714,7 @@ class ProcurementEventServiceTest {
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
 
     var response = procurementEventService.addSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID,
-        List.of(org), false, PRINCIPAL);
+        eventSuppliers, false, PRINCIPAL);
 
     // Verify
     verify(jaggaerService).createUpdateRfx(rfxCaptor.capture(), eq(OperationCode.CREATEUPDATE));
@@ -719,14 +722,17 @@ class ProcurementEventServiceTest {
     assertEquals(JAGGAER_SUPPLIER_ID,
         rfxCaptor.getValue().getSuppliersList().getSupplier().get(0).getCompanyData().getId());
 
-    assertEquals(SUPPLIER_ID, response.stream().findFirst().get().getId());
+    assertEquals(SUPPLIER_ID, eventSuppliers.getSuppliers().get(0).getId());
   }
 
   @Test
   void testAddSuppliersToTenderDbThenThrowValidationException() throws Exception {
 
-    var org = new OrganizationReference();
+    var eventSuppliers = new EventSuppliers();
+    var org = new OrganizationReference1();
     org.setId(SUPPLIER_ID);
+    List<OrganizationReference1> orgs = Arrays.asList(org);
+    eventSuppliers.suppliers(orgs);
 
     var event = new ProcurementEvent();
     event.setExternalEventId(RFX_ID);
@@ -750,7 +756,7 @@ class ProcurementEventServiceTest {
 
     // Invoke
     var thrown = Assertions.assertThrows(ValidationException.class, () -> procurementEventService
-        .addSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID, List.of(org), false, PRINCIPAL));
+        .addSuppliers(PROC_PROJECT_ID, PROC_EVENT_ID, eventSuppliers, false, PRINCIPAL));
 
     // Assert
     Assertions.assertEquals(
