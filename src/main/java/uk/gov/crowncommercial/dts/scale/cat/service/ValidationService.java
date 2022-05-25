@@ -2,12 +2,13 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.NOT_ALLOWED_EVENTS_AFTER_AWARD;
-
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.Optional;
 import javax.validation.ValidationException;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -33,6 +34,7 @@ public class ValidationService {
   private final Clock clock;
   private static final Integer AWARD_STATUS = 500;
   private static final Integer ABANDONED_STATUS = 1500;
+  private static final String MONETARY_QUESTION_TYPE = "Monetary";
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -155,7 +157,8 @@ public class ValidationService {
     }
   }
 
-  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,
+      final DefineEventType eventType) {
     // cannot move to a TBD event from any other event
     if (ViewEventType.TBD.name().equals(eventType.getValue())) {
       throw new IllegalArgumentException(
@@ -169,8 +172,16 @@ public class ValidationService {
     }
   }
 
-  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,
+      final DefineEventType eventType) {
     return exportRfxResponse.getRfxSetting().getStatusCode().equals(ABANDONED_STATUS);
+  }
+
+  public void validateMinMaxValue(BigDecimal maxValue, BigDecimal minValue) {
+    if (ObjectUtils.allNotNull(maxValue, minValue) && maxValue.compareTo(minValue) < 0) {
+      throw new ValidationException(String
+          .format("Max Value %s should greater than or equal to Min value %s", maxValue, minValue));
+    }
   }
 
 }

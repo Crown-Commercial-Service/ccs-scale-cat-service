@@ -5,9 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +23,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Dependency;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -65,8 +74,7 @@ class CriteriaServiceTest {
   @Test
   void testPutQuestionOptionDetails_buyer_multiSelect() throws Exception {
 
-    var procurementProject = ProcurementProject.builder()
-            .caNumber(AGREEMENT_NO).build();
+    var procurementProject = ProcurementProject.builder().caNumber(AGREEMENT_NO).build();
 
     ProcurementEvent event = new ProcurementEvent();
     event.setProject(procurementProject);
@@ -127,8 +135,7 @@ class CriteriaServiceTest {
 
   @Test
   void testGetEvalCriteriaWithBuyerQuestions() throws Exception {
-    var procurementProject = ProcurementProject.builder()
-            .caNumber(AGREEMENT_NO).build();
+    var procurementProject = ProcurementProject.builder().caNumber(AGREEMENT_NO).build();
     ProcurementEvent event = new ProcurementEvent();
     event.setProject(procurementProject);
     event.setProcurementTemplatePayload(
@@ -147,6 +154,36 @@ class CriteriaServiceTest {
 
     var question = group.getOCDS().getRequirements().stream().findFirst().get();
     assertEquals(QUESTION_ID, question.getOCDS().getId());
+  }
+
+  @Test
+  void testValidateMinMaxContractValues() {
+    var minRNonocd = Requirement.NonOCDS.builder().questionType("Monetary")
+        .options(Arrays.asList(Option.builder().value("107").build()))
+        .dependency(Dependency.builder()
+            .relationships(
+                Arrays.asList(Relationships.builder().dependentOnID("Question 1").build()))
+            .build())
+        .build();
+    var minROcd = Requirement.OCDS.builder().id("Question 2").build();
+    var minRe = Requirement.builder().ocds(minROcd).nonOCDS(minRNonocd).build();
+
+    var maxRNonocd = Requirement.NonOCDS.builder().questionType("Monetary")
+        .options(Arrays.asList(Option.builder().value("100").build())).build();
+    var maxROcd = Requirement.OCDS.builder().id("Question 1").build();
+    var maxRe = Requirement.builder().ocds(maxROcd).nonOCDS(maxRNonocd).build();
+
+    var ocds = RequirementGroup.OCDS.builder().id("Group 21")
+        .requirements(new HashSet<Requirement>(Arrays.asList(minRe, maxRe))).build();
+    RequirementGroup group = RequirementGroup.builder().ocds(ocds).build();
+
+    criteriaService.validateQuestionsValues(group, minRe,
+        Arrays.asList(new QuestionNonOCDSOptions().value("107")));
+    criteriaService.validateQuestionsValues(group, maxRe,
+        Arrays.asList(new QuestionNonOCDSOptions().value("100")));
+    // Verify
+    verify(validationService, times(2)).validateMinMaxValue(BigDecimal.valueOf(100),
+        BigDecimal.valueOf(107));
   }
 
   private DataTemplate getDataTemplate(final String filePath) throws Exception {
