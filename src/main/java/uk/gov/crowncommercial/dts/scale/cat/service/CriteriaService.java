@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -19,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -40,6 +42,7 @@ public class CriteriaService {
 
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
+  private static final String MONETARY_QUESTION_TYPE = "Monetary";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -126,14 +129,15 @@ public class CriteriaService {
       log.error("'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
+
+    validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
         .updateOptions(options.stream()
             .map(questionNonOCDSOptions -> Requirement.Option.builder()
                 .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                     : questionNonOCDSOptions.getSelected())
                 .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-                .tableDefinition(questionNonOCDSOptions.getTableDefinition())
-                .build())
+                .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
             .collect(Collectors.toList()));
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
@@ -171,6 +175,47 @@ public class CriteriaService {
         && requirement.getOcds().getId().equalsIgnoreCase(question.getOCDS().getId())) {
       validationService.validateProjectDuration(question.getNonOCDS().getOptions());
     }
+  }
+
+  public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
+      List<QuestionNonOCDSOptions> options) {
+    if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
+      String maxValue;
+      String minValue;
+      if (Objects.nonNull(requirement.getNonOCDS().getDependency())) {
+        // Min value check
+        String questionId = requirement.getNonOCDS().getDependency().getRelationships().stream()
+            .map(Relationships::getDependentOnID).findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Max value question not found"));
+        var maxValueRequirement = group.getOcds().getRequirements().stream()
+            .filter(question -> Objects.equals(question.getOcds().getId(), questionId)).findFirst()
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
+        maxValue = getOptionsValue(maxValueRequirement);
+        minValue = options.stream().findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Requested Value should not be null"))
+            .getValue();
+      } else {
+        // Max value check
+        var minValueRequirement = group.getOcds().getRequirements().stream()
+            .filter(question -> !question.getOcds().getId().equals(requirement.getOcds().getId()))
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Min value question not found"));
+        maxValue = options.stream().findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Requested Value should not be null"))
+            .getValue();
+        minValue = getOptionsValue(minValueRequirement);
+      }
+      if (ObjectUtils.allNotNull(maxValue, minValue)) {
+        validationService.validateMinMaxValue(new BigDecimal(maxValue), new BigDecimal(minValue));
+      }
+    }
+  }
+
+  private String getOptionsValue(Requirement requirement) {
+    var option = requirement.getNonOCDS().getOptions().stream().findFirst()
+        .orElseThrow(() -> new ResourceNotFoundException("Option value not found"));
+    return option.getValue();
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {

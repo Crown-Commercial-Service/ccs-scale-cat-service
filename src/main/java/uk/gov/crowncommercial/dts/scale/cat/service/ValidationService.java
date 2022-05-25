@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
@@ -12,6 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 import javax.validation.ValidationException;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -36,6 +38,7 @@ public class ValidationService {
   private final Clock clock;
   private static final Integer AWARD_STATUS = 500;
   private static final Integer ABANDONED_STATUS = 1500;
+  private static final String MONETARY_QUESTION_TYPE = "Monetary";
 
   private static final Period FOUR_YEAR_PERIOD=Period.parse("P4Y");
 
@@ -160,7 +163,8 @@ public class ValidationService {
     }
   }
 
-  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,
+      final DefineEventType eventType) {
     // cannot move to a TBD event from any other event
     if (ViewEventType.TBD.name().equals(eventType.getValue())) {
       throw new IllegalArgumentException(
@@ -196,8 +200,16 @@ public class ValidationService {
     }
   }
 
-  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,
+      final DefineEventType eventType) {
     return exportRfxResponse.getRfxSetting().getStatusCode().equals(ABANDONED_STATUS);
+  }
+
+  public void validateMinMaxValue(BigDecimal maxValue, BigDecimal minValue) {
+    if (ObjectUtils.allNotNull(maxValue, minValue) && maxValue.compareTo(minValue) < 0) {
+      throw new ValidationException(String
+          .format("Max Value %s should greater than or equal to Min value %s", maxValue, minValue));
+    }
   }
 
 }
