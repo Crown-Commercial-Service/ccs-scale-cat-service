@@ -72,6 +72,9 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private SupplierSelectionRepo supplierSelectionRepo;
 
+  @MockBean
+  private SupplierSubmissionRepo supplierSubmissionRepo;
+
   @Autowired
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 

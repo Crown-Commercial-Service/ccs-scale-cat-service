@@ -228,8 +228,14 @@ config:
         uriTemplate: /user-profiles?user-id={user-id}
       getUserContacts:
         uriTemplate: /user-profiles/contacts?user-id={email}
+        
+      # Org ID is the internal ID
       getOrganisation:
         uriTemplate: /organisation-profiles/{org-id}
+        
+      # Org ID is {scheme}-{registry-id} e.g. US-DUN-123456789
+      getOrganisationIdentity:
+        uriTemplate: /identities/organisations/{org-id}
         
     docUploadSvc:
       timeoutDuration: 10

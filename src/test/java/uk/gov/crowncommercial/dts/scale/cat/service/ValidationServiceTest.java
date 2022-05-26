@@ -1,14 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.when;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-import javax.validation.ValidationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -22,9 +13,24 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDSOptions;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
+
+import javax.validation.ValidationException;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(classes = {ValidationService.class}, webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
@@ -186,4 +192,58 @@ class ValidationServiceTest {
 
     assertEquals("assessmentSupplierTarget must be 1 for event type DAA", ex.getMessage());
   }
+
+  @Test
+  void testValidationMinMaxValue() {
+    var maxValue = BigDecimal.valueOf(100);
+    var minValue = BigDecimal.valueOf(107);
+    var ex = assertThrows(ValidationException.class,
+        () -> validationService.validateMinMaxValue(maxValue, minValue));
+    assertEquals("Max Value 100 should greater than or equal to Min value 107", ex.getMessage());
+  }
+
+  @Test
+  void shouldThrowValidationExceptionWhenNonOCDSOptionsEmpty(){
+
+    ValidationException validationException= assertThrows(ValidationException.class,
+            () -> validationService.validateProjectDuration(Collections.emptyList()));
+    assertEquals("Invalid Input provided for Project Duration",validationException.getMessage());
+  }
+
+  @Test
+  void shouldThrowValidationExceptionWhenNonOCDSOptionsAreMoreThanOne(){
+
+    QuestionNonOCDSOptions questionNonOCDSOptions1= new QuestionNonOCDSOptions();
+    questionNonOCDSOptions1.setValue("P4Y3M10D");
+
+    QuestionNonOCDSOptions questionNonOCDSOptions2= new QuestionNonOCDSOptions();
+    questionNonOCDSOptions2.setValue("P4Y3M10D");
+
+    ValidationException validationException= assertThrows(ValidationException.class,
+            () -> validationService.validateProjectDuration(List.of(questionNonOCDSOptions1,questionNonOCDSOptions2)));
+    assertEquals("Invalid Input provided for Project Duration",validationException.getMessage());
+  }
+  @Test
+  void shouldThrowValidationExceptionWhenTheProjectDurationIsInvalidISO8601Format(){
+
+    QuestionNonOCDSOptions questionNonOCDSOptions= new QuestionNonOCDSOptions();
+    questionNonOCDSOptions.setValue("4BAC");
+
+    ValidationException validationException= assertThrows(ValidationException.class,
+            () -> validationService.validateProjectDuration(List.of(questionNonOCDSOptions)));
+    assertEquals("Project Duration is not in ISO8601 format: '4BAC'",validationException.getMessage());
+  }
+
+  @Test
+  void shouldThrowValidationExceptionWhenTheProjectDurationIsGreaterThan4years(){
+
+    QuestionNonOCDSOptions questionNonOCDSOptions= new QuestionNonOCDSOptions();
+    questionNonOCDSOptions.setValue("P4Y0M1D");
+
+    ValidationException validationException= assertThrows(ValidationException.class,
+            () -> validationService.validateProjectDuration(List.of(questionNonOCDSOptions)));
+    assertEquals("Project Duration is greater than 4 years",validationException.getMessage());
+
+  }
+
 }

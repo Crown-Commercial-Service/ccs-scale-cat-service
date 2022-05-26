@@ -1,25 +1,30 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.NOT_ALLOWED_EVENTS_AFTER_AWARD;
-
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.util.Objects;
-import java.util.Optional;
-import javax.validation.ValidationException;
-import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
+
+import javax.validation.ValidationException;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.Period;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.NOT_ALLOWED_EVENTS_AFTER_AWARD;
 
 /**
  * Captures Project and Event input validation functionality
@@ -33,6 +38,9 @@ public class ValidationService {
   private final Clock clock;
   private static final Integer AWARD_STATUS = 500;
   private static final Integer ABANDONED_STATUS = 1500;
+  private static final String MONETARY_QUESTION_TYPE = "Monetary";
+
+  private static final Period FOUR_YEAR_PERIOD=Period.parse("P4Y");
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -155,7 +163,8 @@ public class ValidationService {
     }
   }
 
-  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+  public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,
+      final DefineEventType eventType) {
     // cannot move to a TBD event from any other event
     if (ViewEventType.TBD.name().equals(eventType.getValue())) {
       throw new IllegalArgumentException(
@@ -169,8 +178,38 @@ public class ValidationService {
     }
   }
 
-  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,final DefineEventType eventType) {
+  public void validateProjectDuration(List<QuestionNonOCDSOptions> optionList) {
+
+    if (!CollectionUtils.isEmpty(optionList) && optionList.size() == 1) {
+      QuestionNonOCDSOptions projectDurationOptionValue = optionList.get(0);
+      try {
+        var projectDuration = Period.parse(projectDurationOptionValue.getValue());
+        var now = LocalDate.now();
+        if (now.plus(projectDuration).isAfter(now.plus(FOUR_YEAR_PERIOD))) {
+          throw new ValidationException(String.format("Project Duration is greater than 4 years"));
+        }
+
+      } catch (DateTimeParseException dateTimeParseException) {
+        throw new ValidationException(
+            String.format(
+                "Project Duration is not in ISO8601 format: '%s'",
+                projectDurationOptionValue.getValue()));
+      }
+    } else {
+      throw new ValidationException(String.format("Invalid Input provided for Project Duration"));
+    }
+  }
+
+  public boolean isEventAbandoned(final ExportRfxResponse exportRfxResponse,
+      final DefineEventType eventType) {
     return exportRfxResponse.getRfxSetting().getStatusCode().equals(ABANDONED_STATUS);
+  }
+
+  public void validateMinMaxValue(BigDecimal maxValue, BigDecimal minValue) {
+    if (ObjectUtils.allNotNull(maxValue, minValue) && maxValue.compareTo(minValue) < 0) {
+      throw new ValidationException(String
+          .format("Max Value %s should greater than or equal to Min value %s", maxValue, minValue));
+    }
   }
 
 }
