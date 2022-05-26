@@ -110,8 +110,7 @@ public class ProcurementEventService {
     } else {
       // copy suppliers & close event
       var existingEvent = project.getProcurementEvents().stream().iterator().next();
-      terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED,
-          principal);
+      terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED, principal);
 
       var rfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
       suppliers = rfxResponse.getSuppliersList().getSupplier();
@@ -880,13 +879,14 @@ public class ProcurementEventService {
   private EventSuppliers getSuppliersFromTendersDB(final ProcurementEvent event) {
 
     var suppliers = event.getCapabilityAssessmentSuppliers().stream().map(s -> {
-      var orgIdentity = conclaveService
-          .getOrganisationIdentity(s.getOrganisationMapping().getOrganisationId()).orElseThrow(
-              () -> new ResourceNotFoundException(String.format(ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE,
-                  s.getOrganisationMapping().getOrganisationId())));
+      var orgIdentity =
+          conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getOrganisationId());
 
-      return new OrganizationReference1().id(conclaveService.getOrganisationIdentifer(orgIdentity))
-          .name(orgIdentity.getIdentifier().getLegalName());
+      var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getOrganisationId());
+      orgIdentity.ifPresentOrElse(or -> orgRef.name(or.getIdentifier().getLegalName()),
+          () -> log.warn(String.format(ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE,
+              s.getOrganisationMapping().getOrganisationId())));
+      return orgRef;
     }).collect(Collectors.toList());
     return new EventSuppliers().suppliers(suppliers)
         .justification(event.getSupplierSelectionJustification());

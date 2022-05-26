@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ConclaveApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
@@ -18,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ConclaveService {
 
   private final ConclaveAPIConfig conclaveAPIConfig;
@@ -90,8 +92,9 @@ public class ConclaveService {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
           conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, orgId);
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       throw new ConclaveApplicationException(
-          "Unexpected error retrieving org profile from Conclave");
+          "Unexpected error retrieving org profile from Conclave for org ID: " + orgId);
     }
   }
 
@@ -113,8 +116,9 @@ public class ConclaveService {
           conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI,
           sanitisedOrgId);
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       throw new ConclaveApplicationException(
-          "Unexpected error retrieving org profile from Conclave");
+          "Unexpected error retrieving org identity from CII for org ID: " + orgId);
     }
   }
 
