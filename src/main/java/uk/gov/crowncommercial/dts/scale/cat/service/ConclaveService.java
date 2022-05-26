@@ -21,7 +21,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 public class ConclaveService {
 
   private final ConclaveAPIConfig conclaveAPIConfig;
-  private final WebClient conclaveWebClient;
+  private final WebClient conclaveWrapperAPIClient;
+  private final WebClient conclaveIdentitiesAPIClient;
   private final WebclientWrapper webclientWrapper;
 
   @Value
@@ -45,8 +46,9 @@ public class ConclaveService {
     final var templateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
 
     try {
-      return webclientWrapper.getOptionalResource(UserProfileResponseInfo.class, conclaveWebClient,
-          conclaveAPIConfig.getTimeoutDuration(), templateURI, email.toLowerCase());
+      return webclientWrapper.getOptionalResource(UserProfileResponseInfo.class,
+          conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI,
+          email.toLowerCase());
     } catch (Exception e) {
       throw new ConclaveApplicationException(
           "Unexpected error retrieving User profile from Conclave");
@@ -65,7 +67,7 @@ public class ConclaveService {
 
     try {
       return webclientWrapper
-          .getOptionalResource(UserContactInfoList.class, conclaveWebClient,
+          .getOptionalResource(UserContactInfoList.class, conclaveWrapperAPIClient,
               conclaveAPIConfig.getTimeoutDuration(), templateURI, userId.toLowerCase())
           .orElseThrow();
     } catch (Exception e) {
@@ -77,7 +79,7 @@ public class ConclaveService {
   /**
    * Find and return an organisation profile from Conclave
    *
-   * @param orgId
+   * @param orgId the internal org identifier
    * @return
    */
   public Optional<OrganisationProfileResponseInfo> getOrganisation(final String orgId) {
@@ -86,7 +88,30 @@ public class ConclaveService {
 
     try {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
-          conclaveWebClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, orgId);
+          conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, orgId);
+    } catch (Exception e) {
+      throw new ConclaveApplicationException(
+          "Unexpected error retrieving org profile from Conclave");
+    }
+  }
+
+  /**
+   * Find and return an organisation identity from CII/Conclave
+   *
+   * @param orgId the public identifier e.g. US-DUNS-123456789
+   * @return
+   */
+  public Optional<OrganisationProfileResponseInfo> getOrganisationIdentity(final String orgId) {
+
+    final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
+
+    // Sanitise DUNS prefix for CII search..
+    var sanitisedOrgId = orgId.replace("US-DUNS", "US-DUN");
+
+    try {
+      return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
+          conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI,
+          sanitisedOrgId);
     } catch (Exception e) {
       throw new ConclaveApplicationException(
           "Unexpected error retrieving org profile from Conclave");

@@ -21,8 +21,9 @@ public class ConclaveClientConfig {
 
   private final ConclaveAPIConfig conclaveAPIConfig;
 
-  @Bean("conclaveWebClient")
-  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
+  @Bean("conclaveWrapperAPIClient")
+  public WebClient conclaveWrapperAPIClient(
+      final OAuth2AuthorizedClientManager authorizedClientManager) {
 
     var sslContextFactory = new SslContextFactory.Client(true);
 
@@ -35,6 +36,23 @@ public class ConclaveClientConfig {
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .baseUrl(conclaveAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
         .defaultHeader("x-api-key", conclaveAPIConfig.getApiKey()).build();
+  }
+
+  @Bean("conclaveIdentitiesAPIClient")
+  public WebClient conclaveIdentitiesAPIClient(
+      final OAuth2AuthorizedClientManager authorizedClientManager) {
+
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
+
+    ClientHttpConnector jettyHttpClientConnector =
+        new JettyClientHttpConnector(new HttpClient(sslContextFactory));
+
+    return WebClient.builder().clientConnector(jettyHttpClientConnector)
+        .baseUrl(conclaveAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+        .defaultHeader("x-api-key", conclaveAPIConfig.getIdentitiesApiKey()).build();
   }
 
 }
