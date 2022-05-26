@@ -1,17 +1,31 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.util.List;
-import java.util.Optional;
-import javax.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
+
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.ValidationException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+import java.util.Optional;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @RestController
 @RequestMapping(path = "/assessments", produces = APPLICATION_JSON_VALUE)
@@ -24,6 +38,7 @@ public class AssessmentsController extends AbstractRestController {
       "requirement-id in body [%s] does not match requirement-id in path [%s]";
 
   private static final String ERR_EMPTY_BODY = "Empty body";
+  private static final String NOT_SUPPORTED_MIME_TYPE  = "Mime Type application/json not supported";
 
   private final AssessmentService assessmentService;
 
@@ -118,5 +133,42 @@ public class AssessmentsController extends AbstractRestController {
     assessmentService.deleteRequirement(assessmentId, dimensionId, requirementId, principal);
 
     return Constants.OK_MSG;
+  }
+
+  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
+  public ResponseEntity<InputStreamResource> getSupplierDimensionData(
+      final @PathVariable("tool-id") Integer toolId,
+      final @PathVariable("dimension-id") Integer dimensionId,
+      @RequestParam(name = "lot-id", required = false) Integer lotId,
+      @RequestHeader(name = "mime-type", required = false, defaultValue = "text/csv")
+          String mimeType, HttpServletResponse response,
+      final JwtAuthenticationToken authentication) throws IOException {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getSupplierDimensionData invoked on behalf of principal: {}", principal);
+
+    if (mimeType.equals(APPLICATION_JSON_VALUE)) {
+      throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
+    }
+
+    var supplierSubmissions =
+        assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
+
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (CSVPrinter csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
+      csvPrinter.printRecord("SupplierId");
+      for (Integer supplier : supplierSubmissions) {
+        csvPrinter.printRecord(supplier);
+      }
+      csvPrinter.flush();
+    } catch (IOException e) {
+      throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
+    }
+
+    return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId))
+        .contentType(MediaType.parseMediaType("text/csv"))
+        .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
   }
 }

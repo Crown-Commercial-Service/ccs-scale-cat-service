@@ -158,6 +158,9 @@ class ProcurementEventServiceTest {
   private SupplierSelectionRepo supplierSelectionRepo;
 
   @MockBean
+  private SupplierSubmissionRepo supplierSubmissionRepo;
+
+  @MockBean
   private DocumentUploadService documentUploadService;
 
   @MockBean
