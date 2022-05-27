@@ -296,9 +296,11 @@ public class ProcurementEventService {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
-    // validate different rules before update
-    validationService.validateEventTypeBeforeUpdate(exportRfxResponse,updateEvent.getEventType().getValue());
-
+    if (updateEvent.getEventType() != null) {
+      // validate different rules before update
+      validationService.validateEventTypeBeforeUpdate(exportRfxResponse,
+          updateEvent.getEventType().getValue());
+    }
     validationService.validateUpdateEventAssessment(updateEvent, event, principal);
 
     // event is ABANDONED AND no new event is created THEN project = closed
