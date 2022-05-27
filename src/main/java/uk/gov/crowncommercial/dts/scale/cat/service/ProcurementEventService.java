@@ -1,7 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import static java.util.Objects.requireNonNullElse;
+import static java.util.Optional.ofNullable;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.transaction.Transactional;
+import javax.validation.ValidationException;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.http.MediaType;
@@ -9,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -19,26 +29,14 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
-
-import javax.transaction.Transactional;
-import javax.validation.ValidationException;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.Objects.requireNonNullElse;
-import static java.util.Optional.ofNullable;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 
 /**
  *
@@ -64,7 +62,9 @@ public class ProcurementEventService {
   public static final String REPLIED = "Replied";
 
   private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
-          "No Supplier Responses found for the given event '%s'  ";
+      "No Supplier Responses found for the given event '%s'  ";
+  private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
+      "Supplier [%s] not found in Conclave";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -81,6 +81,7 @@ public class ProcurementEventService {
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerService jaggaerService;
+  private final ConclaveService conclaveService;
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -107,16 +108,12 @@ public class ProcurementEventService {
     if (CollectionUtils.isEmpty(project.getProcurementEvents())) {
       log.info("No events exists for this project");
     } else {
-      //copy suppliers & close event
+      // copy suppliers & close event
       var existingEvent = project.getProcurementEvents().stream().iterator().next();
+      terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED, principal);
+
       var rfxResponse = jaggaerService.getRfx(existingEvent.getExternalEventId());
       suppliers = rfxResponse.getSuppliersList().getSupplier();
-      var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-          .get(rfxResponse.getRfxSetting().getStatusCode());
-      if (TenderStatus.ACTIVE == status) {
-        this.terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED,
-            principal);
-      }
     }
 
     // Set defaults if no values supplied
@@ -156,7 +153,7 @@ public class ProcurementEventService {
       }
     } else {
 
-      var createUpdateRfx = createRfxRequest(project, eventName, principal,suppliers);
+      var createUpdateRfx = createRfxRequest(project, eventName, principal, suppliers);
 
       var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
           createUpdateRfx.getOperationCode());
@@ -257,7 +254,8 @@ public class ProcurementEventService {
         new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
     var suppliersList = SuppliersList.builder()
-        .supplier(suppliers != null ? suppliers: supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
+        .supplier(suppliers != null ? suppliers
+            : supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
         .build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
@@ -295,7 +293,6 @@ public class ProcurementEventService {
 
     log.debug("Update Event {}", updateEvent);
 
-
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
@@ -304,13 +301,12 @@ public class ProcurementEventService {
 
     validationService.validateUpdateEventAssessment(updateEvent, event, principal);
 
-    //  event is ABANDONED AND no new event is created THEN project = closed
-    if (validationService.isEventAbandoned(exportRfxResponse,updateEvent.getEventType()))  {
-      var procurementEvents =
-          retryableTendersDBDelegate.findProcurementEventsByProjectId(procId);
-      if (procurementEvents != null && procurementEvents.size() == 1 ){
-        this.terminateEvent(procId,eventId,TerminationType.CANCELLED,principal);
-//        procurementProjectService.closeProcurementProject(procId,TenderStatus.CANCELLED,principal);
+    // event is ABANDONED AND no new event is created THEN project = closed
+    if (validationService.isEventAbandoned(exportRfxResponse, updateEvent.getEventType())) {
+      var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(procId);
+      if (procurementEvents != null && procurementEvents.size() == 1) {
+        this.terminateEvent(procId, eventId, TerminationType.CANCELLED, principal);
+        // procurementProjectService.closeProcurementProject(procId,TenderStatus.CANCELLED,principal);
       }
     }
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
@@ -370,7 +366,7 @@ public class ProcurementEventService {
       jaggaerService.createUpdateRfx(rfx, OperationCode.CREATEUPDATE);
     }
 
-     exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
     // Save to Tenders DB
     if (updateDB) {
@@ -418,8 +414,7 @@ public class ProcurementEventService {
    * @param eventId
    * @return
    */
-  public EventSuppliers getSuppliers(final Integer procId,
-      final String eventId) {
+  public EventSuppliers getSuppliers(final Integer procId, final String eventId) {
 
     log.debug("Get suppliers for event '{}'", eventId);
 
@@ -448,8 +443,7 @@ public class ProcurementEventService {
    * @return
    */
   public EventSuppliers addSuppliers(final Integer procId, final String eventId,
-      final EventSuppliers eventSuppliers, final boolean overwrite,
-      final String principal) {
+      final EventSuppliers eventSuppliers, final boolean overwrite, final String principal) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
 
@@ -573,29 +567,22 @@ public class ProcurementEventService {
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
 
     final var lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
-    var responseSummary =
-        new ResponseSummary()
-            .invited(lastRound.getNumSupplInvited())
-            .responded(lastRound.getNumSupplResponded())
-            .noResponse(lastRound.getNumSupplNotResponded())
-            .declined(lastRound.getNumSupplRespDeclined());
+    var responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
+        .responded(lastRound.getNumSupplResponded()).noResponse(lastRound.getNumSupplNotResponded())
+        .declined(lastRound.getNumSupplRespDeclined());
 
-    return responseSummary.responders(
-        exportRfxResponse.getSuppliersList().getSupplier().stream()
-            .map(
-                supplier ->
-                    this.convertToResponders(
-                        supplier,
-                        getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)))
-            .collect(Collectors.toList()));
+    return responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
+        .map(supplier -> this.convertToResponders(supplier,
+            getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)))
+        .collect(Collectors.toList()));
   }
 
-  private OffsetDateTime getSupplierResponseDate(OffersList offerList, Supplier supplier) {
+  private OffsetDateTime getSupplierResponseDate(final OffersList offerList,
+      final Supplier supplier) {
     if (Objects.nonNull(offerList) && Objects.nonNull(offerList.getOffer())) {
-      Optional<Offer> respondedSupplier =
-          offerList.getOffer().stream()
-              .filter(offer -> offer.getSupplierId().equals(supplier.getCompanyData().getId()))
-              .findFirst();
+      var respondedSupplier = offerList.getOffer().stream()
+          .filter(offer -> offer.getSupplierId().equals(supplier.getCompanyData().getId()))
+          .findFirst();
       if (respondedSupplier.isPresent()) {
         return respondedSupplier.get().getLastUpdateDate();
       }
@@ -604,30 +591,21 @@ public class ProcurementEventService {
     return null;
   }
 
-  private Responders convertToResponders(
-      final Supplier supplier, OffsetDateTime respondedDateTime) {
-    var organisationMapping =
-        retryableTendersDBDelegate
-            .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
-            .orElseThrow(
-                () ->
-                    new TendersDBDataException(
-                        String.format(
-                            ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
+  private Responders convertToResponders(final Supplier supplier,
+      final OffsetDateTime respondedDateTime) {
+    var organisationMapping = retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId())
+        .orElseThrow(() -> new TendersDBDataException(
+            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
 
     return new Responders()
-        .supplier(
-            new OrganizationReference1()
-                .id(organisationMapping.getOrganisationId())
-                .name(supplier.getCompanyData().getName()))
+        .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
+            .name(supplier.getCompanyData().getName()))
         .responseState(
-            REPLIED.equals(supplier.getStatus().trim())
-                ? Responders.ResponseStateEnum.SUBMITTED
+            REPLIED.equals(supplier.getStatus().trim()) ? Responders.ResponseStateEnum.SUBMITTED
                 : Responders.ResponseStateEnum.DRAFT)
-        .readState(
-            REPLIED.equals(supplier.getStatus().trim())
-                ? Responders.ReadStateEnum.READ
-                : Responders.ReadStateEnum.UNREAD)
+        .readState(REPLIED.equals(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
+            : Responders.ReadStateEnum.UNREAD)
         .responseDate(null != respondedDateTime ? respondedDateTime.toLocalDate() : null);
   }
 
@@ -810,39 +788,26 @@ public class ProcurementEventService {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
-    return events.stream()
-        .map(
-            event -> {
-              TenderStatus statusCode;
-              RfxSetting rfxSetting = null;
-              if (event.getExternalEventId() == null) {
-                var assessment =
-                    assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
-                statusCode =
-                    TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
-              } else {
-                var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-                statusCode =
-                    jaggaerAPIConfig
-                        .getRfxStatusToTenderStatus()
-                        .get(exportRfxResponse.getRfxSetting().getStatusCode());
-                rfxSetting = exportRfxResponse.getRfxSetting();
-              }
-              var eventSummary =
-                  tendersAPIModelUtils.buildEventSummary(
-                      event.getEventID(),
-                      event.getEventName(),
-                      Optional.ofNullable(event.getExternalReferenceId()),
-                      ViewEventType.fromValue(event.getEventType()),
-                      statusCode,
-                      EVENT_STAGE,
-                      Optional.ofNullable(event.getAssessmentId()));
+    return events.stream().map(event -> {
+      TenderStatus statusCode;
+      RfxSetting rfxSetting = null;
+      if (event.getExternalEventId() == null) {
+        var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
+        statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
+      } else {
+        var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+            .get(exportRfxResponse.getRfxSetting().getStatusCode());
+        rfxSetting = exportRfxResponse.getRfxSetting();
+      }
+      var eventSummary = tendersAPIModelUtils.buildEventSummary(event.getEventID(),
+          event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
+          ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
+          Optional.ofNullable(event.getAssessmentId()));
 
-              eventSummary.setDashboardStatus(
-                  tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
-              return eventSummary;
-            })
-        .collect(Collectors.toList());
+      eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+      return eventSummary;
+    }).collect(Collectors.toList());
   }
 
   /**
@@ -914,19 +879,13 @@ public class ProcurementEventService {
   private EventSuppliers getSuppliersFromTendersDB(final ProcurementEvent event) {
 
     var suppliers = event.getCapabilityAssessmentSuppliers().stream().map(s -> {
+      var orgIdentity =
+          conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getOrganisationId());
 
-      // TODO - Conclave does not work with DUNS numbers (which we have in organisation_mapping
-      // table)
-      // Nick raised this with Nanu who was going to speak to Brickendon as they should support
-      // lookup by DUNS number. This can be reinstated when that is fixed in Conclave.
-      // OrganisationProfileResponseInfo org = conclaveService
-      // .getOrganisation(s.getOrganisationMapping().getOrganisationId()).orElseThrow(
-      // () -> new ResourceNotFoundException(String.format(SUPPLIER_NOT_FOUND_CONCLAVE_MSG,
-      // s.getOrganisationMapping().getOrganisationId())));
-
-      var orgRef = new OrganizationReference1();
-      orgRef.setId(String.valueOf(s.getOrganisationMapping().getOrganisationId()));
-      // orgRef.setName(org.getIdentifier().getLegalName()); // see comment above
+      var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getOrganisationId());
+      orgIdentity.ifPresentOrElse(or -> orgRef.name(or.getIdentifier().getLegalName()),
+          () -> log.warn(String.format(ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE,
+              s.getOrganisationMapping().getOrganisationId())));
       return orgRef;
     }).collect(Collectors.toList());
     return new EventSuppliers().suppliers(suppliers)
@@ -952,10 +911,8 @@ public class ProcurementEventService {
             .orElseThrow(() -> new IllegalArgumentException(
                 String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId())));
 
-        var org = new OrganizationReference1();
-        org.setId(String.valueOf(om.getOrganisationId()));
-        org.setName(s.getCompanyData().getName());
-        return org;
+        return new OrganizationReference1().id(String.valueOf(om.getOrganisationId()))
+            .name(s.getCompanyData().getName());
       }).forEachOrdered(orgs::add);
     }
 
@@ -965,6 +922,7 @@ public class ProcurementEventService {
 
   /**
    * Delete supplier from Tenders DB.
+   *
    * @param event
    * @param supplierOrgMapping
    * @param principal
@@ -1135,8 +1093,8 @@ public class ProcurementEventService {
    * @return
    */
   @Transactional
-  public List<SupplierAttachmentResponse> getSupplierAttachmentResponses(
-      final Integer procId, final String eventId) {
+  public List<SupplierAttachmentResponse> getSupplierAttachmentResponses(final Integer procId,
+      final String eventId) {
     return getSupplierAttachmentResponses(procId, eventId, null);
   }
 
@@ -1147,108 +1105,81 @@ public class ProcurementEventService {
    * @return
    */
   @Transactional
-  public SupplierAttachmentResponse getSupplierAttachmentResponse(
-      final Integer procId, final String eventId, final String supplierId) {
+  public SupplierAttachmentResponse getSupplierAttachmentResponse(final Integer procId,
+      final String eventId, final String supplierId) {
 
     // Determine Jaggaer supplier id
     var supplierOrganisationMapping =
-        retryableTendersDBDelegate
-            .findOrganisationMappingByOrganisationId(supplierId)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(supplierId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
 
-    List<SupplierAttachmentResponse> supplierAttachmentResponsesList =
-        getSupplierAttachmentResponses(
-            procId, eventId, supplierOrganisationMapping.getExternalOrganisationId().toString());
+    var supplierAttachmentResponsesList = getSupplierAttachmentResponses(procId, eventId,
+        supplierOrganisationMapping.getExternalOrganisationId().toString());
 
     return supplierAttachmentResponsesList.stream().findFirst().get();
   }
 
-  private List<SupplierAttachmentResponse> getSupplierAttachmentResponses(
-      final Integer procId, final String eventId, final String supplierId) {
+  private List<SupplierAttachmentResponse> getSupplierAttachmentResponses(final Integer procId,
+      final String eventId, final String supplierId) {
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
     var supplierList = exportRfxResponse.getSuppliersList();
 
-    if (ObjectUtils.allNotNull(
-        exportRfxResponse.getOffersList(), exportRfxResponse.getOffersList().getOffer())) {
-
-      List<Offer> offersWithParameters =
-          getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
-
-      if (CollectionUtils.isEmpty(offersWithParameters)) {
-        throw new ResourceNotFoundException(
-            String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
-      }
-      List<SupplierAttachmentResponse> supplierAttachmentResponsesList = new ArrayList<>();
-      for (Offer offer : offersWithParameters) {
-        var supplierAttachmentResponse =
-            SupplierAttachmentResponse.builder()
-                .supplierId(offer.getSupplierId())
-                .supplierName(getSupplierName(supplierList, offer.getSupplierId()))
-                .parameterInfoList(new ArrayList<>())
-                .build();
-        var attachmentParametersOnly =
-            offer.getTechOffer().getParameterResponses().getParameter().stream()
-                .filter(parameter -> parameter.getParameterType().equals("ATTACH"))
-                .collect(Collectors.toList());
-
-        var parameterInfoList =
-            attachmentParametersOnly.stream()
-                .map(
-                    parameter -> {
-                      return ParameterInfo.builder()
-                          .parameterId(parameter.getParameterId())
-                          .attachmentInfoList(getAttachmentInfoForParameter(parameter))
-                          .build();
-                    })
-                .collect(Collectors.toList());
-
-        supplierAttachmentResponse.getParameterInfoList().addAll(parameterInfoList);
-
-        supplierAttachmentResponsesList.add(supplierAttachmentResponse);
-      }
-      return supplierAttachmentResponsesList;
-    } else {
+    if (!ObjectUtils.allNotNull(exportRfxResponse.getOffersList(),
+        exportRfxResponse.getOffersList().getOffer())) {
       throw new ResourceNotFoundException(
           String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
     }
+    var offersWithParameters = getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
+
+    if (CollectionUtils.isEmpty(offersWithParameters)) {
+      throw new ResourceNotFoundException(
+          String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+    }
+    List<SupplierAttachmentResponse> supplierAttachmentResponsesList = new ArrayList<>();
+    for (Offer offer : offersWithParameters) {
+      var supplierAttachmentResponse =
+          SupplierAttachmentResponse.builder().supplierId(offer.getSupplierId())
+              .supplierName(getSupplierName(supplierList, offer.getSupplierId()))
+              .parameterInfoList(new ArrayList<>()).build();
+      var attachmentParametersOnly = offer.getTechOffer().getParameterResponses().getParameter()
+          .stream().filter(parameter -> "ATTACH".equals(parameter.getParameterType()))
+          .collect(Collectors.toList());
+
+      var parameterInfoList = attachmentParametersOnly.stream()
+          .map(parameter -> ParameterInfo.builder().parameterId(parameter.getParameterId())
+              .attachmentInfoList(getAttachmentInfoForParameter(parameter)).build())
+          .collect(Collectors.toList());
+
+      supplierAttachmentResponse.getParameterInfoList().addAll(parameterInfoList);
+
+      supplierAttachmentResponsesList.add(supplierAttachmentResponse);
+    }
+    return supplierAttachmentResponsesList;
   }
 
-  private List<Offer> getOffersWithSupplierAttachments(
-      ExportRfxResponse exportRfxResponse, String supplierId) {
+  private List<Offer> getOffersWithSupplierAttachments(final ExportRfxResponse exportRfxResponse,
+      final String supplierId) {
     List<Offer> offersWithParameters;
 
     if (Objects.isNull(supplierId)) {
-      offersWithParameters =
-          exportRfxResponse.getOffersList().getOffer().stream()
-              .filter(
-                  offer ->
-                      (ObjectUtils.allNotNull(
-                              offer,
-                              offer.getTechOffer(),
-                              offer.getTechOffer().getParameterResponses(),
-                              offer.getTechOffer().getParameterResponses().getParameter()))
-                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
-              .collect(Collectors.toList());
+      offersWithParameters = exportRfxResponse.getOffersList().getOffer().stream()
+          .filter(offer -> ObjectUtils.allNotNull(offer, offer.getTechOffer(),
+              offer.getTechOffer().getParameterResponses(),
+              offer.getTechOffer().getParameterResponses().getParameter())
+              && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+          .collect(Collectors.toList());
 
     } else {
-      offersWithParameters =
-          exportRfxResponse.getOffersList().getOffer().stream()
-              .filter(
-                  offer ->
-                      (ObjectUtils.allNotNull(
-                              offer,
-                              offer.getTechOffer(),
-                              offer.getTechOffer().getParameterResponses(),
-                              offer.getTechOffer().getParameterResponses().getParameter()))
-                          && (offer.getSupplierId().intValue()
-                              == Integer.valueOf(supplierId).intValue())
-                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
-              .collect(Collectors.toList());
+      offersWithParameters = exportRfxResponse.getOffersList().getOffer().stream()
+          .filter(offer -> ObjectUtils.allNotNull(offer, offer.getTechOffer(),
+              offer.getTechOffer().getParameterResponses(),
+              offer.getTechOffer().getParameterResponses().getParameter())
+              && offer.getSupplierId().intValue() == Integer.parseInt(supplierId)
+              && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+          .collect(Collectors.toList());
     }
     return offersWithParameters;
   }
@@ -1256,37 +1187,23 @@ public class ProcurementEventService {
   public DocumentAttachment downloadAttachment(final Integer attachmentId, final String fileName) {
 
     var docAttachment = jaggaerService.getDocument(attachmentId, fileName);
-    return DocumentAttachment.builder()
-        .fileName(fileName)
-        .contentType(docAttachment.getContentType())
-        .data(docAttachment.getData())
-        .build();
+    return DocumentAttachment.builder().fileName(fileName)
+        .contentType(docAttachment.getContentType()).data(docAttachment.getData()).build();
   }
 
-  private String getSupplierName(SuppliersList supplierList, Integer supplierId) {
-    Optional<String> supplierName =
-        supplierList.getSupplier().stream()
-            .filter(supplier -> supplier.getCompanyData().getId().equals(supplierId))
-            .map(supplier -> supplier.getCompanyData().getName())
-            .findFirst();
+  private String getSupplierName(final SuppliersList supplierList, final Integer supplierId) {
+    var supplierName = supplierList.getSupplier().stream()
+        .filter(supplier -> supplier.getCompanyData().getId().equals(supplierId))
+        .map(supplier -> supplier.getCompanyData().getName()).findFirst();
     return supplierName.isPresent() ? supplierName.get() : null;
   }
 
-  private List<AttachmentInfo> getAttachmentInfoForParameter(Parameter parameter) {
+  private List<AttachmentInfo> getAttachmentInfoForParameter(final Parameter parameter) {
 
     return parameter.getValues().getValue().stream()
-        .map(
-            value -> {
-                 return  AttachmentInfo.builder()
-                      .parameterId(parameter.getParameterId())
-                      .attachmentId(value.getId())
-                      .attachmentName(value.getValue())
-                      .secureToken(value.getSecureToken())
-                      .build();
-            })
+        .map(value -> AttachmentInfo.builder().parameterId(parameter.getParameterId())
+            .attachmentId(value.getId()).attachmentName(value.getValue())
+            .secureToken(value.getSecureToken()).build())
         .collect(Collectors.toList());
   }
 }
-
-
-

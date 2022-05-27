@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
@@ -40,8 +42,10 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
+  private static final String SUPPLIERS_FOR_DIMENSION_PATH = ASSESSMENTS_PATH+"/tools/{tool-id}/dimensions/{dimension-id}/data?lot-id=";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer ASSESSMENT_ID = 1;
+  private static final Integer LOT_ID = 1;
   private static final Integer DIMENSION_ID = 1;
   private static final String DIMENSION_NAME = "Security Clearance";
   private static final CriteriaSelectionType CRITERIA_TYPE = CriteriaSelectionType.SELECT;
@@ -204,6 +208,19 @@ class AssessmentsControllerTest {
 
     verify(assessmentService, times(1)).createAssessment(assessment, PRINCIPAL);
   }
+
+  @Test
+  void testGetSupplierByToolIdAndDimensionId_200_OK() throws Exception {
+    var suppliers = new HashSet(Arrays.asList(1,2,3,4,5,6));
+
+    when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID))
+        .thenReturn(suppliers);
+
+    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH + LOT_ID, TOOL_ID, DIMENSION_ID).with(
+            validJwtReqPostProcessor).accept(MediaType.parseMediaType("text/csv"))).andDo(print())
+        .andExpect(status().isOk());
+  }
+
 
   private List<CriterionDefinition> getTestCriteria() {
     var criterion = new CriterionDefinition();

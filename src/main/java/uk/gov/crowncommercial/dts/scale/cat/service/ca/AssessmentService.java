@@ -3,10 +3,12 @@ package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 import static java.lang.String.format;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
+
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -927,5 +929,35 @@ public class AssessmentService {
     if (value < 1) {
       throw new ValidationException(format(ERR_MSG_FMT_INVALID_CRITERION_INTEGER, value));
     }
+  }
+
+  /**
+   *
+   * @param toolId
+   * @param dimensionId
+   * @param lotId
+   * @return
+   */
+  public Set<Integer> getSupplierDimensionData(final Integer toolId,
+      final Integer dimensionId, Integer lotId) {
+
+    // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
+    var assessmentTool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
+        () -> new ResourceNotFoundException(format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
+
+    var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId).orElseThrow(
+        () -> new ResourceNotFoundException(format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
+
+    Set<Integer> supplierSubmissions;
+
+    if (lotId != null && lotId > 0) {
+      supplierSubmissions =
+          retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
+              assessmentTool.getId(), dimension.getId(), lotId);
+    } else {
+      supplierSubmissions = retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionId(
+          assessmentTool.getId(), dimension.getId());
+    }
+return supplierSubmissions;
   }
 }
