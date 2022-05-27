@@ -419,6 +419,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
 
     EventSummary eventSummary = null;
+    RfxSetting rfxSetting = null;
 
     if (dbEvent.isTendersDBOnly() || dbEvent.getExternalEventId() == null) {
       log.debug("Get Event from Tenders DB: {}", dbEvent.getId());
@@ -429,6 +430,8 @@ public class ProcurementProjectService {
     } else {
       log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
+        var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+        rfxSetting = exportRfxResponse.getRfxSetting();
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
             ViewEventType.fromValue(dbEvent.getEventType()),
@@ -437,12 +440,13 @@ public class ProcurementProjectService {
         eventSummary.tenderPeriod(new Period1()
             .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
             .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
+
       } catch (Exception e) {
         // No data found in Jagger
         log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
       }
     }
-
+    eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
     projectPackageSummary.activeEvent(eventSummary);
     return Optional.of(projectPackageSummary);
   }

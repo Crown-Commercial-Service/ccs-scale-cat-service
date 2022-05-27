@@ -38,6 +38,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
@@ -334,6 +335,8 @@ class ProcurementProjectServiceTest {
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
     event.setOcidPrefix("b5fd17");
+    event.setTenderStatus("planned");
+
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
 
@@ -461,5 +464,45 @@ class ProcurementProjectServiceTest {
           .equals(right.getProject().getTender().getTitle())
           && right.getOperationCode() == OperationCode.UPDATE;
     }
+
   }
+  @Test
+  void dashboardStatusShouldBeReturnForTheEventsForProjects() {
+
+    // Mock behaviours
+    var event = new ProcurementEvent();
+    event.setId(EVENT_ID);
+    event.setExternalEventId("rfq_0001");
+    event.setEventName(EVENT_NAME);
+    event.setEventType("RFI");
+    event.setOcdsAuthorityName("ocds");
+    event.setOcidPrefix("b5fd17");
+    event.setTenderStatus("planned");
+    Set<ProcurementEvent> events = new HashSet<>();
+    events.add(event);
+
+    var exportRfxResponse = new ExportRfxResponse();
+    exportRfxResponse.setRfxSetting(RfxSetting.builder().status("To be Evaluated").statusCode(0).build());
+
+    var project = ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJ_NAME)
+            .externalProjectId("Test").procurementEvents(events).build();
+    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(retryableTendersDBDelegate
+            .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+            .thenReturn(List.of(ProjectUserMapping.builder()
+                    .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
+                    .userId("1234").build()));
+    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
+    when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
+            .thenReturn(Arrays.asList(project));
+
+    var response = procurementProjectService.getProjects(PRINCIPAL);
+
+
+    assertNotNull(response);
+    assertEquals(1, response.size());
+    assertEquals(DashboardStatus.IN_PROGRESS,response.stream().findFirst().get().getActiveEvent().getDashboardStatus());
+
+  }
+
 }
