@@ -164,17 +164,17 @@ public class ValidationService {
   }
 
   public void validateEventTypeBeforeUpdate(final ExportRfxResponse exportRfxResponse,
-      final DefineEventType eventType) {
+      final String eventType) {
     // cannot move to a TBD event from any other event
-    if (ViewEventType.TBD.name().equals(eventType.getValue())) {
+    if (ViewEventType.TBD.name().equals(eventType)) {
       throw new IllegalArgumentException(
-          "Cannot update an existing event type of '" + eventType.getValue() + "'");
+          "Cannot update an existing event type of '" + eventType + "'");
     }
     // If event status is AWARD, you cannot do (DA, FC, EOI, RFI)
     if (exportRfxResponse.getRfxSetting().getStatusCode().equals(AWARD_STATUS)
         && NOT_ALLOWED_EVENTS_AFTER_AWARD.contains(eventType)) {
       throw new IllegalArgumentException(
-          "Cannot update an existing event type of '" + eventType.getValue() + "'");
+          "Cannot update an existing event type of '" + eventType + "'");
     }
   }
 

@@ -297,7 +297,7 @@ public class ProcurementEventService {
     var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
 
     // validate different rules before update
-    validationService.validateEventTypeBeforeUpdate(exportRfxResponse, updateEvent.getEventType());
+    validationService.validateEventTypeBeforeUpdate(exportRfxResponse,event.getEventType());
 
     validationService.validateUpdateEventAssessment(updateEvent, event, principal);
 
