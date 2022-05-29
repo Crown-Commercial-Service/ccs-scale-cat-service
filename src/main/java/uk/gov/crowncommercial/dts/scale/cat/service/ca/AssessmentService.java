@@ -744,7 +744,7 @@ public class AssessmentService {
    */
   private Set<DimensionOption> recurseAssessmentTaxons(final AssessmentTaxon assessmentTaxon) {
 
-    log.debug("Assessment Taxon :" + assessmentTaxon.getName());
+    log.trace("Assessment Taxon :" + assessmentTaxon.getName());
     Set<DimensionOption> dimensionOptions =
         assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
@@ -766,7 +766,7 @@ public class AssessmentService {
 
     // Recurse down child Assessment Taxon collection
     if (!assessmentTaxon.getAssessmentTaxons().isEmpty()) {
-      log.debug("Assessment Taxon : process children..");
+      log.trace("Assessment Taxon : process children..");
       assessmentTaxon.getAssessmentTaxons().stream()
           .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
     }
@@ -786,7 +786,7 @@ public class AssessmentService {
   List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
       final List<DimensionOptionGroups> optionGroups) {
 
-    log.debug("  - traverse up taxon tree :" + assessmentTaxon.getName());
+    log.trace("  - traverse up taxon tree :" + assessmentTaxon.getName());
     var rtOptionGroup = new DimensionOptionGroups();
     rtOptionGroup.setName(assessmentTaxon.getName());
     optionGroups.add(rtOptionGroup);
@@ -920,12 +920,42 @@ public class AssessmentService {
 
   /**
    * Checks the criterion value is a valid positive integer
-   * 
+   *
    * @param Integer value
    */
-  private void checkNegNumber(Integer value) {
+  private void checkNegNumber(final Integer value) {
     if (value < 1) {
       throw new ValidationException(format(ERR_MSG_FMT_INVALID_CRITERION_INTEGER, value));
     }
+  }
+
+  /**
+   *
+   * @param toolId
+   * @param dimensionId
+   * @param lotId
+   * @return
+   */
+  public Set<Integer> getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
+      final Integer lotId) {
+
+    // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
+    var assessmentTool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
+        () -> new ResourceNotFoundException(format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
+
+    var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId).orElseThrow(
+        () -> new ResourceNotFoundException(format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
+
+    Set<Integer> supplierSubmissions;
+
+    if (lotId != null && lotId > 0) {
+      supplierSubmissions =
+          retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
+              assessmentTool.getId(), dimension.getId(), lotId);
+    } else {
+      supplierSubmissions = retryableTendersDBDelegate
+          .findAssessmentTaxonByToolIdAndDimensionId(assessmentTool.getId(), dimension.getId());
+    }
+    return supplierSubmissions;
   }
 }

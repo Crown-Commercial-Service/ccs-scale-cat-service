@@ -17,6 +17,7 @@ public class CompanyInfo {
   String userAlias;
   String dAndBCode;
   String extCode;
+  String extUniqueCode;
   CompanyType type;
 
   String bizEmail;

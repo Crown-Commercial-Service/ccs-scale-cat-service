@@ -76,10 +76,10 @@ public class ProcurementProjectService {
       final String principal, final String conclaveOrgId) {
 
     // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
     var jaggaerBuyerCompanyId =
-        userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
+        userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
     var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
         .orElseThrow(() -> new AuthorisationFailureException(
@@ -289,7 +289,7 @@ public class ProcurementProjectService {
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
+    var jaggaerUser = userProfileService.resolveBuyerUserProfile(userId)
         .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
     var user = User.builder().id(jaggaerUserId).build();
@@ -344,7 +344,7 @@ public class ProcurementProjectService {
     log.debug("delete Project Team member");
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
+    var jaggaerUser = userProfileService.resolveBuyerUserProfile(userId)
         .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
     var jaggaerProject = jaggaerService.getProject(dbProject.getExternalProjectId());
@@ -371,7 +371,7 @@ public class ProcurementProjectService {
     log.debug("Get projects for user: " + principal);
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
     var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
@@ -419,6 +419,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
 
     EventSummary eventSummary = null;
+    RfxSetting rfxSetting = null;
 
     if (dbEvent.isTendersDBOnly() || dbEvent.getExternalEventId() == null) {
       log.debug("Get Event from Tenders DB: {}", dbEvent.getId());
@@ -429,20 +430,24 @@ public class ProcurementProjectService {
     } else {
       log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
+        var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+        rfxSetting = exportRfxResponse.getRfxSetting();
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-            ViewEventType.fromValue(dbEvent.getEventType()),
-            TenderStatus.fromValue(dbEvent.getTenderStatus()), ReleaseTag.TENDER,
+                ((null!=dbEvent.getEventType()&& !"TBD".equals(dbEvent.getEventType()))?ViewEventType.fromValue(dbEvent.getEventType()):null),
+                (null!=dbEvent.getTenderStatus()?TenderStatus.fromValue(dbEvent.getTenderStatus()):null),
+                  ReleaseTag.TENDER,
             Optional.ofNullable(dbEvent.getAssessmentId()));
         eventSummary.tenderPeriod(new Period1()
             .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
             .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
+
       } catch (Exception e) {
         // No data found in Jagger
         log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
       }
     }
-
+    eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
     projectPackageSummary.activeEvent(eventSummary);
     return Optional.of(projectPackageSummary);
   }

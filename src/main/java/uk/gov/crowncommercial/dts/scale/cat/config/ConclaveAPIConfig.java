@@ -17,10 +17,12 @@ public class ConclaveAPIConfig {
 
   private String baseUrl;
   private String apiKey;
+  private String identitiesApiKey;
   private Integer timeoutDuration;
   private String buyerRoleKey;
   private String supplierRoleKey;
   private Map<String, String> getUser;
   private Map<String, String> getUserContacts;
   private Map<String, String> getOrganisation;
+  private Map<String, String> getOrganisationIdentity;
 }
