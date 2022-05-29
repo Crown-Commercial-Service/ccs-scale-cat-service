@@ -1,0 +1,47 @@
+{
+   "id":"Criterion 3",
+   "title":"Test Criterion",
+   "source":"buyer",
+   "relatesTo":"buyer",
+   "description":"For Information Only",
+   "requirementGroups":[
+      {
+         "OCDS":{
+            "id":"Group 10",
+            "description":"Duration of work/resource required for",
+            "requirements":[
+               {
+                  "OCDS":{
+                     "id":"Question 12",
+                     "title":"Enter how long you think the project will run for",
+                     "period":null,
+                     "pattern":null,
+                     "dataType":"string",
+                     "maxValue":null,
+                     "minValue":null,
+                     "description":"Add another",
+                     "expectedValue":null
+                  },
+                  "nonOCDS":{
+                     "options":[
+                        {
+                           "value":"P3Y6M10D"
+
+                        }
+                     ],
+                     "answered":false,
+                     "mandatory":false,
+                     "multiAnswer":true,
+                     "questionType":"Duration"
+                  }
+               }
+            ]
+         },
+         "nonOCDS":{
+            "task":"dummy",
+            "prompt":"Dummy",
+            "mandatory":false
+         }
+      }
+   ]
+}

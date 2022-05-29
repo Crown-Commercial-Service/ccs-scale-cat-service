@@ -33,19 +33,19 @@ public class AwardService {
 
   /**
    * Pre-Award or Edit-Pre-Award or Complete Award to the supplied suppliers.
-   * 
-   * @param profile
+   *
+   * @param principal
    * @param projectId
    * @param eventId
    * @param awardAction
    * @param award
    * @return status
    */
-  public String createOrUpdateAward(final String profile, final Integer projectId,
+  public String createOrUpdateAward(final String principal, final Integer projectId,
       final String eventId, final AwardState awardState, final Award2AllOf award,
       final Integer awardId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserBySSOUserLogin(profile)
+    var buyerUser = userService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
     if (award.getSuppliers().size() > 1) {
@@ -59,9 +59,9 @@ public class AwardService {
         validSuppliers.getFirst().stream().map(e -> e.getCompanyData().getName()).findFirst()
             .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND));
 
-    var awardAction = awardState.equals(AwardState.COMPLETE) ? AWARD : PRE_AWARD;
+    var awardAction = AwardState.COMPLETE.equals(awardState) ? AWARD : PRE_AWARD;
     if (awardId != null) {
-      awardAction = awardState.equals(AwardState.COMPLETE) ? AWARD : EDIT_PRE_AWARD;
+      awardAction = AwardState.COMPLETE.equals(awardState) ? AWARD : EDIT_PRE_AWARD;
     }
     log.info("SupplierName {} and Award-action {}", validSupplierName, awardAction);
     // Creating RPA process input string

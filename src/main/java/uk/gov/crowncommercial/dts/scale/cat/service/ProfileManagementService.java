@@ -370,6 +370,8 @@ public class ProfileManagementService {
 
     companyInfoBuilder.companyName(conclaveUserOrg.getIdentifier().getLegalName())
         .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg)).type(companyType)
+        .extUniqueCode(conclaveUserOrg.getIdentifier().getId()).type(companyType)
+        .dAndBCode(conclaveUserOrg.getIdentifier().getId())
         .bizEmail("conclave@orgcontacts.todo.com").bizPhone("012345678").bizFax("012345678")
         .webSite("https://conclave-org-contacts.todo.com")
         .address(conclaveUserOrg.getAddress().getStreetAddress())

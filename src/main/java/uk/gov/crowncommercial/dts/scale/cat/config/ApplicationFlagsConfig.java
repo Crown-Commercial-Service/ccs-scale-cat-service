@@ -13,5 +13,6 @@ import lombok.Data;
 public class ApplicationFlagsConfig {
 
   private Boolean devMode;
+  private Boolean resolveBuyerUsersBySSO;
 
 }

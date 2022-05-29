@@ -182,5 +182,13 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildDefaultErrors(I_AM_A_TEAPOT.toString(),
         "Login Director Edgecase Scenario", exception.getMessage());
   }
+  @ResponseStatus(BAD_REQUEST)
+  @ExceptionHandler({NotSupportedException.class})
+  public Errors handleNotSupportedException(
+      final NotSupportedException exception) {
+    log.warn(exception.getMessage());
 
+    return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
+        "Mime type not supported ", exception.getMessage());
+  }
 }

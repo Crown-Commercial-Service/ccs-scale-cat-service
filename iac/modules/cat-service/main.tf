@@ -67,6 +67,10 @@ data "aws_ssm_parameter" "conclave_wrapper_api_key" {
   name = "/cat/${var.environment}/conclave-wrapper-api-key"
 }
 
+data "aws_ssm_parameter" "conclave_wrapper_identities_api_key" {
+  name = "/cat/${var.environment}/conclave-wrapper-identities-api-key"
+}
+
 # Agreements Service
 data "aws_ssm_parameter" "agreements_service_base_url" {
   name = "/cat/${var.environment}/agreements-service-base-url"
@@ -126,6 +130,7 @@ resource "cloudfoundry_app" "cat_service" {
   environment = {
     JBP_CONFIG_OPEN_JDK_JRE : "{ \"jre\": { version: 11.+ } }"
     "config.flags.devMode" : var.dev_mode
+    "config.flags.resolveBuyerUsersBySSO" : var.resolve_buyer_users_by_sso
     "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
 
     # Jaggaer
@@ -139,6 +144,7 @@ resource "cloudfoundry_app" "cat_service" {
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
     "config.external.conclave-wrapper.baseUrl" : data.aws_ssm_parameter.conclave_wrapper_api_base_url.value
     "config.external.conclave-wrapper.apiKey" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
+    "config.external.conclave-wrapper.identitiesApiKey" : data.aws_ssm_parameter.conclave_wrapper_identities_api_key.value
     
     # Agreements Service
     "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
