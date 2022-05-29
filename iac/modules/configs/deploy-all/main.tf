@@ -15,4 +15,5 @@ module "cat-service" {
   memory       = var.memory
   dev_mode     = var.dev_mode
   log_level    = var.log_level
+  resolve_buyer_users_by_sso = var.resolve_buyer_users_by_sso
 }

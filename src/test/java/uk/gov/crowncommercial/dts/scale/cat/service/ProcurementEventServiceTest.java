@@ -158,6 +158,9 @@ class ProcurementEventServiceTest {
   private SupplierSelectionRepo supplierSelectionRepo;
 
   @MockBean
+  private SupplierSubmissionRepo supplierSubmissionRepo;
+
+  @MockBean
   private DocumentUploadService documentUploadService;
 
   @MockBean
@@ -189,8 +192,8 @@ class ProcurementEventServiceTest {
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
     when(jaggaerService.createUpdateRfx(any(Rfx.class), any(OperationCode.class)))
         .thenReturn(createUpdateRfxResponse);
 
@@ -264,8 +267,8 @@ class ProcurementEventServiceTest {
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
 
     when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
       procurementProject.setId(PROC_PROJECT_ID);
@@ -347,8 +350,8 @@ class ProcurementEventServiceTest {
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(userProfileService.resolveBuyerCompanyByEmail(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
     when(jaggaerService.createUpdateRfx(any(Rfx.class), any(OperationCode.class)))
         .thenReturn(createUpdateRfxResponse);
 
@@ -417,7 +420,7 @@ class ProcurementEventServiceTest {
     event.setExternalEventId(PROC_EVENT_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
@@ -456,7 +459,7 @@ class ProcurementEventServiceTest {
     event.setExternalEventId(PROC_EVENT_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
@@ -494,7 +497,7 @@ class ProcurementEventServiceTest {
     event.setExternalEventId(PROC_EVENT_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
@@ -535,7 +538,7 @@ class ProcurementEventServiceTest {
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER,
@@ -584,7 +587,7 @@ class ProcurementEventServiceTest {
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
@@ -619,7 +622,7 @@ class ProcurementEventServiceTest {
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
@@ -642,7 +645,7 @@ class ProcurementEventServiceTest {
     event.setEventType("RFI"); // Not 'TBD', so rules state cannot update
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
@@ -902,7 +905,7 @@ class ProcurementEventServiceTest {
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
@@ -932,7 +935,7 @@ class ProcurementEventServiceTest {
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
@@ -997,7 +1000,7 @@ class ProcurementEventServiceTest {
     response.setRfxId(RFX_ID);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
@@ -1121,7 +1124,7 @@ class ProcurementEventServiceTest {
             .operatorUser(OwnerUser.builder().id(JAGGAER_USER_ID).build()).build();
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
