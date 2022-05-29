@@ -29,3 +29,7 @@ variable "dev_mode" {
 variable "log_level" {
   default = "DEBUG"
 }
+
+variable "resolve_buyer_users_by_sso"{
+  default = false
+}

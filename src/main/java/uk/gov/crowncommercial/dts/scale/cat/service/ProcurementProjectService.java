@@ -76,10 +76,10 @@ public class ProcurementProjectService {
       final String principal, final String conclaveOrgId) {
 
     // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
     var jaggaerBuyerCompanyId =
-        userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
+        userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
     var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
         .orElseThrow(() -> new AuthorisationFailureException(
@@ -289,7 +289,7 @@ public class ProcurementProjectService {
 
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
+    var jaggaerUser = userProfileService.resolveBuyerUserProfile(userId)
         .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
     var user = User.builder().id(jaggaerUserId).build();
@@ -344,7 +344,7 @@ public class ProcurementProjectService {
     log.debug("delete Project Team member");
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    var jaggaerUser = userProfileService.resolveBuyerUserByEmail(userId)
+    var jaggaerUser = userProfileService.resolveBuyerUserProfile(userId)
         .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
     var jaggaerProject = jaggaerService.getProject(dbProject.getExternalProjectId());
@@ -371,7 +371,7 @@ public class ProcurementProjectService {
     log.debug("Get projects for user: " + principal);
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
     var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
