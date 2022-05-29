@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
@@ -32,8 +33,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  * time-based cache of <code>principal</code> values (i.e. the incoming JWT subject) to resolved
  * Jaggaer sub user profiles.
  * <p>
- * TODO: Needs tests, but as much of this may change once Jaggaer is integrated with SSO will wait
- * and see what the final architecture looks like
  */
 @Service
 @RequiredArgsConstructor
@@ -50,6 +49,8 @@ public class UserProfileService {
   private final LoadingCache<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerBuyerUserCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
+
+  private final ApplicationFlagsConfig appFlagsConfig;
 
   @Value
   @EqualsAndHashCode(exclude = "filterPredicate")
@@ -75,16 +76,18 @@ public class UserProfileService {
   }
 
   /**
-   * @deprecated Use {@link #resolveBuyerUserBySSOUserLogin(String)} instead.
+   * Resolves buyer users by either email address or SSO data (depending on env/config).
    *
-   * @param email
-   * @return
+   * @param principal the PPG user ID (email)
+   * @return the buyer user profile
    */
   @SneakyThrows
-  @Deprecated(forRemoval = true)
-  public Optional<SubUser> resolveBuyerUserByEmail(final String email) {
+  public Optional<SubUser> resolveBuyerUserProfile(final String principal) {
+    if (Boolean.TRUE.equals(appFlagsConfig.getResolveBuyerUsersBySSO())) {
+      return resolveBuyerUserBySSOUserLogin(principal);
+    }
     return jaggaerBuyerUserCache
-        .get(new SubUserIdentity(email, getFilterPredicateEmailAndRightsProfile(email)))
+        .get(new SubUserIdentity(principal, getFilterPredicateEmailAndRightsProfile(principal)))
         .getSecond();
   }
 
@@ -95,22 +98,23 @@ public class UserProfileService {
   }
 
   /**
-   * @deprecated Use {@link #resolveBuyerCompanyBySSOUserLogin(String)} instead.
+   * Resolves buyer user by either email address or SSO data (depending on env/config) and returns
+   * their company.
    *
-   * @param email
-   * @return
+   * @param principal the PPG user ID (email)
+   * @return the buyer user company
    */
   @SneakyThrows
-  @Deprecated(forRemoval = true)
-  public CompanyInfo resolveBuyerCompanyByEmail(final String email) {
-    return jaggaerBuyerUserCache
-        .get(new SubUserIdentity(email, getFilterPredicateEmailAndRightsProfile(email))).getFirst();
-  }
+  public CompanyInfo resolveBuyerUserCompany(final String principal) {
+    if (Boolean.TRUE.equals(appFlagsConfig.getResolveBuyerUsersBySSO())) {
+      return jaggaerBuyerUserCache
+          .get(new SubUserIdentity(principal, getFilterPredicateSSOUserLogin(principal)))
+          .getFirst();
+    }
 
-  @SneakyThrows
-  public CompanyInfo resolveBuyerCompanyBySSOUserLogin(final String email) {
     return jaggaerBuyerUserCache
-        .get(new SubUserIdentity(email, getFilterPredicateSSOUserLogin(email))).getFirst();
+        .get(new SubUserIdentity(principal, getFilterPredicateEmailAndRightsProfile(principal)))
+        .getFirst();
   }
 
   @SneakyThrows

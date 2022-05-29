@@ -35,3 +35,5 @@ variable "cf_password" {
 variable "dev_mode" {}
 
 variable "log_level" {}
+
+variable "resolve_buyer_users_by_sso"{}

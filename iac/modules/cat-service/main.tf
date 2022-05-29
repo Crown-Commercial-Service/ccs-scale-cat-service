@@ -130,6 +130,7 @@ resource "cloudfoundry_app" "cat_service" {
   environment = {
     JBP_CONFIG_OPEN_JDK_JRE : "{ \"jre\": { version: 11.+ } }"
     "config.flags.devMode" : var.dev_mode
+    "config.flags.resolveBuyerUsersBySSO" : var.resolve_buyer_users_by_sso
     "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
 
     # Jaggaer

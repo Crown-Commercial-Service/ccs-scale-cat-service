@@ -71,7 +71,7 @@ public class MessageService {
   public String sendOrRespondMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserByEmail(profile)
+    var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
@@ -129,7 +129,7 @@ public class MessageService {
 
     // REM Assumption that user is buyer only
     var jaggaerUserId = userProfileService
-        .resolveBuyerUserByEmail(messageRequestInfo.getPrincipal())
+        .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
         messageRequestInfo.getEventId());
@@ -228,7 +228,7 @@ public class MessageService {
   public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
       final Integer procId, final String eventId, final String messageId, final String principal) {
 
-    userProfileService.resolveBuyerUserByEmail(principal)
+    userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     validationService.validateProjectAndEventIds(procId, eventId);
     var response = jaggaerService.getMessage(messageId);
@@ -240,7 +240,7 @@ public class MessageService {
   public DocumentAttachment downloadAttachment(final Integer procId, final String eventId,
       final String messageId, final String principal, final String documentId) {
 
-    userProfileService.resolveBuyerUserByEmail(principal)
+    userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     validationService.validateProjectAndEventIds(procId, eventId);
 
