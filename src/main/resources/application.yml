@@ -248,7 +248,9 @@ config:
       getDocumentRecord:
         uriTemplate: /documents/{document-id}
       
-  #flags:
+  flags:
+    # Prod env set to true
+    resolveUsersBySSO: false
     # devMode: "SET IN ENV"
 ---
 spring:

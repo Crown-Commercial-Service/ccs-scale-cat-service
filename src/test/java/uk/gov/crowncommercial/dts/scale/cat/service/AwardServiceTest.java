@@ -121,7 +121,7 @@ class AwardServiceTest {
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
   private static RPAGenericData request = new RPAGenericData();
-  private RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
+  private final RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
   @BeforeAll
   static void beforeClass() {
@@ -134,7 +134,7 @@ class AwardServiceTest {
   @Test
   void testcreatePreAward() throws JsonProcessingException {
     // Stub some objects
-    List<OrganizationReference1> suppliersList = new ArrayList<OrganizationReference1>();
+    List<OrganizationReference1> suppliersList = new ArrayList<>();
     suppliersList.add(new OrganizationReference1().id("GB-COH-1234567"));
 
     var award = new Award2AllOf().suppliers(suppliersList);
@@ -161,7 +161,7 @@ class AwardServiceTest {
 
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    RPAAPIResponse responseObject =
+    var responseObject =
         new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
@@ -181,7 +181,7 @@ class AwardServiceTest {
     when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
-    when(userProfileService.resolveBuyerUserBySSOUserLogin(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
@@ -219,7 +219,7 @@ class AwardServiceTest {
         .setSync(true);
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    RPAAPIResponse responseObject =
+    var responseObject =
         new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));

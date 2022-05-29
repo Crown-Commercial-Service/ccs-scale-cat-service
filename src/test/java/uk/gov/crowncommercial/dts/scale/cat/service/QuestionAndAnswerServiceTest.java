@@ -63,7 +63,7 @@ class QuestionAndAnswerServiceTest {
     var qAndA = new QandA().question(QUESTION).answer(ANSWER);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
 
@@ -92,7 +92,7 @@ class QuestionAndAnswerServiceTest {
     var qAndA = new QandA().question(QUESTION).answer(ANSWER);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
 
@@ -138,7 +138,7 @@ class QuestionAndAnswerServiceTest {
     Set<QuestionAndAnswer> targetSet = new HashSet<>(questions);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
     when(questionAndAnswerRepo.findByEventId(EVENT_ID)).then(mock -> {

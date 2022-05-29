@@ -223,11 +223,11 @@ public class ProcurementEventService {
       final String principal, final List<Supplier> suppliers) {
 
     // Fetch Jaggaer ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
         .getUserId();
     var jaggaerBuyerCompanyId =
-        userProfileService.resolveBuyerCompanyByEmail(principal).getBravoId();
+        userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
     var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
     var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
@@ -715,7 +715,7 @@ public class ProcurementEventService {
   public void publishEvent(final Integer procId, final String eventId,
       final PublishDates publishDates, final String principal) {
 
-    var jaggaerUserId = userProfileService.resolveBuyerUserByEmail(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
         .getUserId();
 
@@ -1030,7 +1030,7 @@ public class ProcurementEventService {
   public CreateUpdateRfxResponse extendEvent(final Integer procId, final String eventId,
       final ExtendCriteria extendCriteria, final String principal) {
 
-    userProfileService.resolveBuyerUserByEmail(principal)
+    userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
         .getUserId();
 
@@ -1066,7 +1066,7 @@ public class ProcurementEventService {
   @Transactional
   public void terminateEvent(final Integer procId, final String eventId, final TerminationType type,
       final String principal) {
-    var user = userProfileService.resolveBuyerUserByEmail(principal)
+    var user = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
         .getUserId();
     var event = validationService.validateProjectAndEventIds(procId, eventId);

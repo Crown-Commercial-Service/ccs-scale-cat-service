@@ -33,7 +33,7 @@ public class QuestionAndAnswerService {
   public QandA createOrUpdateQuestionAndAnswer(final String profile, final Integer projectId,
       final String eventId, final QandA qAndA, final Integer qaId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var user = userService.resolveBuyerUserByEmail(profile)
+    var user = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
     var questionAndAnswer = QuestionAndAnswer.builder().question(qAndA.getQuestion())

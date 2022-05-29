@@ -104,7 +104,7 @@ public class SupplierService {
       final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserByEmail(profile)
+    var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {

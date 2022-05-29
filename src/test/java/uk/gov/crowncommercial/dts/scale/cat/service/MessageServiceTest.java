@@ -205,7 +205,7 @@ class MessageServiceTest {
             .thenReturn(responseObject);
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID).build());
 
@@ -265,7 +265,7 @@ class MessageServiceTest {
     when(retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID)).thenReturn(
         ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID).externalEventId(RFX_ID)
             .project(project).ocdsAuthorityName("ocds").ocidPrefix("abc123").id(1).build());
@@ -332,7 +332,7 @@ class MessageServiceTest {
     when(retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
@@ -416,7 +416,7 @@ class MessageServiceTest {
     var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
@@ -451,7 +451,7 @@ class MessageServiceTest {
     var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
 
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserByEmail(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(event);
     when(jaggaerService.getMessage("1")).thenReturn(message);
