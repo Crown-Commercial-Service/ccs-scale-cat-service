@@ -32,6 +32,8 @@ public class TendersAPIModelUtils {
   private static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";
   private static final String EVALUATED_STATUS = "Final Evaluation";
   private static final String CLOSED_STATUS = "CLOSED";
+
+  private static final String CANCELLED_STATUS = "cancelled";
   private static final String COMPLETE_STATUS = "COMPLETE";
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
@@ -130,12 +132,12 @@ public class TendersAPIModelUtils {
       final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
     var tenderStatus = procurementEvent.getTenderStatus();
-    if (Objects.nonNull(tenderStatus)) {
-      if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {
-        return DashboardStatus.COMPLETE;
-      } else if (tenderStatus.strip().equalsIgnoreCase(CLOSED_STATUS)) {
-        return DashboardStatus.CLOSED;
-      } else // No rfx, use procurement event status
+    DashboardStatus dashboardStatusFromTenderStatus =
+        deriveDashboardStatusBasedOnTenderStatus(tenderStatus);
+
+    if (null != dashboardStatusFromTenderStatus) {
+      return dashboardStatusFromTenderStatus;
+    } else { // No rfx, use procurement event status
       if (Constants.TENDER_DB_ONLY_EVENT_TYPES.contains(
           DefineEventType.fromValue(procurementEvent.getEventType()))) {
         return DashboardStatus.ASSESSMENT;
@@ -152,11 +154,23 @@ public class TendersAPIModelUtils {
         } else {
           return evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
         }
-
       }
     }
     log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
+  }
+
+  private DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
+
+    if (Objects.nonNull(tenderStatus)) {
+      if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {
+        return DashboardStatus.COMPLETE;
+      } else if (tenderStatus.strip().equalsIgnoreCase(CLOSED_STATUS)
+          || tenderStatus.strip().equalsIgnoreCase(CANCELLED_STATUS)) {
+        return DashboardStatus.CLOSED;
+      }
+    }
+    return null;
   }
 
   private DashboardStatus evaluateDashboardStatusFromRfxSettingStatus(RfxSetting rfxSetting) {
