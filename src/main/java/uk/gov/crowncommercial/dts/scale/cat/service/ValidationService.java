@@ -182,21 +182,23 @@ public class ValidationService {
 
     if (!CollectionUtils.isEmpty(optionList) && optionList.size() == 1) {
       QuestionNonOCDSOptions projectDurationOptionValue = optionList.get(0);
-      try {
-        var projectDuration = Period.parse(projectDurationOptionValue.getValue());
-        var now = LocalDate.now();
-        if (now.plus(projectDuration).isAfter(now.plus(FOUR_YEAR_PERIOD))) {
-          throw new ValidationException(String.format("Project Duration is greater than 4 years"));
-        }
 
-      } catch (DateTimeParseException dateTimeParseException) {
-        throw new ValidationException(
-            String.format(
-                "Project Duration is not in ISO8601 format: '%s'",
-                projectDurationOptionValue.getValue()));
+      if (null != projectDurationOptionValue && !ObjectUtils.isEmpty(projectDurationOptionValue.getValue())) {
+        try {
+          var projectDuration = Period.parse(projectDurationOptionValue.getValue());
+          var now = LocalDate.now();
+          if (now.plus(projectDuration).isAfter(now.plus(FOUR_YEAR_PERIOD))) {
+            throw new ValidationException(
+                String.format("Project Duration is greater than 4 years"));
+          }
+
+        } catch (DateTimeParseException dateTimeParseException) {
+          throw new ValidationException(
+              String.format(
+                  "Project Duration is not in ISO8601 format: '%s'",
+                  projectDurationOptionValue.getValue()));
+        }
       }
-    } else {
-      throw new ValidationException(String.format("Invalid Input provided for Project Duration"));
     }
   }
 
