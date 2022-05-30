@@ -1186,7 +1186,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnInProgressDashboardStatusForGetEventForNonDBEventTypeWithPublishDateNull() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(null).build();
@@ -1219,7 +1219,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnPublishedDashboardStatusForGetEventForNonDBEventTypeWithClosedDateAfterToday() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1251,7 +1251,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnToBeEvaluatedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusToBeEvaluated() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1285,7 +1285,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusQualificationEvaluation() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1317,7 +1317,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusTechnicalEvaluation() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1349,7 +1349,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnEvaluatingdDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusCommercialEvaluation() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1382,7 +1382,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusBestAndFinalOfferEvaluation() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1414,7 +1414,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusTIOCClosed() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1446,7 +1446,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnEvaluatedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusFinalEvaluation() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1478,7 +1478,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnPreAwardDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusFinalEvaluationPreAwarded() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1510,7 +1510,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnPreAwardDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusAwardingApproval() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1542,7 +1542,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnAwardedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusAwarded() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1573,7 +1573,7 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnAwardedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusMixedAwarding() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("NONNULL");
+            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
             .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
@@ -1640,6 +1640,44 @@ class ProcurementEventServiceTest {
     assertEquals(DashboardStatus.CLOSED, eventSummary.getDashboardStatus());
   }
 
+
+  @Test
+  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCancelledStatus() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setId(PROC_EVENT_DB_ID);
+    event.setExternalEventId(RFX_ID);
+    event.setExternalReferenceId(RFX_REF_CODE);
+    event.setEventName("NAME");
+    event.setEventType("RFI");
+    event.setOcdsAuthorityName(OCDS_AUTH_NAME);
+    event.setOcidPrefix(OCID_PREFIX);
+    event.setAssessmentId(ASSESSMENT_ID);
+    event.setTenderStatus("cancelled");
+    var events = Set.of(event);
+
+    var rfxResponse = new ExportRfxResponse();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    // Mock behaviours
+    when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+
+    var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
+
+    // Verify
+    assertEquals(1, response.size());
+
+    var eventSummary = response.stream().findFirst().get();
+    assertEquals("NAME", eventSummary.getTitle());
+    assertEquals(ViewEventType.RFI, eventSummary.getEventType());
+    assertEquals(TenderStatus.ACTIVE, eventSummary.getStatus());
+    assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
+    assertEquals("ocds-b5fd17-2", eventSummary.getId());
+    assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
+    assertEquals(DashboardStatus.CLOSED, eventSummary.getDashboardStatus());
+  }
   @Test
   void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCompleteStatus() throws Exception {
 
@@ -1690,7 +1728,7 @@ class ProcurementEventServiceTest {
     event.setOcdsAuthorityName(OCDS_AUTH_NAME);
     event.setOcidPrefix(OCID_PREFIX);
     event.setAssessmentId(ASSESSMENT_ID);
-    event.setTenderStatus("NONNULL");
+    event.setTenderStatus(null);
 
     var events = Set.of(event);
 
@@ -1725,7 +1763,7 @@ class ProcurementEventServiceTest {
     event.setOcdsAuthorityName(OCDS_AUTH_NAME);
     event.setOcidPrefix(OCID_PREFIX);
     event.setAssessmentId(ASSESSMENT_ID);
-    event.setTenderStatus("NONNULL");
+    event.setTenderStatus(null);
 
     var events = Set.of(event);
 
