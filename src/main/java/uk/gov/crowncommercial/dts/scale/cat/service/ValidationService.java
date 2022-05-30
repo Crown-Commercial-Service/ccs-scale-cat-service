@@ -186,7 +186,8 @@ public class ValidationService {
       if (null != projectDurationOptionValue && !ObjectUtils.isEmpty(projectDurationOptionValue.getValue())) {
         try {
           var projectDuration = Period.parse(projectDurationOptionValue.getValue());
-          var now = LocalDate.now();
+          //Current date is giving an issue with days so made constant date for all
+          var now = LocalDate.of(1970,1,1);
           if (now.plus(projectDuration).isAfter(now.plus(FOUR_YEAR_PERIOD))) {
             throw new ValidationException(
                 String.format("Project Duration is greater than 4 years"));

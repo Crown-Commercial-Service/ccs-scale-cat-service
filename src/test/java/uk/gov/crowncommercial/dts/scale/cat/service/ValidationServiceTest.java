@@ -226,7 +226,7 @@ class ValidationServiceTest {
   @Test
   void shouldNotThrowValidationExceptionWhenTheProjectDurationIsGivenExactlySameDays() {
     QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions();
-    questionNonOCDSOptions.setValue("P3Y11M30D");
+    questionNonOCDSOptions.setValue("P3Y11M31D");
     try {
       validationService.validateProjectDuration(List.of(questionNonOCDSOptions));
     } catch (Exception e) {
