@@ -78,8 +78,7 @@ public class ProcurementProjectService {
     // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
-    var jaggaerBuyerCompanyId =
-        userProfileService.resolveBuyerUserCompany(principal).getBravoId();
+    var jaggaerBuyerCompanyId = userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
     var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
         .orElseThrow(() -> new AuthorisationFailureException(
@@ -375,7 +374,7 @@ public class ProcurementProjectService {
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
     var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
-        PageRequest.of(0, 50, Sort.by("timestamps.createdAt").descending()));
+        PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
 
     if (!CollectionUtils.isEmpty(projects)) {
       return projects.stream().map(this::convertProjectToProjectPackageSummary)
@@ -434,10 +433,12 @@ public class ProcurementProjectService {
         rfxSetting = exportRfxResponse.getRfxSetting();
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-                ((null!=dbEvent.getEventType()&& !"TBD".equals(dbEvent.getEventType()))?ViewEventType.fromValue(dbEvent.getEventType()):null),
-                (null!=dbEvent.getTenderStatus()?TenderStatus.fromValue(dbEvent.getTenderStatus()):null),
-                  ReleaseTag.TENDER,
-            Optional.ofNullable(dbEvent.getAssessmentId()));
+            null != dbEvent.getEventType() && !"TBD".equals(dbEvent.getEventType())
+                ? ViewEventType.fromValue(dbEvent.getEventType())
+                : null,
+            null != dbEvent.getTenderStatus() ? TenderStatus.fromValue(dbEvent.getTenderStatus())
+                : null,
+            ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
         eventSummary.tenderPeriod(new Period1()
             .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
             .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
