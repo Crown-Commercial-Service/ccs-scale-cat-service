@@ -138,12 +138,14 @@ public class TendersAPIModelUtils {
     if (null != dashboardStatusFromTenderStatus) {
       return dashboardStatusFromTenderStatus;
     } else { // No rfx, use procurement event status
-      if (Constants.TENDER_DB_ONLY_EVENT_TYPES.contains(
-          DefineEventType.fromValue(procurementEvent.getEventType()))) {
+      if (null!=procurementEvent.getEventType()
+          && Constants.TENDER_DB_ONLY_EVENT_TYPES.contains(
+              ViewEventType.fromValue(procurementEvent.getEventType()))) {
         return DashboardStatus.ASSESSMENT;
       } else // TODO: Event types: EOI,RFI,FC OR DA etc
-      if (Constants.TENDER_NON_DB_EVENT_TYPES.contains(
-              DefineEventType.fromValue(procurementEvent.getEventType()))
+      if (null!=procurementEvent.getEventType()
+          && Constants.TENDER_NON_DB_EVENT_TYPES.contains(
+              ViewEventType.fromValue(procurementEvent.getEventType()))
           && Objects.nonNull(rfxSetting)) {
 
         if (Objects.isNull(rfxSetting.getPublishDate())) {
