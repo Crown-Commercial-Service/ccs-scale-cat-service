@@ -132,7 +132,7 @@ public class TendersAPIModelUtils {
       final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
     var tenderStatus = procurementEvent.getTenderStatus();
-    DashboardStatus dashboardStatusFromTenderStatus =
+    var dashboardStatusFromTenderStatus =
         deriveDashboardStatusBasedOnTenderStatus(tenderStatus);
 
     if (null != dashboardStatusFromTenderStatus) {
