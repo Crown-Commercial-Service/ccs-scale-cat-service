@@ -241,12 +241,12 @@ public class MessageService {
         messageRequestInfo.getMessageSortOrder());
 
     // convert to message summary
-    return new MessageSummary()
-        .counts(new MessageTotals().messagesTotal(messagesResponse.getTotRecords())
-            .pageTotal(messagesResponse.getReturnedRecords()))
-        .links(getLinks(messages, messageRequestInfo.getPageSize()))
-        .messages(getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
-            messageRequestInfo.getPageSize()));
+    return new MessageSummary().counts(
+            new MessageTotals().messagesTotal(messagesResponse.getTotRecords()).pageTotal(
+                (messagesResponse.getReturnedRecords() / messageRequestInfo.getPageSize()) + 1))
+        .links(getLinks(messages, messageRequestInfo.getPageSize())).messages(
+            getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
+                messageRequestInfo.getPageSize()));
   }
 
   private Links1 getLinks(

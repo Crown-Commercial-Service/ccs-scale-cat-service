@@ -7,7 +7,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.6.7</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
 	<artifactId>ccs-scale-cat-service</artifactId>
@@ -20,16 +20,22 @@
 		<swagger-parser.version>2.0.32</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
-		<hibernate-types.version>2.16.1</hibernate-types.version>
+		<hibernate-types.version>2.16.2</hibernate-types.version>
 		<modelmapper.version>2.4.5</modelmapper.version>
 		<simple-odf.version>0.9.0</simple-odf.version>
 		<jena-core.version>4.5.0</jena-core.version>
 		<commons-io.version>2.11.0</commons-io.version>
-		<aws-java-sdk-s3.version>1.12.210</aws-java-sdk-s3.version>
+		<aws-java-sdk-s3.version>1.12.214</aws-java-sdk-s3.version>
 		<tika-core.version>2.4.0</tika-core.version>
+		<java-cfenv-boot.version>2.4.0</java-cfenv-boot.version>
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>io.pivotal.cfenv</groupId>
+			<artifactId>java-cfenv-boot</artifactId>
+			<version>${java-cfenv-boot.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -133,9 +139,9 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-		    <groupId>commons-io</groupId>
-		    <artifactId>commons-io</artifactId>
-		    <version>${commons-io.version}</version>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>${commons-io.version}</version>
 		</dependency>
 
 		<!-- Snyk recommended -->
@@ -149,19 +155,19 @@
 			<groupId>com.jayway.jsonpath</groupId>
 			<artifactId>json-path</artifactId>
 		</dependency>
-		
+
 		<dependency>
-		    <groupId>com.amazonaws</groupId>
-		    <artifactId>aws-java-sdk-s3</artifactId>
-		    <version>${aws-java-sdk-s3.version}</version>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-s3</artifactId>
+			<version>${aws-java-sdk-s3.version}</version>
 		</dependency>
-		
+
 		<dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-core</artifactId>
-            <version>${tika-core.version}</version>
-        </dependency>
-		
+			<groupId>org.apache.tika</groupId>
+			<artifactId>tika-core</artifactId>
+			<version>${tika-core.version}</version>
+		</dependency>
+
 		<!-- Test dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
