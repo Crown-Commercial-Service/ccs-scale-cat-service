@@ -2,10 +2,9 @@ language: java
 jdk: openjdk17
 script: 
   # Install latest version of Maven compatible with JDK 17
-  - wget https://dlcdn.apache.org/maven/maven-3/3.8.5/binaries/apache-maven-3.8.5-bin.tar.gz
-  - mkdir ~/apps
-  - tar xf /tmp/apache-maven-*.tar.gz -C ~/apps
-  - export M2_HOME=~/apps/apache-maven-3.8.5
+  - wget https://dlcdn.apache.org/maven/maven-3/3.8.5/binaries/apache-maven-3.8.5-bin.tar.gz -P /tmp
+  - sudo tar xf /tmp/apache-maven-*.tar.gz -C /usr/local/bin/
+  - export M2_HOME=/usr/local/bin/apache-maven-3.8.5
   - export PATH=${M2_HOME}/bin:${PATH}
   - mvn package
 cache:
