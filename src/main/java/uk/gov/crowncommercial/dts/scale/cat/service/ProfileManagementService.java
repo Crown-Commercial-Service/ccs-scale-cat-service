@@ -61,6 +61,7 @@ public class ProfileManagementService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final NotificationService notificationService;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the
