@@ -128,7 +128,7 @@ resource "cloudfoundry_app" "cat_service" {
   disk_quota  = var.disk_quota
   enable_ssh  = true
   environment = {
-    "JBP_CONFIG_OPEN_JDK_JRE" : "{ \"jre\": { version: 11.+ } }"
+    "JBP_CONFIG_OPEN_JDK_JRE" : "{ \"jre\": { version: 17.+ } }"
     "JBP_CONFIG_SPRING_AUTO_RECONFIGURATION" : "{enabled: false}"
     "SPRING_PROFILES_ACTIVE": "cloud"
     "config.flags.devMode" : var.dev_mode
