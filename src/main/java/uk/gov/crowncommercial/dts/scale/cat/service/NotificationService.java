@@ -37,7 +37,6 @@ public class NotificationService {
       }
       // Log the error - nothing else to do.
       log.error("Unrecoverable error from GOV.UK Notify", nce);
-
     }
 
   }

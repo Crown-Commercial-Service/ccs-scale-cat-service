@@ -2,24 +2,22 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
+import org.springframework.context.annotation.Configuration;
+import lombok.Data;
 import uk.gov.service.notify.NotificationClient;
 
 /**
  * GOV.UK Notify client & config
  */
+@Configuration
 @ConfigurationProperties(prefix = "config.external.notification", ignoreUnknownFields = true)
-@RequiredArgsConstructor
-@Value
+@Data
 public class NotificationClientConfig {
 
-  private final String apiKey;
-  private final String userRegistrationTargetEmail;
-  private final String userRegistrationTemplateId;
+  private String apiKey;
 
   @Bean
-  public NotificationClient notificationClient(final String apiKey) {
+  public NotificationClient notificationClient() {
     return new NotificationClient(apiKey);
   }
 

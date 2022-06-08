@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
@@ -62,6 +63,7 @@ public class ProfileManagementService {
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final NotificationService notificationService;
+  private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the
@@ -161,13 +163,15 @@ public class ProfileManagementService {
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      // TODO: Notify John G via email / Salesforce..??
+      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.isEmpty()) {
 
       // CON-1682-AC15: Create Jaggaer Buyer / return temp error code
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
+      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+
       throw new LoginDirectorEdgeCaseException("CON1682-AC15: Dual Conclave roles, buyer created");
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.size() == 1
@@ -424,6 +428,17 @@ public class ProfileManagementService {
       }
     }
     return Pair.of(buyerSubUser, Optional.empty());
+  }
+
+  private void sendUserRegistrationNotification(final UserProfileResponseInfo conclaveUser,
+      final OrganisationProfileResponseInfo conclaveUserOrg) {
+
+    var placeholders = Map.of("org_name", conclaveUserOrg.getIdentifier().getLegalName(),
+        "first_name", conclaveUser.getFirstName(), "last_name", conclaveUser.getLastName(), "email",
+        conclaveUser.getUserName());
+
+    notificationService.sendEmail(userRegistrationNotificationConfig.getTargetEmail(),
+        userRegistrationNotificationConfig.getTemplateId(), placeholders, "");
   }
 
   static SSOCodeData buildSSOCodeData(final String userId) {
