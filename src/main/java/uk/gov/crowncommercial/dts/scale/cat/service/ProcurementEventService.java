@@ -1162,26 +1162,36 @@ public class ProcurementEventService {
     return supplierAttachmentResponsesList;
   }
 
-  private List<Offer> getOffersWithSupplierAttachments(final ExportRfxResponse exportRfxResponse,
-      final String supplierId) {
+  private List<Offer> getOffersWithSupplierAttachments(
+      final ExportRfxResponse exportRfxResponse, final String supplierId) {
     List<Offer> offersWithParameters;
 
     if (Objects.isNull(supplierId)) {
-      offersWithParameters = exportRfxResponse.getOffersList().getOffer().stream()
-          .filter(offer -> ObjectUtils.allNotNull(offer, offer.getTechOffer(),
-              offer.getTechOffer().getParameterResponses(),
-              offer.getTechOffer().getParameterResponses().getParameter())
-              && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
-          .collect(Collectors.toList());
+      offersWithParameters =
+          exportRfxResponse.getOffersList().getOffer().stream()
+              .filter(
+                  offer ->
+                      ((null != offer)
+                              && (null != offer.getTechOffer())
+                              && (null != offer.getTechOffer().getParameterResponses())
+                              && null
+                                  != offer.getTechOffer().getParameterResponses().getParameter())
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+              .collect(Collectors.toList());
 
     } else {
-      offersWithParameters = exportRfxResponse.getOffersList().getOffer().stream()
-          .filter(offer -> ObjectUtils.allNotNull(offer, offer.getTechOffer(),
-              offer.getTechOffer().getParameterResponses(),
-              offer.getTechOffer().getParameterResponses().getParameter())
-              && offer.getSupplierId().intValue() == Integer.parseInt(supplierId)
-              && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
-          .collect(Collectors.toList());
+      offersWithParameters =
+          exportRfxResponse.getOffersList().getOffer().stream()
+              .filter(
+                  offer ->
+                      ((null != offer)
+                              && (null != offer.getTechOffer())
+                              && (null != offer.getTechOffer().getParameterResponses())
+                              && null
+                                  != offer.getTechOffer().getParameterResponses().getParameter())
+                          && offer.getSupplierId().intValue() == Integer.parseInt(supplierId)
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+              .collect(Collectors.toList());
     }
     return offersWithParameters;
   }
