@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Map;
+import org.springframework.retry.ExhaustedRetryException;
+import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +22,7 @@ public class NotificationService {
   private final NotificationClient client;
 
   @TendersRetryable
-  public void sendEmail(final String targetEmail, final String templateId,
+  public void sendEmail(final String templateId, final String targetEmail,
       final Map<String, ?> placeholders, final String reference) {
 
     try {
@@ -39,6 +41,19 @@ public class NotificationService {
       log.error("Unrecoverable error from GOV.UK Notify", nce);
     }
 
+  }
+
+  /**
+   * Catch-all recovery method to wrap original exception in {@link ExhaustedRetryException} and
+   * re-throw. Note - signature must match retried method.
+   *
+   * @param e the original exception
+   * @param arg argument(s) matching the retried method
+   * @return object same return type as retried method
+   */
+  @Recover
+  public void retriesExhausted(final Throwable e, final Object arg) {
+    throw new ExhaustedRetryException("Retries exhausted", e);
   }
 
 }

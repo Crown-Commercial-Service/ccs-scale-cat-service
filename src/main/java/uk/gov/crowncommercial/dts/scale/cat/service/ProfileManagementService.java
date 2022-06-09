@@ -437,8 +437,8 @@ public class ProfileManagementService {
         "first_name", conclaveUser.getFirstName(), "last_name", conclaveUser.getLastName(), "email",
         conclaveUser.getUserName());
 
-    notificationService.sendEmail(userRegistrationNotificationConfig.getTargetEmail(),
-        userRegistrationNotificationConfig.getTemplateId(), placeholders, "");
+    notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
+        userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
 
   static SSOCodeData buildSSOCodeData(final String userId) {
