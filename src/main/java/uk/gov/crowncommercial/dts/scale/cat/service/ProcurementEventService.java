@@ -485,8 +485,8 @@ public class ProcurementEventService {
           event.getEventType());
       var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
       var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
-          .filter(e -> e.getWeighting() != 100).findAny();
-      if (dimensionWeightingCheck.isPresent()) {
+          .map(e -> e.getWeighting()).reduce(0, Integer::sum);
+      if (dimensionWeightingCheck != 100 ) {
         throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
       }
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
