@@ -8,3 +8,5 @@ spring:
 config:
   flags:
     devMode: true        
+  retry:
+    maxAttempts: 3

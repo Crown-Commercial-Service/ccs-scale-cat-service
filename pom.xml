@@ -28,6 +28,7 @@
 		<aws-java-sdk-s3.version>1.12.214</aws-java-sdk-s3.version>
 		<tika-core.version>2.4.0</tika-core.version>
 		<java-cfenv-boot.version>2.4.0</java-cfenv-boot.version>
+		<notifications-java-client.version>3.17.3-RELEASE</notifications-java-client.version>
 	</properties>
 
 	<dependencies>
@@ -143,6 +144,13 @@
 			<artifactId>commons-io</artifactId>
 			<version>${commons-io.version}</version>
 		</dependency>
+		
+		<dependency>
+		    <groupId>uk.gov.service.notify</groupId>
+		    <artifactId>notifications-java-client</artifactId>
+		    <version>${notifications-java-client.version}</version>
+		</dependency>
+		
 
 		<!-- Snyk recommended -->
 		<dependency>
