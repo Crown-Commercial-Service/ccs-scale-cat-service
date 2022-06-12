@@ -3,7 +3,9 @@ package uk.gov.crowncommercial.dts.scale.cat.service.documentupload;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.DocumentUploadAPIConfig.KEY_URI_TEMPLATE;
+import java.io.EOFException;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
@@ -16,11 +18,14 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import reactor.util.retry.Retry;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.DocumentUploadAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocumentUploadApplicationException;
@@ -58,6 +63,12 @@ public class DocumentUploadService {
   private final DocumentUploadRepo documentUploadRepo;
   private final ProcurementEventRepo procurementEventRepo;
 
+  static final boolean isWebClientRequestException(final Throwable throwable) {
+    log.error("Caught error in DUS webclient:", throwable);
+    return throwable instanceof WebClientRequestException webClientRequestException
+        && webClientRequestException.getCause() instanceof EOFException;
+  }
+
   /**
    * Upload a new document for processing by the Document Upload Service
    *
@@ -81,8 +92,12 @@ public class DocumentUploadService {
     final var documentStatus = ofNullable(
         docUploadSvcUploadWebclient.post().uri(apiConfig.getPostDocument().get(KEY_URI_TEMPLATE))
             .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
-            .retrieve().bodyToMono(DocumentStatus.class).block())
-                .orElseThrow(() -> new DocumentUploadApplicationException(""));
+            .retrieve().bodyToMono(DocumentStatus.class)
+            .retryWhen(Retry
+                .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
+                    Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
+                .filter(DocumentUploadService::isWebClientRequestException))
+            .block()).orElseThrow(() -> new DocumentUploadApplicationException(""));
 
     // Create document ID based on hash of the external ID
     var docKey = new DocumentKey(Math.abs(documentStatus.getId().hashCode()),
