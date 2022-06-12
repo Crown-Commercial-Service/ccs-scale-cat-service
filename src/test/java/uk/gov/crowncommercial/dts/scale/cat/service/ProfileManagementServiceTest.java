@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.*;
@@ -75,6 +76,12 @@ class ProfileManagementServiceTest {
 
   @MockBean
   private JaggaerSOAPService jaggaerSOAPService;
+
+  @MockBean
+  private NotificationService notificationService;
+
+  @MockBean
+  private UserRegistrationNotificationConfig userRegistrationNotificationConfig;
 
   @Autowired
   private ProfileManagementService profileManagementService;
