@@ -30,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
+import uk.gov.crowncommercial.dts.scale.cat.service.EncryptionService;
 
 @Component
 @RequiredArgsConstructor
@@ -49,6 +50,7 @@ public class BuyerUserScheduler {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private XSSFWorkbook workbook;
   private XSSFSheet sheet;
+  private EncryptionService encryptionService;
   private static final String SHEET_NAME = "Buyers_Details";
 
   // TODO cron pattern should be applied after decision
@@ -75,10 +77,12 @@ public class BuyerUserScheduler {
 
       log.info("Scheduler - Save unmatched Self Service Buyers in DB - userCount {}",
           usersToAdd.size());
-      var savedUsers = buyerDetailsRepo.saveAll(usersToAdd.stream()
-          .map(e -> BuyerUserDetails.builder().userId(e.getUserId())
-              .userPassword(RandomStringUtils.randomAlphanumeric(8)).createdAt(Instant.now())
-              .createdBy("Scheduler").build())
+      var savedUsers = buyerDetailsRepo.saveAll(usersToAdd
+          .stream().map(e -> BuyerUserDetails.builder().userId(e.getUserId())
+              // TODO Password pattern should change after decision
+              .userPassword(
+                  encryptionService.encryptPassword(RandomStringUtils.randomAlphanumeric(8)))
+              .createdAt(Instant.now()).createdBy("Scheduler").build())
           .collect(Collectors.toList()));
 
       generateExcelSheet(savedUsers);

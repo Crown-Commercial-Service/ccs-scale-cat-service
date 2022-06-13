@@ -18,6 +18,8 @@ public class RPAAPIConfig {
   private String accessUrl;
   private String userName;
   private String userPwd;
+  private String encrpytionIv;
+  private String encrpytionKey;
 
   // RPA input keys
   private String source;

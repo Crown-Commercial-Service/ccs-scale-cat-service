@@ -8,3 +8,8 @@ spring:
 config:
   flags:
     devMode: true        
+  external:
+    jaggaer:
+      rpa: 
+        encrpytionIv: hjnhgy8k*A?(7y-K
+        encrpytionKey: uikjnsh657*y%hD*G-KaPdS*kij#3s6v
