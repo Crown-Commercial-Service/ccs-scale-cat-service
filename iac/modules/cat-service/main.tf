@@ -122,13 +122,28 @@ data "aws_ssm_parameter" "document_upload_service_s3_bucket" {
   name = "/cat/${var.environment}/document-upload-service-s3-bucket"
 }
 
+# Notifications
+data "aws_ssm_parameter" "gov_uk_notify_api_key" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/api-key"
+}
+
+data "aws_ssm_parameter" "gov_uk_notify_user_reg_template_id" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/template-id"
+}
+
+data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/target-email"
+}
+
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
   disk_quota  = var.disk_quota
   enable_ssh  = true
   environment = {
-    JBP_CONFIG_OPEN_JDK_JRE : "{ \"jre\": { version: 11.+ } }"
+    "JBP_CONFIG_OPEN_JDK_JRE" : "{ \"jre\": { version: 17.+ } }"
+    "JBP_CONFIG_SPRING_AUTO_RECONFIGURATION" : "{enabled: false}"
+    "SPRING_PROFILES_ACTIVE": "cloud"
     "config.flags.devMode" : var.dev_mode
     "config.flags.resolveBuyerUsersBySSO" : var.resolve_buyer_users_by_sso
     "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
@@ -163,6 +178,11 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.doc-upload-svc.aws-access-key-id" : data.aws_ssm_parameter.document_upload_service_aws_access_key_id.value
     "config.external.doc-upload-svc.aws-secret-key" : data.aws_ssm_parameter.document_upload_service_aws_secret_key.value
     "config.external.doc-upload-svc.s3-bucket" : data.aws_ssm_parameter.document_upload_service_s3_bucket.value
+
+    # Notifications
+    "config.external.notification.api-key": data.aws_ssm_parameter.gov_uk_notify_api_key.value
+    "config.external.notification.user-registration.template-id": data.aws_ssm_parameter.gov_uk_notify_user_reg_template_id.value
+    "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"

@@ -485,8 +485,8 @@ public class ProcurementEventService {
           event.getEventType());
       var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
       var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
-          .filter(e -> e.getWeighting() != 100).findAny();
-      if (dimensionWeightingCheck.isPresent()) {
+          .map(e -> e.getWeighting()).reduce(0, Integer::sum);
+      if (dimensionWeightingCheck != 100 ) {
         throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
       }
       addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
@@ -1162,26 +1162,36 @@ public class ProcurementEventService {
     return supplierAttachmentResponsesList;
   }
 
-  private List<Offer> getOffersWithSupplierAttachments(final ExportRfxResponse exportRfxResponse,
-      final String supplierId) {
+  private List<Offer> getOffersWithSupplierAttachments(
+      final ExportRfxResponse exportRfxResponse, final String supplierId) {
     List<Offer> offersWithParameters;
 
     if (Objects.isNull(supplierId)) {
-      offersWithParameters = exportRfxResponse.getOffersList().getOffer().stream()
-          .filter(offer -> ObjectUtils.allNotNull(offer, offer.getTechOffer(),
-              offer.getTechOffer().getParameterResponses(),
-              offer.getTechOffer().getParameterResponses().getParameter())
-              && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
-          .collect(Collectors.toList());
+      offersWithParameters =
+          exportRfxResponse.getOffersList().getOffer().stream()
+              .filter(
+                  offer ->
+                      ((null != offer)
+                              && (null != offer.getTechOffer())
+                              && (null != offer.getTechOffer().getParameterResponses())
+                              && null
+                                  != offer.getTechOffer().getParameterResponses().getParameter())
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+              .collect(Collectors.toList());
 
     } else {
-      offersWithParameters = exportRfxResponse.getOffersList().getOffer().stream()
-          .filter(offer -> ObjectUtils.allNotNull(offer, offer.getTechOffer(),
-              offer.getTechOffer().getParameterResponses(),
-              offer.getTechOffer().getParameterResponses().getParameter())
-              && offer.getSupplierId().intValue() == Integer.parseInt(supplierId)
-              && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
-          .collect(Collectors.toList());
+      offersWithParameters =
+          exportRfxResponse.getOffersList().getOffer().stream()
+              .filter(
+                  offer ->
+                      ((null != offer)
+                              && (null != offer.getTechOffer())
+                              && (null != offer.getTechOffer().getParameterResponses())
+                              && null
+                                  != offer.getTechOffer().getParameterResponses().getParameter())
+                          && offer.getSupplierId().intValue() == Integer.parseInt(supplierId)
+                          && !offer.getTechOffer().getParameterResponses().getParameter().isEmpty())
+              .collect(Collectors.toList());
     }
     return offersWithParameters;
   }
