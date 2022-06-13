@@ -429,19 +429,25 @@ public class ProcurementProjectService {
     } else {
       log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
-        var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
-        rfxSetting = exportRfxResponse.getRfxSetting();
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-            null != dbEvent.getEventType() && !"TBD".equals(dbEvent.getEventType())
-                ? ViewEventType.fromValue(dbEvent.getEventType())
+            Objects.nonNull(dbEvent.getEventType())? ViewEventType.fromValue(dbEvent.getEventType())
                 : null,
-            null != dbEvent.getTenderStatus() ? TenderStatus.fromValue(dbEvent.getTenderStatus())
+                Objects.nonNull(dbEvent.getTenderStatus()) ? TenderStatus.fromValue(dbEvent.getTenderStatus())
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
-        eventSummary.tenderPeriod(new Period1()
-            .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
-            .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
+
+        if (Objects.nonNull(dbEvent.getPublishDate()) && Objects.nonNull(dbEvent.getCloseDate())) {
+          eventSummary.tenderPeriod(
+              new Period1()
+                  .startDate(
+                      OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
+                  .endDate(
+                      OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
+        }
+        // We need to build event summary before ir-respective of jaggaer response
+        var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+        rfxSetting = exportRfxResponse.getRfxSetting();
 
       } catch (Exception e) {
         // No data found in Jagger
