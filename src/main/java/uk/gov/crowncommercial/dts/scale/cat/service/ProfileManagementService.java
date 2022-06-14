@@ -21,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Org
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
@@ -30,6 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -64,6 +66,8 @@ public class ProfileManagementService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final NotificationService notificationService;
   private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
+  private final BuyerUserDetailsRepo buyerDetailsRepo;
+  private final EncryptionService encryptionService;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the
@@ -164,6 +168,7 @@ public class ProfileManagementService {
           createUpdateCompanyDataBuilder, registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
       sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      saveBuyerDetails(conclaveUser.getUserName());
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.isEmpty()) {
 
@@ -171,6 +176,7 @@ public class ProfileManagementService {
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
       sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      saveBuyerDetails(conclaveUser.getUserName());
 
       throw new LoginDirectorEdgeCaseException("CON1682-AC15: Dual Conclave roles, buyer created");
 
@@ -439,6 +445,14 @@ public class ProfileManagementService {
 
     notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
+  }
+
+  private BuyerUserDetails saveBuyerDetails(String profile) {
+    var userProfile = userProfileService.resolveBuyerUserProfile(profile)
+        .orElseThrow(() -> new ResourceNotFoundException(ERR_MSG_FMT_JAGGAER_USER_MISSING));
+    return buyerDetailsRepo.save(BuyerUserDetails.builder().userId(userProfile.getUserId())
+        .userPassword(encryptionService.generateBuyerPassword()).createdAt(Instant.now())
+        .createdBy("Scheduler").build());
   }
 
   static SSOCodeData buildSSOCodeData(final String userId) {
