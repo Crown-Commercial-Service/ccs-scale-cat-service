@@ -1222,7 +1222,7 @@ public class ProcurementEventService {
     jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
 
     // call Open Envelop And Update Supplier
-    this.callOpenEnvelopeAndUpdateSupplier(
+    this.callOpenEnvelope(
         buyerUser.getEmail(),
         buyerEncryptedPwd,
         procurementEvent.getExternalReferenceId(),
@@ -1294,13 +1294,18 @@ public class ProcurementEventService {
    * @param externalReferenceId
    * @return
    */
-  public void  callOpenEnvelopeAndUpdateSupplier(final String userEmail, final String password,
-                                                  final String externalReferenceId, final RPAProcessInput processInput) {
+  public void callOpenEnvelope(
+      final String userEmail,
+      final String password,
+      final String externalReferenceId,
+      final RPAProcessInput processInput) {
     log.info("Calling OpenEnvelope for {}", externalReferenceId);
     // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(userEmail).password(password)
+    var inputBuilder =
+        RPAProcessInput.builder()
+            .userName(userEmail)
+            .password(password)
             .ittCode(externalReferenceId);
     rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
-
   }
 }
