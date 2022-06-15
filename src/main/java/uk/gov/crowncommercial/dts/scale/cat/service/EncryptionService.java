@@ -62,7 +62,7 @@ public class EncryptionService {
 
   private String createJaggaerPassword() {
     StringBuilder result = new StringBuilder(PASSWORD_LENGTH);
-    // at least 2 chars (lowercase)
+    // at least 4 chars (lowercase)
     result.append(generateRandomString(CHAR_LOWERCASE, 4));
     // at least 2 chars (uppercase)
     result.append(generateRandomString(CHAR_UPPERCASE, 2));
