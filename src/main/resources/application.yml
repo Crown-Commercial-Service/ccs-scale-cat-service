@@ -145,7 +145,7 @@ config:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
-        templateId: tender_49
+#       templateId: "SET IN ENV"
       getProject:
         endpoint: /esop/jint/api/public/ja/v1/projects/{id}
       getProjectList:
