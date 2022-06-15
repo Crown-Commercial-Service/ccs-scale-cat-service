@@ -1,11 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -18,10 +22,15 @@ import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 public class EncryptionService {
 
   private final RPAAPIConfig rpaAPIConfig;
+  private static final String CHAR_LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
+  private static final String CHAR_UPPERCASE = CHAR_LOWERCASE.toUpperCase();
+  private static final String DIGIT = "0123456789";
+  private static final String OTHER_SYMBOL = "\\!£$%&/()=?'^€[]#@,;.:_-><*+";
+  private static final int PASSWORD_LENGTH = 10;
+  private static SecureRandom random = new SecureRandom();
 
   public String generateBuyerPassword() {
-    // TODO Password pattern should change after decision
-    return encryptPassword(RandomStringUtils.randomAlphanumeric(8));
+    return encryptPassword(createJaggaerPassword());
   }
 
   @SneakyThrows
@@ -49,5 +58,37 @@ public class EncryptionService {
     Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
     cipher.init(mode, secretKey, ivspec);
     return cipher;
+  }
+
+  private String createJaggaerPassword() {
+    StringBuilder result = new StringBuilder(PASSWORD_LENGTH);
+    // at least 2 chars (lowercase)
+    result.append(generateRandomString(CHAR_LOWERCASE, 4));
+    // at least 2 chars (uppercase)
+    result.append(generateRandomString(CHAR_UPPERCASE, 2));
+    // at least 2 digits
+    result.append(generateRandomString(DIGIT, 2));
+    // at least 2 special characters
+    result.append(generateRandomString(OTHER_SYMBOL, 2));
+    String password = result.toString();
+    // shuffle again
+    return shuffleString(password);
+  }
+
+  private static String generateRandomString(String input, int size) {
+    StringBuilder result = new StringBuilder(size);
+    for (int i = 0; i < size; i++) {
+      // produce a random order
+      int index = random.nextInt(input.length());
+      result.append(input.charAt(index));
+    }
+    return result.toString();
+  }
+
+  // make it more random
+  private static String shuffleString(String input) {
+    List<String> result = Arrays.asList(input.split(""));
+    Collections.shuffle(result);
+    return result.stream().collect(Collectors.joining());
   }
 }
