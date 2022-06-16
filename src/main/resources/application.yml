@@ -145,7 +145,7 @@ config:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
-        templateId: tender_49
+#       templateId: "SET IN ENV"
       getProject:
         endpoint: /esop/jint/api/public/ja/v1/projects/{id}
       getProjectList:
@@ -154,7 +154,7 @@ config:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_9899
+#       templateId: "SET IN ENV"
         
       # TODO / NB: Search via SSO data directly only works for super users (i.e. suppliers)
       getBuyerCompanyProfile:

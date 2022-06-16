@@ -44,7 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
     DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-    ApplicationFlagsConfig.class}, webEnvironment = WebEnvironment.NONE)
+    ApplicationFlagsConfig.class,RPAGenericService.class}, webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
 
@@ -165,6 +165,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private DocumentTemplateService documentTemplateService;
+
+  @MockBean
+  private RPAGenericService rpaGenericService;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -1844,7 +1847,7 @@ class ProcurementEventServiceTest {
         .thenReturn(Optional.of(organisationMappingSecondSupplier));
 
     var supplierAttachmentResponseList =
-        procurementEventService.getSupplierAttachmentResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
+        procurementEventService.getSupplierAttachmentResponses("srinivasa.dontiboyina@hotmail.com",PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
     assertNotNull(supplierAttachmentResponseList);
