@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService.UserContactPoints;
 
@@ -85,6 +86,12 @@ class ProfileManagementServiceTest {
 
   @Autowired
   private ProfileManagementService profileManagementService;
+
+  @MockBean
+  private BuyerUserDetailsRepo buyerDetailsRepo;
+
+  @MockBean
+  private EncryptionService encryptionService;
 
   /*
    * CON-1680-AC1(a)

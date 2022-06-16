@@ -32,6 +32,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
+import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
@@ -66,6 +68,8 @@ public class ProcurementEventService {
   private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
       "Supplier [%s] not found in Conclave";
 
+  private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
   private final OcdsConfig ocdsConfig;
@@ -83,6 +87,7 @@ public class ProcurementEventService {
   private final JaggaerService jaggaerService;
   private final ConclaveService conclaveService;
 
+  private final RPAGenericService rpaGenericService;
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -1092,74 +1097,136 @@ public class ProcurementEventService {
   /**
    * @param procId
    * @param eventId
+   * @param profile
    * @return
    */
   @Transactional
-  public List<SupplierAttachmentResponse> getSupplierAttachmentResponses(final Integer procId,
-      final String eventId) {
-    return getSupplierAttachmentResponses(procId, eventId, null);
+  public List<SupplierAttachmentResponse> getSupplierAttachmentResponses(final String profile,final Integer procId,
+                                                                         final String eventId) {
+    return getSupplierAttachmentResponses(profile,procId, eventId, null);
   }
 
   /**
+   * @param profile
    * @param procId
    * @param eventId
    * @param supplierId
    * @return
    */
   @Transactional
-  public SupplierAttachmentResponse getSupplierAttachmentResponse(final Integer procId,
-      final String eventId, final String supplierId) {
+  public SupplierAttachmentResponse getSupplierAttachmentResponse(
+      String profile, final Integer procId, final String eventId, final String supplierId) {
 
     // Determine Jaggaer supplier id
     var supplierOrganisationMapping =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(supplierId)
-            .orElseThrow(() -> new IllegalArgumentException(
-                String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
+        retryableTendersDBDelegate
+            .findOrganisationMappingByOrganisationId(supplierId)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
 
-    var supplierAttachmentResponsesList = getSupplierAttachmentResponses(procId, eventId,
-        supplierOrganisationMapping.getExternalOrganisationId().toString());
+    var supplierAttachmentResponsesList =
+        getSupplierAttachmentResponses(
+            profile,
+            procId,
+            eventId,
+            supplierOrganisationMapping.getExternalOrganisationId().toString());
 
     return supplierAttachmentResponsesList.stream().findFirst().get();
   }
 
-  private List<SupplierAttachmentResponse> getSupplierAttachmentResponses(final Integer procId,
-      final String eventId, final String supplierId) {
+  private List<SupplierAttachmentResponse> getSupplierAttachmentResponses(
+      final String profile, final Integer procId, final String eventId, final String supplierId) {
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+
     var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
     var supplierList = exportRfxResponse.getSuppliersList();
+    verifyForOffers(eventId, exportRfxResponse);
 
-    if (!ObjectUtils.allNotNull(exportRfxResponse.getOffersList(),
-        exportRfxResponse.getOffersList().getOffer())) {
-      throw new ResourceNotFoundException(
-          String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
-    }
     var offersWithParameters = getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
 
     if (CollectionUtils.isEmpty(offersWithParameters)) {
-      throw new ResourceNotFoundException(
-          String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+      //
+      startEvaluationAndCallOpenEnvelopeAndUpdateSupplier(profile, procurementEvent);
+
+      // get rfx response after Start Evaluation And  Open Envelope called
+      exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+      supplierList = exportRfxResponse.getSuppliersList();
+      verifyForOffers(eventId, exportRfxResponse);
+
+      offersWithParameters = getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
+
+      if (CollectionUtils.isEmpty(offersWithParameters)) {
+        throw new ResourceNotFoundException(
+            String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+      }
     }
+
     List<SupplierAttachmentResponse> supplierAttachmentResponsesList = new ArrayList<>();
     for (Offer offer : offersWithParameters) {
       var supplierAttachmentResponse =
-          SupplierAttachmentResponse.builder().supplierId(offer.getSupplierId())
+          SupplierAttachmentResponse.builder()
+              .supplierId(offer.getSupplierId())
               .supplierName(getSupplierName(supplierList, offer.getSupplierId()))
-              .parameterInfoList(new ArrayList<>()).build();
-      var attachmentParametersOnly = offer.getTechOffer().getParameterResponses().getParameter()
-          .stream().filter(parameter -> "ATTACH".equals(parameter.getParameterType()))
-          .collect(Collectors.toList());
+              .parameterInfoList(new ArrayList<>())
+              .build();
+      var attachmentParametersOnly =
+          offer.getTechOffer().getParameterResponses().getParameter().stream()
+              .filter(parameter -> "ATTACH".equals(parameter.getParameterType()))
+              .collect(Collectors.toList());
 
-      var parameterInfoList = attachmentParametersOnly.stream()
-          .map(parameter -> ParameterInfo.builder().parameterId(parameter.getParameterId())
-              .attachmentInfoList(getAttachmentInfoForParameter(parameter)).build())
-          .collect(Collectors.toList());
+      var parameterInfoList =
+          attachmentParametersOnly.stream()
+              .map(
+                  parameter ->
+                      ParameterInfo.builder()
+                          .parameterId(parameter.getParameterId())
+                          .attachmentInfoList(getAttachmentInfoForParameter(parameter))
+                          .build())
+              .collect(Collectors.toList());
 
       supplierAttachmentResponse.getParameterInfoList().addAll(parameterInfoList);
 
       supplierAttachmentResponsesList.add(supplierAttachmentResponse);
     }
     return supplierAttachmentResponsesList;
+  }
+
+  private void verifyForOffers(String eventId, ExportRfxResponse exportRfxResponse) {
+    if (!ObjectUtils.allNotNull(
+        exportRfxResponse.getOffersList(), exportRfxResponse.getOffersList().getOffer())) {
+      throw new ResourceNotFoundException(
+          String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
+    }
+  }
+
+  private void startEvaluationAndCallOpenEnvelopeAndUpdateSupplier(
+      String profile, ProcurementEvent procurementEvent) {
+
+    var buyerUser =
+        userProfileService
+            .resolveBuyerUserProfile(profile)
+            .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+
+    var buyerEncryptedPwd = rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId());
+    // Creating RPA process input string
+    var inputBuilder =
+        RPAProcessInput.builder()
+            .userName(buyerUser.getEmail())
+            .password(buyerEncryptedPwd)
+            .ittCode(procurementEvent.getExternalReferenceId());
+
+    // Start Evaluation for the event
+    jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
+
+    // call Open Envelop And Update Supplier
+    this.callOpenEnvelope(
+        buyerUser.getEmail(),
+        buyerEncryptedPwd,
+        procurementEvent.getExternalReferenceId(),
+        inputBuilder.build());
   }
 
   private List<Offer> getOffersWithSupplierAttachments(
@@ -1217,5 +1284,28 @@ public class ProcurementEventService {
             .attachmentId(value.getId()).attachmentName(value.getValue())
             .secureToken(value.getSecureToken()).build())
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Calls RPA to Open Envelope
+   *
+   * @param userEmail
+   * @param password
+   * @param externalReferenceId
+   * @return
+   */
+  public void callOpenEnvelope(
+      final String userEmail,
+      final String password,
+      final String externalReferenceId,
+      final RPAProcessInput processInput) {
+    log.info("Calling OpenEnvelope for {}", externalReferenceId);
+    // Creating RPA process input string
+    var inputBuilder =
+        RPAProcessInput.builder()
+            .userName(userEmail)
+            .password(password)
+            .ittCode(externalReferenceId);
+    rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
   }
 }

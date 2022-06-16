@@ -35,4 +35,6 @@ public class BuyerUserDetails {
 
   @Column(name = "updated_at")
   Instant updatedAt;
+
+  boolean exported;
 }
