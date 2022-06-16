@@ -1,18 +1,19 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
-import java.time.Instant;
-import java.util.Set;
-import javax.persistence.*;
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.TypeDef;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+
+import javax.persistence.*;
+import java.time.Instant;
+import java.util.Set;
+
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 
 /**
  * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
@@ -135,7 +136,7 @@ public class ProcurementEvent {
    * @return true if it is, false otherwise
    */
   public boolean isTendersDBOnly() {
-    return TENDER_DB_ONLY_EVENT_TYPES.stream().map(DefineEventType::name)
+    return TENDER_DB_ONLY_EVENT_TYPES.stream().map(ViewEventType::name)
         .anyMatch(aet -> aet.equals(getEventType()));
   }
 }

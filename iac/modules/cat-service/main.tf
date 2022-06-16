@@ -54,6 +54,14 @@ data "aws_ssm_parameter" "jaggaer_self_service_id" {
   name = "/cat/${var.environment}/jaggaer-self-service-id"
 }
 
+data "aws_ssm_parameter" "jaggaer_itt_template_id" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-itt-template-id"
+}
+
+data "aws_ssm_parameter" "jaggaer_project_template_id" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-project-template-id"
+}
+
 # Auth server / CII
 data "aws_ssm_parameter" "auth_server_jwk_set_uri" {
   name = "/cat/${var.environment}/auth-server-jwk-set-uri"
@@ -122,13 +130,28 @@ data "aws_ssm_parameter" "document_upload_service_s3_bucket" {
   name = "/cat/${var.environment}/document-upload-service-s3-bucket"
 }
 
+# Notifications
+data "aws_ssm_parameter" "gov_uk_notify_api_key" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/api-key"
+}
+
+data "aws_ssm_parameter" "gov_uk_notify_user_reg_template_id" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/template-id"
+}
+
+data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/target-email"
+}
+
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
   disk_quota  = var.disk_quota
   enable_ssh  = true
   environment = {
-    JBP_CONFIG_OPEN_JDK_JRE : "{ \"jre\": { version: 11.+ } }"
+    "JBP_CONFIG_OPEN_JDK_JRE" : "{ \"jre\": { version: 17.+ } }"
+    "JBP_CONFIG_SPRING_AUTO_RECONFIGURATION" : "{enabled: false}"
+    "SPRING_PROFILES_ACTIVE": "cloud"
     "config.flags.devMode" : var.dev_mode
     "config.flags.resolveBuyerUsersBySSO" : var.resolve_buyer_users_by_sso
     "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
@@ -139,6 +162,8 @@ resource "cloudfoundry_app" "cat_service" {
     "spring.security.oauth2.client.provider.jaggaer.token-uri" : data.aws_ssm_parameter.jaggaer_token_url.value
     "config.external.jaggaer.baseUrl" : data.aws_ssm_parameter.jaggaer_base_url.value
     "config.external.jaggaer.self-service-id" : data.aws_ssm_parameter.jaggaer_self_service_id.value
+    "config.external.jaggaer.createRfx.templateId" : data.aws_ssm_parameter.jaggaer_itt_template_id.value
+    "config.external.jaggaer.createProject.templateId" : data.aws_ssm_parameter.jaggaer_project_template_id.value
     
     # Auth server / CII
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
@@ -163,6 +188,11 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.doc-upload-svc.aws-access-key-id" : data.aws_ssm_parameter.document_upload_service_aws_access_key_id.value
     "config.external.doc-upload-svc.aws-secret-key" : data.aws_ssm_parameter.document_upload_service_aws_secret_key.value
     "config.external.doc-upload-svc.s3-bucket" : data.aws_ssm_parameter.document_upload_service_s3_bucket.value
+
+    # Notifications
+    "config.external.notification.api-key": data.aws_ssm_parameter.gov_uk_notify_api_key.value
+    "config.external.notification.user-registration.template-id": data.aws_ssm_parameter.gov_uk_notify_user_reg_template_id.value
+    "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"

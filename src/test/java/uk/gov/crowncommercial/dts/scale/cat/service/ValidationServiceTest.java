@@ -20,16 +20,13 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 import javax.validation.ValidationException;
 import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(classes = {ValidationService.class}, webEnvironment = WebEnvironment.NONE)
@@ -202,28 +199,8 @@ class ValidationServiceTest {
     assertEquals("Max Value 100 should greater than or equal to Min value 107", ex.getMessage());
   }
 
-  @Test
-  void shouldThrowValidationExceptionWhenNonOCDSOptionsEmpty(){
 
-    ValidationException validationException= assertThrows(ValidationException.class,
-            () -> validationService.validateProjectDuration(Collections.emptyList()));
-    assertEquals("Invalid Input provided for Project Duration",validationException.getMessage());
-  }
-
-  @Test
-  void shouldThrowValidationExceptionWhenNonOCDSOptionsAreMoreThanOne(){
-
-    QuestionNonOCDSOptions questionNonOCDSOptions1= new QuestionNonOCDSOptions();
-    questionNonOCDSOptions1.setValue("P4Y3M10D");
-
-    QuestionNonOCDSOptions questionNonOCDSOptions2= new QuestionNonOCDSOptions();
-    questionNonOCDSOptions2.setValue("P4Y3M10D");
-
-    ValidationException validationException= assertThrows(ValidationException.class,
-            () -> validationService.validateProjectDuration(List.of(questionNonOCDSOptions1,questionNonOCDSOptions2)));
-    assertEquals("Invalid Input provided for Project Duration",validationException.getMessage());
-  }
-  @Test
+ @Test
   void shouldThrowValidationExceptionWhenTheProjectDurationIsInvalidISO8601Format(){
 
     QuestionNonOCDSOptions questionNonOCDSOptions= new QuestionNonOCDSOptions();
@@ -244,6 +221,28 @@ class ValidationServiceTest {
             () -> validationService.validateProjectDuration(List.of(questionNonOCDSOptions)));
     assertEquals("Project Duration is greater than 4 years",validationException.getMessage());
 
+  }
+
+  @Test
+  void shouldNotThrowValidationExceptionWhenTheProjectDurationIsGivenExactlySameDays() {
+    QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions();
+    questionNonOCDSOptions.setValue("P3Y11M31D");
+    try {
+      validationService.validateProjectDuration(List.of(questionNonOCDSOptions));
+    } catch (Exception e) {
+      fail("should not through any exception");
+    }
+  }
+
+  @Test
+  void shouldNotThrowValidationExceptionWhenTheProjectDurationIsGivenNull() {
+    QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions();
+    questionNonOCDSOptions.setValue(null);
+    try {
+      validationService.validateProjectDuration(List.of(questionNonOCDSOptions));
+    } catch (Exception e) {
+      fail("should not through any exception");
+    }
   }
 
 }

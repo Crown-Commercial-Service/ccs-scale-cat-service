@@ -4,7 +4,6 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import org.springframework.data.util.Pair;
@@ -62,8 +61,8 @@ public class UserProfileService {
   }
 
   private Predicate<? super SubUser> getFilterPredicateEmailAndRightsProfile(final String email) {
-    return su -> Objects.equals(email, su.getEmail())
-        && Objects.equals(jaggaerAPIConfig.getDefaultBuyerRightsProfile(), su.getRightsProfile());
+    return su -> email.equalsIgnoreCase(su.getEmail())
+        && jaggaerAPIConfig.getDefaultBuyerRightsProfile().equalsIgnoreCase(su.getRightsProfile());
   }
 
   private Predicate<? super SubUser> getFilterPredicateUserId(final String userId) {

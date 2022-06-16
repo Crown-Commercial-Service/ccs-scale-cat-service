@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
@@ -20,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Org
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
@@ -29,6 +31,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -61,6 +64,10 @@ public class ProfileManagementService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final NotificationService notificationService;
+  private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
+  private final BuyerUserDetailsRepo buyerDetailsRepo;
+  private final EncryptionService encryptionService;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the
@@ -160,13 +167,17 @@ public class ProfileManagementService {
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      // TODO: Notify John G via email / Salesforce..??
+      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      saveBuyerDetails(conclaveUser.getUserName());
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.isEmpty()) {
 
       // CON-1682-AC15: Create Jaggaer Buyer / return temp error code
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
+      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      saveBuyerDetails(conclaveUser.getUserName());
+
       throw new LoginDirectorEdgeCaseException("CON1682-AC15: Dual Conclave roles, buyer created");
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.size() == 1
@@ -423,6 +434,25 @@ public class ProfileManagementService {
       }
     }
     return Pair.of(buyerSubUser, Optional.empty());
+  }
+
+  private void sendUserRegistrationNotification(final UserProfileResponseInfo conclaveUser,
+      final OrganisationProfileResponseInfo conclaveUserOrg) {
+
+    var placeholders = Map.of("org_name", conclaveUserOrg.getIdentifier().getLegalName(),
+        "first_name", conclaveUser.getFirstName(), "last_name", conclaveUser.getLastName(), "email",
+        conclaveUser.getUserName());
+
+    notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
+        userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
+  }
+
+  private BuyerUserDetails saveBuyerDetails(String profile) {
+    var userProfile = userProfileService.resolveBuyerUserProfile(profile)
+        .orElseThrow(() -> new ResourceNotFoundException(ERR_MSG_FMT_JAGGAER_USER_MISSING));
+    return buyerDetailsRepo.save(BuyerUserDetails.builder().userId(userProfile.getUserId())
+        .userPassword(encryptionService.generateBuyerPassword()).createdAt(Instant.now())
+        .createdBy("Scheduler").build());
   }
 
   static SSOCodeData buildSSOCodeData(final String userId) {

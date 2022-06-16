@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.*;
@@ -26,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService.UserContactPoints;
 
@@ -76,8 +78,20 @@ class ProfileManagementServiceTest {
   @MockBean
   private JaggaerSOAPService jaggaerSOAPService;
 
+  @MockBean
+  private NotificationService notificationService;
+
+  @MockBean
+  private UserRegistrationNotificationConfig userRegistrationNotificationConfig;
+
   @Autowired
   private ProfileManagementService profileManagementService;
+
+  @MockBean
+  private BuyerUserDetailsRepo buyerDetailsRepo;
+
+  @MockBean
+  private EncryptionService encryptionService;
 
   /*
    * CON-1680-AC1(a)
