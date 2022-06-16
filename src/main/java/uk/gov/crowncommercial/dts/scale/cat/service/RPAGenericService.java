@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.util.Pair;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -106,6 +107,30 @@ public class RPAGenericService {
     log.info("RPA Response: {}", objectMapper.writeValueAsString(response));
 
     return validateResponse(response);
+  }
+
+  /**
+   * @param processInputMap
+   * @return rpa status
+   * @throws JsonProcessingException
+   */
+  @SneakyThrows
+  @Async
+  public String asyncCallRPAMessageAPI(final RPAProcessInput processInput,
+      final RPAProcessNameEnum processName) {
+    var request = new RPAGenericData();
+    request.setProcessInput(objectMapper.writeValueAsString(processInput))
+        .setProcessName(processName.getValue()).setProfileName(rpaAPIConfig.getProfileName())
+        .setSource(rpaAPIConfig.getSource()).setSourceId(rpaAPIConfig.getSourceId())
+        .setRequestTimeout(rpaAPIConfig.getRequestTimeout()).setSync(true);
+    log.info("{} - RPA Request: {}", Thread.currentThread(), request.toString());
+
+    var response =
+        webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
+            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), getAccessToken());
+    log.info("{} - RPA Response: {}", Thread.currentThread(), response.toString());
+
+    return "Ok";
   }
 
   /**

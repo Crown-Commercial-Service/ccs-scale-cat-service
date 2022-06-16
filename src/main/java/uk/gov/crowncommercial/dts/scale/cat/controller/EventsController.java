@@ -279,7 +279,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getDocumentSummaries invoked on behalf of principal: {}", principal);
 
-    List<SupplierAttachmentResponse> supplierAttachmentResponseList=procurementEventService.getSupplierAttachmentResponses(procId, eventId);
+    List<SupplierAttachmentResponse> supplierAttachmentResponseList=procurementEventService.getSupplierAttachmentResponses(principal,procId, eventId);
 
     StreamingResponseBody streamResponseBody =
         out -> {
@@ -317,7 +317,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getResponses invoked on behalf of principal: {}", principal);
 
-    SupplierAttachmentResponse supplierAttachmentResponse = procurementEventService.getSupplierAttachmentResponse(procId, eventId,supplierId);
+    SupplierAttachmentResponse supplierAttachmentResponse = procurementEventService.getSupplierAttachmentResponse(principal, procId, eventId, supplierId);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());

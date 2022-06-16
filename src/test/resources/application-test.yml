@@ -8,3 +8,10 @@ spring:
 config:
   flags:
     devMode: true        
+  retry:
+    maxAttempts: 3
+  external:
+    jaggaer:
+      rpa: 
+        encryptionIv: hjnhgy8k*A?(7y-K
+        encryptionKey: uikjnsh657*y%hD*G-KaPdS*kij#3s6v  

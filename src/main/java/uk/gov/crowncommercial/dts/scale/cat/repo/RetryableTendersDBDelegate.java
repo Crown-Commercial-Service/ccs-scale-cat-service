@@ -8,7 +8,7 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import uk.gov.crowncommercial.dts.scale.cat.config.TendersDBRetryable;
+import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
@@ -38,227 +38,227 @@ public class RetryableTendersDBDelegate {
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final SupplierSubmissionRepo supplierSubmissionRepo;
 
-  @TendersDBRetryable
+  @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
     return procurementProjectRepo.saveAndFlush(procurementProject);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public ProcurementEvent save(final ProcurementEvent procurementevent) {
     return procurementEventRepo.save(procurementevent);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<ProcurementProject> findProcurementProjectById(final Integer id) {
     return procurementProjectRepo.findById(id);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public List<ProcurementProject> findByExternalProjectIdIn(final Set<String> externalProjectIds) {
     return procurementProjectRepo.findByExternalProjectIdIn(externalProjectIds);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<ProcurementEvent> findProcurementEventById(final Integer id) {
     return procurementEventRepo.findById(id);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
       final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
     return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
         eventIdKey, ocdsAuthorityName, ocidPrefix);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<OrganisationMapping> findOrganisationMappingByOrganisationIdIn(
       final Set<String> organisationIds) {
     return organisationMappingRepo.findByOrganisationIdIn(organisationIds);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
       final Integer externalOrganisationId) {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public OrganisationMapping save(final OrganisationMapping organisationMapping) {
     return organisationMappingRepo.saveAndFlush(organisationMapping);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
       final String organisationId) {
     return organisationMappingRepo.findByOrganisationId(organisationId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public JourneyEntity save(final JourneyEntity journey) {
     return journeyRepo.save(journey);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<JourneyEntity> findJourneyByExternalId(final String externalId) {
     return journeyRepo.findByExternalId(externalId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<DocumentTemplate> findById(final Integer fileId) {
     return documentTemplateRepo.findById(fileId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<DocumentTemplate> findByEventType(final String eventType) {
     return documentTemplateRepo.findByEventType(eventType);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
     return procurementEventRepo.findByProjectId(projectId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<AssessmentEntity> findAssessmentsForUser(final String userId) {
     return assessmentRepo.findByTimestampsCreatedBy(userId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public AssessmentEntity save(final AssessmentEntity assessment) {
     return assessmentRepo.saveAndFlush(assessment);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<AssessmentEntity> findAssessmentById(final Integer id) {
     return assessmentRepo.findById(id);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public AssessmentDimensionWeighting save(
       final AssessmentDimensionWeighting assessmentDimensionWeighting) {
     return assessmentDimensionWeightingRepo.saveAndFlush(assessmentDimensionWeighting);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<AssessmentTool> findAssessmentToolById(final Integer toolId) {
     return assessmentToolRepo.findById(toolId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<AssessmentTool> findAssessmentToolByExternalToolId(final String externalToolId) {
     return assessmentToolRepo.findByExternalToolId(externalToolId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<DimensionEntity> findDimensionsByToolId(final Integer toolId) {
     return dimensionRepo.findByAssessmentTaxonsToolId(toolId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<AssessmentSelection> findByDimensionIdAndRequirementId(final Integer assessmentId,
       final Integer dimensionId, final Integer requirementId) {
     return assessmentSelectionRepo.findByDimensionIdAndRequirementTaxonRequirementId(dimensionId,
         requirementId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public AssessmentSelection save(final AssessmentSelection assessmentSelection) {
     return assessmentSelectionRepo.save(assessmentSelection);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
       final Integer toolId) {
     return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<DimensionEntity> findDimensionById(final Integer dimensionId) {
     return dimensionRepo.findById(dimensionId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<DimensionEntity> findDimensionByName(final String name) {
     return dimensionRepo.findByName(name);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<AssessmentTaxon> findAssessmentTaxonById(final Integer assessmentTaxonId) {
     return assessmentTaxonRepo.findById(assessmentTaxonId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<Integer> findAssessmentTaxonByToolIdAndDimensionId(final Integer assessmentToolId,
       final Integer dimensionId) {
     return supplierSubmissionRepo.findSupplierByToolIdAndDimensionId(assessmentToolId, dimensionId);
   }
 
-  @TendersDBRetryable public Set<Integer> findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
+  @TendersRetryable public Set<Integer> findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
       final Integer assessmentToolId, final Integer dimensionId, final Integer lotId) {
     return supplierSubmissionRepo.findSupplierByToolIdAndDimensionIdAndLotId(assessmentToolId,
         dimensionId, lotId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<CalculationBase> findCalculationBaseByAssessmentId(final Integer assessmentId) {
     return calculationBaseRepo.findByAssessmentId(assessmentId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<AssessmentResult> findByAssessmentIdAndSupplierOrganisationId(
       final Integer assessmentId, final String supplierOrganisationId) {
     return assessmentResultRepo.findByAssessmentIdAndSupplierOrganisationId(assessmentId,
         supplierOrganisationId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public AssessmentResult save(final AssessmentResult assessmentResult) {
     return assessmentResultRepo.save(assessmentResult);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public ProjectUserMapping save(final ProjectUserMapping projectUserMapping) {
     return projectUserMappingRepo.save(projectUserMapping);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public void delete(final ProjectUserMapping projectUserMapping) {
     projectUserMappingRepo.delete(projectUserMapping);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public void deleteAll(final List<ProjectUserMapping> projectUserMappings) {
     projectUserMappingRepo.deleteAll(projectUserMappings);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public List<ProjectUserMapping> saveAll(final List<ProjectUserMapping> projectUserMappings) {
     return projectUserMappingRepo.saveAll(projectUserMappings);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<ProjectUserMapping> findProjectUserMappingByProjectId(final Integer projectId) {
     return projectUserMappingRepo.findByProjectId(projectId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Set<ProjectUserMapping> findProjectUserMappingByUserId(final String userId) {
     return projectUserMappingRepo.findByUserId(userId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,
       final Pageable pageable) {
     return projectUserMappingRepo.findByUserId(userId, pageable);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public Optional<ProjectUserMapping> findProjectUserMappingByProjectIdAndUserId(
       final Integer projectId, final String userId) {
     return projectUserMappingRepo.findByProjectIdAndUserId(projectId, userId);
   }
 
-  @TendersDBRetryable
+  @TendersRetryable
   public void delete(final SupplierSelection supplierSelection) {
     supplierSelectionRepo.delete(supplierSelection);
   }

@@ -5,7 +5,7 @@ variable "space" {}
 variable "environment" {}
 
 variable "buildpack" {
-  default = "https://github.com/cloudfoundry/java-buildpack#v4.33"
+  default = "https://github.com/cloudfoundry/java-buildpack#v4.49"
 }
 
 variable "disk_quota" {
