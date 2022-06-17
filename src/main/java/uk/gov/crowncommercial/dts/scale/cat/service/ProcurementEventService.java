@@ -811,6 +811,8 @@ public class ProcurementEventService {
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
+      eventSummary.tenderPeriod(
+          new Period1().startDate(rfxSetting.getPublishDate()).endDate(rfxSetting.getCloseDate()));
 
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       return eventSummary;
