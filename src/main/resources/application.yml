@@ -201,9 +201,6 @@ config:
         profileName: ITTEvaluation
         timeoutDuration: 120
         requestTimeout: 3600000
-        
-        # Validate / override in env
-        buyerExport: PT1W
     
     # RPA Transfer S3
     s3:
