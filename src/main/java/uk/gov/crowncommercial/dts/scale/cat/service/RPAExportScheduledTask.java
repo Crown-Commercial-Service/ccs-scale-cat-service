@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -35,7 +36,7 @@ public class RPAExportScheduledTask {
   private final RPATransferS3Config rpaTransferS3Config;
   private final AmazonS3 rpaTransferS3Client;
 
-  @Scheduled(fixedDelayString = "${config.external.s3.rpa.buyerExport")
+  @Scheduled(fixedDelayString = "${config.external.s3.rpa.buyerExport", timeUnit = TimeUnit.DAYS)
   public void scheduleSelfServiceBuyers() {
     log.info("Begin scheduled processing of unexported buyer records for RPA");
 

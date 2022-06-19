@@ -206,7 +206,7 @@ config:
     s3:
       rpa:
         region: eu-west-2
-        buyerExport: P1W
+        buyerExport: P7D # 1 week
         
     agreementsService:
       # baseUrl: "SET IN ENV"
