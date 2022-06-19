@@ -35,7 +35,7 @@ public class RPAExportScheduledTask {
   private final RPATransferS3Config rpaTransferS3Config;
   private final AmazonS3 rpaTransferS3Client;
 
-  @Scheduled(fixedDelayString = "${config.external.jaggaer.rpa.buyerExport")
+  @Scheduled(fixedDelayString = "${config.external.s3.rpa.buyerExport")
   public void scheduleSelfServiceBuyers() {
     log.info("Begin scheduled processing of unexported buyer records for RPA");
 
