@@ -76,9 +76,6 @@ class ProfileManagementServiceTest {
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @MockBean
-  private JaggaerSOAPService jaggaerSOAPService;
-
-  @MockBean
   private NotificationService notificationService;
 
   @MockBean

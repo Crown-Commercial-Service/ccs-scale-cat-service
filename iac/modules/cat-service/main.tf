@@ -178,8 +178,8 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.rpa.baseUrl" : data.aws_ssm_parameter.jaggaer_rpa_base_url.value
     "config.external.jaggaer.rpa.user-name" : data.aws_ssm_parameter.jaggaer_rpa_username.value
     "config.external.jaggaer.rpa.user-pwd" : data.aws_ssm_parameter.jaggaer_rpa_password.value
-    "config.external.jaggaer.rpa.encrpytion-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
-    "config.external.jaggaer.rpa.encrpytion-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
+    "config.external.jaggaer.rpa.encryption-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
+    "config.external.jaggaer.rpa.encryption-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
 
     # Document Upload Service
     "config.external.doc-upload-svc.upload-base-url" : data.aws_ssm_parameter.document_upload_service_upload_base_url.value

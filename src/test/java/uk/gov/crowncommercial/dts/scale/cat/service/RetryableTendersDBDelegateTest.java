@@ -83,6 +83,9 @@ class RetryableTendersDBDelegateTest {
   @MockBean
   private AssessmentResultRepo assessmentResultRepo;
 
+  @MockBean
+  private BuyerUserDetailsRepo buyerUserDetailsRepo;
+
   @Test
   void testRetrySuccess() {
     var transactionException = new CannotCreateTransactionException("DB problem");

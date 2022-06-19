@@ -202,6 +202,14 @@ config:
         timeoutDuration: 120
         requestTimeout: 3600000
         
+        # Validate / override in env
+        buyerExport: PT1W
+    
+    # RPA Transfer S3
+    s3:
+      rpa:
+        region: eu-west-2
+        
     agreementsService:
       # baseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
