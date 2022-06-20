@@ -122,6 +122,10 @@ data "aws_ssm_parameter" "s3_rpa_workbook_password" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-workbook-password"
 }
 
+data "aws_ssm_parameter" "s3_rpa_export_schedule" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-export-schedule"
+}
+
 # Document Upload Service
 data "aws_ssm_parameter" "document_upload_service_upload_base_url" {
   name = "/cat/${var.environment}/document-upload-service-upload-base-url"
@@ -204,6 +208,7 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.s3.rpa.secret-access-key" : data.aws_ssm_parameter.s3_rpa_aws_secret_key.value
     "config.external.s3.rpa.object-prefix" : var.environment
     "config.external.s3.rpa.workbook-password" : data.aws_ssm_parameter.s3_rpa_workbook_password.value
+    "config.external.s3.rpa.export-schedule" : data.aws_ssm_parameter.s3_rpa_export_schedule.value
 
     # Document Upload Service
     "config.external.doc-upload-svc.upload-base-url" : data.aws_ssm_parameter.document_upload_service_upload_base_url.value
