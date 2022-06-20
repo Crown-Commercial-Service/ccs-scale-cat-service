@@ -18,5 +18,6 @@ public class RPATransferS3Config {
   String secretAccessKey;
   String objectPrefix;
   String workbookPassword;
+  String exportSchedule;
 
 }
