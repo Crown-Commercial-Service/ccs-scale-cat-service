@@ -201,6 +201,13 @@ config:
         profileName: ITTEvaluation
         timeoutDuration: 120
         requestTimeout: 3600000
+    
+    # RPA Transfer S3
+    s3:
+      rpa:
+        region: eu-west-2
+        # Default to on the hour every hour MON-FRI
+        exportSchedule: "0 0 * * * MON-FRI"
         
     agreementsService:
       # baseUrl: "SET IN ENV"

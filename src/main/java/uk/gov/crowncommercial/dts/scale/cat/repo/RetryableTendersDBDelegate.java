@@ -37,6 +37,7 @@ public class RetryableTendersDBDelegate {
   private final ProjectUserMappingRepo projectUserMappingRepo;
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final SupplierSubmissionRepo supplierSubmissionRepo;
+  private final BuyerUserDetailsRepo buyerUserDetailsRepo;
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -193,7 +194,8 @@ public class RetryableTendersDBDelegate {
     return supplierSubmissionRepo.findSupplierByToolIdAndDimensionId(assessmentToolId, dimensionId);
   }
 
-  @TendersRetryable public Set<Integer> findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
+  @TendersRetryable
+  public Set<Integer> findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
       final Integer assessmentToolId, final Integer dimensionId, final Integer lotId) {
     return supplierSubmissionRepo.findSupplierByToolIdAndDimensionIdAndLotId(assessmentToolId,
         dimensionId, lotId);
@@ -261,6 +263,16 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public void delete(final SupplierSelection supplierSelection) {
     supplierSelectionRepo.delete(supplierSelection);
+  }
+
+  @TendersRetryable
+  public Set<BuyerUserDetails> findByExported(final boolean exported) {
+    return buyerUserDetailsRepo.findByExported(exported);
+  }
+
+  @TendersRetryable
+  public void saveAll(final Set<BuyerUserDetails> buyerUserDetails) {
+    buyerUserDetailsRepo.saveAll(buyerUserDetails);
   }
 
   /**
