@@ -411,6 +411,15 @@ public class ProfileManagementService {
 
     // SSO verification built-in to search
     var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+
+    // If cache missing, refresh in case user has since been registered (by separate instance)
+    if (buyerSubUser.isEmpty()) {
+      userProfileService.refreshBuyerCache(userId);
+      buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId,
+          buyerSubUser.isPresent());
+    }
+
     buyerSubUser.ifPresent(su -> jaggaerRoles.add(BUYER));
 
     // SSO verification required
