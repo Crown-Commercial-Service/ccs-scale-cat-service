@@ -447,12 +447,12 @@ public class ProfileManagementService {
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
 
-  private BuyerUserDetails saveBuyerDetails(String profile) {
+  private BuyerUserDetails saveBuyerDetails(final String profile) {
     var userProfile = userProfileService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new ResourceNotFoundException(ERR_MSG_FMT_JAGGAER_USER_MISSING));
     return buyerDetailsRepo.save(BuyerUserDetails.builder().userId(userProfile.getUserId())
-        .userPassword(encryptionService.generateBuyerPassword()).createdAt(Instant.now())
-        .createdBy("Scheduler").build());
+        .userPassword(encryptionService.generateBuyerPassword()).exported(Boolean.FALSE)
+        .createdAt(Instant.now()).createdBy("ProfileManagement").build());
   }
 
   static SSOCodeData buildSSOCodeData(final String userId) {
