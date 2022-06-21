@@ -271,8 +271,13 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public void saveAll(final Set<BuyerUserDetails> buyerUserDetails) {
-    buyerUserDetailsRepo.saveAll(buyerUserDetails);
+  public void saveAll(final Iterable<BuyerUserDetails> buyerUserDetails) {
+    buyerUserDetailsRepo.saveAllAndFlush(buyerUserDetails);
+  }
+
+  @TendersRetryable
+  public List<BuyerUserDetails> findAll() {
+    return buyerUserDetailsRepo.findAll();
   }
 
   /**

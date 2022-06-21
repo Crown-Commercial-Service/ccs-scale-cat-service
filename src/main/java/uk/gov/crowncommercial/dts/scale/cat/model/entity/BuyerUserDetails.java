@@ -25,7 +25,7 @@ public class BuyerUserDetails {
   String userPassword;
 
   @Column(name = "exported")
-  boolean exported;
+  Boolean exported;
 
   @Column(name = "created_by", updatable = false)
   String createdBy;
