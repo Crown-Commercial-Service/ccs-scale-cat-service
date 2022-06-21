@@ -63,9 +63,17 @@ public class AssessmentCalculationService {
 
     assessmentCalculationBase.stream().forEach(calcBase -> {
 
+      // lookup org-mapping table by jaggaer orgId
+      var supplierOrgMapping = retryableTendersDBDelegate
+          .findOrganisationMappingByExternalOrganisationId(
+              Integer.valueOf(calcBase.getSupplierId()));
+
       // Create (if necessary) a new map entry keyed on the supplier ID
       var supplierScores = supplierScoresMap.computeIfAbsent(calcBase.getSupplierId(),
-          supplierId -> new SupplierScores().supplier(new Supplier().id(supplierId)));
+          supplierId -> new SupplierScores().supplier(new Supplier().id(
+              supplierOrgMapping.isPresent() ?
+                  supplierOrgMapping.get().getOrganisationId() :
+                  supplierId)));
 
       // Compute the score for the row (requirement)
       var score = dimensionCalculators.get(calcBase.getDimensionName())
