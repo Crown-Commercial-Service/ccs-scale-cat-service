@@ -36,7 +36,6 @@ public class RetryableTendersDBDelegate {
   private final AssessmentResultRepo assessmentResultRepo;
   private final ProjectUserMappingRepo projectUserMappingRepo;
   private final SupplierSelectionRepo supplierSelectionRepo;
-  private final SupplierSubmissionRepo supplierSubmissionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
 
   @TendersRetryable

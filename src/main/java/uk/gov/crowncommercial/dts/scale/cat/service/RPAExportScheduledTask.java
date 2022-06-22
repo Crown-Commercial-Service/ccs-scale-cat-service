@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.transaction.Transactional;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.poifs.crypt.EncryptionInfo;
 import org.apache.poi.poifs.crypt.EncryptionMode;
@@ -18,6 +19,8 @@ import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -45,8 +48,8 @@ public class RPAExportScheduledTask {
   private final UserProfileService userProfileService;
   private final AmazonS3 rpaTransferS3Client;
 
-  // TODO: Update to cron pattern for once weekly export
   @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
+  @Transactional
   public void scheduleSelfServiceBuyers() {
     log.info("Begin scheduled processing of unexported buyer records for RPA");
 
@@ -66,9 +69,19 @@ public class RPAExportScheduledTask {
             .userPassword(encryptionService.generateBuyerPassword()).exported(Boolean.FALSE)
             .createdAt(Instant.now()).createdBy("RPAExportScheduledTask").build())
         .toList();
-    retryableTendersDBDelegate.saveAll(newBuyerDetails);
-    log.debug("Saving {} non exported Jaggaer user profiles to DB", newBuyerDetails.size());
 
+    try {
+      retryableTendersDBDelegate.saveAll(newBuyerDetails);
+      log.debug("Saved {} non exported Jaggaer user profiles to DB", newBuyerDetails.size());
+
+    } catch (ExhaustedRetryException ex) {
+      var cause = ex.getCause();
+      if (cause instanceof DataIntegrityViolationException divex) {
+        log.warn("Data integrity exception saving new buyer details: " + divex.getMessage());
+        return;
+      }
+      throw ex;
+    }
     // Query DB for non-exported buyers and go from there..
     var nonExportedBuyers = retryableTendersDBDelegate.findByExported(false);
 
