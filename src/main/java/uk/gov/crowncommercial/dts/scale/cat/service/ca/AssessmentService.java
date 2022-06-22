@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.CollectionUtils;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
@@ -936,28 +937,28 @@ public class AssessmentService {
    * @param toolId
    * @param dimensionId
    * @param lotId
+   * @param suppliers
    * @return
    */
-  public Set<Integer> getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
-      final Integer lotId) {
+  public Set<CalculationBase> getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
+      final Integer lotId, List<String> suppliers) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
-    var assessmentTool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
+    retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
 
     var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
-
-    Set<Integer> supplierSubmissions;
-
-    if (lotId != null && lotId > 0) {
-      supplierSubmissions =
-          retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
-              assessmentTool.getId(), dimension.getId(), lotId);
+    Set<CalculationBase> supplerDimensions;
+    if (CollectionUtils.isEmpty(suppliers)) {
+      supplerDimensions =
+          retryableTendersDBDelegate.findCalculationBaseByDimensionId(dimension.getId());
     } else {
-      supplierSubmissions = retryableTendersDBDelegate
-          .findAssessmentTaxonByToolIdAndDimensionId(assessmentTool.getId(), dimension.getId());
+      supplerDimensions =
+          retryableTendersDBDelegate.findCalculationBaseByDimensionIdAndSuppliers(dimension.getId(),
+              suppliers);
     }
-    return supplierSubmissions;
+
+   return supplerDimensions;
   }
 }
