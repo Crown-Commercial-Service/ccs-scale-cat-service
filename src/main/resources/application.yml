@@ -206,8 +206,8 @@ config:
     s3:
       rpa:
         region: eu-west-2
-        # Default to every 15 minutes in local/dev env
-        exportSchedule: "0 */15 * * * MON-FRI"
+        # Default to once a week, midnight Monday
+        exportSchedule: "0 0 0 * * MON"
         
     agreementsService:
       # baseUrl: "SET IN ENV"
