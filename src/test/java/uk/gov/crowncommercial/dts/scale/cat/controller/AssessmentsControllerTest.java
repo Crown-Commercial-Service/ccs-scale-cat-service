@@ -42,7 +42,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
-  private static final String SUPPLIERS_FOR_DIMENSION_PATH = ASSESSMENTS_PATH+"/tools/{tool-id}/dimensions/{dimension-id}/data?lot-id=";
+  private static final String SUPPLIERS_FOR_DIMENSION_PATH =
+      ASSESSMENTS_PATH + "/tools/{tool-id}/dimensions/{dimension-id}/data?lot-id=";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer ASSESSMENT_ID = 1;
   private static final Integer LOT_ID = 1;
@@ -161,7 +162,7 @@ class AssessmentsControllerTest {
     requirement.setValues(List.of(criterion));
     dimensionRequirement.setRequirements(List.of(requirement));
 
-    when(assessmentService.getAssessment(ASSESSMENT_ID, Optional.of(PRINCIPAL)))
+    when(assessmentService.getAssessment(ASSESSMENT_ID, Boolean.FALSE, Optional.of(PRINCIPAL)))
         .thenReturn(assessment);
 
     mockMvc
@@ -212,16 +213,16 @@ class AssessmentsControllerTest {
   @Test
   void testGetSupplierByToolIdAndDimensionId_200_OK() throws Exception {
     List<String> suppliers = Arrays.asList("US-DUNS-210305433");
-    var suppliersData = new HashSet(Arrays.asList(1,2,3,4,5,6));
+    var suppliersData = new HashSet(Arrays.asList(1, 2, 3, 4, 5, 6));
 
-    when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID, suppliers))
+    when(assessmentService.getSupplierDimensionData(TOOL_ID, DIMENSION_ID, LOT_ID, suppliers))
         .thenReturn(suppliersData);
 
-    mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH + LOT_ID, TOOL_ID, DIMENSION_ID).with(
-            validJwtReqPostProcessor).accept(MediaType.parseMediaType("text/csv"))).andDo(print())
-        .andExpect(status().isOk());
+    mockMvc
+        .perform(get(SUPPLIERS_FOR_DIMENSION_PATH + LOT_ID, TOOL_ID, DIMENSION_ID)
+            .with(validJwtReqPostProcessor).accept(MediaType.parseMediaType("text/csv")))
+        .andDo(print()).andExpect(status().isOk());
   }
-
 
   private List<CriterionDefinition> getTestCriteria() {
     var criterion = new CriterionDefinition();
