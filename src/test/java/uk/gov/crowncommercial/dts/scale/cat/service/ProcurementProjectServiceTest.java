@@ -466,6 +466,7 @@ class ProcurementProjectServiceTest {
     }
 
   }
+
   @Test
   void dashboardStatusShouldBeReturnForTheEventsForProjects() {
 
@@ -482,26 +483,28 @@ class ProcurementProjectServiceTest {
     events.add(event);
 
     var exportRfxResponse = new ExportRfxResponse();
-    exportRfxResponse.setRfxSetting(RfxSetting.builder().status("To be Evaluated").statusCode(0).build());
+    exportRfxResponse.setRfxSetting(
+        RfxSetting.builder().rfxId("rfq_0001").status("To be Evaluated").statusCode(0).build());
 
     var project = ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJ_NAME)
-            .externalProjectId("Test").procurementEvents(events).build();
+        .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate
-            .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
             .thenReturn(List.of(ProjectUserMapping.builder()
-                    .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
-                    .userId("1234").build()));
-    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
+                .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
+                .userId("1234").build()));
+    when(jaggaerService.searchRFx(Set.of(event.getExternalEventId())))
+        .thenReturn(Set.of(exportRfxResponse));
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
-            .thenReturn(Arrays.asList(project));
+        .thenReturn(Arrays.asList(project));
 
     var response = procurementProjectService.getProjects(PRINCIPAL);
 
-
     assertNotNull(response);
     assertEquals(1, response.size());
-    assertEquals(DashboardStatus.IN_PROGRESS,response.stream().findFirst().get().getActiveEvent().getDashboardStatus());
+    assertEquals(DashboardStatus.IN_PROGRESS,
+        response.stream().findFirst().get().getActiveEvent().getDashboardStatus());
 
   }
 

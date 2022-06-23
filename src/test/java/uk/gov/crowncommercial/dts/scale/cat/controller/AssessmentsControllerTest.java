@@ -211,10 +211,11 @@ class AssessmentsControllerTest {
 
   @Test
   void testGetSupplierByToolIdAndDimensionId_200_OK() throws Exception {
-    var suppliers = new HashSet(Arrays.asList(1,2,3,4,5,6));
+    List<String> suppliers = Arrays.asList("US-DUNS-210305433");
+    var suppliersData = new HashSet(Arrays.asList(1,2,3,4,5,6));
 
-    when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID))
-        .thenReturn(suppliers);
+    when(assessmentService.getSupplierDimensionData(TOOL_ID,DIMENSION_ID,LOT_ID, suppliers))
+        .thenReturn(suppliersData);
 
     mockMvc.perform(get(SUPPLIERS_FOR_DIMENSION_PATH + LOT_ID, TOOL_ID, DIMENSION_ID).with(
             validJwtReqPostProcessor).accept(MediaType.parseMediaType("text/csv"))).andDo(print())

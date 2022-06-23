@@ -34,23 +34,22 @@ public class EncryptionService {
   }
 
   @SneakyThrows
-  public String encryptPassword(String password) {
+  public String encryptPassword(final String password) {
     String encryptString = Base64.getEncoder().encodeToString(
         createCipher(Cipher.ENCRYPT_MODE).doFinal(password.getBytes(StandardCharsets.US_ASCII)));
-    log.debug("Encrypted key: {} ", encryptString);
+    log.trace("Encrypted key: {} ", encryptString);
     return encryptString;
   }
 
   @SneakyThrows
-  public String decryptPassword(String encryptedPassword) {
-    String decyString = new String(
+  public String decryptPassword(final String encryptedPassword) {
+    String decryptString = new String(
         createCipher(Cipher.DECRYPT_MODE).doFinal(Base64.getDecoder().decode(encryptedPassword)));
-    log.debug("Decrypted key: {} ", decyString);
-    return decyString;
+    return decryptString;
   }
 
   @SneakyThrows
-  private Cipher createCipher(int mode) {
+  private Cipher createCipher(final int mode) {
     byte[] iv = rpaAPIConfig.getEncryptionIv().getBytes(StandardCharsets.US_ASCII);
     IvParameterSpec ivspec = new IvParameterSpec(iv);
     SecretKeySpec secretKey = new SecretKeySpec(
@@ -61,7 +60,7 @@ public class EncryptionService {
   }
 
   private String createJaggaerPassword() {
-    StringBuilder result = new StringBuilder(PASSWORD_LENGTH);
+    var result = new StringBuilder(PASSWORD_LENGTH);
     // at least 4 chars (lowercase)
     result.append(generateRandomString(CHAR_LOWERCASE, 4));
     // at least 2 chars (uppercase)
@@ -70,23 +69,23 @@ public class EncryptionService {
     result.append(generateRandomString(DIGIT, 2));
     // at least 2 special characters
     result.append(generateRandomString(OTHER_SYMBOL, 2));
-    String password = result.toString();
+    var password = result.toString();
     // shuffle again
     return shuffleString(password);
   }
 
-  private static String generateRandomString(String input, int size) {
-    StringBuilder result = new StringBuilder(size);
-    for (int i = 0; i < size; i++) {
+  private static String generateRandomString(final String input, final int size) {
+    var result = new StringBuilder(size);
+    for (var i = 0; i < size; i++) {
       // produce a random order
-      int index = random.nextInt(input.length());
+      var index = random.nextInt(input.length());
       result.append(input.charAt(index));
     }
     return result.toString();
   }
 
   // make it more random
-  private static String shuffleString(String input) {
+  private static String shuffleString(final String input) {
     List<String> result = Arrays.asList(input.split(""));
     Collections.shuffle(result);
     return result.stream().collect(Collectors.joining());

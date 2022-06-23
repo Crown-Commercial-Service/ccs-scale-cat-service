@@ -36,7 +36,7 @@ public class RetryableTendersDBDelegate {
   private final AssessmentResultRepo assessmentResultRepo;
   private final ProjectUserMappingRepo projectUserMappingRepo;
   private final SupplierSelectionRepo supplierSelectionRepo;
-  private final SupplierSubmissionRepo supplierSubmissionRepo;
+  private final BuyerUserDetailsRepo buyerUserDetailsRepo;
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -188,15 +188,14 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public Set<Integer> findAssessmentTaxonByToolIdAndDimensionId(final Integer assessmentToolId,
-      final Integer dimensionId) {
-    return supplierSubmissionRepo.findSupplierByToolIdAndDimensionId(assessmentToolId, dimensionId);
+  public Set<CalculationBase> findCalculationBaseByDimensionIdAndSuppliers(
+      final Integer dimensionId, final List<String> suppliers) {
+    return calculationBaseRepo.findByDimensionIdAndSupplierIdIn(dimensionId, suppliers);
   }
 
-  @TendersRetryable public Set<Integer> findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
-      final Integer assessmentToolId, final Integer dimensionId, final Integer lotId) {
-    return supplierSubmissionRepo.findSupplierByToolIdAndDimensionIdAndLotId(assessmentToolId,
-        dimensionId, lotId);
+  @TendersRetryable
+  public Set<CalculationBase> findCalculationBaseByDimensionId(final Integer dimensionId) {
+    return calculationBaseRepo.findByDimensionId(dimensionId);
   }
 
   @TendersRetryable
@@ -261,6 +260,21 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public void delete(final SupplierSelection supplierSelection) {
     supplierSelectionRepo.delete(supplierSelection);
+  }
+
+  @TendersRetryable
+  public Set<BuyerUserDetails> findByExported(final boolean exported) {
+    return buyerUserDetailsRepo.findByExported(exported);
+  }
+
+  @TendersRetryable
+  public void saveAll(final Iterable<BuyerUserDetails> buyerUserDetails) {
+    buyerUserDetailsRepo.saveAllAndFlush(buyerUserDetails);
+  }
+
+  @TendersRetryable
+  public List<BuyerUserDetails> findAll() {
+    return buyerUserDetailsRepo.findAll();
   }
 
   /**

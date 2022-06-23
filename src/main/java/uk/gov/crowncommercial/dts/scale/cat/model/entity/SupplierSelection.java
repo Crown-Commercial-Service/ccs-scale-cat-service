@@ -26,8 +26,9 @@ public class SupplierSelection {
   @JoinColumn(name = "organisation_mapping_id")
   OrganisationMapping organisationMapping;
 
-  @Column(name = "event_id")
-  Integer eventId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "event_id")
+  ProcurementEvent procurementEvent;
 
   @Column(name = "created_by", updatable = false)
   String createdBy;

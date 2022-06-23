@@ -105,6 +105,27 @@ data "aws_ssm_parameter" "jaggaer_rpa_encryption_iv" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-rpa-encryption-iv"
 }
 
+# S3 export (RPA)
+data "aws_ssm_parameter" "s3_rpa_bucket" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-bucket"
+}
+
+data "aws_ssm_parameter" "s3_rpa_access_key_id" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-access-key-id"
+}
+
+data "aws_ssm_parameter" "s3_rpa_aws_secret_key" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-aws-secret-key"
+}
+
+data "aws_ssm_parameter" "s3_rpa_workbook_password" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-workbook-password"
+}
+
+data "aws_ssm_parameter" "s3_rpa_export_schedule" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/s3-rpa-export-schedule"
+}
+
 # Document Upload Service
 data "aws_ssm_parameter" "document_upload_service_upload_base_url" {
   name = "/cat/${var.environment}/document-upload-service-upload-base-url"
@@ -178,8 +199,16 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.rpa.baseUrl" : data.aws_ssm_parameter.jaggaer_rpa_base_url.value
     "config.external.jaggaer.rpa.user-name" : data.aws_ssm_parameter.jaggaer_rpa_username.value
     "config.external.jaggaer.rpa.user-pwd" : data.aws_ssm_parameter.jaggaer_rpa_password.value
-    "config.external.jaggaer.rpa.encrpytion-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
-    "config.external.jaggaer.rpa.encrpytion-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
+    "config.external.jaggaer.rpa.encryption-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
+    "config.external.jaggaer.rpa.encryption-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
+
+    # S3 export (RPA)
+    "config.external.s3.rpa.bucket" : data.aws_ssm_parameter.s3_rpa_bucket.value
+    "config.external.s3.rpa.access-key-id" : data.aws_ssm_parameter.s3_rpa_access_key_id.value
+    "config.external.s3.rpa.secret-access-key" : data.aws_ssm_parameter.s3_rpa_aws_secret_key.value
+    "config.external.s3.rpa.object-prefix" : var.environment
+    "config.external.s3.rpa.workbook-password" : data.aws_ssm_parameter.s3_rpa_workbook_password.value
+    "config.external.s3.rpa.export-schedule" : data.aws_ssm_parameter.s3_rpa_export_schedule.value
 
     # Document Upload Service
     "config.external.doc-upload-svc.upload-base-url" : data.aws_ssm_parameter.document_upload_service_upload_base_url.value

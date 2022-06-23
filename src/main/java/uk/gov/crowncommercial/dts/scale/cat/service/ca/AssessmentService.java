@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -365,9 +366,8 @@ public class AssessmentService {
     // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
     // in the request
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
-      assessment.getAssessmentSelections().stream().filter(
-              assessmentSelection -> assessmentSelection.getDimension().getId().equals(dimensionId))
-          .collect(Collectors.toList()).clear();
+      assessment.getAssessmentSelections().removeIf(
+          assessmentSelection -> assessmentSelection.getDimension().getId().equals(dimensionId));
     }
 
     // Update/Add Requirements
@@ -750,7 +750,7 @@ public class AssessmentService {
     Set<DimensionOption> dimensionOptions =
         assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
-          log.debug(" - requirement :" + rt.getRequirement().getName());
+          log.trace(" - requirement :" + rt.getRequirement().getName());
           var rtOption = new DimensionOption();
           rtOption.setName(rt.getRequirement().getName());
           rtOption.setRequirementId(rt.getRequirement().getId());
@@ -936,28 +936,27 @@ public class AssessmentService {
    * @param toolId
    * @param dimensionId
    * @param lotId
+   * @param suppliers
    * @return
    */
-  public Set<Integer> getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
-      final Integer lotId) {
+  public Set<CalculationBase> getSupplierDimensionData(final Integer toolId,
+      final Integer dimensionId, final Integer lotId, final List<String> suppliers) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
-    var assessmentTool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
+    retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
 
     var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
-
-    Set<Integer> supplierSubmissions;
-
-    if (lotId != null && lotId > 0) {
-      supplierSubmissions =
-          retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
-              assessmentTool.getId(), dimension.getId(), lotId);
+    Set<CalculationBase> supplerDimensions;
+    if (CollectionUtils.isEmpty(suppliers)) {
+      supplerDimensions =
+          retryableTendersDBDelegate.findCalculationBaseByDimensionId(dimension.getId());
     } else {
-      supplierSubmissions = retryableTendersDBDelegate
-          .findAssessmentTaxonByToolIdAndDimensionId(assessmentTool.getId(), dimension.getId());
+      supplerDimensions = retryableTendersDBDelegate
+          .findCalculationBaseByDimensionIdAndSuppliers(dimension.getId(), suppliers);
     }
-    return supplierSubmissions;
+
+    return supplerDimensions;
   }
 }
