@@ -9,9 +9,9 @@ import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.CollectionUtils;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
@@ -750,7 +750,7 @@ public class AssessmentService {
     Set<DimensionOption> dimensionOptions =
         assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
-          log.debug(" - requirement :" + rt.getRequirement().getName());
+          log.trace(" - requirement :" + rt.getRequirement().getName());
           var rtOption = new DimensionOption();
           rtOption.setName(rt.getRequirement().getName());
           rtOption.setRequirementId(rt.getRequirement().getId());
@@ -939,8 +939,8 @@ public class AssessmentService {
    * @param suppliers
    * @return
    */
-  public Set<CalculationBase> getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
-      final Integer lotId, List<String> suppliers) {
+  public Set<CalculationBase> getSupplierDimensionData(final Integer toolId,
+      final Integer dimensionId, final Integer lotId, final List<String> suppliers) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
     retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
@@ -953,11 +953,10 @@ public class AssessmentService {
       supplerDimensions =
           retryableTendersDBDelegate.findCalculationBaseByDimensionId(dimension.getId());
     } else {
-      supplerDimensions =
-          retryableTendersDBDelegate.findCalculationBaseByDimensionIdAndSuppliers(dimension.getId(),
-              suppliers);
+      supplerDimensions = retryableTendersDBDelegate
+          .findCalculationBaseByDimensionIdAndSuppliers(dimension.getId(), suppliers);
     }
 
-   return supplerDimensions;
+    return supplerDimensions;
   }
 }

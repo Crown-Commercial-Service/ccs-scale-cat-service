@@ -219,7 +219,7 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
-    when(jaggaerService.getRfx(anyString())).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.DA);
@@ -270,8 +270,8 @@ class ProcurementEventServiceTest {
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
-    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
-        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(UPDATED_EVENT_NAME)
+        .statusCode(100).publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -289,13 +289,14 @@ class ProcurementEventServiceTest {
       procurementEvent.setId(PROC_PROJECT_ID);
       procurementEvent.setOcdsAuthorityName(OCDS_AUTH_NAME);
       procurementEvent.setOcidPrefix(OCID_PREFIX);
+      procurementEvent.setExternalEventId(RFX_ID);
       return procurementEvent;
     });
 
     when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
         PRINCIPAL)).thenReturn(ASSESSMENT_ID);
 
-    when(jaggaerService.getRfx(any())).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.FCA);
@@ -377,7 +378,7 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
-    when(jaggaerService.getRfx(anyString())).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -426,13 +427,13 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -465,13 +466,13 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -503,13 +504,13 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -543,7 +544,7 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
@@ -554,7 +555,7 @@ class ProcurementEventServiceTest {
         DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS), PRINCIPAL))
             .thenReturn(ASSESSMENT_ID);
 
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -592,7 +593,7 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
@@ -600,7 +601,7 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -627,14 +628,17 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
+
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(RfxSetting.builder().rfxId(RFX_ID).build());
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(jaggaerService.createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE)))
         .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
@@ -652,12 +656,16 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setEventType("RFI"); // Not 'TBD', so rules state cannot update
+    event.setExternalEventId(RFX_ID);
+
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(RfxSetting.builder().rfxId(RFX_ID).build());
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(jaggaerService.createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE)))
         .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
@@ -915,7 +923,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(documentUploadService.retrieveDocument(documentUpload1, PRINCIPAL))
@@ -945,7 +953,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
 
@@ -975,7 +983,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1010,7 +1018,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(jaggaerService.extendRfx(any(), any())).thenReturn(response);
@@ -1643,7 +1651,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1682,7 +1690,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1721,7 +1729,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1761,7 +1769,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1800,7 +1808,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1885,10 +1893,9 @@ class ProcurementEventServiceTest {
     var testValue =
         Value.builder().id("123456").value("TestFileName").secureToken("SAMPLETOKEN").build();
     var values = Values.builder().value(List.of(testValue)).build();
-    var parameter = Parameter.builder().parameterId(6666).parameterType("ATTACH")
-        .values(values).questionType("LOCAL").build();
-    var parameterResponses =
-        ParameterResponses.builder().parameter(List.of(parameter)).build();
+    var parameter = Parameter.builder().parameterId(6666).parameterType("ATTACH").values(values)
+        .questionType("LOCAL").build();
+    var parameterResponses = ParameterResponses.builder().parameter(List.of(parameter)).build();
     var techOffer = TechOffer.builder().parameterResponses(parameterResponses).build();
     var offer = Offer.builder().supplierId(5684804).lastUpdateDate(OffsetDateTime.now())
         .techOffer(techOffer).build();

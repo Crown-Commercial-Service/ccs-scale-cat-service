@@ -396,7 +396,7 @@ public class ProcurementProjectService {
   private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
       final ProjectUserMapping mapping, final Set<ExportRfxResponse> projectUserRfxs) {
 
-    log.debug("Convert Project to ProjectPackageSummary: " + mapping.getProject().getId());
+    log.trace("Convert Project to ProjectPackageSummary: " + mapping.getProject().getId());
 
     // Get Project from database
     var projectPackageSummary = new ProjectPackageSummary();
@@ -404,7 +404,7 @@ public class ProcurementProjectService {
     var dbEvent = getCurrentEvent(mapping.getProject());
     // TODO make single call instead of 2
     try {
-      log.debug("Get agreement and lots: " + agreementNo);
+      log.trace("Get agreement and lots: " + agreementNo);
       var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
       var lotDetails =
           agreementsService.getLotDetails(agreementNo, mapping.getProject().getLotNumber());
@@ -425,13 +425,13 @@ public class ProcurementProjectService {
     RfxSetting rfxSetting = null;
 
     if (dbEvent.isTendersDBOnly() || dbEvent.getExternalEventId() == null) {
-      log.debug("Get Event from Tenders DB: {}", dbEvent.getId());
+      log.trace("Get Event from Tenders DB: {}", dbEvent.getId());
       eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
           ViewEventType.fromValue(dbEvent.getEventType()), TenderStatus.PLANNING, ReleaseTag.TENDER,
           Optional.ofNullable(dbEvent.getAssessmentId()));
     } else {
-      log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
+      log.trace("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),

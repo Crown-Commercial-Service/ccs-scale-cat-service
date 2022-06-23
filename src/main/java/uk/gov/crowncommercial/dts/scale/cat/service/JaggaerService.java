@@ -100,9 +100,12 @@ public class JaggaerService {
   /**
    * Get an Rfx (Event).
    *
+   * @deprecated This method (or rather endpoint that it calls) is non-performant and should be
+   *             replaced with calls through {@link #searchRFx(Set)} instead where possible
    * @param externalEventId
    * @return
    */
+  @Deprecated
   public ExportRfxResponse getRfx(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
