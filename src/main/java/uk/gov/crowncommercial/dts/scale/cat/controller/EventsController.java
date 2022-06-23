@@ -106,8 +106,10 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.addSuppliers(procId, eventId, eventSuppliers, false,
-        principal);
+    return procurementEventService.addSuppliers(procId, eventId, eventSuppliers,
+        eventSuppliers.getOverwriteSuppliers() == null ?
+            false :
+            eventSuppliers.getOverwriteSuppliers(), principal);
   }
 
   @DeleteMapping("/{eventID}/suppliers/{supplierID}")
