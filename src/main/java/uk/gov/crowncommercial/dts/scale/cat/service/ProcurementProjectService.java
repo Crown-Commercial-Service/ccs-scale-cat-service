@@ -20,10 +20,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
@@ -373,11 +370,18 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
-        PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
+    var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
+        jaggaerUserId, PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
 
-    if (!CollectionUtils.isEmpty(projects)) {
-      return projects.stream().map(this::convertProjectToProjectPackageSummary)
+    var externalEventIdsAllProjects = projectUserMappings.stream()
+        .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
+        .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+    var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+
+    if (!CollectionUtils.isEmpty(projectUserMappings)) {
+      return projectUserMappings.stream()
+          .map(pum -> convertProjectToProjectPackageSummary(pum, projectUserRfxs))
           .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
     }
     return Collections.emptyList();
@@ -390,7 +394,7 @@ public class ProcurementProjectService {
    * @return ProjectPackageSummary
    */
   private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
-      final ProjectUserMapping mapping) {
+      final ProjectUserMapping mapping, final Set<ExportRfxResponse> projectUserRfxs) {
 
     log.debug("Convert Project to ProjectPackageSummary: " + mapping.getProject().getId());
 
@@ -431,22 +435,25 @@ public class ProcurementProjectService {
       try {
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-            Objects.nonNull(dbEvent.getEventType())? ViewEventType.fromValue(dbEvent.getEventType())
+            Objects.nonNull(dbEvent.getEventType())
+                ? ViewEventType.fromValue(dbEvent.getEventType())
                 : null,
-                Objects.nonNull(dbEvent.getTenderStatus()) ? TenderStatus.fromValue(dbEvent.getTenderStatus())
+            Objects.nonNull(dbEvent.getTenderStatus())
+                ? TenderStatus.fromValue(dbEvent.getTenderStatus())
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
         if (Objects.nonNull(dbEvent.getPublishDate()) && Objects.nonNull(dbEvent.getCloseDate())) {
-          eventSummary.tenderPeriod(
-              new Period1()
-                  .startDate(
-                      OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
-                  .endDate(
-                      OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
+          eventSummary.tenderPeriod(new Period1()
+              .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
+              .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
         }
-        // We need to build event summary before ir-respective of jaggaer response
-        var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+        // We need to build event summary before irrespective of jaggaer response
+        var exportRfxResponse = projectUserRfxs.stream()
+            .filter(
+                rfx -> Objects.equals(dbEvent.getExternalEventId(), rfx.getRfxSetting().getRfxId()))
+            .findFirst().orElseThrow(
+                () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
 
       } catch (Exception e) {

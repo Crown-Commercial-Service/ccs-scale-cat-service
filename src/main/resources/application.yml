@@ -168,6 +168,10 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+      
+      # This is far more performant for summary-level only data
+      searchRfxSummary:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
       createUpdateCompany:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles
       getAttachment:
