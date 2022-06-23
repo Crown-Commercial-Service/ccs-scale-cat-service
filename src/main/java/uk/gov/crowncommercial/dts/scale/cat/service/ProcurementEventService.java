@@ -832,7 +832,8 @@ public class ProcurementEventService {
       final String principal) {
 
     if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
-      event.getCapabilityAssessmentSuppliers().clear();
+      event.getCapabilityAssessmentSuppliers()
+          .removeIf(supplierSelection -> supplierSelection.getId() != null);
     }
 
     var suppliers = event.getCapabilityAssessmentSuppliers();
@@ -841,9 +842,9 @@ public class ProcurementEventService {
           .equals(s.getOrganisationMapping().getOrganisationId(), org.getOrganisationId()))) {
         log.debug("Creating new SupplierSelection record for organisation [{}]",
             org.getOrganisationId());
-        var selection = SupplierSelection.builder().organisationMapping(org).eventId(event.getId())
+        var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
             .createdAt(Instant.now()).createdBy(principal).build();
-        event.getCapabilityAssessmentSuppliers().add(selection);
+        event.setCapabilityAssessmentSuppliers(Set.of(selection));
       }
     });
     return retryableTendersDBDelegate.save(event);
