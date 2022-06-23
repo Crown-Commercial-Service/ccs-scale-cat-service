@@ -366,9 +366,8 @@ public class AssessmentService {
     // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
     // in the request
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
-      assessment.getAssessmentSelections().stream().filter(
-              assessmentSelection -> assessmentSelection.getDimension().getId().equals(dimensionId))
-          .collect(Collectors.toList()).clear();
+      assessment.getAssessmentSelections().removeIf(
+          assessmentSelection -> assessmentSelection.getDimension().getId().equals(dimensionId));
     }
 
     // Update/Add Requirements
