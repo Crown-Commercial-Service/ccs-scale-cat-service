@@ -206,7 +206,8 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.s3.rpa.bucket" : data.aws_ssm_parameter.s3_rpa_bucket.value
     "config.external.s3.rpa.access-key-id" : data.aws_ssm_parameter.s3_rpa_access_key_id.value
     "config.external.s3.rpa.secret-access-key" : data.aws_ssm_parameter.s3_rpa_aws_secret_key.value
-    "config.external.s3.rpa.object-prefix" : var.environment
+    # No directory/object prefix required in PRD
+    "config.external.s3.rpa.object-prefix" : var.environment == "prd" ? "" : var.environment
     "config.external.s3.rpa.workbook-password" : data.aws_ssm_parameter.s3_rpa_workbook_password.value
     "config.external.s3.rpa.export-schedule" : data.aws_ssm_parameter.s3_rpa_export_schedule.value
 
