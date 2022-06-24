@@ -128,13 +128,14 @@ public class ProcurementProjectService {
      * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
      * self-service company).
      */
+    var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
     var organisationMapping =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(conclaveOrgId);
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
     // Adapt save strategy based on org mapping status (new/existing)
     if (organisationMapping.isEmpty()) {
       procurementProject.setOrganisationMapping(retryableTendersDBDelegate
-          .save(OrganisationMapping.builder().organisationId(conclaveOrgId)
+          .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
               .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
               .createdAt(Instant.now()).createdBy(principal).build()));
     } else {
