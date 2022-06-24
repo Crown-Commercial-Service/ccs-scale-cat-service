@@ -9,6 +9,6 @@ module "deploy-all" {
   environment = "sbx2"
   cf_username = var.cf_username
   cf_password = var.cf_password
-  instances   = 1
+  instances   = 2
   dev_mode    = true
 }

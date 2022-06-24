@@ -20,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.converter.FormHttpMessageConverter;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.endpoint.DefaultClientCredentialsTokenResponseClient;
@@ -27,8 +29,6 @@ import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResp
 import org.springframework.security.oauth2.client.endpoint.OAuth2ClientCredentialsGrantRequest;
 import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -71,16 +71,18 @@ public class JaggaerClientConfig {
 
   @Bean
   public OAuth2AuthorizedClientManager authorizedClientManager(
-      final ClientRegistrationRepository clientRegistrationRepository,
-      final OAuth2AuthorizedClientRepository authorizedClientRepository) {
+      final ClientRegistrationRepository clientRegistrationRepository) {
 
     var authorizedClientProvider = OAuth2AuthorizedClientProviderBuilder.builder()
         .clientCredentials(
             configurer -> configurer.accessTokenResponseClient(accessTokenResponseClient()))
         .build();
 
-    var authorizedClientManager = new DefaultOAuth2AuthorizedClientManager(
-        clientRegistrationRepository, authorizedClientRepository);
+    var authorizedClientService =
+        new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+
+    var authorizedClientManager = new AuthorizedClientServiceOAuth2AuthorizedClientManager(
+        clientRegistrationRepository, authorizedClientService);
     authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
     return authorizedClientManager;

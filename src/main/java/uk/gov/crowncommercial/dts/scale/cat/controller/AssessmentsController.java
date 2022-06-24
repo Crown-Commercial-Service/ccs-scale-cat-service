@@ -1,7 +1,14 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+import java.util.Optional;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.ValidationException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.springframework.core.io.InputStreamResource;
@@ -11,21 +18,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
-
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.ValidationException;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.Optional;
-
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @RestController
 @RequestMapping(path = "/assessments", produces = APPLICATION_JSON_VALUE)
@@ -38,7 +37,7 @@ public class AssessmentsController extends AbstractRestController {
       "requirement-id in body [%s] does not match requirement-id in path [%s]";
 
   private static final String ERR_EMPTY_BODY = "Empty body";
-  private static final String NOT_SUPPORTED_MIME_TYPE  = "Mime Type application/json not supported";
+  private static final String NOT_SUPPORTED_MIME_TYPE = "Mime Type application/json not supported";
 
   private final AssessmentService assessmentService;
 
@@ -74,12 +73,13 @@ public class AssessmentsController extends AbstractRestController {
 
   @GetMapping("/{assessment-id}")
   public Assessment getAssessment(final @PathVariable("assessment-id") Integer assessmentId,
+      @RequestParam(defaultValue = "false", required = true) final Boolean scores,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getAssessment invoked on behalf of principal: {}", principal);
 
-    return assessmentService.getAssessment(assessmentId, Optional.of(principal));
+    return assessmentService.getAssessment(assessmentId, scores, Optional.of(principal));
   }
 
   @PutMapping("/{assessment-id}/dimensions/{dimension-id}")
@@ -139,36 +139,50 @@ public class AssessmentsController extends AbstractRestController {
   public ResponseEntity<InputStreamResource> getSupplierDimensionData(
       final @PathVariable("tool-id") Integer toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
-      @RequestParam(name = "lot-id", required = false) Integer lotId,
-      @RequestHeader(name = "mime-type", required = false, defaultValue = "text/csv")
-          String mimeType, HttpServletResponse response,
-      final JwtAuthenticationToken authentication) throws IOException {
+      @RequestParam(name = "lot-id", required = false) final Integer lotId,
+      @RequestParam(name = "suppliers", required = false) final List<String> suppliers,
+      @RequestHeader(name = "mime-type", required = false,
+          defaultValue = "text/csv") final String mimeType,
+      final HttpServletResponse response, final JwtAuthenticationToken authentication)
+      throws IOException {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSupplierDimensionData invoked on behalf of principal: {}", principal);
 
-    if (mimeType.equals(APPLICATION_JSON_VALUE)) {
+    if (APPLICATION_JSON_VALUE.equals(mimeType)) {
       throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
     }
 
-    var supplierSubmissions =
-        assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId);
+    var supplierDimensionData =
+        assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId, suppliers);
 
-
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    try (CSVPrinter csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
-      csvPrinter.printRecord("SupplierId");
-      for (Integer supplier : supplierSubmissions) {
-        csvPrinter.printRecord(supplier);
+    var out = new ByteArrayOutputStream();
+    try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
+      csvPrinter.printRecord("SupplierId", "RequirementName", "DimensionName", "AssessmentToolName",
+          "SubmissionTypeName", "SubmissionValue", "DimensionWeightPercentage",
+          "SelectionWeightPercentage");
+      for (CalculationBase calculationBase : supplierDimensionData) {
+        writeRecord(calculationBase, csvPrinter);
       }
       csvPrinter.flush();
     } catch (IOException e) {
       throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
     }
 
-    return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId))
         .contentType(MediaType.parseMediaType("text/csv"))
         .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
+  }
+
+  private void writeRecord(final CalculationBase calculationBase, final CSVPrinter csvPrinter)
+      throws IOException {
+    csvPrinter.printRecord(calculationBase.getSupplierId(), calculationBase.getRequirementName(),
+        calculationBase.getDimensionName(), calculationBase.getAssessmentToolName(),
+        calculationBase.getSubmissionTypeName(), calculationBase.getSubmissionValue(),
+        calculationBase.getAssessmentDimensionWeightPercentage(),
+        calculationBase.getAssessmentSelectionWeightPercentage());
+
   }
 }

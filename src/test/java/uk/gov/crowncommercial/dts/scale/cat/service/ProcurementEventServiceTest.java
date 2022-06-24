@@ -1,15 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import javax.validation.ValidationException;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -42,9 +43,11 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
-    DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-    ApplicationFlagsConfig.class,RPAGenericService.class}, webEnvironment = WebEnvironment.NONE)
+@SpringBootTest(
+    classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+        DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
+        ApplicationFlagsConfig.class, RPAGenericService.class},
+    webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
 
@@ -169,6 +172,9 @@ class ProcurementEventServiceTest {
   @MockBean
   private RPAGenericService rpaGenericService;
 
+  @MockBean
+  private BuyerUserDetailsRepo buyerUserDetailsRepo;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
@@ -213,7 +219,7 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
-    when(jaggaerService.getRfx(anyString())).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.DA);
@@ -264,8 +270,8 @@ class ProcurementEventServiceTest {
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
 
-    var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
-        .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(UPDATED_EVENT_NAME)
+        .statusCode(100).publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
@@ -283,13 +289,14 @@ class ProcurementEventServiceTest {
       procurementEvent.setId(PROC_PROJECT_ID);
       procurementEvent.setOcdsAuthorityName(OCDS_AUTH_NAME);
       procurementEvent.setOcidPrefix(OCID_PREFIX);
+      procurementEvent.setExternalEventId(RFX_ID);
       return procurementEvent;
     });
 
     when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
         PRINCIPAL)).thenReturn(ASSESSMENT_ID);
 
-    when(jaggaerService.getRfx(any())).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.FCA);
@@ -371,7 +378,7 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
-    when(jaggaerService.getRfx(anyString())).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -420,13 +427,13 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -459,13 +466,13 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -497,13 +504,13 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -537,7 +544,7 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
@@ -548,7 +555,7 @@ class ProcurementEventServiceTest {
         DefineEventType.fromValue(UPDATED_EVENT_TYPE_CAP_ASS), PRINCIPAL))
             .thenReturn(ASSESSMENT_ID);
 
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -586,7 +593,7 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
@@ -594,7 +601,7 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
-    when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -621,14 +628,17 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
+    event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
+
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(RfxSetting.builder().rfxId(RFX_ID).build());
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(jaggaerService.createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE)))
         .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
@@ -646,12 +656,16 @@ class ProcurementEventServiceTest {
 
     var event = new ProcurementEvent();
     event.setEventType("RFI"); // Not 'TBD', so rules state cannot update
+    event.setExternalEventId(RFX_ID);
+
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(RfxSetting.builder().rfxId(RFX_ID).build());
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(jaggaerService.createUpdateRfx(any(), eq(OperationCode.CREATEUPDATE)))
         .thenThrow(new JaggaerApplicationException(1, "NOT OK"));
 
@@ -758,7 +772,8 @@ class ProcurementEventServiceTest {
         .thenReturn(event);
     when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
-    when(assessmentService.getAssessment(ASSESSMENT_ID, Optional.empty())).thenReturn(assessment);
+    when(assessmentService.getAssessment(ASSESSMENT_ID, Boolean.FALSE, Optional.empty()))
+        .thenReturn(assessment);
 
     // Invoke
     var thrown = Assertions.assertThrows(ValidationException.class, () -> procurementEventService
@@ -909,7 +924,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(documentUploadService.retrieveDocument(documentUpload1, PRINCIPAL))
@@ -939,7 +954,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
 
@@ -969,7 +984,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1004,7 +1019,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(jaggaerService.extendRfx(any(), any())).thenReturn(response);
@@ -1029,12 +1044,8 @@ class ProcurementEventServiceTest {
     var supplier = Supplier.builder()
         .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
         .status("Replied").build();
-    var supplierResponseCounters = SupplierResponseCounters.builder()
-        .lastRound(LastRound.builder()
-            .numSupplInvited(8)
-            .numSupplResponded(1)
-            .numSupplNotResponded(7)
-            .build())
+    var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
+        LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
         .build();
     var organisationMapping =
         OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
@@ -1052,11 +1063,11 @@ class ProcurementEventServiceTest {
     var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
-    assertNotNull( response);
+    assertNotNull(response);
 
     assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
     assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
-    assertEquals(LocalDate.now(),response.getResponders().get(0).getResponseDate());
+    assertEquals(LocalDate.now(), response.getResponders().get(0).getResponseDate());
     assertEquals(1, response.getResponded());
     assertEquals(8, response.getInvited());
     assertEquals(7, response.getNoResponse());
@@ -1074,31 +1085,27 @@ class ProcurementEventServiceTest {
     var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
 
     var supplier = Supplier.builder()
-            .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-            .status("Replied").build();
-    var supplierResponseCounters = SupplierResponseCounters.builder()
-            .lastRound(LastRound.builder()
-                    .numSupplInvited(8)
-                    .numSupplResponded(1)
-                    .numSupplNotResponded(7)
-                    .build())
-            .build();
+        .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
+        .status("Replied").build();
+    var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
+        LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
+        .build();
     var organisationMapping =
-            OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
     rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(event);
+        .thenReturn(event);
     when(jaggaerService.getRfx(PROC_EVENT_ID)).thenReturn(rfxResponse);
     when(organisationMappingRepo.findByExternalOrganisationId(supplier.getCompanyData().getId()))
-            .thenReturn(Optional.of(organisationMapping));
+        .thenReturn(Optional.of(organisationMapping));
 
     var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
-    assertNotNull( response);
+    assertNotNull(response);
 
     assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
     assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
@@ -1107,7 +1114,6 @@ class ProcurementEventServiceTest {
     assertEquals(8, response.getInvited());
     assertEquals(7, response.getNoResponse());
   }
-
 
   void testTerminateEvent() throws Exception {
 
@@ -1143,13 +1149,13 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnClosedDashboardStatusForGetEventClosedEvent() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("CLOSED");
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("CLOSED");
 
     var eventDetail = testGetEventHelper(ViewEventType.FCA, procurementEventBuilder);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.CLOSED, eventDetail.getNonOCDS().getDashboardStatus());
     verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyBoolean());
@@ -1158,455 +1164,475 @@ class ProcurementEventServiceTest {
   @Test
   void shouldReturnCompletedDashboardStatusForGetEventCompleteEvent() throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("COMPLETE");
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("COMPLETE");
 
     var eventDetail = testGetEventHelper(ViewEventType.FCA, procurementEventBuilder);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.COMPLETE, eventDetail.getNonOCDS().getDashboardStatus());
     verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyBoolean());
   }
 
   @Test
-  void shouldReturnAssessmentDashboardStatusForGetEventForDBEventTypeFCAWithNonCompleteNonClosedEvent() throws Exception {
+  void shouldReturnAssessmentDashboardStatusForGetEventForDBEventTypeFCAWithNonCompleteNonClosedEvent()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("PLANNED");
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus("PLANNED");
 
     var eventDetail = testGetEventHelper(ViewEventType.FCA, procurementEventBuilder);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.ASSESSMENT, eventDetail.getNonOCDS().getDashboardStatus());
     verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyBoolean());
   }
 
-
   @Test
-  void shouldReturnInProgressDashboardStatusForGetEventForNonDBEventTypeWithPublishDateNull() throws Exception {
+  void shouldReturnInProgressDashboardStatusForGetEventForNonDBEventTypeWithPublishDateNull()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(null).build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(null).build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.IN_PROGRESS, eventDetail.getNonOCDS().getDashboardStatus());
 
   }
 
-
   @Test
-  void shouldReturnPublishedDashboardStatusForGetEventForNonDBEventTypeWithClosedDateAfterToday() throws Exception {
+  void shouldReturnPublishedDashboardStatusForGetEventForNonDBEventTypeWithClosedDateAfterToday()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-                      .closeDate(OffsetDateTime.now().plus(3, ChronoUnit.DAYS)).build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().plus(3, ChronoUnit.DAYS)).build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.PUBLISHED, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnToBeEvaluatedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusToBeEvaluated() throws Exception {
+  void shouldReturnToBeEvaluatedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusToBeEvaluated()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("To be Evaluated").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("To be Evaluated")
+        .build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.TO_BE_EVALUATED, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
-
   // Evaluating status test cases
   @Test
-  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusQualificationEvaluation() throws Exception {
+  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusQualificationEvaluation()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Qualification Evaluation").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS))
+        .status("Qualification Evaluation").build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.EVALUATING, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusTechnicalEvaluation() throws Exception {
+  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusTechnicalEvaluation()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Technical Evaluation").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Technical Evaluation")
+        .build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.EVALUATING, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnEvaluatingdDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusCommercialEvaluation() throws Exception {
+  void shouldReturnEvaluatingdDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusCommercialEvaluation()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Commercial Evaluation").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Commercial Evaluation")
+        .build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
-
-    assertEquals(DashboardStatus.EVALUATING, eventDetail.getNonOCDS().getDashboardStatus());
-  }
-
-
-  @Test
-  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusBestAndFinalOfferEvaluation() throws Exception {
-    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
-
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Best and Final Offer Evaluation").build();
-
-    var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
-    var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
-
-    var rfxResponse = new ExportRfxResponse();
-    rfxResponse.setRfxSetting(rfxSetting);
-
-    // Mock behaviours
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
-
-    var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
-
-    assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
-    assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.EVALUATING, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusTIOCClosed() throws Exception {
+  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusBestAndFinalOfferEvaluation()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("TIOC Closed").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS))
+        .status("Best and Final Offer Evaluation").build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.EVALUATING, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnEvaluatedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusFinalEvaluation() throws Exception {
+  void shouldReturnEvaluatingDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusTIOCClosed()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Final Evaluation").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("TIOC Closed").build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+
+    assertEquals(DashboardStatus.EVALUATING, eventDetail.getNonOCDS().getDashboardStatus());
+  }
+
+  @Test
+  void shouldReturnEvaluatedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusFinalEvaluation()
+      throws Exception {
+    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Final Evaluation")
+        .build();
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent =
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+
+    var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
+
+    assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
+    assertEquals(ASSESSMENT_SUPPLIER_TARGET,
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.EVALUATED, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnPreAwardDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusFinalEvaluationPreAwarded() throws Exception {
+  void shouldReturnPreAwardDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusFinalEvaluationPreAwarded()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Final Evaluation - Pre-Awarded").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS))
+        .status("Final Evaluation - Pre-Awarded").build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.PRE_AWARD, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnPreAwardDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusAwardingApproval() throws Exception {
+  void shouldReturnPreAwardDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusAwardingApproval()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Awarding Approval").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Awarding Approval")
+        .build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.PRE_AWARD, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnAwardedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusAwarded() throws Exception {
+  void shouldReturnAwardedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusAwarded()
+      throws Exception {
     var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Awarded").build();
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Awarded").build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.AWARDED, eventDetail.getNonOCDS().getDashboardStatus());
   }
-  @Test
-  void shouldReturnAwardedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusMixedAwarding() throws Exception {
-    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
-            .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
 
-    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Mixed Awarding").build();
+  @Test
+  void shouldReturnAwardedDashboardStatusForGetEventForNonDBEventTypeWithJaggaerStatusMixedAwarding()
+      throws Exception {
+    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+        .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Mixed Awarding").build();
 
     var procurementProject =
-            ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent =
-            procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
-                    .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-            .thenReturn(procurementEvent);
+        .thenReturn(procurementEvent);
     when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
 
     var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
 
     assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
-            eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.AWARDED, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test
-  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCloseStatus() throws Exception {
+  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCloseStatus()
+      throws Exception {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
@@ -1626,7 +1652,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1643,9 +1669,9 @@ class ProcurementEventServiceTest {
     assertEquals(DashboardStatus.CLOSED, eventSummary.getDashboardStatus());
   }
 
-
   @Test
-  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCancelledStatus() throws Exception {
+  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCancelledStatus()
+      throws Exception {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
@@ -1665,7 +1691,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1681,8 +1707,10 @@ class ProcurementEventServiceTest {
     assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
     assertEquals(DashboardStatus.CLOSED, eventSummary.getDashboardStatus());
   }
+
   @Test
-  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCompleteStatus() throws Exception {
+  void shouldReturnCloseDashboardStatusForGetEventsForProjectForEventWithCompleteStatus()
+      throws Exception {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
@@ -1702,7 +1730,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1720,7 +1748,8 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void shouldReturnAssessmentDashboardStatusForGetEventsForProjectForDBEventType() throws Exception {
+  void shouldReturnAssessmentDashboardStatusForGetEventsForProjectForDBEventType()
+      throws Exception {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
@@ -1741,7 +1770,7 @@ class ProcurementEventServiceTest {
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1755,7 +1784,8 @@ class ProcurementEventServiceTest {
   }
 
   @Test
-  void shouldReturnAwardedAssessmentDashboardStatusForGetEventsForProjectForNonDBEventTypeWithStatusAwarded() throws Exception {
+  void shouldReturnAwardedAssessmentDashboardStatusForGetEventsForProjectForNonDBEventTypeWithStatusAwarded()
+      throws Exception {
 
     var event = new ProcurementEvent();
     event.setId(PROC_EVENT_DB_ID);
@@ -1771,13 +1801,15 @@ class ProcurementEventServiceTest {
     var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
-            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Awarded").rfxId(RFX_ID).build();
+    var rfxSetting =
+        RfxSetting.builder().publishDate(OffsetDateTime.now().minus(3, ChronoUnit.DAYS))
+            .closeDate(OffsetDateTime.now().minus(1, ChronoUnit.DAYS)).status("Awarded")
+            .rfxId(RFX_ID).build();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
     when(procurementEventRepo.findByProjectId(PROC_PROJECT_ID)).thenReturn(events);
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
     var response = procurementEventService.getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
 
@@ -1789,10 +1821,10 @@ class ProcurementEventServiceTest {
     assertEquals(ViewEventType.RFI, eventSummary.getEventType());
     assertEquals(DashboardStatus.AWARDED, eventSummary.getDashboardStatus());
   }
+
   private RfxSetting getRfxSetting() {
-    var rfxSetting = RfxSetting.builder().statusCode(100).rfxId(RFX_ID)
-            .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
-    return rfxSetting;
+    return RfxSetting.builder().statusCode(100).rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION).build();
   }
 
   @Test
@@ -1806,26 +1838,16 @@ class ProcurementEventServiceTest {
     var rfxResponse = new ExportRfxResponse();
     var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
 
-    var supplier =
-        Supplier.builder()
-            .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-            .status("Replied")
-            .build();
-    var supplier2 =
-        Supplier.builder()
-            .companyData(CompanyData.builder().id(5684805).name("Test Supplier 2").build())
-            .status("Not Replied")
-            .build();
+    var supplier = Supplier.builder()
+        .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
+        .status("Replied").build();
+    var supplier2 = Supplier.builder()
+        .companyData(CompanyData.builder().id(5684805).name("Test Supplier 2").build())
+        .status("Not Replied").build();
 
-    var supplierResponseCounters =
-        SupplierResponseCounters.builder()
-            .lastRound(
-                LastRound.builder()
-                    .numSupplInvited(8)
-                    .numSupplResponded(1)
-                    .numSupplNotResponded(7)
-                    .build())
-            .build();
+    var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
+        LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
+        .build();
 
     var organisationMapping =
         OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
@@ -1846,8 +1868,8 @@ class ProcurementEventServiceTest {
     when(organisationMappingRepo.findByExternalOrganisationId(supplier2.getCompanyData().getId()))
         .thenReturn(Optional.of(organisationMappingSecondSupplier));
 
-    var supplierAttachmentResponseList =
-        procurementEventService.getSupplierAttachmentResponses("srinivasa.dontiboyina@hotmail.com",PROC_PROJECT_ID, PROC_EVENT_ID);
+    var supplierAttachmentResponseList = procurementEventService.getSupplierAttachmentResponses(
+        "srinivasa.dontiboyina@hotmail.com", PROC_PROJECT_ID, PROC_EVENT_ID);
 
     // Verify
     assertNotNull(supplierAttachmentResponseList);
@@ -1855,61 +1877,29 @@ class ProcurementEventServiceTest {
     assertEquals(1, supplierAttachmentResponseList.size());
     assertEquals(5684804, supplierAttachmentResponseList.get(0).getSupplierId());
     assertNotNull(supplierAttachmentResponseList.get(0).getParameterInfoList());
-    assertEquals(
-        6666, supplierAttachmentResponseList.get(0).getParameterInfoList().get(0).getParameterId());
-    assertNotNull(
-        supplierAttachmentResponseList
-            .get(0)
-            .getParameterInfoList()
-            .get(0)
-            .getAttachmentInfoList());
-    assertEquals(
-        "123456",
-        supplierAttachmentResponseList
-            .get(0)
-            .getParameterInfoList()
-            .get(0)
-            .getAttachmentInfoList()
-            .get(0)
-            .getAttachmentId());
-    assertEquals(
-        "TestFileName",
-        supplierAttachmentResponseList
-            .get(0)
-            .getParameterInfoList()
-            .get(0)
-            .getAttachmentInfoList()
-            .get(0)
-            .getAttachmentName());
-    assertEquals(
-        "SAMPLETOKEN",
-        supplierAttachmentResponseList
-            .get(0)
-            .getParameterInfoList()
-            .get(0)
-            .getAttachmentInfoList()
-            .get(0)
-            .getSecureToken());
+    assertEquals(6666,
+        supplierAttachmentResponseList.get(0).getParameterInfoList().get(0).getParameterId());
+    assertNotNull(supplierAttachmentResponseList.get(0).getParameterInfoList().get(0)
+        .getAttachmentInfoList());
+    assertEquals("123456", supplierAttachmentResponseList.get(0).getParameterInfoList().get(0)
+        .getAttachmentInfoList().get(0).getAttachmentId());
+    assertEquals("TestFileName", supplierAttachmentResponseList.get(0).getParameterInfoList().get(0)
+        .getAttachmentInfoList().get(0).getAttachmentName());
+    assertEquals("SAMPLETOKEN", supplierAttachmentResponseList.get(0).getParameterInfoList().get(0)
+        .getAttachmentInfoList().get(0).getSecureToken());
   }
 
   private OffersList getOfferList() {
 
-    Value testValue =
+    var testValue =
         Value.builder().id("123456").value("TestFileName").secureToken("SAMPLETOKEN").build();
-    Values values = Values.builder().value(List.of(testValue)).build();
-    Parameter parameter =
-        Parameter.builder()
-            .parameterId(6666)
-            .parameterType("ATTACH")
-            .values(values)
-            .questionType("LOCAL")
-            .build();
-    ParameterResponses parameterResponses =
-        ParameterResponses.builder().parameter(List.of(parameter)).build();
-    TechOffer techOffer = TechOffer.builder().parameterResponses(parameterResponses).build();
-    Offer offer = Offer.builder().supplierId(5684804).lastUpdateDate(OffsetDateTime.now()).techOffer(techOffer).build();
-    OffersList offersList = OffersList.builder().offer(List.of(offer)).build();
-
-    return offersList;
+    var values = Values.builder().value(List.of(testValue)).build();
+    var parameter = Parameter.builder().parameterId(6666).parameterType("ATTACH").values(values)
+        .questionType("LOCAL").build();
+    var parameterResponses = ParameterResponses.builder().parameter(List.of(parameter)).build();
+    var techOffer = TechOffer.builder().parameterResponses(parameterResponses).build();
+    var offer = Offer.builder().supplierId(5684804).lastUpdateDate(OffsetDateTime.now())
+        .techOffer(techOffer).build();
+    return OffersList.builder().offer(List.of(offer)).build();
   }
 }

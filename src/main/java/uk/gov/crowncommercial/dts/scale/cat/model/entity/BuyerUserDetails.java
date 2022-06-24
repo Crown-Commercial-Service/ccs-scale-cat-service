@@ -24,6 +24,9 @@ public class BuyerUserDetails {
   @Column(name = "user_password")
   String userPassword;
 
+  @Column(name = "exported")
+  Boolean exported;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
@@ -35,6 +38,4 @@ public class BuyerUserDetails {
 
   @Column(name = "updated_at")
   Instant updatedAt;
-
-  boolean exported;
 }

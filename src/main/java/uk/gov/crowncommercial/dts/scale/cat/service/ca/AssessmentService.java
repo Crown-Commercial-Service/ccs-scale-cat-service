@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -217,7 +218,7 @@ public class AssessmentService {
       summary.setExternalToolId(a.getTool().getExternalToolId());
       summary.setStatus(AssessmentStatus.fromValue(a.getStatus().toString().toLowerCase()));
       return summary;
-    }).collect(Collectors.toList());
+    }).toList();
   }
 
   /**
@@ -228,7 +229,7 @@ public class AssessmentService {
    * @return
    */
   @Transactional
-  public Assessment getAssessment(final Integer assessmentId,
+  public Assessment getAssessment(final Integer assessmentId, final Boolean includeScores,
       final Optional<String> principalForScores) {
 
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
@@ -271,22 +272,23 @@ public class AssessmentService {
                 }
               }
               return criterion;
-            }).collect(Collectors.toList()));
+            }).toList());
 
             return requirement;
-          }).collect(Collectors.toList());
+          }).toList();
 
       req.setRequirements(requirements);
 
       return req;
 
-    }).collect(Collectors.toList());
+    }).toList();
 
     var response = new Assessment();
-    // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    principalForScores.ifPresent(principal -> response
-        .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
 
+    if (includeScores) {
+      principalForScores.ifPresent(principal -> response
+          .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
+    }
     response.setExternalToolId(assessment.getTool().getExternalToolId());
     response.setAssessmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
@@ -365,9 +367,8 @@ public class AssessmentService {
     // If overwriteRequirements flag is true, remove any existing AssessmentSelections not included
     // in the request
     if (Boolean.TRUE.equals(dimensionRequirement.getOverwriteRequirements())) {
-      assessment.getAssessmentSelections().stream().filter(
-              assessmentSelection -> assessmentSelection.getDimension().getId().equals(dimensionId))
-          .collect(Collectors.toList()).clear();
+      assessment.getAssessmentSelections().removeIf(
+          assessmentSelection -> assessmentSelection.getDimension().getId().equals(dimensionId));
     }
 
     // Update/Add Requirements
@@ -750,7 +751,7 @@ public class AssessmentService {
     Set<DimensionOption> dimensionOptions =
         assessmentTaxon.getRequirementTaxons().stream().map(rt -> {
 
-          log.debug(" - requirement :" + rt.getRequirement().getName());
+          log.trace(" - requirement :" + rt.getRequirement().getName());
           var rtOption = new DimensionOption();
           rtOption.setName(rt.getRequirement().getName());
           rtOption.setRequirementId(rt.getRequirement().getId());
@@ -936,28 +937,27 @@ public class AssessmentService {
    * @param toolId
    * @param dimensionId
    * @param lotId
+   * @param suppliers
    * @return
    */
-  public Set<Integer> getSupplierDimensionData(final Integer toolId, final Integer dimensionId,
-      final Integer lotId) {
+  public Set<CalculationBase> getSupplierDimensionData(final Integer toolId,
+      final Integer dimensionId, final Integer lotId, final List<String> suppliers) {
 
     // Explicitly validate toolId so we can throw a 404 (otherwise empty array returned)
-    var assessmentTool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
+    retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
 
     var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
-
-    Set<Integer> supplierSubmissions;
-
-    if (lotId != null && lotId > 0) {
-      supplierSubmissions =
-          retryableTendersDBDelegate.findAssessmentTaxonByToolIdAndDimensionIdAndLotId(
-              assessmentTool.getId(), dimension.getId(), lotId);
+    Set<CalculationBase> supplerDimensions;
+    if (CollectionUtils.isEmpty(suppliers)) {
+      supplerDimensions =
+          retryableTendersDBDelegate.findCalculationBaseByDimensionId(dimension.getId());
     } else {
-      supplierSubmissions = retryableTendersDBDelegate
-          .findAssessmentTaxonByToolIdAndDimensionId(assessmentTool.getId(), dimension.getId());
+      supplerDimensions = retryableTendersDBDelegate
+          .findCalculationBaseByDimensionIdAndSuppliers(dimension.getId(), suppliers);
     }
-    return supplierSubmissions;
+
+    return supplerDimensions;
   }
 }
