@@ -218,7 +218,7 @@ public class AssessmentService {
       summary.setExternalToolId(a.getTool().getExternalToolId());
       summary.setStatus(AssessmentStatus.fromValue(a.getStatus().toString().toLowerCase()));
       return summary;
-    }).collect(Collectors.toList());
+    }).toList();
   }
 
   /**
@@ -229,7 +229,7 @@ public class AssessmentService {
    * @return
    */
   @Transactional
-  public Assessment getAssessment(final Integer assessmentId,
+  public Assessment getAssessment(final Integer assessmentId, final Boolean includeScores,
       final Optional<String> principalForScores) {
 
     var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
@@ -272,22 +272,23 @@ public class AssessmentService {
                 }
               }
               return criterion;
-            }).collect(Collectors.toList()));
+            }).toList());
 
             return requirement;
-          }).collect(Collectors.toList());
+          }).toList();
 
       req.setRequirements(requirements);
 
       return req;
 
-    }).collect(Collectors.toList());
+    }).toList();
 
     var response = new Assessment();
-    // TODO: Calculate Scores - Nick suggested there may be a db flag to enable/disable this
-    principalForScores.ifPresent(principal -> response
-        .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
 
+    if (includeScores) {
+      principalForScores.ifPresent(principal -> response
+          .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
+    }
     response.setExternalToolId(assessment.getTool().getExternalToolId());
     response.setAssessmentId(assessmentId);
     response.setDimensionRequirements(dimensions);
