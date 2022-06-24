@@ -135,7 +135,7 @@ public class DocValueAdaptorsCA {
   private Assessment getAssessment(final Integer assessmentId,
       final ConcurrentMap<String, Object> requestCache) {
     return (Assessment) requestCache.computeIfAbsent(CACHE_KEY_ASSESSMENT,
-        k -> assessmentService.getAssessment(assessmentId, Optional.empty()));
+        k -> assessmentService.getAssessment(assessmentId, Boolean.FALSE, Optional.empty()));
   }
 
   private DimensionDefinition getDimensionDefinition(final String toolId, final String dimension,

@@ -163,8 +163,8 @@ public class ProcurementEventService {
         returnAssessmentId = newAssessmentId;
         log.debug("Created new empty assessment: {}", newAssessmentId);
       } else {
-        var validatedAssessment = assessmentService
-            .getAssessment(createEvent.getNonOCDS().getAssessmentId(), Optional.empty());
+        var validatedAssessment = assessmentService.getAssessment(
+            createEvent.getNonOCDS().getAssessmentId(), Boolean.FALSE, Optional.empty());
         eventBuilder.assessmentId(validatedAssessment.getAssessmentId());
         returnAssessmentId = validatedAssessment.getAssessmentId();
         log.debug("Linking existing assessment: {} to new event",
@@ -502,7 +502,8 @@ public class ProcurementEventService {
     if (event.isTendersDBOnly()) {
       log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
           event.getEventType());
-      var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
+      var assessment =
+          assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE, Optional.empty());
       var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
           .map(DimensionRequirement::getWeighting).reduce(0, Integer::sum);
       if (dimensionWeightingCheck != 100) {
@@ -813,7 +814,8 @@ public class ProcurementEventService {
       TenderStatus statusCode;
       RfxSetting rfxSetting = null;
       if (event.getExternalEventId() == null) {
-        var assessment = assessmentService.getAssessment(event.getAssessmentId(), Optional.empty());
+        var assessment = assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE,
+            Optional.empty());
         statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
       } else {
         // var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
