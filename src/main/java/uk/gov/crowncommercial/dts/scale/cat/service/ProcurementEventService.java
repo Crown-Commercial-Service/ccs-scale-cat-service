@@ -1027,7 +1027,7 @@ public class ProcurementEventService {
         attachments.add(attachment);
       });
       // Get draft documents
-      dTemplateService.getTemplates(procId, eventId).stream().forEach(template -> {
+      dTemplateService.getTemplatesByEventType(procId, eventId).stream().forEach(template -> {
         attachments.add(dTemplateService.getDraftDocument(procId, eventId,
             DocumentKey.fromString(template.getId())));
       });
