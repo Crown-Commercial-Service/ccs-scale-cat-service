@@ -41,8 +41,11 @@ public class PricingCalculator implements CalculationAdaptor {
         0 :
         Double.parseDouble(calcBase.getSubmissionValue());
 
+    var requirementValue =
+        calcBase.getRequirementValue() == null ? 1 : calcBase.getRequirementValue().doubleValue();
+
     // ACs 12 & 15
-    return submissionValue * calcBase.getRequirementValue().doubleValue();
+    return submissionValue * requirementValue;
   }
 
   @Override
@@ -94,7 +97,7 @@ public class PricingCalculator implements CalculationAdaptor {
           .reduce(0d, Double::sum);
       allSuppliersTotals.add(supplierTotal);
 
-      if (Objects.equals(supplierScores.getSupplier(), supplierId)) {
+      if (Objects.equals(supplierScores.getSupplier().getId(), supplierId)) {
         currentSupplierPricingDimensionScores.set(pricingDimensionScores);
         currentSupplierTotal.set(supplierTotal / submissionTypes.size()); // 1 (no adjustment) or 2
       }
@@ -105,9 +108,14 @@ public class PricingCalculator implements CalculationAdaptor {
     var maxSupplierTotal = allSuppliersTotals.parallelStream().max(Double::compareTo).orElseThrow(
         () -> new CAException(ERR_MSG_NO_SUPPLIER_TOTALS_MAX)) / submissionTypes.size();
 
+    if (currentSupplierTotal.get() == null) {
+      currentSupplierTotal.set(0d);
+    }
     var dimensionScore = 100 - (currentSupplierTotal.get() - minSupplierTotal)
         / (maxSupplierTotal - minSupplierTotal) * 100;
-
+    if (currentSupplierPricingDimensionScores.get() == null) {
+      currentSupplierPricingDimensionScores.set(new DimensionScores().score(0d));
+    }
     currentSupplierPricingDimensionScores.get().setScore(roundDouble(dimensionScore, 2));
   }
 
