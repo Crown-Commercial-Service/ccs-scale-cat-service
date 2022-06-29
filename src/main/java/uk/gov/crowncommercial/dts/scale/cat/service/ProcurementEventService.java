@@ -106,6 +106,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
+  @Transactional
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downSelectedSuppliers, final String principal) {
 
@@ -307,6 +308,7 @@ public class ProcurementEventService {
    * @param updateEvent
    * @param principal
    */
+  @Transactional
   public EventSummary updateProcurementEvent(final Integer procId, final String eventId,
       final UpdateEvent updateEvent, final String principal) {
 
