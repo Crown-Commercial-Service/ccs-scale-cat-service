@@ -855,16 +855,12 @@ public class ProcurementEventService {
           .removeIf(supplierSelection -> supplierSelection.getId() != null);
     }
 
-    var suppliers = event.getCapabilityAssessmentSuppliers();
     supplierOrgMappings.stream().forEach(org -> {
-      if (suppliers != null && suppliers.stream().noneMatch(s -> Objects
-          .equals(s.getOrganisationMapping().getOrganisationId(), org.getOrganisationId()))) {
         log.debug("Creating new SupplierSelection record for organisation [{}]",
             org.getOrganisationId());
         var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
             .createdAt(Instant.now()).createdBy(principal).build();
         event.setCapabilityAssessmentSuppliers(Set.of(selection));
-      }
     });
     return retryableTendersDBDelegate.save(event);
   }
