@@ -1095,23 +1095,33 @@ public class ProcurementEventService {
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
         .getUserId();
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var rfxResponse = getSingleRfx(event.getExternalEventId());
-    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-        .get(rfxResponse.getRfxSetting().getStatusCode());
 
-    if (TenderStatus.ACTIVE != status) {
-      throw new IllegalArgumentException(
-          "You cannot terminate an event unless it is in a 'active' state");
+    if (event.isTendersDBOnly()) {
+      event.setTenderStatus(type.name());
+      event.setUpdatedAt(Instant.now());
+      event.setUpdatedBy(principal);
+      event.setCloseDate(Instant.now());
+      retryableTendersDBDelegate.save(event);
+    } else {
+      var rfxResponse = getSingleRfx(event.getExternalEventId());
+      var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+          .get(rfxResponse.getRfxSetting().getStatusCode());
+
+      if (TenderStatus.ACTIVE != status) {
+        throw new IllegalArgumentException(
+            "You cannot terminate an event unless it is in a 'active' state");
+      }
+
+      final var invalidateEventRequest =
+          InvalidateEventRequest.builder().invalidateReason(type.getValue())
+              .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+              .operatorUser(OwnerUser.builder().id(user).build()).build();
+      log.info("Invalidate event request: {}", invalidateEventRequest);
+      jaggaerService.invalidateEvent(invalidateEventRequest);
+      // update status
+      updateStatusAndDates(principal, event);
     }
 
-    final var invalidateEventRequest =
-        InvalidateEventRequest.builder().invalidateReason(type.getValue())
-            .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
-            .operatorUser(OwnerUser.builder().id(user).build()).build();
-    log.info("Invalidate event request: {}", invalidateEventRequest);
-    jaggaerService.invalidateEvent(invalidateEventRequest);
-    // update status
-    updateStatusAndDates(principal, event);
   }
 
   /**
