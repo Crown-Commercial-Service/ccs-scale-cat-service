@@ -1171,8 +1171,10 @@ public class ProcurementEventService {
     var offersWithParameters = getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
 
     if (CollectionUtils.isEmpty(offersWithParameters)) {
-      //
-      startEvaluationAndCallOpenEnvelopeAndUpdateSupplier(profile, procurementEvent);
+
+      var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
+          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+      jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
 
       // get rfx response after Start Evaluation And Open Envelope called
       exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
@@ -1215,25 +1217,6 @@ public class ProcurementEventService {
       throw new ResourceNotFoundException(
           String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
     }
-  }
-
-  private void startEvaluationAndCallOpenEnvelopeAndUpdateSupplier(final String profile,
-      final ProcurementEvent procurementEvent) {
-
-    var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-
-    var buyerEncryptedPwd = rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId());
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(buyerEncryptedPwd).ittCode(procurementEvent.getExternalReferenceId());
-
-    // Start Evaluation for the event
-    jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
-
-    // call Open Envelop And Update Supplier
-    this.callOpenEnvelope(buyerUser.getEmail(), buyerEncryptedPwd,
-        procurementEvent.getExternalReferenceId(), inputBuilder.build());
   }
 
   private List<Offer> getOffersWithSupplierAttachments(final ExportRfxResponse exportRfxResponse,

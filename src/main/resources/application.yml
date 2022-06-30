@@ -186,6 +186,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
+      openEnvelope:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/openEnvelope  
       invalidateEvent:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/invalidate
           
