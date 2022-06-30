@@ -93,6 +93,8 @@ public class ProcurementEventService {
 
   private final RPAGenericService rpaGenericService;
 
+  private final AgreementsService agreementsService;
+
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -107,7 +109,7 @@ public class ProcurementEventService {
    * @return
    */
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
-      Boolean downSelectedSuppliers, final String principal) {
+      Boolean downSelectedSuppliers, final String principal,final AgreementDetails agreementDetails) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -171,6 +173,20 @@ public class ProcurementEventService {
             validatedAssessment.getAssessmentId());
       }
     }
+
+    if(ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))){
+      //get suppliers
+      var lotSuppliersOrgIds=agreementsService.getLotSuppliers(agreementDetails.getAgreementId(),agreementDetails.getLotId()).stream().map(lotSupplier -> lotSupplier.getOrganization().getId()).collect(Collectors.toSet());
+
+      suppliers = retryableTendersDBDelegate
+              .findOrganisationMappingByOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+                var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                return Supplier.builder().companyData(companyData).build();
+              }).collect(Collectors.toList());
+
+    }
+
+
     if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
 
       var createUpdateRfx = createRfxRequest(project, eventName, principal, suppliers);

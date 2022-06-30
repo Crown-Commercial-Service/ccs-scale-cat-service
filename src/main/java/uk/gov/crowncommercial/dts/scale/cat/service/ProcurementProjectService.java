@@ -145,7 +145,7 @@ public class ProcurementProjectService {
     retryableTendersDBDelegate.save(procurementProject);
 
     var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
-        new CreateEvent(), null, principal);
+        new CreateEvent(), null, principal,agreementDetails);
 
     // add current user to project
     addProjectUserMapping(jaggaerUserId, procurementProject, principal);
