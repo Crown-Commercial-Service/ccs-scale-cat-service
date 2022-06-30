@@ -120,6 +120,9 @@ class AwardServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
+  @MockBean
+  private DocumentTemplateResourceService documentTemplateResourceService;
+
   private static RPAGenericData request = new RPAGenericData();
   private final RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
@@ -161,8 +164,7 @@ class AwardServiceTest {
 
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    var responseObject =
-        new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
+    var responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
     var jaggerRPACredentials = new HashMap<String, String>();
@@ -219,8 +221,7 @@ class AwardServiceTest {
         .setSync(true);
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    var responseObject =
-        new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
+    var responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
     var jaggerRPACredentials = new HashMap<String, String>();
