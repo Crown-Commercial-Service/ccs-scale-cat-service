@@ -57,7 +57,11 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class ProcurementProjectServiceTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
-  private static final String CONCLAVE_ORG_ID = "654891633619851306";
+  private static final String CONCLAVE_ORG_ID = "654891633619851306"; // Internal PPG ID
+  private static final String CONCLAVE_ORG_SCHEME = "US-DUNS";
+  private static final String CONCLAVE_ORG_SCHEME_ID = "123456789";
+  private static final String CONCLAVE_ORG_LEGAL_ID =
+      CONCLAVE_ORG_SCHEME + '-' + CONCLAVE_ORG_SCHEME_ID;
   private static final String CONCLAVE_ORG_NAME = "ACME Products Ltd";
   private static final String JAGGAER_USER_ID = "12345";
   private static final String JAGGAER_BUYER_COMPANY_ID = "2345678";
@@ -147,10 +151,12 @@ class ProcurementProjectServiceTest {
 
     when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
-            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
+                .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
             .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
-
-    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
+    when(conclaveService.getOrganisationIdentifer(any(OrganisationProfileResponseInfo.class)))
+        .thenReturn(CONCLAVE_ORG_LEGAL_ID);
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_LEGAL_ID))
         .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
@@ -206,8 +212,11 @@ class ProcurementProjectServiceTest {
     when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
     when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
-            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
+                .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
             .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
+    when(conclaveService.getOrganisationIdentifer(any(OrganisationProfileResponseInfo.class)))
+        .thenReturn(CONCLAVE_ORG_LEGAL_ID);
     when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))

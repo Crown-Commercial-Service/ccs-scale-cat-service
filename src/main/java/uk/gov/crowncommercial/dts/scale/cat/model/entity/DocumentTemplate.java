@@ -28,6 +28,9 @@ public class DocumentTemplate {
   @Column(name = "event_type")
   String eventType;
 
+  @Column(name = "event_stage")
+  String eventStage;
+
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "document_template_id")
   Set<DocumentTemplateSource> documentTemplateSources;

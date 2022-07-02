@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -22,12 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 public class EncryptionService {
 
   private final RPAAPIConfig rpaAPIConfig;
-  private static final String CHAR_LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
-  private static final String CHAR_UPPERCASE = CHAR_LOWERCASE.toUpperCase();
-  private static final String DIGIT = "0123456789";
-  private static final String OTHER_SYMBOL = "\\!£$%&/()=?'^€[]#@,;.:_-><*+";
-  private static final int PASSWORD_LENGTH = 10;
-  private static SecureRandom random = new SecureRandom();
+  private static SecureRandom secureRandom = new SecureRandom();
 
   public String generateBuyerPassword() {
     return encryptPassword(createJaggaerPassword());
@@ -43,9 +37,8 @@ public class EncryptionService {
 
   @SneakyThrows
   public String decryptPassword(final String encryptedPassword) {
-    String decryptString = new String(
+    return new String(
         createCipher(Cipher.DECRYPT_MODE).doFinal(Base64.getDecoder().decode(encryptedPassword)));
-    return decryptString;
   }
 
   @SneakyThrows
@@ -60,34 +53,27 @@ public class EncryptionService {
   }
 
   private String createJaggaerPassword() {
-    var result = new StringBuilder(PASSWORD_LENGTH);
-    // at least 4 chars (lowercase)
-    result.append(generateRandomString(CHAR_LOWERCASE, 4));
-    // at least 2 chars (uppercase)
-    result.append(generateRandomString(CHAR_UPPERCASE, 2));
-    // at least 2 digits
-    result.append(generateRandomString(DIGIT, 2));
-    // at least 2 special characters
-    result.append(generateRandomString(OTHER_SYMBOL, 2));
-    var password = result.toString();
-    // shuffle again
-    return shuffleString(password);
+    String combinedChars =
+        // uppercase chars
+        secureRandom.ints(3, 65, 90 + 1).mapToObj(i -> String.valueOf((char) i))
+            .collect(Collectors.joining())
+            // lowercase chars
+            .concat(secureRandom.ints(3, 97, 122 + 1).mapToObj(i -> String.valueOf((char) i))
+                .collect(Collectors.joining()))
+            // numbers
+            .concat(secureRandom.ints(3, 48, 57 + 1).mapToObj(i -> String.valueOf((char) i))
+                .collect(Collectors.joining()))
+            // special chars
+            .concat(secureRandom.ints(3, 33, 47 + 1).mapToObj(i -> String.valueOf((char) i))
+                .collect(Collectors.joining()))
+            // random alphanumeric
+            .concat(secureRandom.ints(3, 48, 122 + 1).mapToObj(i -> String.valueOf((char) i))
+                .collect(Collectors.joining()));
+    List<Character> pwdChars =
+        combinedChars.chars().mapToObj(c -> (char) c).collect(Collectors.toList());
+    Collections.shuffle(pwdChars);
+    return pwdChars.stream()
+        .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append).toString();
   }
 
-  private static String generateRandomString(final String input, final int size) {
-    var result = new StringBuilder(size);
-    for (var i = 0; i < size; i++) {
-      // produce a random order
-      var index = random.nextInt(input.length());
-      result.append(input.charAt(index));
-    }
-    return result.toString();
-  }
-
-  // make it more random
-  private static String shuffleString(final String input) {
-    List<String> result = Arrays.asList(input.split(""));
-    Collections.shuffle(result);
-    return result.stream().collect(Collectors.joining());
-  }
 }
