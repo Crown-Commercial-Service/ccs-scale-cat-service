@@ -1,21 +1,24 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Objects;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
  * Tenders ('Base Data' tag in YAML)
@@ -69,9 +72,10 @@ public class TendersController extends AbstractRestController {
           "Authenticated user does not match requested user-id");
     }
     var registerUserResponse = profileManagementService.registerUser(userId);
-    var httpStatus = registerUserResponse.getUserAction() == UserActionEnum.EXISTED ? HttpStatus.OK
-        : HttpStatus.CREATED;
-    return ResponseEntity.status(httpStatus).body(registerUserResponse);
+    if (registerUserResponse.getUserAction() == UserActionEnum.EXISTED) {
+      throw new JaggaerUserExistException("Jaggaer sub or super user already exists");
+    } else {
+      return ResponseEntity.status(HttpStatus.CREATED).body(registerUserResponse);
+    }
   }
-
 }
