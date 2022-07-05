@@ -141,6 +141,26 @@ public class JaggaerService {
     throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
         "Unexpected error searching rfxs");
   }
+  
+  /**
+   * Get an Rfx by component(Event).
+   *
+   * @param externalEventId
+   * @param components
+   * @return
+   */
+  public ExportRfxResponse getRfxByComponent(final String externalEventId, final Set<String> components) {
+
+    final var rfxUri = jaggaerAPIConfig.getGetRfxByComponent().get(ENDPOINT);
+    var componentFilters = components.stream().collect(Collectors.joining(";"));
+    
+    return ofNullable(jaggaerWebClient.get().uri(rfxUri, externalEventId, componentFilters).retrieve()
+        .bodyToMono(ExportRfxResponse.class)
+        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving rfx"));
+  }
+
 
   /**
    * Create or update a company and/or sub-users

@@ -40,7 +40,7 @@ public class Constants {
       .parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
   public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
-      Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DAA);
+      Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DA,DefineEventType.DAA);
 
   public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES =
       Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC);

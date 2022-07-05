@@ -40,6 +40,15 @@ public class ScoringController extends AbstractRestController {
     return ResponseEntity.ok(supplierService.updateSupplierScoreAndComment(principal, procId,
         eventId, scoresAndComments));
   }
+  
+  @GetMapping
+  public ResponseEntity<Collection<ScoreAndCommentNonOCDS>> getScores(
+      @PathVariable("procId") final Integer procId, @PathVariable("eventId") final String eventId,
+      final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.debug("getTemplates invoked on behalf of principal: {}", principal);
+    return ResponseEntity.ok(supplierService.getScoresForSuppliers(procId, eventId));
+  }
 
   @GetMapping("/templates")
   public Collection<DocumentSummary> getScoresTemplates(
