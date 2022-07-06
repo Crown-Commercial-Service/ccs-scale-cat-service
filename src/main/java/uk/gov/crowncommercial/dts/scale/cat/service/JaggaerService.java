@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -99,18 +100,67 @@ public class JaggaerService {
   /**
    * Get an Rfx (Event).
    *
-   * @param eventId
+   * @deprecated This method (or rather endpoint that it calls) is non-performant and should be
+   *             replaced with calls through {@link #searchRFx(Set)} instead where possible
+   * @param externalEventId
    * @return
    */
-  public ExportRfxResponse getRfx(final String eventId) {
+  @Deprecated
+  public ExportRfxResponse getRfx(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
-    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, eventId).retrieve()
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
         .bodyToMono(ExportRfxResponse.class)
         .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving rfx"));
   }
+
+  /**
+   * Searches for an Rfx by <code>rfxId</code> filter. Without any components this simply returns
+   * the top-level <code>rfxSetting</code> data and is far more performant that getting the entire
+   * Rfx with all components.
+   *
+   * @param externalEventId
+   * @return the rfx, if a single record found in response data list
+   */
+  public Set<ExportRfxResponse> searchRFx(final Set<String> externalEventIds) {
+
+    var searchRfxUri = jaggaerAPIConfig.getSearchRfxSummary().get(ENDPOINT);
+    var rfxIds = externalEventIds.stream().collect(Collectors.joining(","));
+
+    var searchRfxResponse = webclientWrapper
+        .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
+            jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds)
+        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+            "Unexpected error searching rfxs"));
+
+    if (searchRfxResponse.getReturnCode() == 0) {
+      return searchRfxResponse.getDataList().getRfx();
+    }
+    throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+        "Unexpected error searching rfxs");
+  }
+  
+  /**
+   * Get an Rfx by component(Event).
+   *
+   * @param externalEventId
+   * @param components
+   * @return
+   */
+  public ExportRfxResponse getRfxByComponent(final String externalEventId, final Set<String> components) {
+
+    final var rfxUri = jaggaerAPIConfig.getGetRfxByComponent().get(ENDPOINT);
+    var componentFilters = components.stream().collect(Collectors.joining(";"));
+    
+    return ofNullable(jaggaerWebClient.get().uri(rfxUri, externalEventId, componentFilters).retrieve()
+        .bodyToMono(ExportRfxResponse.class)
+        .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error retrieving rfx"));
+  }
+
 
   /**
    * Create or update a company and/or sub-users
@@ -371,7 +421,7 @@ public class JaggaerService {
    *
    * @param externalProjectId
    */
-  public Project getProject(String externalProjectId) {
+  public Project getProject(final String externalProjectId) {
     return ofNullable(jaggaerWebClient.get()
         .uri(jaggaerAPIConfig.getGetProject().get(ENDPOINT), externalProjectId).retrieve()
         .bodyToMono(Project.class).block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))

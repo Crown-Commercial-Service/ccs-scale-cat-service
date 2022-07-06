@@ -57,7 +57,11 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class ProcurementProjectServiceTest {
 
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
-  private static final String CONCLAVE_ORG_ID = "654891633619851306";
+  private static final String CONCLAVE_ORG_ID = "654891633619851306"; // Internal PPG ID
+  private static final String CONCLAVE_ORG_SCHEME = "US-DUNS";
+  private static final String CONCLAVE_ORG_SCHEME_ID = "123456789";
+  private static final String CONCLAVE_ORG_LEGAL_ID =
+      CONCLAVE_ORG_SCHEME + '-' + CONCLAVE_ORG_SCHEME_ID;
   private static final String CONCLAVE_ORG_NAME = "ACME Products Ltd";
   private static final String JAGGAER_USER_ID = "12345";
   private static final String JAGGAER_BUYER_COMPANY_ID = "2345678";
@@ -147,10 +151,12 @@ class ProcurementProjectServiceTest {
 
     when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
-            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
+                .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
             .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
-
-    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
+    when(conclaveService.getOrganisationIdentifer(any(OrganisationProfileResponseInfo.class)))
+        .thenReturn(CONCLAVE_ORG_LEGAL_ID);
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_LEGAL_ID))
         .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
         .bodyValue(any(CreateUpdateProject.class)).retrieve()
@@ -206,8 +212,11 @@ class ProcurementProjectServiceTest {
     when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
     when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
-            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME))
+            .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
+                .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
             .detail(new OrganisationDetail().organisationId(CONCLAVE_ORG_ID))));
+    when(conclaveService.getOrganisationIdentifer(any(OrganisationProfileResponseInfo.class)))
+        .thenReturn(CONCLAVE_ORG_LEGAL_ID);
     when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
@@ -466,6 +475,7 @@ class ProcurementProjectServiceTest {
     }
 
   }
+
   @Test
   void dashboardStatusShouldBeReturnForTheEventsForProjects() {
 
@@ -482,26 +492,28 @@ class ProcurementProjectServiceTest {
     events.add(event);
 
     var exportRfxResponse = new ExportRfxResponse();
-    exportRfxResponse.setRfxSetting(RfxSetting.builder().status("To be Evaluated").statusCode(0).build());
+    exportRfxResponse.setRfxSetting(
+        RfxSetting.builder().rfxId("rfq_0001").status("To be Evaluated").statusCode(0).build());
 
     var project = ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJ_NAME)
-            .externalProjectId("Test").procurementEvents(events).build();
+        .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate
-            .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
             .thenReturn(List.of(ProjectUserMapping.builder()
-                    .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
-                    .userId("1234").build()));
-    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
+                .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
+                .userId("1234").build()));
+    when(jaggaerService.searchRFx(Set.of(event.getExternalEventId())))
+        .thenReturn(Set.of(exportRfxResponse));
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
-            .thenReturn(Arrays.asList(project));
+        .thenReturn(Arrays.asList(project));
 
     var response = procurementProjectService.getProjects(PRINCIPAL);
 
-
     assertNotNull(response);
     assertEquals(1, response.size());
-    assertEquals(DashboardStatus.IN_PROGRESS,response.stream().findFirst().get().getActiveEvent().getDashboardStatus());
+    assertEquals(DashboardStatus.IN_PROGRESS,
+        response.stream().findFirst().get().getActiveEvent().getDashboardStatus());
 
   }
 

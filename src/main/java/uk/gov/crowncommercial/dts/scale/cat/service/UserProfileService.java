@@ -122,40 +122,43 @@ public class UserProfileService {
         .getSecond();
   }
 
+  public ReturnCompanyData getSelfServiceBuyerCompany() {
+    var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
+    var endpoint = getBuyerCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
+
+    log.info("Calling company profiles endpoint: {}", endpoint);
+
+    var getCompanyDataResponse = ofNullable(
+        jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving Jaggear company profile data"));
+
+    if (!"0".equals(getCompanyDataResponse.getReturnCode())
+        || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(),
+          getCompanyDataResponse.getReturnMessage());
+    }
+
+    if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
+      throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
+    }
+    return getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
+        .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
+  }
+
   private CacheLoader<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerSubUserProfileCacheLoader() {
     return new CacheLoader<>() {
 
       @Override
       public Pair<CompanyInfo, Optional<SubUser>> load(final SubUserIdentity subUserIdentity)
           throws Exception {
-        var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
-        var endpoint = getBuyerCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
-
-        log.info("Calling company profiles endpoint: {}", endpoint);
-
-        var getCompanyDataResponse = ofNullable(
-            jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
-                .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))).orElseThrow(
-                    () -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                        "Unexpected error retrieving Jaggear company profile data"));
-
-        if (!"0".equals(getCompanyDataResponse.getReturnCode())
-            || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
-          throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(),
-              getCompanyDataResponse.getReturnMessage());
-        }
-
-        if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
-          throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
-        }
-        var returnCompanyData = getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
-            .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
-
-        var subUser = returnCompanyData.getReturnSubUser().getSubUsers().stream()
+        var selfServiceBuyerCompany = getSelfServiceBuyerCompany();
+        var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().stream()
             .filter(subUserIdentity.getFilterPredicate()).findFirst();
         log.debug("Matched sub-user record: {}", subUser);
 
-        return Pair.of(returnCompanyData.getReturnCompanyInfo(), subUser);
+        return Pair.of(selfServiceBuyerCompany.getReturnCompanyInfo(), subUser);
       }
     };
   }

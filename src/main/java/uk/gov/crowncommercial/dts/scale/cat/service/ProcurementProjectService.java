@@ -20,10 +20,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
@@ -131,13 +128,14 @@ public class ProcurementProjectService {
      * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
      * self-service company).
      */
+    var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
     var organisationMapping =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(conclaveOrgId);
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
     // Adapt save strategy based on org mapping status (new/existing)
     if (organisationMapping.isEmpty()) {
       procurementProject.setOrganisationMapping(retryableTendersDBDelegate
-          .save(OrganisationMapping.builder().organisationId(conclaveOrgId)
+          .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
               .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
               .createdAt(Instant.now()).createdBy(principal).build()));
     } else {
@@ -373,11 +371,18 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    var projects = retryableTendersDBDelegate.findProjectUserMappingByUserId(jaggaerUserId,
-        PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
+    var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
+        jaggaerUserId, PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
 
-    if (!CollectionUtils.isEmpty(projects)) {
-      return projects.stream().map(this::convertProjectToProjectPackageSummary)
+    var externalEventIdsAllProjects = projectUserMappings.stream()
+        .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
+        .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+    var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+
+    if (!CollectionUtils.isEmpty(projectUserMappings)) {
+      return projectUserMappings.stream()
+          .map(pum -> convertProjectToProjectPackageSummary(pum, projectUserRfxs))
           .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
     }
     return Collections.emptyList();
@@ -390,9 +395,9 @@ public class ProcurementProjectService {
    * @return ProjectPackageSummary
    */
   private Optional<ProjectPackageSummary> convertProjectToProjectPackageSummary(
-      final ProjectUserMapping mapping) {
+      final ProjectUserMapping mapping, final Set<ExportRfxResponse> projectUserRfxs) {
 
-    log.debug("Convert Project to ProjectPackageSummary: " + mapping.getProject().getId());
+    log.trace("Convert Project to ProjectPackageSummary: " + mapping.getProject().getId());
 
     // Get Project from database
     var projectPackageSummary = new ProjectPackageSummary();
@@ -400,7 +405,7 @@ public class ProcurementProjectService {
     var dbEvent = getCurrentEvent(mapping.getProject());
     // TODO make single call instead of 2
     try {
-      log.debug("Get agreement and lots: " + agreementNo);
+      log.trace("Get agreement and lots: " + agreementNo);
       var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
       var lotDetails =
           agreementsService.getLotDetails(agreementNo, mapping.getProject().getLotNumber());
@@ -421,32 +426,35 @@ public class ProcurementProjectService {
     RfxSetting rfxSetting = null;
 
     if (dbEvent.isTendersDBOnly() || dbEvent.getExternalEventId() == null) {
-      log.debug("Get Event from Tenders DB: {}", dbEvent.getId());
+      log.trace("Get Event from Tenders DB: {}", dbEvent.getId());
       eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
           ViewEventType.fromValue(dbEvent.getEventType()), TenderStatus.PLANNING, ReleaseTag.TENDER,
           Optional.ofNullable(dbEvent.getAssessmentId()));
     } else {
-      log.debug("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
+      log.trace("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
         eventSummary = tendersAPIModelUtils.buildEventSummary(dbEvent.getEventID(),
             dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
-            Objects.nonNull(dbEvent.getEventType())? ViewEventType.fromValue(dbEvent.getEventType())
+            Objects.nonNull(dbEvent.getEventType())
+                ? ViewEventType.fromValue(dbEvent.getEventType())
                 : null,
-                Objects.nonNull(dbEvent.getTenderStatus()) ? TenderStatus.fromValue(dbEvent.getTenderStatus())
+            Objects.nonNull(dbEvent.getTenderStatus())
+                ? TenderStatus.fromValue(dbEvent.getTenderStatus())
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
         if (Objects.nonNull(dbEvent.getPublishDate()) && Objects.nonNull(dbEvent.getCloseDate())) {
-          eventSummary.tenderPeriod(
-              new Period1()
-                  .startDate(
-                      OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
-                  .endDate(
-                      OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
+          eventSummary.tenderPeriod(new Period1()
+              .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
+              .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
         }
-        // We need to build event summary before ir-respective of jaggaer response
-        var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+        // We need to build event summary before irrespective of jaggaer response
+        var exportRfxResponse = projectUserRfxs.stream()
+            .filter(
+                rfx -> Objects.equals(dbEvent.getExternalEventId(), rfx.getRfxSetting().getRfxId()))
+            .findFirst().orElseThrow(
+                () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
 
       } catch (Exception e) {

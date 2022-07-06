@@ -26,7 +26,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@EqualsAndHashCode(exclude = "project")
+@EqualsAndHashCode(exclude = {"project","capabilityAssessmentSuppliers"})
 @TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 public class ProcurementEvent {
 
@@ -39,8 +39,7 @@ public class ProcurementEvent {
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
-  @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-  @JoinColumn(name = "event_id")
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
   Set<SupplierSelection> capabilityAssessmentSuppliers;
 
   @Column(name = "ocds_authority_name")

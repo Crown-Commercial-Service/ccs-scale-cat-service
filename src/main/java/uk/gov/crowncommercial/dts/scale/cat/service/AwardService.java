@@ -1,16 +1,25 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.io.IOUtils;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +29,8 @@ public class AwardService {
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final RPAGenericService rpaGenericService;
+  private final DocumentTemplateResourceService documentTemplateResourceService;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
@@ -30,6 +41,12 @@ public class AwardService {
   private static final String AWARD = "Award";
   private static final String RPA_END_EVALUATION_ERROR_DESC =
       "Awarding action dropdown button not found";
+  static final String AWARDED_TEMPLATE_DESCRIPTION = "Awarded Templates";
+  static final String UN_SUCCESSFUL_TEMPLATE_DESCRIPTION = "UnSuccessful Supplier Templates";
+  static final String ORDER_FORM_TEMPLATE_DESCRIPTION = "Order Form Templates";
+  static final String AWARDED_FILE_TYPE = "AWARDED";
+  static final String UN_SUCCESSFUL_SUPPLIER_FILE_TYPE = "UNSUCCESSFUL_AWARD";
+  static final String ORDER_FORM_FILE_TYPE = "ORDER_FORM";
 
   /**
    * Pre-Award or Edit-Pre-Award or Complete Award to the supplied suppliers.
@@ -97,4 +114,68 @@ public class AwardService {
         RPAProcessNameEnum.END_EVALUATION);
   }
 
+  /**
+   * Lists the template documents for an award.
+   *
+   * @param Set<DocumentTemplate>
+   * @return a collection of document summaries
+   */
+  public Collection<DocumentSummary> getAwardTemplates(final Integer procId, final String eventId) {
+    var documentSummaries = new HashSet<DocumentSummary>();
+    validationService.validateProjectAndEventIds(procId, eventId);
+    documentSummaries
+        .addAll(getTemplates(retryableTendersDBDelegate.findByEventStage(AWARDED_FILE_TYPE),
+            AWARDED_TEMPLATE_DESCRIPTION));
+    documentSummaries
+        .addAll(getTemplates(retryableTendersDBDelegate.findByEventStage(ORDER_FORM_FILE_TYPE),
+            ORDER_FORM_TEMPLATE_DESCRIPTION));
+    documentSummaries.addAll(
+        getTemplates(retryableTendersDBDelegate.findByEventStage(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE),
+            UN_SUCCESSFUL_TEMPLATE_DESCRIPTION));
+    return documentSummaries;
+  }
+
+  /**
+   * Gets award specific template documents
+   *
+   * @param procId
+   * @param eventId
+   * @param documentKey containing the template ID anf fileType
+   * @return a document attachment containing the template files
+   */
+  @SneakyThrows
+  public Collection<DocumentAttachment> getAwardTemplate(final Integer procId, final String eventId,
+      final DocumentsKey documentKey) {
+    var documentAttachments = new HashSet<DocumentAttachment>();
+    validationService.validateProjectAndEventIds(procId, eventId);
+    var docs = retryableTendersDBDelegate.findByEventStage(documentKey.getFileType());
+    var resources = docs.stream()
+        .map(template -> documentTemplateResourceService.getResource(template.getTemplateUrl()))
+        .collect(Collectors.toList());
+    for (Resource resource : resources) {
+      documentAttachments.add(DocumentAttachment.builder().fileName(resource.getFilename())
+          .data(IOUtils.toByteArray(resource.getInputStream()))
+          .contentType(Constants.MEDIA_TYPE_DOCX).build());
+    }
+    return documentAttachments;
+  }
+
+  @SneakyThrows
+  private Set<DocumentSummary> getTemplates(final Set<DocumentTemplate> documentTemplates,
+      final String description) {
+    var documentSummaries = new HashSet<DocumentSummary>();
+    for (DocumentTemplate documentTemplate : documentTemplates) {
+      var templateResource =
+          documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
+      var docKey = new DocumentsKey(documentTemplate.getEventStage(), description,
+          DocumentAudienceType.BUYER);
+      var docSummary = new DocumentSummary().fileName(templateResource.getFilename())
+          .id(docKey.getDocumentId()).fileSize(templateResource.contentLength())
+          .description(description).audience(docKey.getAudience());
+      if (documentSummaries.stream().noneMatch(e -> e.getId().equals(docSummary.getId()))) {
+        documentSummaries.add(docSummary);
+      }
+    }
+    return documentSummaries;
+  }
 }
