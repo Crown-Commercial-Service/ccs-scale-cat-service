@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
@@ -76,9 +78,6 @@ class ProfileManagementServiceTest {
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @MockBean
-  private JaggaerSOAPService jaggaerSOAPService;
-
-  @MockBean
   private NotificationService notificationService;
 
   @MockBean
@@ -112,6 +111,29 @@ class ProfileManagementServiceTest {
 
     assertEquals(1, userRoles.size());
     assertEquals(RolesEnum.BUYER, userRoles.get(0));
+  }
+
+  /*
+   * CON-1680-AC1(a)
+   */
+  @Test
+  void testGetUserRolesConclaveBuyerJaggaerBuyerCacheRefresh() {
+
+    var userProfileResponseInfo =
+        new UserProfileResponseInfo().userName(USERID).organisationId(ORG_SYS_ID).detail(
+            new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty())
+        .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
+
+    var userRoles = profileManagementService.getUserRoles(USERID);
+
+    assertEquals(1, userRoles.size());
+    assertEquals(RolesEnum.BUYER, userRoles.get(0));
+
+    verify(userProfileService, times(2)).resolveBuyerUserBySSOUserLogin(USERID);
   }
 
   /*
@@ -180,7 +202,8 @@ class ProfileManagementServiceTest {
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
-        .thenReturn(Optional.of(SubUser.builder().build()));
+        .thenReturn(Optional.of(SubUser.builder().
+                ssoCodeData(SSOCodeData.builder().ssoCode(Set.of(SSOCode.builder().ssoUserLogin(USERID).build())).build()).build()));
 
     var ex = assertThrows(UserRolesConflictException.class,
         () -> profileManagementService.getUserRoles(USERID));

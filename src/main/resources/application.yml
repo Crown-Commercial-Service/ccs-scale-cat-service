@@ -168,6 +168,12 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+      getRfxByComponent:  
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
+         
+      # This is far more performant for summary-level only data
+      searchRfxSummary:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
       createUpdateCompany:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles
       getAttachment:
@@ -201,6 +207,13 @@ config:
         profileName: ITTEvaluation
         timeoutDuration: 120
         requestTimeout: 3600000
+    
+    # RPA Transfer S3
+    s3:
+      rpa:
+        region: eu-west-2
+        # Default to once a week, midnight Monday
+        exportSchedule: "0 0 0 * * MON"
         
     agreementsService:
       # baseUrl: "SET IN ENV"

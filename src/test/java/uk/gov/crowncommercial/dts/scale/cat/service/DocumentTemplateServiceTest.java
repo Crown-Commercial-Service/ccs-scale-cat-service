@@ -102,7 +102,8 @@ class DocumentTemplateServiceTest {
     when(documentTemplateResourceService.getResource(DOC_TEMPLATE2.getTemplateUrl()))
         .thenReturn(templateResource2);
 
-    var documentSummaries = documentTemplateService.getTemplates(PROC_PROJECT_ID, EVENT_ID);
+    var documentSummaries =
+        documentTemplateService.getTemplatesByEventType(PROC_PROJECT_ID, EVENT_ID);
 
     var docSummary1 = new DocumentSummary().fileName(TEMPLATE_RESOURCE1_FILENAME)
         .id(TEMPLATE_RESOURCE1_ID).fileSize(1024L).description("Proforma Bid Pack Document (RFI)")

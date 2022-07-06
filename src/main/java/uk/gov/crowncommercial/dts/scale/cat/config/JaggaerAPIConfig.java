@@ -44,6 +44,9 @@ public class JaggaerAPIConfig {
   private Map<String, String> extendRfx;
   private Map<String, String> getMessages;
   private Map<String, String> getMessage;
+  private Map<String, String> searchRfxSummary;
+  private Map<String, String> getRfxByComponent;
+
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;
   private Map<String, String> startEvaluation;
