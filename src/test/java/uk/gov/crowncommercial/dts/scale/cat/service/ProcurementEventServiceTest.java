@@ -255,7 +255,7 @@ class ProcurementEventServiceTest {
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(ViewEventType.DA, eventStatus.getEventType());
 
-    verify(assessmentService, never()).createEmptyAssessment(any(), any(), any(), any());
+    verify(assessmentService, times(1)).createEmptyAssessment(any(), any(), any(), any());
   }
 
   @Test

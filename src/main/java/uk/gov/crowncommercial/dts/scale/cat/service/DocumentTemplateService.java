@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class DocumentTemplateService {
 
   static final String FMT_TEMPLATE_DESCRIPTION = "Proforma Bid Pack Document (%s)";
+  static final String SCORING_TEMPLATE_DESCRIPTION = "Scoring Template";
   static final String ERR_MSG_FMT_NO_TEMPLATES_FOR_EVENT_TYPE =
       "No templates found for event type [%s]";
   static final String ERR_MSG_FMT_TEMPLATE_NOT_FOUND =
@@ -42,23 +44,45 @@ public class DocumentTemplateService {
    * @param eventId
    * @return a collection of document summaries
    */
-  public Collection<DocumentSummary> getTemplates(final Integer procId, final String eventId) {
-
+  public Collection<DocumentSummary> getTemplatesByEventType(final Integer procId,
+      final String eventId) {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
+    return getTemplates(retryableTendersDBDelegate.findByEventType(event.getEventType()),
+        String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()));
+  }
 
+  /**
+   * Lists the template documents for a given procurement event (by event stage).
+   *
+   * @param procId
+   * @param eventId
+   * @param state
+   * @return a collection of document summaries
+   */
+  public Collection<DocumentSummary> getTemplatesByEventStage(final Integer procId,
+      final String eventId, final String eventStage) {
+    validationService.validateProjectAndEventIds(procId, eventId);
+    return getTemplates(retryableTendersDBDelegate.findByEventStage(eventStage),
+        SCORING_TEMPLATE_DESCRIPTION);
+  }
+
+  /**
+   * Lists the template documents for a given procurement event (by event type).
+   *
+   * @param Set<DocumentTemplate>
+   * @return a collection of document summaries
+   */
+  public Collection<DocumentSummary> getTemplates(final Set<DocumentTemplate> documentTemplates,
+      final String description) {
     var documentSummaries = new HashSet<DocumentSummary>();
-    for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
-        .findByEventType(event.getEventType())) {
-
+    for (DocumentTemplate documentTemplate : documentTemplates) {
       var templateResource =
           documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
-
       var docKey = new DocumentKey(documentTemplate.getId(), templateResource.getFilename(),
           DocumentAudienceType.BUYER);
       documentSummaries.add(new DocumentSummary().fileName(templateResource.getFilename())
           .id(docKey.getDocumentId()).fileSize(getResourceLength(templateResource))
-          .description(String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()))
-          .audience(docKey.getAudience()));
+          .description(description).audience(docKey.getAudience()));
     }
 
     return documentSummaries;

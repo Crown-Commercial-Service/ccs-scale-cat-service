@@ -1,11 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
-import lombok.experimental.UtilityClass;
+import java.util.Set;
 import org.springframework.http.MediaType;
+import lombok.experimental.UtilityClass;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
-
-import java.util.Set;
 
 /**
  * Global constant values
@@ -37,8 +36,11 @@ public class Constants {
   public static final MediaType MEDIA_TYPE_ODT =
       MediaType.parseMediaType("application/vnd.oasis.opendocument.text");
 
+  public static final MediaType MEDIA_TYPE_DOCX = MediaType
+      .parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
   public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES =
-      Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DAA);
+      Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DA,DefineEventType.DAA);
 
   public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES =
       Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC);
@@ -47,10 +49,10 @@ public class Constants {
       Set.of(ViewEventType.FCA, ViewEventType.DAA);
 
   public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD =
-      Set.of(ViewEventType.FC, ViewEventType.DA,ViewEventType.EOI,ViewEventType.RFI);
+      Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI);
 
   public static final Set<ViewEventType> TENDER_NON_DB_EVENT_TYPES =
-          Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC,ViewEventType.DA);
+      Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC, ViewEventType.DA);
 
 
 }
