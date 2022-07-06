@@ -202,7 +202,8 @@ class ProfileManagementServiceTest {
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
-        .thenReturn(Optional.of(SubUser.builder().build()));
+        .thenReturn(Optional.of(SubUser.builder().
+                ssoCodeData(SSOCodeData.builder().ssoCode(Set.of(SSOCode.builder().ssoUserLogin(USERID).build())).build()).build()));
 
     var ex = assertThrows(UserRolesConflictException.class,
         () -> profileManagementService.getUserRoles(USERID));

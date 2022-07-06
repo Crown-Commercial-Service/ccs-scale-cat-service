@@ -106,6 +106,7 @@ public class ProcurementEventService {
    * @param principal
    * @return
    */
+  @Transactional
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downSelectedSuppliers, final String principal) {
 
@@ -307,6 +308,7 @@ public class ProcurementEventService {
    * @param updateEvent
    * @param principal
    */
+  @Transactional
   public EventSummary updateProcurementEvent(final Integer procId, final String eventId,
       final UpdateEvent updateEvent, final String principal) {
 
@@ -853,16 +855,12 @@ public class ProcurementEventService {
           .removeIf(supplierSelection -> supplierSelection.getId() != null);
     }
 
-    var suppliers = event.getCapabilityAssessmentSuppliers();
     supplierOrgMappings.stream().forEach(org -> {
-      if (suppliers != null && suppliers.stream().noneMatch(s -> Objects
-          .equals(s.getOrganisationMapping().getOrganisationId(), org.getOrganisationId()))) {
         log.debug("Creating new SupplierSelection record for organisation [{}]",
             org.getOrganisationId());
         var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
             .createdAt(Instant.now()).createdBy(principal).build();
         event.setCapabilityAssessmentSuppliers(Set.of(selection));
-      }
     });
     return retryableTendersDBDelegate.save(event);
   }
@@ -1027,7 +1025,7 @@ public class ProcurementEventService {
         attachments.add(attachment);
       });
       // Get draft documents
-      dTemplateService.getTemplates(procId, eventId).stream().forEach(template -> {
+      dTemplateService.getTemplatesByEventType(procId, eventId).stream().forEach(template -> {
         attachments.add(dTemplateService.getDraftDocument(procId, eventId,
             DocumentKey.fromString(template.getId())));
       });
@@ -1095,23 +1093,33 @@ public class ProcurementEventService {
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
         .getUserId();
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var rfxResponse = getSingleRfx(event.getExternalEventId());
-    var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-        .get(rfxResponse.getRfxSetting().getStatusCode());
 
-    if (TenderStatus.ACTIVE != status) {
-      throw new IllegalArgumentException(
-          "You cannot terminate an event unless it is in a 'active' state");
+    if (event.isTendersDBOnly()) {
+      event.setTenderStatus(type.name());
+      event.setUpdatedAt(Instant.now());
+      event.setUpdatedBy(principal);
+      event.setCloseDate(Instant.now());
+      retryableTendersDBDelegate.save(event);
+    } else {
+      var rfxResponse = getSingleRfx(event.getExternalEventId());
+      var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+          .get(rfxResponse.getRfxSetting().getStatusCode());
+
+      if (TenderStatus.ACTIVE != status) {
+        throw new IllegalArgumentException(
+            "You cannot terminate an event unless it is in a 'active' state");
+      }
+
+      final var invalidateEventRequest =
+          InvalidateEventRequest.builder().invalidateReason(type.getValue())
+              .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+              .operatorUser(OwnerUser.builder().id(user).build()).build();
+      log.info("Invalidate event request: {}", invalidateEventRequest);
+      jaggaerService.invalidateEvent(invalidateEventRequest);
+      // update status
+      updateStatusAndDates(principal, event);
     }
 
-    final var invalidateEventRequest =
-        InvalidateEventRequest.builder().invalidateReason(type.getValue())
-            .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
-            .operatorUser(OwnerUser.builder().id(user).build()).build();
-    log.info("Invalidate event request: {}", invalidateEventRequest);
-    jaggaerService.invalidateEvent(invalidateEventRequest);
-    // update status
-    updateStatusAndDates(principal, event);
   }
 
   /**

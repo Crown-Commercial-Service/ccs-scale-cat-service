@@ -182,6 +182,20 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildDefaultErrors(I_AM_A_TEAPOT.toString(),
         "Login Director Edgecase Scenario", exception.getMessage());
   }
+
+
+  @ResponseStatus(INTERNAL_SERVER_ERROR)
+  @ExceptionHandler({JaggaerUserExistException.class})
+  public Errors handleJaggaerUserExistException(
+          final JaggaerUserExistException exception) {
+    log.warn(exception.getMessage());
+
+    return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+            "Jaggaer User Exist Scenario", exception.getMessage());
+
+  }
+
+
   @ResponseStatus(BAD_REQUEST)
   @ExceptionHandler({NotSupportedException.class})
   public Errors handleNotSupportedException(
