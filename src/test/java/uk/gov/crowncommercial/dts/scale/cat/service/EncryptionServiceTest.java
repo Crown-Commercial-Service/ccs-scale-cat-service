@@ -24,7 +24,7 @@ class EncryptionServiceTest {
     String encPassword = eService.generateBuyerPassword();
     String dePwd = eService.decryptPassword(encPassword);
     assertAll(() -> assertNotNull(dePwd), () -> assertNotNull(encPassword),
-        () -> assertEquals(10, dePwd.length()));
+        () -> assertEquals(15, dePwd.length()));
   }
 
 }

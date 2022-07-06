@@ -13,4 +13,5 @@ public interface DocumentTemplateRepo extends JpaRepository<DocumentTemplate, In
 
   Set<DocumentTemplate> findByEventType(String eventType);
 
+  Set<DocumentTemplate> findByEventStage(String eventStage);
 }

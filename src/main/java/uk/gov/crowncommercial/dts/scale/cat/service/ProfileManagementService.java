@@ -95,7 +95,7 @@ public class ProfileManagementService {
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, conclaveRoles));
 
     var jaggaerRoles = new HashSet<RolesEnum>();
-    populateJaggaerRoles(jaggaerRoles, userId,
+    getJaggaerRolesWithSSoUserData(jaggaerRoles, userId,
         conclaveService.getOrganisationIdentifer(conclaveUserOrg));
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, jaggaerRoles));
 
@@ -443,6 +443,48 @@ public class ProfileManagementService {
       }
     }
     return Pair.of(buyerSubUser, Optional.empty());
+  }
+
+  private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> getJaggaerRolesWithSSoUserData(
+          final Set<RolesEnum> jaggaerRoles, final String userId, final String organisationIdentifier) {
+
+    // SSO verification built-in to search
+    var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+
+    // If cache missing, refresh in case user has since been registered (by separate instance)
+    if (buyerSubUser.isEmpty()) {
+      userProfileService.refreshBuyerCache(userId);
+      buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId,
+              buyerSubUser.isPresent());
+    }
+
+    if(buyerSubUser.isPresent()&& null!=buyerSubUser.get().getSsoCodeData()&&userId.equalsIgnoreCase(
+            buyerSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())){
+      buyerSubUser.ifPresent(su -> jaggaerRoles.add(BUYER));
+    }
+    // SSO verification required
+    var optSupplierCompanyData =
+            userProfileService.resolveSupplierData(userId, organisationIdentifier);
+
+    if (optSupplierCompanyData.isPresent()) {
+      var supplierCompanyData = optSupplierCompanyData.get();
+
+      // Explicit SSO verification required
+      var expectedSSOData = buildSSOCodeData(userId);
+
+      // Check the super-user and sub-user for matching SSO
+      if (Objects.equals(expectedSSOData,
+              supplierCompanyData.getReturnCompanyInfo().getSsoCodeData())
+              || supplierCompanyData.getReturnSubUser().getSubUsers() != null
+              && supplierCompanyData.getReturnSubUser().getSubUsers().stream()
+              .anyMatch(subUser -> Objects.equals(expectedSSOData, subUser.getSsoCodeData()))) {
+        jaggaerRoles.add(SUPPLIER);
+        return Pair.of(buyerSubUser, optSupplierCompanyData);
+      }
+    }
+    return Pair.of(buyerSubUser, Optional.empty());
+
   }
 
   private void sendUserRegistrationNotification(final UserProfileResponseInfo conclaveUser,
