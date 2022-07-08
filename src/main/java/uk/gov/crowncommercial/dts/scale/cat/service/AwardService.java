@@ -126,6 +126,7 @@ public class AwardService {
     var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, award.getSuppliers()
         .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
     
+    //TODO delete once score testing is done 
     jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
     return jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
         validSuppliers.getFirst().stream().findFirst()
