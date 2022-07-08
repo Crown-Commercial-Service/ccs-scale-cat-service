@@ -31,6 +31,7 @@ public class AwardService {
   private final RPAGenericService rpaGenericService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final JaggaerService jaggaerService;
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
@@ -58,6 +59,7 @@ public class AwardService {
    * @param award
    * @return status
    */
+  @Deprecated
   public String createOrUpdateAward(final String principal, final Integer projectId,
       final String eventId, final AwardState awardState, final Award2AllOf award,
       final Integer awardId) {
@@ -76,9 +78,9 @@ public class AwardService {
         validSuppliers.getFirst().stream().map(e -> e.getCompanyData().getName()).findFirst()
             .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND));
 
-    var awardAction = AwardState.COMPLETE.equals(awardState) ? AWARD : PRE_AWARD;
+    var awardAction = AwardState.AWARD.equals(awardState) ? AWARD : PRE_AWARD;
     if (awardId != null) {
-      awardAction = AwardState.COMPLETE.equals(awardState) ? AWARD : EDIT_PRE_AWARD;
+      awardAction = AwardState.AWARD.equals(awardState) ? AWARD : EDIT_PRE_AWARD;
     }
     log.info("SupplierName {} and Award-action {}", validSupplierName, awardAction);
     // Creating RPA process input string
@@ -100,10 +102,42 @@ public class AwardService {
       throw je;
     }
   }
+  
+  /**
+   * Pre-Award or Award to the supplied suppliers.
+   *
+   * @param principal
+   * @param projectId
+   * @param eventId
+   * @param awardAction
+   * @param award
+   * @param awardId - For Future use
+   * @return status
+   */
+  public String createOrUpdateAwardRfx(final String principal, final Integer projectId,
+      final String eventId, final AwardState awardState, final Award2AllOf award, final Integer awardId) {
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var buyerUser = userService.resolveBuyerUserProfile(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+
+    if (award.getSuppliers().size() > 1) {
+      throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
+    }
+    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, award.getSuppliers()
+        .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
+    
+    jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+    return jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
+        validSuppliers.getFirst().stream().findFirst()
+            .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getCompanyData()
+            .getId().toString(),
+        awardState);
+  }
 
   /**
    * Calls RPA to End Evaluation
    */
+  @Deprecated
   public String callEndEvaluation(final String userEmail, final String password,
       final String externalReferenceId) {
     log.info("Calling End Evaluation for {}", externalReferenceId);
