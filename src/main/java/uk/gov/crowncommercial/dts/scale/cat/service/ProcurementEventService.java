@@ -465,6 +465,7 @@ public class ProcurementEventService {
    *        just add to the list.
    * @return
    */
+  @Transactional
   public EventSuppliers addSuppliers(final Integer procId, final String eventId,
       final EventSuppliers eventSuppliers, final boolean overwrite, final String principal) {
 
@@ -860,7 +861,7 @@ public class ProcurementEventService {
             org.getOrganisationId());
         var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
             .createdAt(Instant.now()).createdBy(principal).build();
-        event.setCapabilityAssessmentSuppliers(Set.of(selection));
+        event.getCapabilityAssessmentSuppliers().add(selection);
     });
     return retryableTendersDBDelegate.save(event);
   }
