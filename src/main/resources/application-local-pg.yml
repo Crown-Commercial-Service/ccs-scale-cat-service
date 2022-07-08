@@ -1,4 +1,4 @@
 spring:
   config:
-    import: classpath:application.yml,classpath:local-env-local-pg.yml
+    import: classpath:application.yml
 
