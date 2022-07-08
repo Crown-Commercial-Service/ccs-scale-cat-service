@@ -436,12 +436,12 @@ public class JaggaerService {
    * @param event
    * @param jaggaerUserId
    */
-  public void awardOrPreAwardRfx(final ProcurementEvent event, final String jaggaerUserId,
+  public String awardOrPreAwardRfx(final ProcurementEvent event, final String jaggaerUserId,
       final String supplierId, AwardState awardState) {
     final var awardRequest = RfxWorkflowRequest.builder()
         .suppliersList(SuppliersList.builder()
             .supplier(Arrays.asList(Supplier.builder().id(supplierId).build())).build())
-        .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+        .rfxReferenceCode(event.getExternalReferenceId())
         .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
     
     var endPoint = jaggaerAPIConfig.getAward().get(ENDPOINT);
@@ -457,6 +457,26 @@ public class JaggaerService {
       throw new JaggaerApplicationException(response.getReturnCode(),
           response.getReturnMessage());
     }
+    return response.getFinalStatus();
+  }
+  
+  /**
+   * End Evaluation Rfx
+   *
+   * @param event
+   * @param jaggaerUserId
+   */
+  public void completeTechnical(final ProcurementEvent event, final String jaggaerUserId) {
+    final var completeTechnicalRequest = RfxWorkflowRequest.builder()
+        .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+
+    final var endPoint = jaggaerAPIConfig.getCompleteTechnical().get(ENDPOINT);
+    final var response =
+        webclientWrapper.postData(completeTechnicalRequest, WorkflowRfxResponse.class,
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+
+    log.debug("Complete evaluation rfx response: {}", response);
   }
   
 }

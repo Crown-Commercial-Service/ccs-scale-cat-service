@@ -193,7 +193,9 @@ config:
       award:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/awardRfx
       preAward:
-        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/preawardRfx    
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/preawardRfx
+      completeTechnical:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/completetechnical      
           
       # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:

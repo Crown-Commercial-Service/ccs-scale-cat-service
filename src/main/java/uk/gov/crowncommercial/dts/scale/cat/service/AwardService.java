@@ -31,6 +31,7 @@ public class AwardService {
   private final RPAGenericService rpaGenericService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final JaggaerService jaggaerService;
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
@@ -58,6 +59,7 @@ public class AwardService {
    * @param award
    * @return status
    */
+  @Deprecated
   public String createOrUpdateAward(final String principal, final Integer projectId,
       final String eventId, final AwardState awardState, final Award2AllOf award,
       final Integer awardId) {
@@ -99,6 +101,36 @@ public class AwardService {
       }
       throw je;
     }
+  }
+  
+  /**
+   * Pre-Award or Award to the supplied suppliers.
+   *
+   * @param principal
+   * @param projectId
+   * @param eventId
+   * @param awardAction
+   * @param award
+   * @return status
+   */
+  public String createOrUpdateAwardRfx(final String principal, final Integer projectId,
+      final String eventId, final AwardState awardState, final Award2AllOf award, final Integer awardId) {
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var buyerUser = userService.resolveBuyerUserProfile(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+
+    if (award.getSuppliers().size() > 1) {
+      throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
+    }
+    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, award.getSuppliers()
+        .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
+    
+    jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+    return jaggaerService
+        .awardOrPreAwardRfx(procurementEvent, principal,
+            validSuppliers.getFirst().stream().findFirst()
+                .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getId(),
+            awardState);
   }
 
   /**
