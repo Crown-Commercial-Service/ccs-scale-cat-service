@@ -63,7 +63,7 @@ public class AwardController extends AbstractRestController {
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("updateOrComplete award process invoked on behalf of principal: {}", principal,
         conclaveOrgId);
-    return ResponseEntity.ok(awardService.createOrUpdateAward(principal, procId, eventId,
+    return ResponseEntity.ok(awardService.createOrUpdateAwardRfx(principal, procId, eventId,
         awardState, awardRequest, awardId));
   }
 
