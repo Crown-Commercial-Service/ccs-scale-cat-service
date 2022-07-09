@@ -794,6 +794,8 @@ public class ProcurementEventService {
     }
     if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
       procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+    }else{
+      procurementEvent.setCloseDate(Instant.now());
     }
 
     if (tenderStatus != null) {
