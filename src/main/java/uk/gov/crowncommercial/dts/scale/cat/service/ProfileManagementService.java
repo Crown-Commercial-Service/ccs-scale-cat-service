@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
@@ -155,6 +156,8 @@ public class ProfileManagementService {
 
     if (conclaveRoles.contains(BUYER) && jaggaerRoles.size() == 1 && jaggaerRoles.contains(BUYER)) {
 
+      // CON-1682-AC18(buyer):  Jaggaer Buyer doesn't have SSoCodeData
+      validateJaggaerUserExistWithLogin(userId,jaggaerUserData);
       // CON-1682-AC1&17(buyer): Update Jaggaer Buyer
       updateBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, jaggaerUserData.getFirst(), registerUserResponse);
@@ -185,8 +188,11 @@ public class ProfileManagementService {
 
       // CON-1682-AC8&17(supplier): Update Jaggaer Supplier
       var jaggaerSupplierData = jaggaerUserData.getSecond().orElseThrow();
+
+
       updateSupplier(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, jaggaerSupplierData, registerUserResponse);
+
       returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.isEmpty()) {
@@ -235,6 +241,16 @@ public class ProfileManagementService {
     registerUserResponse.roles(returnRoles);
     return registerUserResponse;
   }
+
+  private void validateJaggaerUserExistWithLogin(String userId,Pair<Optional<SubUser>, Optional<ReturnCompanyData>> jaggaerUserData) {
+    if (null != jaggaerUserData && jaggaerUserData.getFirst().isPresent()) {
+      if (null!=userId && jaggaerUserData.getFirst().isPresent() && userId.equalsIgnoreCase(jaggaerUserData.getFirst().get().getLogin())) {
+        throw new JaggaerUserExistException("Jaggaer sub or super user already exists");
+      }
+    }
+  }
+
+
 
   private void createBuyer(final UserProfileResponseInfo conclaveUser,
       final OrganisationProfileResponseInfo conclaveUserOrg,
@@ -500,7 +516,7 @@ public class ProfileManagementService {
 
   private BuyerUserDetails saveBuyerDetails(final String profile) {
     var userProfile = userProfileService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new ResourceNotFoundException(ERR_MSG_FMT_JAGGAER_USER_MISSING));
+        .orElseThrow(() -> new ResourceNotFoundException(format(ERR_MSG_FMT_JAGGAER_USER_MISSING,profile)));
     return buyerDetailsRepo.save(BuyerUserDetails.builder().userId(userProfile.getUserId())
         .userPassword(encryptionService.generateBuyerPassword()).exported(Boolean.FALSE)
         .createdAt(Instant.now()).createdBy("ProfileManagement").build());

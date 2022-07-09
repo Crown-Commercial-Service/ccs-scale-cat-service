@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
@@ -72,10 +71,8 @@ public class TendersController extends AbstractRestController {
           "Authenticated user does not match requested user-id");
     }
     var registerUserResponse = profileManagementService.registerUser(userId);
-    if (registerUserResponse.getUserAction() == UserActionEnum.EXISTED) {
-      throw new JaggaerUserExistException("Jaggaer sub or super user already exists");
-    } else {
-      return ResponseEntity.status(HttpStatus.CREATED).body(registerUserResponse);
-    }
+    var httpStatus = registerUserResponse.getUserAction() == UserActionEnum.EXISTED ? HttpStatus.OK
+        : HttpStatus.CREATED;
+    return ResponseEntity.status(httpStatus).body(registerUserResponse);
   }
 }
