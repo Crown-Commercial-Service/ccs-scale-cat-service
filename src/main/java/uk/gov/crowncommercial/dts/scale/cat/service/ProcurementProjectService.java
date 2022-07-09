@@ -448,7 +448,7 @@ public class ProcurementProjectService {
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
-          eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
+        eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
 
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
@@ -457,6 +457,7 @@ public class ProcurementProjectService {
             .findFirst().orElseThrow(
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
+        // update the tender period from rfx
         eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),rfxSetting.getCloseDate().toInstant()));
 
       } catch (Exception e) {
