@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -212,5 +214,37 @@ public class AwardService {
       }
     }
     return documentSummaries;
+  }
+  
+  /**
+   * Gets all award template documents
+   *
+   * @param procId
+   * @param eventId
+   * @return a document attachment containing the template files
+   */
+  @SneakyThrows
+  public Collection<DocumentAttachment> getAllAwardTemplate(final Integer procId,
+      final String eventId) {
+    var documentAttachments = new HashSet<DocumentAttachment>();
+    validationService.validateProjectAndEventIds(procId, eventId);
+    var award = retryableTendersDBDelegate.findByEventStage(AWARDED_FILE_TYPE);
+    var orderform = retryableTendersDBDelegate.findByEventStage(ORDER_FORM_FILE_TYPE);
+    var unsuccessful =
+        retryableTendersDBDelegate.findByEventStage(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE);
+
+    var allTemplates = new HashSet<DocumentTemplate>();
+    Stream.of(award, orderform, unsuccessful).forEach(allTemplates::addAll);
+
+    var resources = allTemplates.stream()
+        .map(template -> documentTemplateResourceService.getResource(template.getTemplateUrl()))
+        .toList();
+
+    for (Resource resource : resources) {
+      documentAttachments.add(DocumentAttachment.builder().fileName(resource.getFilename())
+          .data(IOUtils.toByteArray(resource.getInputStream()))
+          .contentType(Constants.MEDIA_TYPE_DOCX).build());
+    }
+    return documentAttachments;
   }
 }

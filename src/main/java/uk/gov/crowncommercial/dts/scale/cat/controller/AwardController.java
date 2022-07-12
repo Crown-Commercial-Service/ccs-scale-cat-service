@@ -110,4 +110,36 @@ public class AwardController extends AbstractRestController {
     response.addHeader("Expires", "0");
     return ResponseEntity.ok(streamResponseBody);
   }
+  
+  @GetMapping(value = "/awards/templates/export")
+  public ResponseEntity<StreamingResponseBody> exportAwardTemplates(
+      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
+      HttpServletResponse response, final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.debug("exportAwardTemplates invoked on behalf of principal: {}", principal);
+
+    var exportDocuments = awardService.getAllAwardTemplate(procId, eventId);
+    StreamingResponseBody streamResponseBody = out -> {
+      final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
+      ZipEntry zipEntry = null;
+      for (DocumentAttachment documentAttachment : exportDocuments) {
+        zipEntry = new ZipEntry(documentAttachment.getFileName());
+        zipOutputStream.putNextEntry(zipEntry);
+        try (InputStream is = new ByteArrayInputStream(documentAttachment.getData())) {
+          IOUtils.copy(is, zipOutputStream);
+        }
+      }
+      // set zip size in response
+      response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
+      if (zipOutputStream != null) {
+        zipOutputStream.close();
+      }
+    };
+    response.setContentType(CONTENT_TYPE);
+    response.setHeader("Content-Disposition", String.format(FILE_NAME, "Award-Templates"));
+    response.addHeader("Pragma", "no-cache");
+    response.addHeader("Expires", "0");
+    return ResponseEntity.ok(streamResponseBody);
+  }
 }
