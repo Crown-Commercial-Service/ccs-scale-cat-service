@@ -175,6 +175,9 @@ class ProcurementEventServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
 
+  @MockBean
+  private AgreementsService agreementsService;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
