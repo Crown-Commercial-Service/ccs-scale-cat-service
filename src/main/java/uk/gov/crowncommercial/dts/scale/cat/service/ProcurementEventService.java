@@ -5,6 +5,8 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -811,6 +813,8 @@ public class ProcurementEventService {
     }
     if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
       procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+    }else{
+      procurementEvent.setCloseDate(Instant.now());
     }
 
     if (tenderStatus != null) {
@@ -848,8 +852,7 @@ public class ProcurementEventService {
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
-      eventSummary.tenderPeriod(
-          new Period1().startDate(rfxSetting.getPublishDate()).endDate(rfxSetting.getCloseDate()));
+      eventSummary.tenderPeriod(getTenderPeriod(event.getPublishDate(),event.getCloseDate()));
 
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       return eventSummary;
