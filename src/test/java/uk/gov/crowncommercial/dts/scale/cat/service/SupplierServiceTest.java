@@ -239,7 +239,7 @@ class SupplierServiceTest {
 
     // Invoke
     var supplierResponse = supplierService.updateSupplierScoreAndComment(PRINCIPAL, PROC_PROJECT_ID,
-        EVENT_OCID, scoreAndComments);
+        EVENT_OCID, scoreAndComments, false);
 
     // Assert
     assertNotNull(supplierResponse);
@@ -307,7 +307,7 @@ class SupplierServiceTest {
 
     // Invoke
     var supplierResponse = supplierService.updateSupplierScoreAndComment(PRINCIPAL, PROC_PROJECT_ID,
-        EVENT_OCID, scoreAndComments);
+        EVENT_OCID, scoreAndComments, false);
 
     // Assert
     assertNotNull(supplierResponse);

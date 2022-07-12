@@ -117,15 +117,14 @@ public class SupplierService {
    * @return status
    */
   public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
-      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments) {
+      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
-      scoreAndCommentMap.put(scoreAndComment.getOrganisationId().replace("GB-COH-", ""),
-          scoreAndComment);
+      scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
     }
 
     var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
@@ -176,6 +175,10 @@ public class SupplierService {
             procurementEvent.getExternalReferenceId(), inputBuilder.build());
       } else
         throw je;
+    } finally {
+      if (scoringComplete) {
+        jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+      }
     }
   }
 

@@ -5,6 +5,8 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -93,6 +95,8 @@ public class ProcurementEventService {
 
   private final RPAGenericService rpaGenericService;
 
+  private final AgreementsService agreementsService;
+
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -172,6 +176,21 @@ public class ProcurementEventService {
             validatedAssessment.getAssessmentId());
       }
     }
+
+    if(ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))){
+
+      //get suppliers
+      var lotSuppliersOrgIds=agreementsService.getLotSuppliers(project.getCaNumber(),project.getLotNumber()).stream().map(lotSupplier -> lotSupplier.getOrganization().getId()).collect(Collectors.toSet());
+
+      suppliers = retryableTendersDBDelegate
+              .findOrganisationMappingByOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+                var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                return Supplier.builder().companyData(companyData).build();
+              }).collect(Collectors.toList());
+
+    }
+
+
     if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
 
       var createUpdateRfx = createRfxRequest(project, eventName, principal, suppliers);
@@ -465,6 +484,7 @@ public class ProcurementEventService {
    *        just add to the list.
    * @return
    */
+  @Transactional
   public EventSuppliers addSuppliers(final Integer procId, final String eventId,
       final EventSuppliers eventSuppliers, final boolean overwrite, final String principal) {
 
@@ -793,6 +813,8 @@ public class ProcurementEventService {
     }
     if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
       procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
+    }else{
+      procurementEvent.setCloseDate(Instant.now());
     }
 
     if (tenderStatus != null) {
@@ -830,8 +852,7 @@ public class ProcurementEventService {
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
-      eventSummary.tenderPeriod(
-          new Period1().startDate(rfxSetting.getPublishDate()).endDate(rfxSetting.getCloseDate()));
+      eventSummary.tenderPeriod(getTenderPeriod(event.getPublishDate(),event.getCloseDate()));
 
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       return eventSummary;
