@@ -61,7 +61,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.createEvent(procId, createEvent, null, principal,null);
+    return procurementEventService.createEvent(procId, createEvent, null, principal);
   }
 
   @GetMapping("/{eventID}")

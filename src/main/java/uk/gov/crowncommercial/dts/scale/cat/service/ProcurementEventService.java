@@ -110,7 +110,7 @@ public class ProcurementEventService {
    */
   @Transactional
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
-      Boolean downSelectedSuppliers, final String principal,final AgreementDetails agreementDetails) {
+      Boolean downSelectedSuppliers, final String principal) {
 
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -176,8 +176,9 @@ public class ProcurementEventService {
     }
 
     if(ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))){
+
       //get suppliers
-      var lotSuppliersOrgIds=agreementsService.getLotSuppliers(agreementDetails.getAgreementId(),agreementDetails.getLotId()).stream().map(lotSupplier -> lotSupplier.getOrganization().getId()).collect(Collectors.toSet());
+      var lotSuppliersOrgIds=agreementsService.getLotSuppliers(project.getCaNumber(),project.getLotNumber()).stream().map(lotSupplier -> lotSupplier.getOrganization().getId()).collect(Collectors.toSet());
 
       suppliers = retryableTendersDBDelegate
               .findOrganisationMappingByOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
@@ -877,7 +878,7 @@ public class ProcurementEventService {
             org.getOrganisationId());
         var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
             .createdAt(Instant.now()).createdBy(principal).build();
-        event.getCapabilityAssessmentSuppliers().add(selection);
+        event.setCapabilityAssessmentSuppliers(Set.of(selection));
     });
     return retryableTendersDBDelegate.save(event);
   }

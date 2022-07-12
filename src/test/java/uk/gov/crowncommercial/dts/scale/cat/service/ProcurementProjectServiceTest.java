@@ -165,7 +165,7 @@ class ProcurementProjectServiceTest {
             .thenReturn(createUpdateProjectResponse);
     when(retryableTendersDBDelegate.save(any(ProcurementProject.class)))
         .thenReturn(procurementProject);
-    when(procurementEventService.createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL,null))
+    when(procurementEventService.createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL))
         .thenReturn(eventSummary);
 
     // Invoke
@@ -197,7 +197,7 @@ class ProcurementProjectServiceTest {
     assertEquals(PRINCIPAL, capturedProcProject.getCreatedBy());
     assertEquals(PRINCIPAL, capturedProcProject.getUpdatedBy());
 
-    verify(procurementEventService).createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL,null);
+    verify(procurementEventService).createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL);
   }
 
   @Test
