@@ -14,5 +14,6 @@ public class Supplier {
   String status;
   Integer statusCode;
   Integer supplierStatus;
+  String id;
 
 }

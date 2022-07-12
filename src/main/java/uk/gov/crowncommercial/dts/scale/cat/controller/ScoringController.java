@@ -32,13 +32,14 @@ public class ScoringController extends AbstractRestController {
   public ResponseEntity<String> updateScoreAndComment(@PathVariable("procId") final Integer procId,
       @PathVariable("eventId") final String eventId,
       @RequestBody final List<ScoreAndCommentNonOCDS> scoresAndComments,
-      final JwtAuthenticationToken authentication) {
+      final JwtAuthenticationToken authentication,
+      final @RequestParam(required = false, name = "scoring-complete") boolean scoringComplete) {
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("update score and comments to suppliers invoked on behalf of principal: {}", principal,
         conclaveOrgId);
     return ResponseEntity.ok(supplierService.updateSupplierScoreAndComment(principal, procId,
-        eventId, scoresAndComments));
+        eventId, scoresAndComments, scoringComplete));
   }
   
   @GetMapping

@@ -9,4 +9,5 @@ public class RfxWorkflowRequest {
   String rfxId;
   String rfxReferenceCode;
   OwnerUser operatorUser;
+  SuppliersList suppliersList;
 }
