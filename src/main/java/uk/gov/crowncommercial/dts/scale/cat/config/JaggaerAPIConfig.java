@@ -53,5 +53,6 @@ public class JaggaerAPIConfig {
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;
   private Map<String, String> startEvaluation;
+  private Map<String, String> openEnvelope;
   private Map<String, String> invalidateEvent;
 }
