@@ -95,6 +95,19 @@ public class AssessmentsController extends AbstractRestController {
         principal);
   }
 
+  @PutMapping("/{assessment-id}/dimensions")
+  public String createUpdateDimensions(final @PathVariable("assessment-id") Integer assessmentId,
+      @RequestBody final DimensionRequirement[] dimensionRequirement,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("createUpdateDimension invoked on behalf of principal: {}", principal);
+
+    assessmentService.updateDimensions(assessmentId, dimensionRequirement,
+        principal);
+    return Constants.OK_MSG;
+  }
+
   @PutMapping("/{assessment-id}/dimensions/{dimension-id}/requirements/{requirement-id}")
   public Integer createUpdateRequirement(final @PathVariable("assessment-id") Integer assessmentId,
       final @PathVariable("dimension-id") Integer dimensionId,
