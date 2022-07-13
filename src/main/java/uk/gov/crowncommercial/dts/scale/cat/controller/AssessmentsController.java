@@ -92,7 +92,7 @@ public class AssessmentsController extends AbstractRestController {
     log.info("createUpdateDimension invoked on behalf of principal: {}", principal);
 
     return assessmentService.updateDimension(assessmentId, dimensionId, dimensionRequirement,
-        principal);
+        principal,true);
   }
 
   @PutMapping("/{assessment-id}/dimensions")
