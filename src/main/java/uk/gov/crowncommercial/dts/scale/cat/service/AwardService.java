@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
@@ -50,6 +52,11 @@ public class AwardService {
   static final String AWARDED_FILE_TYPE = "AWARDED";
   static final String UN_SUCCESSFUL_SUPPLIER_FILE_TYPE = "UNSUCCESSFUL_AWARD";
   static final String ORDER_FORM_FILE_TYPE = "ORDER_FORM";
+  static final String PRE_AWARD_JAGGAER_STATUS = "ORDER_FORM";
+  static final String AWARD_STATUS = "Awarded";
+  public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
+  public static final String AWARD_DETAILS_NOT_FOUND = "Award details not found";
+  public static final String OFFER_COPONENT_FILTER = "OFFERS";
 
   /**
    * Pre-Award or Edit-Pre-Award or Complete Award to the supplied suppliers.
@@ -246,5 +253,39 @@ public class AwardService {
           .contentType(Constants.MEDIA_TYPE_DOCX).build());
     }
     return documentAttachments;
+  }
+  
+  /**
+   * Gets award details
+   *
+   * @param procId
+   * @param eventId
+   * @return a document attachment containing the template files
+   */
+  public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
+      final AwardState awardState) {
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
+        new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
+    var offerDetails =
+        exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
+            .findFirst().orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
+    var supplier = retryableTendersDBDelegate
+        .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
+        .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
+
+    var recievedState =
+        exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
+            : AwardState.PRE_AWARD;
+    if (!awardState.equals(recievedState)) {
+      throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+    }
+
+    // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
+    return new AwardSummary().id("1").date(offerDetails.getLastUpdateDate())
+        .addSuppliersItem(new OrganizationReference1().id(supplier.getOrganisationId()))
+        .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
+            ? AwardState.AWARD
+            : AwardState.PRE_AWARD);
   }
 }
