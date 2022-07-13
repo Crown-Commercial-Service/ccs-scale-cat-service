@@ -20,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.service.AwardService;
 
@@ -28,7 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.AwardService;
  *
  */
 @RestController
-@RequestMapping(path = "/tenders/projects/{proc-id}/events/{event-id}",
+@RequestMapping(path = "/tenders/projects/{proc-id}/events/{event-id}/awards",
     produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
@@ -39,10 +40,10 @@ public class AwardController extends AbstractRestController {
   private static final String CONTENT_TYPE = "application/zip";
   private static final String FILE_NAME = "attachment; filename= %s.zip";
 
-  @PostMapping("/state/{award-state}/awards")
+  @PostMapping
   public ResponseEntity<String> createAward(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
-      @PathVariable("award-state") final AwardState awardState,
+      final @RequestParam(required = true, name = "award-state") AwardState awardState,
       @Valid @RequestBody final Award2AllOf awardRequest,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
@@ -52,10 +53,10 @@ public class AwardController extends AbstractRestController {
         awardState, awardRequest, null));
   }
 
-  @PutMapping("/state/{award-state}/awards/{award-id}")
+  @PutMapping("/{award-id}")
   public ResponseEntity<String> updateAward(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
-      @PathVariable("award-state") final AwardState awardState,
+      final @RequestParam(required = true, name = "award-state") AwardState awardState,
       @PathVariable("award-id") final Integer awardId,
       @Valid @RequestBody final Award2AllOf awardRequest,
       final JwtAuthenticationToken authentication) {
@@ -67,7 +68,7 @@ public class AwardController extends AbstractRestController {
         awardState, awardRequest, awardId));
   }
 
-  @GetMapping("/awards/templates")
+  @GetMapping("/templates")
   public Collection<DocumentSummary> getAwardTemplates(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -76,7 +77,7 @@ public class AwardController extends AbstractRestController {
     return awardService.getAwardTemplates(procId, eventId);
   }
 
-  @GetMapping(value = "/awards/templates/{templateId}")
+  @GetMapping(value = "/templates/{templateId}")
   public ResponseEntity<StreamingResponseBody> getAwardTemplate(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("templateId") final String templateId, HttpServletResponse response,
@@ -111,7 +112,7 @@ public class AwardController extends AbstractRestController {
     return ResponseEntity.ok(streamResponseBody);
   }
   
-  @GetMapping(value = "/awards/templates/export")
+  @GetMapping(value = "/templates/export")
   public ResponseEntity<StreamingResponseBody> exportAwardTemplates(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       HttpServletResponse response, final JwtAuthenticationToken authentication) {
@@ -142,4 +143,15 @@ public class AwardController extends AbstractRestController {
     response.addHeader("Expires", "0");
     return ResponseEntity.ok(streamResponseBody);
   }
+  
+  @GetMapping
+  public AwardSummary getAwardDetails(@PathVariable("proc-id") final Integer procId,
+      @PathVariable("event-id") final String eventId,
+      final @RequestParam(required = true, name = "award-state") AwardState awardState,
+      final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.debug("getAwardTemplates invoked on behalf of principal: {}", principal);
+    return awardService.getAwardOrPreAwardDetails(procId, eventId, awardState);
+  }
+  
 }
