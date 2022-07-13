@@ -329,7 +329,7 @@ public class AssessmentService {
 
     Arrays.stream(dimensionRequirementList).forEach(
         dimensionRequirement -> updateDimension(assessmentId, dimensionRequirement.getDimensionId(),
-            dimensionRequirement, principal));
+            dimensionRequirement, principal,false));
   }
   /**
    * Update/Add an {@link AssessmentDimensionWeighting} in the database based on a
@@ -351,7 +351,7 @@ public class AssessmentService {
    */
   @Transactional
   public Integer updateDimension(final Integer assessmentId, final Integer dimensionId,
-      final DimensionRequirement dimensionRequirement, final String principal) {
+      final DimensionRequirement dimensionRequirement, final String principal,final boolean validateWeighting) {
 
     log.debug("Update Dimension " + dimensionId);
 
@@ -388,7 +388,8 @@ public class AssessmentService {
     }
 
     // Validate Dimension weightings after update
-    validateAssessmentDimensionWeightings(assessment);
+    if (validateWeighting)
+      validateAssessmentDimensionWeightings(assessment);
 
     retryableTendersDBDelegate.save(assessment);
 
