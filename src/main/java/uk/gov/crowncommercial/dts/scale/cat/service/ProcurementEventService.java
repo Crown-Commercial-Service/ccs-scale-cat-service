@@ -75,6 +75,8 @@ public class ProcurementEventService {
   private static final String ERR_MSG_RFX_NOT_FOUND = "Rfx [%s] not found in Jaggaer";
 
   private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+  private static final String COMPLETE_STATUS = "complete";
+  public static final String CONTRACT_DETAILS_NOT_FOUND = "Contract details not found";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -96,6 +98,7 @@ public class ProcurementEventService {
   private final RPAGenericService rpaGenericService;
 
   private final AgreementsService agreementsService;
+  private final AwardService awardService;
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -1305,5 +1308,45 @@ public class ProcurementEventService {
   private ExportRfxResponse getSingleRfx(final String externalEventId) {
     return jaggaerService.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
         () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
+  }
+  
+  /**
+   * Sign Contract
+   *
+   * @param procId
+   * @param eventId
+   * @param Contract
+   * @param principal
+   */
+  public void signProcurement(final Integer procId, final String eventId, final Contract request,
+      final String principal) {
+    var user = userProfileService.resolveBuyerUserProfile(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    awardService.getAwardOrPreAwardDetails(procId, eventId, AwardState.AWARD);
+    event.setTenderStatus(COMPLETE_STATUS);
+    retryableTendersDBDelegate.save(event);
+    var contractDetails =
+        ContractDetails.builder().awardId(request.getAwardID()).contractStatus(request.getStatus())
+            .createdBy(user.getEmail()).createdAt(Instant.now()).event(event).build();
+    retryableTendersDBDelegate.save(contractDetails);
+  }
+
+  /**
+   * get Contract
+   *
+   * @param procId
+   * @param eventId
+   * @param principal
+   */
+  public Contract getContract(final Integer procId, final String eventId, final String principal) {
+    userProfileService.resolveBuyerUserProfile(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
+        .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
+    return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
+        .dateSigned(awardDetails.getCreatedAt())
+        .status(awardDetails.getContractStatus());
   }
 }
