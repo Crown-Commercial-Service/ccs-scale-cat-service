@@ -177,6 +177,9 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private AgreementsService agreementsService;
+  
+  @MockBean
+  private AwardService awardService;
 
   private final CreateEvent createEvent = new CreateEvent();
 

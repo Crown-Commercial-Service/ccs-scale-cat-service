@@ -37,6 +37,7 @@ public class RetryableTendersDBDelegate {
   private final ProjectUserMappingRepo projectUserMappingRepo;
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
+  private final ContractDetailsRepo awardDetailsRepo;
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -280,6 +281,16 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public List<BuyerUserDetails> findAll() {
     return buyerUserDetailsRepo.findAll();
+  }
+  
+  @TendersRetryable
+  public ContractDetails save(final ContractDetails awardDetails) {
+    return awardDetailsRepo.saveAndFlush(awardDetails);
+  }
+  
+  @TendersRetryable
+  public Optional<ContractDetails> findByEventId(final Integer eventId) {
+    return awardDetailsRepo.findByEventId(eventId);
   }
 
   /**
