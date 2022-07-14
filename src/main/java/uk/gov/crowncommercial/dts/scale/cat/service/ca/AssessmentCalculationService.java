@@ -159,7 +159,8 @@ public class AssessmentCalculationService {
 
     // Retain only those suppliers with +0 submission values for each elim-dimension-requirement
     var retainSuppliers = supplierDimensionRequirementTotals.entrySet().stream()
-        .filter(e -> !e.getValue().containsValue(0)).map(Entry::getKey).collect(Collectors.toSet());
+//        .filter(e -> !e.getValue().containsValue(0))
+        .map(Entry::getKey).collect(Collectors.toSet());
 
     return assessmentCalculationBase.stream()
         .filter(cb -> retainSuppliers.contains(cb.getSupplierId())).collect(Collectors.toSet());
