@@ -1346,6 +1346,7 @@ public class ProcurementEventService {
     var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
         .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
     return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
+        .dateSigned(awardDetails.getCreatedAt())
         .status(awardDetails.getContractStatus());
   }
 }
