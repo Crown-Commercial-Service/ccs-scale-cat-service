@@ -81,7 +81,7 @@ public class AssessmentCalculationService {
       var requirementScore = new RequirementScore().name(calcBase.getRequirementName())
           .criterion(calcBase.getSubmissionTypeName()).value(calcBase.getSubmissionValue() == null ?
               0 :
-              Integer.valueOf(calcBase.getSubmissionValue())).score(score);
+              Integer.valueOf(calcBase.getSubmissionValue())).score((score == 0.0d) ? 0.0 : score);
       dimensionScores.addRequirementScoresItem(requirementScore);
 
       if (!dimensionScoresExists) {
@@ -147,7 +147,7 @@ public class AssessmentCalculationService {
     // Populate a map with per-supplier per elim-dimension-requirement submission totals
     var supplierDimensionRequirementTotals = new HashMap<String, Map<String, Integer>>();
     assessmentCalculationBase.stream()
-        .filter(cb -> CA_ZERO_SCORE_ELIM_DIMENSIONS.contains(cb.getDimensionName())).forEach(cb -> {
+        .forEach(cb -> {
           var dimRqmtKey = cb.getDimensionName() + '-' + cb.getRequirementName();
           var supplierDimensionRequirementTotal = supplierDimensionRequirementTotals
               .computeIfAbsent(cb.getSupplierId(), supplierId -> new HashMap<>());

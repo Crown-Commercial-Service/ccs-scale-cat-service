@@ -122,6 +122,7 @@ public class PricingCalculator implements CalculationAdaptor {
   @Override
   public void calculateSupplierTotalScore(final SupplierScores supplierScores) {
     supplierScores.setTotal(roundDouble(supplierScores.getDimensionScores().stream()
+        .filter(dimensionScores -> dimensionScores.getScore()!= null)
         .map(DimensionScores::getScore).reduce(0d, Double::sum), 2));
   }
 
