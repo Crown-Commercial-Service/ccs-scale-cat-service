@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EnvelopeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
@@ -117,15 +118,14 @@ public class SupplierService {
    * @return status
    */
   public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
-      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments) {
+      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
-      scoreAndCommentMap.put(scoreAndComment.getOrganisationId().replace("GB-COH-", ""),
-          scoreAndComment);
+      scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
     }
 
     var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
@@ -166,16 +166,21 @@ public class SupplierService {
     } catch (JaggaerRPAException je) {
       // Start evaluation event
       if (je.getMessage().contains(RPA_EVALUATE_ERROR_DESC)) {
-        jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
-        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
-            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+        jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
+        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+            RPAProcessNameEnum.ASSIGN_SCORE);
       }
       // Open envelope event
       else if (je.getMessage().contains(RPA_OPEN_ENVELOPE_ERROR_DESC)) {
-        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
-            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+        jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
+        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+            RPAProcessNameEnum.ASSIGN_SCORE);
       } else
         throw je;
+    } finally {
+      if (scoringComplete) {
+        jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+      }
     }
   }
 
@@ -227,5 +232,4 @@ public class SupplierService {
     }
     return defaultComment;
   }
-
 }

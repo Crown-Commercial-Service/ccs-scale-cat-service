@@ -24,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
@@ -427,5 +428,91 @@ public class JaggaerService {
         .bodyToMono(Project.class).block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving project"));
+  }
+  
+  /**
+   * Award Rfx
+   *
+   * @param event
+   * @param jaggaerUserId
+   */
+  public String awardOrPreAwardRfx(final ProcurementEvent event, final String jaggaerUserId,
+      final String supplierId, AwardState awardState) {
+    final var awardRequest = RfxWorkflowRequest.builder()
+        .suppliersList(SuppliersList.builder()
+            .supplier(Arrays.asList(Supplier.builder().id(supplierId).build())).build())
+        .rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+    
+    var endPoint = jaggaerAPIConfig.getAward().get(ENDPOINT);
+    if (awardState.equals(AwardState.PRE_AWARD)) {
+      endPoint = jaggaerAPIConfig.getPreAward().get(ENDPOINT);
+    }
+    final var response = webclientWrapper.postData(awardRequest, WorkflowRfxResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+    log.debug("Award response: {}", response);
+    
+    if (!Objects.equals(0, response.getReturnCode())
+        || !Constants.OK_MSG.equals(response.getReturnMessage())) {
+      throw new JaggaerApplicationException(response.getReturnCode(),
+          response.getReturnMessage());
+    }
+    return response.getFinalStatus();
+  }
+  
+  /**
+   * End Evaluation Rfx
+   *
+   * @param event
+   * @param jaggaerUserId
+   */
+  public void completeTechnical(final ProcurementEvent event, final String jaggaerUserId) {
+    final var completeTechnicalRequest = RfxWorkflowRequest.builder()
+        .rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+
+    final var endPoint = jaggaerAPIConfig.getCompleteTechnical().get(ENDPOINT);
+    final var response =
+        webclientWrapper.postData(completeTechnicalRequest, WorkflowRfxResponse.class,
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+
+    log.debug("Complete evaluation rfx response: {}", response);
+  }
+
+  /**
+   * Open Envelope
+   *
+   * @param event
+   * @param jaggaerUserId
+   * @param envelopeType
+   */
+  public void openEnvelope(final ProcurementEvent event, final String jaggaerUserId,
+      final EnvelopeType envelopeType) {
+    final var openEnvelopeRequest = OpenEnvelopeWorkFlowRequest.builder().envelopeType(envelopeType)
+        .rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+
+    final var envelopeResponse = webclientWrapper.postData(openEnvelopeRequest,
+        WorkflowRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+        jaggaerAPIConfig.getOpenEnvelope().get(ENDPOINT));
+
+    log.debug("Open envelope response: {}", envelopeResponse);
+    if (envelopeResponse.getReturnCode() != 0
+        || !Constants.OK_MSG.equals(envelopeResponse.getReturnMessage())) {
+      log.error(envelopeResponse.toString());
+    }
+  }
+
+  /**
+   * Generic method to call start evaluation and open envelope
+   *
+   * @param event
+   * @param jaggaerUserId
+   * @param envelopeType
+   */
+  public void startEvaluationAndOpenEnvelope(final ProcurementEvent procurementEvent,
+      final String jaggaerUserId) {
+    startEvaluation(procurementEvent, jaggaerUserId);
+    openEnvelope(procurementEvent, jaggaerUserId, EnvelopeType.TECH);
   }
 }

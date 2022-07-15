@@ -14,7 +14,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -218,5 +220,22 @@ public class TendersAPIModelUtils {
     return new DocumentSummary().id(documentUpload.getDocumentId()).fileName(docKey.getFileName())
         .fileSize(documentUpload.getSize()).description(documentUpload.getDocumentDescription())
         .audience(documentUpload.getAudience());
+  }
+
+  public static Period1  getTenderPeriod(Instant publishedDate, Instant closedDate) {
+
+    Period1 period1=new Period1();
+
+    OffsetDateTime startDate=null;
+    OffsetDateTime endDate=null;
+    if(Objects.nonNull(publishedDate)){
+      startDate=OffsetDateTime.ofInstant(publishedDate, ZoneId.systemDefault());
+    }
+    if(Objects.nonNull(closedDate)){
+      endDate=OffsetDateTime.ofInstant(closedDate, ZoneId.systemDefault());
+    }
+    period1.startDate(startDate).endDate(endDate);
+    return period1;
+
   }
 }

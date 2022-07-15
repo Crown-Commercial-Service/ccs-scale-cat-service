@@ -1,12 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
-import lombok.Builder;
-import lombok.Value;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 
-@Value
-@Builder
+@Getter
+@SuperBuilder
 public class RfxWorkflowRequest {
   String rfxId;
   String rfxReferenceCode;
   OwnerUser operatorUser;
+  SuppliersList suppliersList;
 }

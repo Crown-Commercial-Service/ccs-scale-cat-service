@@ -310,6 +310,40 @@ public class AssessmentService {
    * this behaviour for now - can change if need be.
    *
    * @param assessmentId
+   * @param dimensionRequirementList
+   * @param principal
+   * @return
+   */
+  @Transactional
+  public void updateDimensions(final Integer assessmentId,
+      final DimensionRequirement[] dimensionRequirementList, final String principal) {
+
+    var totalWeighting = Arrays.stream(dimensionRequirementList)
+        .map(dimensionRequirement -> dimensionRequirement.getWeighting())
+        .reduce(Integer.valueOf(0), Integer::sum);
+
+
+    if (totalWeighting.intValue() > 100) {
+      throw new ValidationException(ERR_MSG_DIMENSION_WEIGHT_TOTAL);
+    }
+
+    Arrays.stream(dimensionRequirementList).forEach(
+        dimensionRequirement -> updateDimension(assessmentId, dimensionRequirement.getDimensionId(),
+            dimensionRequirement, principal,false));
+  }
+  /**
+   * Update/Add an {@link AssessmentDimensionWeighting} in the database based on a
+   * {@link DimensionRequirement} supplied by the API.
+   *
+   * Every Assessment has a fixed number of Dimensions allowable based on the AssessmentToolId. Not
+   * all may be populated when the assessment is created. This method handles updating an existing
+   * one, or creating a new record for it if it doesn't exist yet (with the supplied values).
+   *
+   * Currently - this will overwrite any Requirements supplied, but leave any existing ones intact.
+   * Whether it should remove any requirements not supplied has not been specified, so leaving with
+   * this behaviour for now - can change if need be.
+   *
+   * @param assessmentId
    * @param dimensionId
    * @param dimensionRequirement
    * @param principal
@@ -317,17 +351,11 @@ public class AssessmentService {
    */
   @Transactional
   public Integer updateDimension(final Integer assessmentId, final Integer dimensionId,
-      final DimensionRequirement dimensionRequirement, final String principal) {
+      final DimensionRequirement dimensionRequirement, final String principal,final boolean validateWeighting) {
 
     log.debug("Update Dimension " + dimensionId);
 
-    var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
-        .orElseThrow(() -> new ResourceNotFoundException(
-            format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
-
-    if (!assessment.getTimestamps().getCreatedBy().equals(principal)) {
-      throw new AuthorisationFailureException(ERR_MSG_NOT_AUTHORISED);
-    }
+    var assessment = validateAssessment(assessmentId, principal);
 
     // Validate input
     var dimension = validateDimensionInput(assessment, dimensionRequirement, dimensionId);
@@ -360,7 +388,8 @@ public class AssessmentService {
     }
 
     // Validate Dimension weightings after update
-    validateAssessmentDimensionWeightings(assessment);
+    if (validateWeighting)
+      validateAssessmentDimensionWeightings(assessment);
 
     retryableTendersDBDelegate.save(assessment);
 
@@ -378,6 +407,17 @@ public class AssessmentService {
     }
 
     return dimensionId;
+  }
+
+  private AssessmentEntity validateAssessment(Integer assessmentId, String principal) {
+    var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
+        .orElseThrow(() -> new ResourceNotFoundException(
+            format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+    if (!assessment.getTimestamps().getCreatedBy().equals(principal)) {
+      throw new AuthorisationFailureException(ERR_MSG_NOT_AUTHORISED);
+    }
+    return assessment;
   }
 
   /**
@@ -404,13 +444,7 @@ public class AssessmentService {
     log.debug("Update requirement " + requirement.getRequirementId() + " for dimension "
         + dimensionId + " on assessment " + assessmentId);
 
-    var assessment = retryableTendersDBDelegate.findAssessmentById(assessmentId)
-        .orElseThrow(() -> new ResourceNotFoundException(
-            format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
-
-    if (!assessment.getTimestamps().getCreatedBy().equals(principal)) {
-      throw new AuthorisationFailureException(ERR_MSG_NOT_AUTHORISED);
-    }
+    var assessment = validateAssessment(assessmentId, principal);
 
     var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId)
         .orElseThrow(() -> new ResourceNotFoundException(
