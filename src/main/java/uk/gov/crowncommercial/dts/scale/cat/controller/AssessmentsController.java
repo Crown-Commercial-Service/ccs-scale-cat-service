@@ -92,7 +92,20 @@ public class AssessmentsController extends AbstractRestController {
     log.info("createUpdateDimension invoked on behalf of principal: {}", principal);
 
     return assessmentService.updateDimension(assessmentId, dimensionId, dimensionRequirement,
+        principal,true);
+  }
+
+  @PutMapping("/{assessment-id}/dimensions")
+  public String createUpdateDimensions(final @PathVariable("assessment-id") Integer assessmentId,
+      @RequestBody final DimensionRequirement[] dimensionRequirement,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("createUpdateDimension invoked on behalf of principal: {}", principal);
+
+    assessmentService.updateDimensions(assessmentId, dimensionRequirement,
         principal);
+    return Constants.OK_MSG;
   }
 
   @PutMapping("/{assessment-id}/dimensions/{dimension-id}/requirements/{requirement-id}")

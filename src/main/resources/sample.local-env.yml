@@ -1,0 +1,66 @@
+## sample local-env file.  fill with corresponding env variables and save as
+## local-env-local-pg.yml, and this file should be imported in application-local-pg.yml (or whichever profile file)
+
+config:
+  flags:
+    devMode: true
+  external:
+    agreements-service:
+      baseUrl: 
+    conclave-wrapper:
+      apiKey:
+      baseUrl: 
+    doc-upload-svc:
+      api-key:
+      aws-access-key-id:
+      aws-secret-key:
+      get-base-url:
+      s3-bucket:
+      upload-base-url:
+    jaggaer:
+      self-service-id:
+      baseUrl:
+      createProject:
+        templateId:
+      createRfx:
+        templateId:
+      rpa:
+        baseUrl: 
+        userName:
+        userPwd:
+        buyerPwd:
+    notification:
+      api-key:
+      user-registration:
+        target-email: 
+        template-id: 
+    s3:
+      rpa:
+        accessKeyId:
+        bucket:
+        secretAccessKey:
+        workbookPassword:
+
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          jaggaer:
+            token-uri: 
+        registration:
+          jaggaer:
+            client-id:
+            client-secret:
+      resourceserver:
+        jwt:
+          jwk-set-uri:
+
+VCAP_SERVICES:
+
+---
+spring:
+  datasource:
+    url:
+    username:
+    password:
