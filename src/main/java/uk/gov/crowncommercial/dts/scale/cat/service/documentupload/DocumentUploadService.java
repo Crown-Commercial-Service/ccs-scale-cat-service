@@ -52,6 +52,7 @@ public class DocumentUploadService {
 
   static final String TENDERS_S3_OBJECT_KEY_FORMAT = "/%s/%s/%s";
   static final Tika TIKA = new Tika();
+  static final long DEFAULT_SIZE_VALIDATION = 1000;
 
   private final AmazonS3 documentUploadS3Client;
   private final AmazonS3 tendersS3Client;
@@ -86,7 +87,7 @@ public class DocumentUploadService {
     var mimetype = TIKA.detect(multipartFile.getOriginalFilename());
     final MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
     parts.add("typeValidation[]", mimetype);
-    parts.add("sizeValidation", multipartFile.getSize());
+    parts.add("sizeValidation", multipartFile.getSize() + 1000);
     parts.add("documentFile", multipartFile.getResource());
 
     final var documentStatus = ofNullable(
