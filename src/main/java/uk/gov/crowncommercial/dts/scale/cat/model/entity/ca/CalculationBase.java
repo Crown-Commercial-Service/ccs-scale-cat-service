@@ -23,7 +23,7 @@ import lombok.experimental.FieldDefaults;
 public class CalculationBase {
 
   @Id
-  Long id;
+  String id;
 
   @Column(name = "assessment_id")
   Integer assessmentId;
