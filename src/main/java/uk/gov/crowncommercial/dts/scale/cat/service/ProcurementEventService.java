@@ -75,6 +75,8 @@ public class ProcurementEventService {
   private static final String ERR_MSG_RFX_NOT_FOUND = "Rfx [%s] not found in Jaggaer";
 
   private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+  private static final String COMPLETE_STATUS = "complete";
+  public static final String CONTRACT_DETAILS_NOT_FOUND = "Contract details not found";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -96,6 +98,7 @@ public class ProcurementEventService {
   private final RPAGenericService rpaGenericService;
 
   private final AgreementsService agreementsService;
+  private final AwardService awardService;
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -1190,8 +1193,10 @@ public class ProcurementEventService {
     var offersWithParameters = getOffersWithSupplierAttachments(exportRfxResponse, supplierId);
 
     if (CollectionUtils.isEmpty(offersWithParameters)) {
-      //
-      startEvaluationAndCallOpenEnvelopeAndUpdateSupplier(profile, procurementEvent);
+
+      var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
+          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+      jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
 
       // get rfx response after Start Evaluation And Open Envelope called
       exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
@@ -1234,25 +1239,6 @@ public class ProcurementEventService {
       throw new ResourceNotFoundException(
           String.format(ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND, eventId));
     }
-  }
-
-  private void startEvaluationAndCallOpenEnvelopeAndUpdateSupplier(final String profile,
-      final ProcurementEvent procurementEvent) {
-
-    var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-
-    var buyerEncryptedPwd = rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId());
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(buyerEncryptedPwd).ittCode(procurementEvent.getExternalReferenceId());
-
-    // Start Evaluation for the event
-    jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
-
-    // call Open Envelop And Update Supplier
-    this.callOpenEnvelope(buyerUser.getEmail(), buyerEncryptedPwd,
-        procurementEvent.getExternalReferenceId(), inputBuilder.build());
   }
 
   private List<Offer> getOffersWithSupplierAttachments(final ExportRfxResponse exportRfxResponse,
@@ -1322,5 +1308,45 @@ public class ProcurementEventService {
   private ExportRfxResponse getSingleRfx(final String externalEventId) {
     return jaggaerService.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
         () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
+  }
+  
+  /**
+   * Sign Contract
+   *
+   * @param procId
+   * @param eventId
+   * @param Contract
+   * @param principal
+   */
+  public void signProcurement(final Integer procId, final String eventId, final Contract request,
+      final String principal) {
+    var user = userProfileService.resolveBuyerUserProfile(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    awardService.getAwardOrPreAwardDetails(procId, eventId, AwardState.AWARD);
+    event.setTenderStatus(COMPLETE_STATUS);
+    retryableTendersDBDelegate.save(event);
+    var contractDetails =
+        ContractDetails.builder().awardId(request.getAwardID()).contractStatus(request.getStatus())
+            .createdBy(user.getEmail()).createdAt(Instant.now()).event(event).build();
+    retryableTendersDBDelegate.save(contractDetails);
+  }
+
+  /**
+   * get Contract
+   *
+   * @param procId
+   * @param eventId
+   * @param principal
+   */
+  public Contract getContract(final Integer procId, final String eventId, final String principal) {
+    userProfileService.resolveBuyerUserProfile(principal)
+        .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
+        .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
+    return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
+        .dateSigned(awardDetails.getCreatedAt())
+        .status(awardDetails.getContractStatus());
   }
 }

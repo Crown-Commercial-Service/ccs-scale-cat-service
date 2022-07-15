@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EnvelopeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
@@ -165,14 +166,15 @@ public class SupplierService {
     } catch (JaggaerRPAException je) {
       // Start evaluation event
       if (je.getMessage().contains(RPA_EVALUATE_ERROR_DESC)) {
-        jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
-        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
-            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+        jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
+        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+            RPAProcessNameEnum.ASSIGN_SCORE);
       }
       // Open envelope event
       else if (je.getMessage().contains(RPA_OPEN_ENVELOPE_ERROR_DESC)) {
-        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
-            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+        jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
+        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+            RPAProcessNameEnum.ASSIGN_SCORE);
       } else
         throw je;
     } finally {
@@ -230,5 +232,4 @@ public class SupplierService {
     }
     return defaultComment;
   }
-
 }

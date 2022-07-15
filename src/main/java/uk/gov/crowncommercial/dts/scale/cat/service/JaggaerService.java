@@ -478,5 +478,41 @@ public class JaggaerService {
 
     log.debug("Complete evaluation rfx response: {}", response);
   }
-  
+
+  /**
+   * Open Envelope
+   *
+   * @param event
+   * @param jaggaerUserId
+   * @param envelopeType
+   */
+  public void openEnvelope(final ProcurementEvent event, final String jaggaerUserId,
+      final EnvelopeType envelopeType) {
+    final var openEnvelopeRequest = OpenEnvelopeWorkFlowRequest.builder().envelopeType(envelopeType)
+        .rfxReferenceCode(event.getExternalReferenceId())
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+
+    final var envelopeResponse = webclientWrapper.postData(openEnvelopeRequest,
+        WorkflowRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+        jaggaerAPIConfig.getOpenEnvelope().get(ENDPOINT));
+
+    log.debug("Open envelope response: {}", envelopeResponse);
+    if (envelopeResponse.getReturnCode() != 0
+        || !Constants.OK_MSG.equals(envelopeResponse.getReturnMessage())) {
+      log.error(envelopeResponse.toString());
+    }
+  }
+
+  /**
+   * Generic method to call start evaluation and open envelope
+   *
+   * @param event
+   * @param jaggaerUserId
+   * @param envelopeType
+   */
+  public void startEvaluationAndOpenEnvelope(final ProcurementEvent procurementEvent,
+      final String jaggaerUserId) {
+    startEvaluation(procurementEvent, jaggaerUserId);
+    openEnvelope(procurementEvent, jaggaerUserId, EnvelopeType.TECH);
+  }
 }
