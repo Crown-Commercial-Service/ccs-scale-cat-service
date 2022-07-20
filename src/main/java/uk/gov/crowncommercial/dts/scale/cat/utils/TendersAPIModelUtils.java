@@ -29,7 +29,7 @@ public class TendersAPIModelUtils {
 
   private static final List<String> EVALUATING_STATUS_LIST = List.of("Qualification Evaluation","Technical Evaluation",
           "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed");
-  private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval");
+  private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval", "Final Evaluation - Saved");
   private static final List<String> AWARD_STATUS_LIST= List.of("Awarded","Mixed Awarding");
   private static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";
   private static final String EVALUATED_STATUS = "Final Evaluation";
