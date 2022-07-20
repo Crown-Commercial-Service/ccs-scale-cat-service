@@ -884,8 +884,9 @@ public class ProcurementEventService {
             org.getOrganisationId());
         var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
             .createdAt(Instant.now()).createdBy(principal).build();
-        event.setCapabilityAssessmentSuppliers(Set.of(selection));
+        event.getCapabilityAssessmentSuppliers().add(selection);
     });
+
     return retryableTendersDBDelegate.save(event);
   }
 
