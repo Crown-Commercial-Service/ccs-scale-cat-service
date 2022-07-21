@@ -87,6 +87,7 @@ config:
         750: ACTIVE
         800: ACTIVE
         900: ACTIVE
+        975: ACTIVE
         500: COMPLETE
         950: COMPLETE
         1400: COMPLETE
