@@ -287,7 +287,7 @@ public class AssessmentService {
 
     if (includeScores) {
       principalForScores.ifPresent(principal -> response
-          .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
+          .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal, dimensions)));
     }
     response.setExternalToolId(assessment.getTool().getExternalToolId());
     response.setAssessmentId(assessmentId);
