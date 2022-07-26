@@ -194,6 +194,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Set<AssessmentTaxon> findAssessmentTaxonByToolAndDimension(final Integer assessmentToolId, Integer dimensionId) {
+    return assessmentTaxonRepo.findByAssessmentToolAndDimension(assessmentToolId, dimensionId);
+  }
+
+  @TendersRetryable
   public Set<CalculationBase> findCalculationBaseByDimensionIdAndSuppliers(
       final Integer dimensionId, final List<String> suppliers) {
     return calculationBaseRepo.findByDimensionIdAndSupplierIdIn(dimensionId, suppliers);
