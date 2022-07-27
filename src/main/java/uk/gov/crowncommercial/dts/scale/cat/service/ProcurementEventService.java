@@ -68,8 +68,7 @@ public class ProcurementEventService {
       "Document upload record for ID [%s] not found";
   public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
       "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
-  public static final String REPLIED = "Replied";
-
+  public static final Set<String> RESPONSE_STATES = Set.of("Replied", "Successful");
   private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
       "No Supplier Responses found for the given event '%s'  ";
   private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
@@ -657,7 +656,7 @@ public class ProcurementEventService {
     // it won' happen in ideal case but to be safe side
     return null;
   }
-
+  
   private Responders convertToResponders(final Supplier supplier,
       final OffsetDateTime respondedDateTime) {
     var organisationMapping = retryableTendersDBDelegate
@@ -668,10 +667,10 @@ public class ProcurementEventService {
     return new Responders()
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
-        .responseState(
-            REPLIED.equals(supplier.getStatus().trim()) ? Responders.ResponseStateEnum.SUBMITTED
-                : Responders.ResponseStateEnum.DRAFT)
-        .readState(REPLIED.equals(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
+        .responseState(RESPONSE_STATES.contains(supplier.getStatus().trim())
+            ? Responders.ResponseStateEnum.SUBMITTED
+            : Responders.ResponseStateEnum.DRAFT)
+        .readState(RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
         .responseDate(null != respondedDateTime ? respondedDateTime.toLocalDate() : null);
   }
