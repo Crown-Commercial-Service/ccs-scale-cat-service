@@ -16,6 +16,7 @@ public class JaggaerAPIConfig {
 
   public static final String ENDPOINT = "endpoint";
   public static final String PRINCIPAL_PLACEHOLDER = "{{PRINCIPAL}}";
+  public static final String DUNS_PLACEHOLDER = "{{DUNSNumber}}";
   public static final String SSO_CODE_VALUE = "OPEN_ID";
 
   private String baseUrl;
@@ -38,6 +39,7 @@ public class JaggaerAPIConfig {
   private Map<String, String> getSupplierCompanyProfileByBravoID;
   private Map<String, String> getSupplierCompanyProfileBySSOUserLogin;
   private Map<String, String> getSupplierSubUserProfile;
+  private Map<String, String> getCompanyProfileByDUNSNumber;
   private Map<String, String> createUpdateCompany;
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;

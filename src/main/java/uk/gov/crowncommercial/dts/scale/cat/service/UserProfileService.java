@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.DUNS_PLACEHOLDER;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -232,4 +233,43 @@ public class UserProfileService {
     return Optional.empty();
   }
 
+  /**
+   *
+   * Return Supplier CompanyData for given supplier organisationId
+   * @param organisationIdentifier
+   * @return company
+   */
+  public Optional<ReturnCompanyData> resolveSupplierData(final String organisationIdentifier) {
+
+    // Check if we have an organisation mapping record for the user's company
+    var optSupplierOrgMapping =
+            retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+
+    if (optSupplierOrgMapping.isPresent()) {
+
+      var supplierOrgMapping = optSupplierOrgMapping.get();
+
+      // Get the supplier org from Jaggaer by the bravoID
+      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
+              .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
+                      PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+
+      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
+    }
+    return Optional.empty();
+  }
+  
+  /**
+  *
+  * Return Supplier CompanyData for given supplier duns number
+  * @param concalveIdentifier
+  * @return company
+  */
+ public Optional<ReturnCompanyData> getSupplierDataByDUNSNumber(final String concalveIdentifier) {
+     // Get the supplier org from Jaggaer by the DUNS Number
+     var getSupplierCompanyByDUNSNumberEndpoint = jaggaerAPIConfig
+             .getGetCompanyProfileByDUNSNumber().get(JaggaerAPIConfig.ENDPOINT).replace(
+                 DUNS_PLACEHOLDER, concalveIdentifier);
+     return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
+ }
 }
