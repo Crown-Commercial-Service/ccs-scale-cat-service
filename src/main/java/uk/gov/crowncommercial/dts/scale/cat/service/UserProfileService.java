@@ -232,4 +232,30 @@ public class UserProfileService {
     return Optional.empty();
   }
 
+
+  /**
+   *
+   * Return Supplier CompanyData for given supplier organisationId
+   * @param organisationIdentifier
+   * @return company
+   */
+  public Optional<ReturnCompanyData> resolveSupplierData(final String organisationIdentifier) {
+
+    // Check if we have an organisation mapping record for the user's company
+    var optSupplierOrgMapping =
+            retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+
+    if (optSupplierOrgMapping.isPresent()) {
+
+      var supplierOrgMapping = optSupplierOrgMapping.get();
+
+      // Get the supplier org from Jaggaer by the bravoID
+      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
+              .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
+                      PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+
+      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
+    }
+    return Optional.empty();
+  }
 }
