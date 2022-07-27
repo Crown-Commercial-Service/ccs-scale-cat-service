@@ -1012,11 +1012,19 @@ public class ProcurementEventService {
 
       Address1 address = new Address1();
       address.setStreetAddress(companyInfo.getAddress());
+      address.setPostalCode(companyInfo.getZip());
+      address.setLocality(companyInfo.getCity());
+      address.setRegion(companyInfo.getProvince());
+      address.setCountryName(companyInfo.getIsoCountry());
+
+
+
 
       organizationReference1.setAddress(address);
       ContactPoint1 contactPoint1 = new ContactPoint1();
       contactPoint1.setName(companyInfo.getUserSurName());
       contactPoint1.setEmail(companyInfo.getUserEmail());
+
       contactPoint1.setUrl(
           org.apache.commons.lang3.StringUtils.isNotEmpty(companyInfo.getWebSite())
               ? URI.create(companyInfo.getWebSite())
