@@ -252,7 +252,7 @@ public class DocGenService {
       if (table.getRowCount() - 1 < dataReplacement.size()) {
         table.appendRows(dataReplacement.size() - table.getRowCount());
       }
-
+      var isLineRequired = false;
       var columnIndex = -1;
       for (var r = 1; r <= dataReplacement.size(); r++) {
         var row = table.getRowByIndex(r);
@@ -261,7 +261,10 @@ public class DocGenService {
           // Find the right column by searching for the placeholder
           for (var c = 0; c < row.getCellCount(); c++) {
             var checkCell = table.getCellByPosition(c, r);
-
+            if (StringUtils.hasText(checkCell.getDisplayText())
+                && checkCell.getDisplayText().equals("1")) {
+              isLineRequired = true;
+            }
             if (StringUtils.hasText(checkCell.getDisplayText())
                 && checkCell.getDisplayText().contains(documentTemplateSource.getPlaceholder())) {
               columnIndex = c;
@@ -279,15 +282,22 @@ public class DocGenService {
             var cellDown = table.getCellByPosition(columnIndex, r + 1);
 
             // Check if row number cell, if so increment
+            //TODO unused code need to remove
             if (columnIndex == 0 && "[0-9]+".matches(cellDisplayText)) {
               cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
             } else {
+              if (isLineRequired) {
+                var cellNum = table.getCellByPosition(0, r);
+                cellNum.setStringValue(String.valueOf(r));
+              }
               cellDown.setDisplayText(cellDisplayText);
             }
+          } else if (isLineRequired) {
+            var cellNum = table.getCellByPosition(0, r);
+            cellNum.setStringValue(String.valueOf(r));
           }
 
           // Replace placeholder ONLY in the cell's display text
-
           // TODO: Remove OptionsProperty - redundant.
           cell.setDisplayText(
               cellDisplayText.replace(documentTemplateSource.getPlaceholder(), datum));
