@@ -8,8 +8,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.poifs.crypt.EncryptionInfo;
@@ -31,6 +33,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPATransferS3Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Component
@@ -84,6 +87,9 @@ public class RPAExportScheduledTask {
     }
     // Query DB for non-exported buyers and go from there..
     var nonExportedBuyers = retryableTendersDBDelegate.findByExported(false);
+    
+    List<SubUser> collect = nonExportedJaggaerBuyers.stream()
+        .filter(e-> nonExportedBuyers.stream().anyMatch(k-> k.getUserId().equals(e.getUserId()))).collect(Collectors.toList());
 
     if (!nonExportedBuyers.isEmpty()) {
       var workbook = generateWorkbook(nonExportedBuyers);
@@ -105,8 +111,17 @@ public class RPAExportScheduledTask {
     font.setBold(true);
     font.setFontHeight(16);
     style.setFont(font);
-    createCell(row, 0, "UserId", style);
-    createCell(row, 1, "Password", style);
+    createCell(row, 0, "accountId", style);
+    createCell(row, 1, "Username", style);
+    createCell(row, 2, "password", style);
+    createCell(row, 3, "First Name", style);
+    createCell(row, 4, "Last Name", style);
+    createCell(row, 5, "Email", style);
+    createCell(row, 6, "Telephone", style);
+    createCell(row, 7, "Preferred Language", style);
+    createCell(row, 8, "Time Zone", style);
+    createCell(row, 9, "division", style);
+
     writeData(buyerUsers, workbook);
     return workbook;
   }
@@ -138,6 +153,26 @@ public class RPAExportScheduledTask {
       createCell(row, columnCount++, user.getUserId(), style);
       createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
           style);
+      
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+          style);
+      
     });
   }
 
