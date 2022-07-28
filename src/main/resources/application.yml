@@ -171,6 +171,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
       getRfxByComponent:  
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
+      getCompanyProfileByDUNSNumber:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
          
       # This is far more performant for summary-level only data
       searchRfxSummary:
