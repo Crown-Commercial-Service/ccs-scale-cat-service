@@ -272,5 +272,4 @@ public class UserProfileService {
                  DUNS_PLACEHOLDER, concalveIdentifier);
      return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
  }
-
 }
