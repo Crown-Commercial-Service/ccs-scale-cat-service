@@ -97,6 +97,18 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.getSuppliers(procId, eventId);
   }
 
+  @GetMapping("/{eventID}/suppliers/{supplierID}")
+  public OrganizationReference1 getSupplierInfo(
+          @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+          @PathVariable("supplierID") final String suppplierId,
+          final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getSupplierInfo invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.getSupplierInfo(procId, eventId,suppplierId);
+  }
+
   @PostMapping("/{eventID}/suppliers")
   public EventSuppliers addSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,

@@ -95,7 +95,8 @@ public class AssessmentService {
 
       // Build Options
       Set<DimensionOption> dimensionOptions = new HashSet<>();
-      d.getAssessmentTaxons().stream()
+      Set<AssessmentTaxon> taxons = retryableTendersDBDelegate.findAssessmentTaxonByToolAndDimension(toolId, d.getId());
+      taxons.stream()      
           .forEach(at -> dimensionOptions.addAll(recurseAssessmentTaxons(at)));
       dd.setOptions(new ArrayList<>(dimensionOptions));
 
@@ -287,7 +288,7 @@ public class AssessmentService {
 
     if (includeScores) {
       principalForScores.ifPresent(principal -> response
-          .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal)));
+          .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal, dimensions)));
     }
     response.setExternalToolId(assessment.getTool().getExternalToolId());
     response.setAssessmentId(assessmentId);

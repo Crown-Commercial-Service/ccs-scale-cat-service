@@ -258,7 +258,7 @@ public class UserProfileService {
     }
     return Optional.empty();
   }
-  
+
   /**
   *
   * Return Supplier CompanyData for given supplier duns number
@@ -272,4 +272,5 @@ public class UserProfileService {
                  DUNS_PLACEHOLDER, concalveIdentifier);
      return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
  }
+
 }
