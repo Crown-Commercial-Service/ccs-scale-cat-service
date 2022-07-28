@@ -1,19 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.lang.String.format;
-import static java.util.Objects.requireNonNullElse;
-import static java.util.Optional.ofNullable;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
-
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.transaction.Transactional;
-import javax.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.http.MediaType;
@@ -21,8 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -34,8 +20,8 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
@@ -44,6 +30,22 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import javax.transaction.Transactional;
+import javax.validation.ValidationException;
+import java.net.URI;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.lang.String.format;
+import static java.util.Objects.requireNonNullElse;
+import static java.util.Optional.ofNullable;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 
 /**
  *
@@ -66,8 +68,7 @@ public class ProcurementEventService {
       "Document upload record for ID [%s] not found";
   public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
       "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
-  public static final String REPLIED = "Replied";
-
+  public static final Set<String> RESPONSE_STATES = Set.of("Replied", "Successful");
   private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
       "No Supplier Responses found for the given event '%s'  ";
   private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
@@ -475,6 +476,24 @@ public class ProcurementEventService {
   }
 
   /**
+   * Get the supplier info for given Id on an event.
+   *
+   * @param procId
+   * @param eventId
+   * @param eventId
+   * @return
+   */
+  public OrganizationReference1 getSupplierInfo(final Integer procId, final String eventId,final String supplierId) {
+
+    log.debug("Get suppliers for event '{}'", eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+    log.debug("Event {} is retrieved from Jaggaer {}", event.getId(), event.getEventType());
+    return getSupplierInfoFromJaggaer(supplierId);
+
+  }
+
+  /**
    * Add/Overwrite suppliers on an Event.
    *
    * If it is an Assessment Event Type, suppliers will only be added in the Tenders DB, otherwise
@@ -637,7 +656,7 @@ public class ProcurementEventService {
     // it won' happen in ideal case but to be safe side
     return null;
   }
-
+  
   private Responders convertToResponders(final Supplier supplier,
       final OffsetDateTime respondedDateTime) {
     var organisationMapping = retryableTendersDBDelegate
@@ -648,10 +667,10 @@ public class ProcurementEventService {
     return new Responders()
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
-        .responseState(
-            REPLIED.equals(supplier.getStatus().trim()) ? Responders.ResponseStateEnum.SUBMITTED
-                : Responders.ResponseStateEnum.DRAFT)
-        .readState(REPLIED.equals(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
+        .responseState(RESPONSE_STATES.contains(supplier.getStatus().trim())
+            ? Responders.ResponseStateEnum.SUBMITTED
+            : Responders.ResponseStateEnum.DRAFT)
+        .readState(RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
         .responseDate(null != respondedDateTime ? respondedDateTime.toLocalDate() : null);
   }
@@ -855,7 +874,9 @@ public class ProcurementEventService {
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
-      eventSummary.tenderPeriod(getTenderPeriod(event.getPublishDate(),event.getCloseDate()));
+      eventSummary.tenderPeriod(getTenderPeriod(
+          rfxSetting.getPublishDate() == null ? null : rfxSetting.getPublishDate().toInstant(),
+          rfxSetting.getCloseDate() == null ? null : rfxSetting.getCloseDate().toInstant()));
 
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       return eventSummary;
@@ -968,6 +989,52 @@ public class ProcurementEventService {
 
     return new EventSuppliers().suppliers(orgs)
         .justification(event.getSupplierSelectionJustification());
+  }
+
+  /**
+   * Get supplier info for given id from Jaggaer.
+   *
+   * @param supplierId
+   * @return
+   */
+  private OrganizationReference1 getSupplierInfoFromJaggaer(final String supplierId) {
+
+    var companyData = userProfileService.resolveSupplierData(supplierId);
+
+    if (companyData.isPresent()) {
+      CompanyInfo companyInfo = companyData.get().getReturnCompanyInfo();
+
+      OrganizationReference1 organizationReference1 = new OrganizationReference1();
+
+      organizationReference1.setId(supplierId);
+      organizationReference1.setName(companyInfo.getCompanyName());
+
+      Address1 address = new Address1();
+      address.setStreetAddress(companyInfo.getAddress());
+      address.setPostalCode(companyInfo.getZip());
+      address.setLocality(companyInfo.getCity());
+      address.setRegion(companyInfo.getProvince());
+      address.setCountryName(companyInfo.getIsoCountry());
+
+
+
+
+      organizationReference1.setAddress(address);
+      ContactPoint1 contactPoint1 = new ContactPoint1();
+      contactPoint1.setName(companyInfo.getUserSurName());
+      contactPoint1.setEmail(companyInfo.getUserEmail());
+
+      contactPoint1.setUrl(
+          org.apache.commons.lang3.StringUtils.isNotEmpty(companyInfo.getWebSite())
+              ? URI.create(companyInfo.getWebSite())
+              : null);
+
+      organizationReference1.setContactPoint(contactPoint1);
+
+      return organizationReference1;
+    }
+    throw new ResourceNotFoundException(
+        String.format("Supplier not found with the given id {}", supplierId));
   }
 
   /**
@@ -1350,4 +1417,5 @@ public class ProcurementEventService {
         .dateSigned(awardDetails.getCreatedAt())
         .status(awardDetails.getContractStatus());
   }
+
 }
