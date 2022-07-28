@@ -239,9 +239,7 @@ public class DocumentUploadService {
             unprocessedDocUpload.getProcurementEvent().getEventID(),
             unprocessedDocUpload.getDocumentId());
 
-    var s3ObjectMetadata = new ObjectMetadata();
-    s3ObjectMetadata.setContentType(unprocessedDocUpload.getMimetype());
-    s3ObjectMetadata.setContentLength(unprocessedDocUpload.getSize());
+    var s3ObjectMetadata = remoteS3Object.getObjectMetadata();
 
     log.debug(
         "Copying object: [{}] from remote S3 bucket: [{}] to object: [{}] in Tenders S3 bucket: [{}]",
