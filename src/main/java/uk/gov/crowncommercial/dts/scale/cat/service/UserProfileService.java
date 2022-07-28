@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.DUNS_PLACEHOLDER;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -232,7 +233,6 @@ public class UserProfileService {
     return Optional.empty();
   }
 
-
   /**
    *
    * Return Supplier CompanyData for given supplier organisationId
@@ -258,4 +258,18 @@ public class UserProfileService {
     }
     return Optional.empty();
   }
+  
+  /**
+  *
+  * Return Supplier CompanyData for given supplier duns number
+  * @param concalveIdentifier
+  * @return company
+  */
+ public Optional<ReturnCompanyData> getSupplierDataByDUNSNumber(final String concalveIdentifier) {
+     // Get the supplier org from Jaggaer by the DUNS Number
+     var getSupplierCompanyByDUNSNumberEndpoint = jaggaerAPIConfig
+             .getGetCompanyProfileByDUNSNumber().get(JaggaerAPIConfig.ENDPOINT).replace(
+                 DUNS_PLACEHOLDER, concalveIdentifier);
+     return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
+ }
 }
