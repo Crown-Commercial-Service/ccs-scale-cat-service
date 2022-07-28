@@ -12,5 +12,6 @@ module "deploy-all" {
   memory      = 2048
   instances   = 3
   log_level   = "DEBUG"
+  dev_mode    = true
   resolve_buyer_users_by_sso = true
 }
