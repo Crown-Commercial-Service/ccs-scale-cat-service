@@ -1,12 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+
+import java.io.*;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.ValidationException;
 import org.apache.commons.csv.CSVFormat;
@@ -23,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
@@ -150,9 +150,9 @@ public class AssessmentsController extends AbstractRestController {
 
   @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
   public ResponseEntity<InputStreamResource> getSupplierDimensionData(
-      final @PathVariable("tool-id") Integer toolId,
+      final @PathVariable("tool-id") String toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
-      @RequestParam(name = "lot-id", required = false) final Integer lotId,
+      @RequestParam(name = "lot-id", required = false) final String lotId,
       @RequestParam(name = "suppliers", required = false) final List<String> suppliers,
       @RequestHeader(name = "mime-type", required = false,
           defaultValue = "text/csv") final String mimeType,
@@ -167,20 +167,11 @@ public class AssessmentsController extends AbstractRestController {
     }
 
     var supplierDimensionData =
-        assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId, suppliers);
+        assessmentService.getSupplierDimensions(toolId, dimensionId, lotId, suppliers);
 
     var out = new ByteArrayOutputStream();
-    try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
-      csvPrinter.printRecord("SupplierId", "RequirementName", "DimensionName", "AssessmentToolName",
-          "SubmissionTypeName", "SubmissionValue", "DimensionWeightPercentage",
-          "SelectionWeightPercentage");
-      for (CalculationBase calculationBase : supplierDimensionData) {
-        writeRecord(calculationBase, csvPrinter);
-      }
-      csvPrinter.flush();
-    } catch (IOException e) {
-      throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
-    }
+
+    printToCsv(supplierDimensionData, out);
 
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -189,13 +180,27 @@ public class AssessmentsController extends AbstractRestController {
         .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
   }
 
-  private void writeRecord(final CalculationBase calculationBase, final CSVPrinter csvPrinter)
+
+
+  private void printToCsv(Set<SupplierSubmissionData> supplierDimensionData, OutputStream out) {
+    try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
+      csvPrinter.printRecord("SupplierId", "RequirementName", "DimensionName", "AssessmentToolName",
+              "SubmissionTypeName", "SubmissionValue");
+      for (SupplierSubmissionData calculationBase : supplierDimensionData) {
+        writeRecord(calculationBase, csvPrinter);
+      }
+      csvPrinter.flush();
+    } catch (IOException e) {
+      throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
+    }
+  }
+
+  private void writeRecord(final SupplierSubmissionData ssd, final CSVPrinter csvPrinter)
       throws IOException {
-    csvPrinter.printRecord(calculationBase.getSupplierId(), calculationBase.getRequirementName(),
-        calculationBase.getDimensionName(), calculationBase.getAssessmentToolName(),
-        calculationBase.getSubmissionTypeName(), calculationBase.getSubmissionValue(),
-        calculationBase.getAssessmentDimensionWeightPercentage(),
-        calculationBase.getAssessmentSelectionWeightPercentage());
+    csvPrinter.printRecord(ssd.getSupplierId(), ssd.getRequirementName(),
+        ssd.getDimensionName(), ssd.getToolName(),
+        ssd.getSubmissionTypeName(), ssd.getSubmissionValue()
+        );
 
   }
 }
