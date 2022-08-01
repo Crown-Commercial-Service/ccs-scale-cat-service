@@ -8,6 +8,9 @@ import java.util.Optional;
 import java.util.Set;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.ValidationException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.springframework.core.io.InputStreamResource;
@@ -148,7 +151,7 @@ public class AssessmentsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
-  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
+  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv", "application/json"})
   public ResponseEntity<InputStreamResource> getSupplierDimensionData(
       final @PathVariable("tool-id") String toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
@@ -162,27 +165,30 @@ public class AssessmentsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSupplierDimensionData invoked on behalf of principal: {}", principal);
 
-    if (APPLICATION_JSON_VALUE.equals(mimeType)) {
-      throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
-    }
-
     var supplierDimensionData =
         assessmentService.getSupplierDimensions(toolId, dimensionId, lotId, suppliers);
 
+
+    if(mimeType.equalsIgnoreCase("text/csv"))
+      return printToCsv(supplierDimensionData, String.format(SUPPLIER_DATA, toolId, dimensionId));
+    else if(mimeType.equalsIgnoreCase("application/json"))
+      return printToJson(supplierDimensionData);
+    else throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
+  }
+
+  @SneakyThrows
+  private ResponseEntity<InputStreamResource> printToJson(Set<SupplierSubmissionData> supplierDimensionData) {
+    ObjectMapper maper = new ObjectMapper();
     var out = new ByteArrayOutputStream();
-
-    printToCsv(supplierDimensionData, out);
-
+    maper.writer().writeValue(out, supplierDimensionData);
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId))
-        .contentType(MediaType.parseMediaType("text/csv"))
-        .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
+            .contentType(MediaType.parseMediaType("application/json"))
+            .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
   }
 
 
-
-  private void printToCsv(Set<SupplierSubmissionData> supplierDimensionData, OutputStream out) {
+  private ResponseEntity<InputStreamResource> printToCsv(Set<SupplierSubmissionData> supplierDimensionData, String filename) {
+    var out = new ByteArrayOutputStream();
     try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
       csvPrinter.printRecord("SupplierId", "RequirementName", "DimensionName", "AssessmentToolName",
               "SubmissionTypeName", "SubmissionValue");
@@ -193,6 +199,12 @@ public class AssessmentsController extends AbstractRestController {
     } catch (IOException e) {
       throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
     }
+
+    return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=" + filename)
+            .contentType(MediaType.parseMediaType("text/csv"))
+            .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
   }
 
   private void writeRecord(final SupplierSubmissionData ssd, final CSVPrinter csvPrinter)
