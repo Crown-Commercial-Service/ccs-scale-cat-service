@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.Immutable;
@@ -25,18 +26,22 @@ public class SupplierSubmissionData {
 
     @Id
     @Column(name = "supplier_submission_id")
+    @JsonIgnore
     String id;
 
     @Column(name = "supplier_id")
     String supplierId;
 
     @Column(name = "lot_id")
+    @JsonIgnore
     String lotId;
 
     @Column(name = "assessment_tool_id")
+    @JsonIgnore
     Integer toolId;
 
     @Column(name = "external_assessment_tool_id")
+    @JsonIgnore
     String extToolId;
 
     @Column(name = "assessment_tool_name")
