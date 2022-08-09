@@ -1,14 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+
+import java.io.*;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.ValidationException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.springframework.core.io.InputStreamResource;
@@ -23,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
@@ -148,11 +151,11 @@ public class AssessmentsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
 
-  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv"})
+  @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv", "application/json"})
   public ResponseEntity<InputStreamResource> getSupplierDimensionData(
-      final @PathVariable("tool-id") Integer toolId,
+      final @PathVariable("tool-id") String toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
-      @RequestParam(name = "lot-id", required = false) final Integer lotId,
+      @RequestParam(name = "lot-id", required = false) final String lotId,
       @RequestParam(name = "suppliers", required = false) final List<String> suppliers,
       @RequestHeader(name = "mime-type", required = false,
           defaultValue = "text/csv") final String mimeType,
@@ -162,19 +165,34 @@ public class AssessmentsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSupplierDimensionData invoked on behalf of principal: {}", principal);
 
-    if (APPLICATION_JSON_VALUE.equals(mimeType)) {
-      throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
-    }
-
     var supplierDimensionData =
-        assessmentService.getSupplierDimensionData(toolId, dimensionId, lotId, suppliers);
+        assessmentService.getSupplierDimensions(toolId, dimensionId, lotId, suppliers);
 
+
+    if(mimeType.equalsIgnoreCase("text/csv"))
+      return printToCsv(supplierDimensionData, String.format(SUPPLIER_DATA, toolId, dimensionId));
+    else if(mimeType.equalsIgnoreCase("application/json"))
+      return printToJson(supplierDimensionData);
+    else throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
+  }
+
+  @SneakyThrows
+  private ResponseEntity<InputStreamResource> printToJson(Set<SupplierSubmissionData> supplierDimensionData) {
+    ObjectMapper maper = new ObjectMapper();
+    var out = new ByteArrayOutputStream();
+    maper.writer().writeValue(out, supplierDimensionData);
+    return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("application/json"))
+            .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
+  }
+
+
+  private ResponseEntity<InputStreamResource> printToCsv(Set<SupplierSubmissionData> supplierDimensionData, String filename) {
     var out = new ByteArrayOutputStream();
     try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
       csvPrinter.printRecord("SupplierId", "RequirementName", "DimensionName", "AssessmentToolName",
-          "SubmissionTypeName", "SubmissionValue", "DimensionWeightPercentage",
-          "SelectionWeightPercentage");
-      for (CalculationBase calculationBase : supplierDimensionData) {
+              "SubmissionTypeName", "SubmissionValue");
+      for (SupplierSubmissionData calculationBase : supplierDimensionData) {
         writeRecord(calculationBase, csvPrinter);
       }
       csvPrinter.flush();
@@ -183,19 +201,18 @@ public class AssessmentsController extends AbstractRestController {
     }
 
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=" + String.format(SUPPLIER_DATA, toolId, dimensionId))
-        .contentType(MediaType.parseMediaType("text/csv"))
-        .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
+            .header(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=" + filename)
+            .contentType(MediaType.parseMediaType("text/csv"))
+            .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
   }
 
-  private void writeRecord(final CalculationBase calculationBase, final CSVPrinter csvPrinter)
+  private void writeRecord(final SupplierSubmissionData ssd, final CSVPrinter csvPrinter)
       throws IOException {
-    csvPrinter.printRecord(calculationBase.getSupplierId(), calculationBase.getRequirementName(),
-        calculationBase.getDimensionName(), calculationBase.getAssessmentToolName(),
-        calculationBase.getSubmissionTypeName(), calculationBase.getSubmissionValue(),
-        calculationBase.getAssessmentDimensionWeightPercentage(),
-        calculationBase.getAssessmentSelectionWeightPercentage());
+    csvPrinter.printRecord(ssd.getSupplierId(), ssd.getRequirementName(),
+        ssd.getDimensionName(), ssd.getToolName(),
+        ssd.getSubmissionTypeName(), ssd.getSubmissionValue()
+        );
 
   }
 }
