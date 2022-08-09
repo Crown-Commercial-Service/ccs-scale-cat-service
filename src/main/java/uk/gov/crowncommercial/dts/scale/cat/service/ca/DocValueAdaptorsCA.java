@@ -128,7 +128,7 @@ public class DocValueAdaptorsCA {
                     .orElse(DocGenService.PLACEHOLDER_UNKNOWN));
           }, () -> placeholderValues.add(DocGenService.PLACEHOLDER_UNKNOWN));
 
-      return new ArrayList<>();
+      return placeholderValues;
     };
   }
 
