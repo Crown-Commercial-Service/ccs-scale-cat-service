@@ -270,7 +270,7 @@ public class ProcurementProjectService {
         .map(i -> getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId()))
         .filter(Objects::nonNull).collect(Collectors.toSet());
   }
-
+  
   /**
    * Add/Update Project Team Member (owner, team members, email recipients).
    *
