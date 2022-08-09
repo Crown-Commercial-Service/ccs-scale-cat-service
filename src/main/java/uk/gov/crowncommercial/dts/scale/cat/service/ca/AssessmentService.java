@@ -85,18 +85,19 @@ public class AssessmentService {
         var tool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
                 () -> new ResourceNotFoundException(String.format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
 
-        var dimensions = retryableTendersDBDelegate.findDimensionsByToolId(tool.getId());
+        var dimensions = tool.getDimensionMapping();
 
-        return dimensions.stream().map(d -> {
+        return dimensions.stream().map(dm -> {
             // Build DimensionDefinition
             var dd = new DimensionDefinition();
+            DimensionEntity d = dm.getDimension();
             dd.setDimensionId(d.getId());
             dd.setName(d.getName());
 
             // Build WeightingRange
             var wr = new WeightingRange();
-            wr.setMin(d.getMinWeightingPercentage().intValue());
-            wr.setMax(d.getMaxWeightingPercentage().intValue());
+            wr.setMin(dm.getMinWeightingPercentage().intValue());
+            wr.setMax(dm.getMaxWeightingPercentage().intValue());
             dd.setWeightingRange(wr);
 
             // Build Options
@@ -558,10 +559,14 @@ public class AssessmentService {
                     dimensionRequirement.getDimensionId(), dimensionId));
         }
 
+        List<AssessmentToolDimension> dimensionMapping = assessment.getTool().getDimensionMapping();
+
         // Verify dimension exists
-        var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+        AssessmentToolDimension assessmentToolDimension =  dimensionMapping.stream().filter(d -> d.getDimension().getId().equals(dimensionId)).findFirst().orElseThrow(() -> new ResourceNotFoundException(
                         String.format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
+
+
+        var dimension = assessmentToolDimension.getDimension();
 
         // Verify dimension is valid for tool
         validateDimensionExistsInTool(assessment.getTool(), dimension);
@@ -574,8 +579,8 @@ public class AssessmentService {
         }
 
         // Verify that the dimension weighting falls within the allowed range
-        var minWeighting = dimension.getMinWeightingPercentage().intValue();
-        var maxWeighting = dimension.getMaxWeightingPercentage().intValue();
+        int minWeighting = assessmentToolDimension.getMinWeightingPercentage().intValue();
+        int maxWeighting = assessmentToolDimension.getMaxWeightingPercentage().intValue();
 
         var newWeighting =
                 dimensionRequirement.getWeighting() == null ? 0 : dimensionRequirement.getWeighting();
@@ -583,8 +588,8 @@ public class AssessmentService {
         if (Integer.compare(newWeighting, minWeighting) < 0
                 || Integer.compare(newWeighting, maxWeighting) > 0) {
             throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_WEIGHT_RANGE,
-                    dimension.getMinWeightingPercentage().intValue(),
-                    dimension.getMaxWeightingPercentage().intValue()));
+                    minWeighting,
+                    maxWeighting));
         }
         return dimension;
     }
