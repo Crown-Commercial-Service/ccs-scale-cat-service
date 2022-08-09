@@ -5,6 +5,8 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
+import java.util.List;
+
 /**
 *
 */
@@ -30,6 +32,12 @@ public class AssessmentTool {
 
   @Column(name = "assessment_tool_descr")
   private String description;
+
+  @EqualsAndHashCode.Exclude
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OrderBy("dimension_id")
+  @JoinColumn(name = "assessment_tool_id", referencedColumnName="assessment_tool_id" )
+  private List<AssessmentToolDimension> dimensionMapping;
 
   @Embedded
   private Timestamps timestamps;
