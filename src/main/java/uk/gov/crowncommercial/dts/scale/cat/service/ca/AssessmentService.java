@@ -803,7 +803,7 @@ public class AssessmentService {
                     rtOption.setName(rt.getRequirement().getName());
                     rtOption.setRequirementId(rt.getRequirement().getId());
                     rtOption.setGroupRequirement(rt.getRequirement().getGroupRequirement());
-
+                    rtOption.setDescription(assessmentTaxon.getDescription());
                     // If it is a group requirement - no need to duplicate in the `groups` collection
                     if (Boolean.TRUE.equals(rt.getRequirement().getGroupRequirement())) {
                         rtOption.setGroups(recurseUpTree(assessmentTaxon.getParentTaxon(), new ArrayList<>()));
@@ -839,6 +839,7 @@ public class AssessmentService {
         log.trace("  - traverse up taxon tree :" + assessmentTaxon.getName());
         var rtOptionGroup = new DimensionOptionGroups();
         rtOptionGroup.setName(assessmentTaxon.getName());
+        rtOptionGroup.setDescription(assessmentTaxon.getDescription());
         optionGroups.add(rtOptionGroup);
 
         // Recurse
