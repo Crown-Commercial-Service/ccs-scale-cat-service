@@ -23,9 +23,13 @@ public class AssessmentTaxon {
   @Column(name = "assessment_taxon_id")
   Integer id;
 
+//  @ManyToOne(fetch = FetchType.EAGER)
+//  @JoinColumn(name = "assessment_tool_id", insertable = false, updatable = false)
+//  AssessmentTool tool;
+
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "assessment_tool_id")
-  AssessmentTool tool;
+  @JoinColumn(name = "submission_group_id", referencedColumnName = "submission_group_id")
+  SubmissionGroup submissionGroup;
 
   @EqualsAndHashCode.Exclude
   @ManyToOne(fetch = FetchType.LAZY)
