@@ -42,6 +42,9 @@ public class AssessmentToolDimension {
   @Column(name = "calculation_rule_id")
   private Integer calculationRuleId;
 
+  @Column(name = "exclusion_policy_id")
+  private Integer exclusionPolicyId;
+
   @Embedded
   private Timestamps timestamps;
 

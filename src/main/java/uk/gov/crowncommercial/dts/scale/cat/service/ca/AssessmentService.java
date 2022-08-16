@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.AssessmentToolCalculator;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.AssessmentToolFactory;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
@@ -71,6 +73,8 @@ public class AssessmentService {
     private final AgreementsService agreementsService;
     private final AssessmentCalculationService assessmentCalculationService;
     private final SupplierSubmissionDataRepo ssDataRepo;
+
+    private final AssessmentToolFactory toolFactory;
 
     /**
      * Get the Dimensions for an Assessment Tool.
@@ -295,7 +299,7 @@ public class AssessmentService {
 
         if (includeScores) {
             principalForScores.ifPresent(principal -> response
-                    .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal, dimensions)));
+                    .setScores(getSupplierScores(assessment, principal, dimensions)));
         }
         response.setExternalToolId(assessment.getTool().getExternalToolId());
         response.setAssessmentId(assessmentId);
@@ -303,6 +307,13 @@ public class AssessmentService {
         response.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
 
         return response;
+    }
+
+
+    private List<SupplierScores> getSupplierScores(final AssessmentEntity assessment,
+                                                   final String principal, List<DimensionRequirement> dimensionRequirements){
+        AssessmentToolCalculator calculator = toolFactory.getAssessmentTool(assessment);
+        return calculator.calculateSupplierScores(assessment, principal, dimensionRequirements, retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
     }
 
     /**
