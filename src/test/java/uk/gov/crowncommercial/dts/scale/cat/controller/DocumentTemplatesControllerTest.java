@@ -47,7 +47,7 @@ class DocumentTemplatesControllerTest {
       "/tenders/projects/{procID}/events/{eventID}/documents/templates";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
-  private static final String EVENT_ID = "ocds-b5fd17-1";
+  private static final String EVENT_ID = "ocds-pfhb7i-1";
   private static final String DOC_KEY = "YnV5ZXItNzYxMzg1MS1yZmlfdGVtcGxhdGUub2R0";
   private static final String ERR_MSG_TEMPLATE_NOT_FOUND = "Template not found";
 
