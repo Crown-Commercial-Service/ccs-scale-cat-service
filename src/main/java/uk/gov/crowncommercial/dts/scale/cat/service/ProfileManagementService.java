@@ -95,7 +95,7 @@ public class ProfileManagementService {
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, conclaveRoles));
 
     var jaggaerRoles = new HashSet<RolesEnum>();
-    populateJaggaerRoles(jaggaerRoles, userId,
+    getJaggaerRolesWithSSoUserData(jaggaerRoles, userId,
         conclaveService.getOrganisationIdentifer(conclaveUserOrg));
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, jaggaerRoles));
 
@@ -197,34 +197,45 @@ public class ProfileManagementService {
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
-
+        
         // CON-1682-AC10: Create Jaggaer Supplier sub-user
-        createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-            conclaveUserContacts, Optional.empty(), String.valueOf(jaggaerSupplierOrgId),
-            jaggaerAPIConfig.getDefaultSupplierRightsProfile());
-        log.debug("Creating supplier sub-user: [{}]", userId);
-        jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
-
-        registerUserResponse.userAction(UserActionEnum.CREATED);
-        registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
+        createUpdateSupplierSubUser(String.valueOf(jaggaerSupplierOrgId), createUpdateCompanyDataBuilder,
+            conclaveUser, conclaveUserOrg, conclaveUserContacts, userId, registerUserResponse);
 
       } else {
-        // CON-1682-AC9: Supplier is first user in company - create as super-user
-        createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-            conclaveUserContacts, CompanyType.SELLER, Optional.empty());
-        var createUpdateCompanyRequest = createUpdateCompanyDataBuilder.build();
-        log.debug("Creating supplier super-user company: [{}]", createUpdateCompanyRequest);
+        // Call Jaggaer to check the supplier super user is exists
+        var superUser =
+            userProfileService.getSupplierDataByDUNSNumber(conclaveUserOrg.getIdentifier().getId());
+        if (superUser.isPresent()) {
+          // Create Jaggaer Supplier sub-user
+          createUpdateSupplierSubUser(superUser.get().getReturnCompanyInfo().getBravoId(),
+              createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg, conclaveUserContacts,
+              userId, registerUserResponse);
+          
+          retryableTendersDBDelegate.save(OrganisationMapping.builder()
+              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .externalOrganisationId(
+                  Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
+              .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
+          
+        } else {
+          // CON-1682-AC9: Supplier is first user in company - create as super-user
+          createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+              conclaveUserContacts, CompanyType.SELLER, Optional.empty());
+          var createUpdateCompanyRequest = createUpdateCompanyDataBuilder.build();
+          log.debug("Creating supplier super-user company: [{}]", createUpdateCompanyRequest);
 
-        var createUpdateCompanyResponse =
-            jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
+          var createUpdateCompanyResponse =
+              jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
 
-        retryableTendersDBDelegate.save(OrganisationMapping.builder()
-            .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
-            .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
-            .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
+          retryableTendersDBDelegate.save(OrganisationMapping.builder()
+              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
+              .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
 
-        registerUserResponse.userAction(UserActionEnum.CREATED);
-        registerUserResponse.organisationAction(OrganisationActionEnum.CREATED);
+          registerUserResponse.userAction(UserActionEnum.CREATED);
+          registerUserResponse.organisationAction(OrganisationActionEnum.CREATED);
+        }
       }
       returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
 
@@ -234,6 +245,23 @@ public class ProfileManagementService {
 
     registerUserResponse.roles(returnRoles);
     return registerUserResponse;
+  }
+  
+  private void createUpdateSupplierSubUser(final String jaggaerSupplierOrgId,
+      final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
+      final UserProfileResponseInfo conclaveUser, OrganisationProfileResponseInfo conclaveUserOrg,
+      final UserContactInfoList conclaveUserContacts, final String userId,
+      final RegisterUserResponse registerUserResponse) {
+
+    // CON-1682-AC10: Create Jaggaer Supplier sub-user
+    createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+        conclaveUserContacts, Optional.empty(), jaggaerSupplierOrgId,
+        jaggaerAPIConfig.getDefaultSupplierRightsProfile());
+    log.debug("Creating supplier sub-user: [{}]", userId);
+    jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+    
+    registerUserResponse.userAction(UserActionEnum.CREATED);
+    registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
   }
 
   private void createBuyer(final UserProfileResponseInfo conclaveUser,
@@ -443,6 +471,48 @@ public class ProfileManagementService {
       }
     }
     return Pair.of(buyerSubUser, Optional.empty());
+  }
+
+  private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> getJaggaerRolesWithSSoUserData(
+          final Set<RolesEnum> jaggaerRoles, final String userId, final String organisationIdentifier) {
+
+    // SSO verification built-in to search
+    var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+
+    // If cache missing, refresh in case user has since been registered (by separate instance)
+    if (buyerSubUser.isEmpty()) {
+      userProfileService.refreshBuyerCache(userId);
+      buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId,
+              buyerSubUser.isPresent());
+    }
+
+    if(buyerSubUser.isPresent()&& null!=buyerSubUser.get().getSsoCodeData()&&userId.equalsIgnoreCase(
+            buyerSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())){
+      buyerSubUser.ifPresent(su -> jaggaerRoles.add(BUYER));
+    }
+    // SSO verification required
+    var optSupplierCompanyData =
+            userProfileService.resolveSupplierData(userId, organisationIdentifier);
+
+    if (optSupplierCompanyData.isPresent()) {
+      var supplierCompanyData = optSupplierCompanyData.get();
+
+      // Explicit SSO verification required
+      var expectedSSOData = buildSSOCodeData(userId);
+
+      // Check the super-user and sub-user for matching SSO
+      if (Objects.equals(expectedSSOData,
+              supplierCompanyData.getReturnCompanyInfo().getSsoCodeData())
+              || supplierCompanyData.getReturnSubUser().getSubUsers() != null
+              && supplierCompanyData.getReturnSubUser().getSubUsers().stream()
+              .anyMatch(subUser -> Objects.equals(expectedSSOData, subUser.getSsoCodeData()))) {
+        jaggaerRoles.add(SUPPLIER);
+        return Pair.of(buyerSubUser, optSupplierCompanyData);
+      }
+    }
+    return Pair.of(buyerSubUser, Optional.empty());
+
   }
 
   private void sendUserRegistrationNotification(final UserProfileResponseInfo conclaveUser,

@@ -1,6 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.*;
 import org.junit.jupiter.api.BeforeAll;
@@ -120,6 +123,9 @@ class AwardServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
+  @MockBean
+  private DocumentTemplateResourceService documentTemplateResourceService;
+
   private static RPAGenericData request = new RPAGenericData();
   private final RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
@@ -161,8 +167,7 @@ class AwardServiceTest {
 
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    var responseObject =
-        new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
+    var responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
     var jaggerRPACredentials = new HashMap<String, String>();
@@ -189,11 +194,11 @@ class AwardServiceTest {
         .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
 
     // Invoke
-    var supplierResponse = awardService.createOrUpdateAward(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
+    var awardResponse = awardService.createOrUpdateAward(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
         AwardState.PRE_AWARD, award, null);
 
     // Assert
-    assertNotNull(supplierResponse);
+    assertNotNull(awardResponse);
   }
 
   @Test
@@ -219,8 +224,7 @@ class AwardServiceTest {
         .setSync(true);
     request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
 
-    var responseObject =
-        new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
+    var responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
 
     log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
     var jaggerRPACredentials = new HashMap<String, String>();
@@ -242,11 +246,11 @@ class AwardServiceTest {
         .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
 
     // Invoke
-    var supplierResponse =
+    var awardResponse =
         awardService.callEndEvaluation(PRINCIPAL, BUYER_PASSWORD, EXTERNAL_EVENT_ID);
 
     // Assert
-    assertNotNull(supplierResponse);
+    assertNotNull(awardResponse);
   }
 
   private ExportRfxResponse prepareSupplierDetails() {
@@ -261,6 +265,31 @@ class AwardServiceTest {
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setSuppliersList(suppliersList);
     return rfxResponse;
+  }
+  
+  @Test
+  void testCreateAwardRfx() {
+    List<OrganizationReference1> suppliersList = new ArrayList<>();
+    suppliersList.add(new OrganizationReference1().id("GB-COH-1234567"));
+    var rfxResponse = prepareSupplierDetails();
+    var award = new Award2AllOf().suppliers(suppliersList);
+    var procurementEvent = ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
+    .externalEventId(RFX_ID).build();
+    // Mock behaviours
+    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(retryableTendersDBDelegate
+        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
+            .thenReturn(Set.of(ORG_MAPPING_1));
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+        .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
+            .externalEventId(RFX_ID).build());
+    when(jaggaerService.awardOrPreAwardRfx(procurementEvent, JAGGAER_USER_ID, EXT_ORG_ID_1+"", AwardState.AWARD)).thenReturn("Awarded");
+    // Invoke
+    var awardResponse = awardService.createOrUpdateAwardRfx(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
+        AwardState.AWARD, award, null);
+    assertNotNull(awardResponse);
+    verify(jaggaerService).completeTechnical(any(), any());
   }
 
 }

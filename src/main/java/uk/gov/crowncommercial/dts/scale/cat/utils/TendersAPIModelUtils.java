@@ -14,7 +14,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -27,7 +29,7 @@ public class TendersAPIModelUtils {
 
   private static final List<String> EVALUATING_STATUS_LIST = List.of("Qualification Evaluation","Technical Evaluation",
           "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed");
-  private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval");
+  private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval", "Final Evaluation - Saved");
   private static final List<String> AWARD_STATUS_LIST= List.of("Awarded","Mixed Awarding");
   private static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";
   private static final String EVALUATED_STATUS = "Final Evaluation";
@@ -218,5 +220,22 @@ public class TendersAPIModelUtils {
     return new DocumentSummary().id(documentUpload.getDocumentId()).fileName(docKey.getFileName())
         .fileSize(documentUpload.getSize()).description(documentUpload.getDocumentDescription())
         .audience(documentUpload.getAudience());
+  }
+
+  public static Period1  getTenderPeriod(Instant publishedDate, Instant closedDate) {
+
+    Period1 period1=new Period1();
+
+    OffsetDateTime startDate=null;
+    OffsetDateTime endDate=null;
+    if(Objects.nonNull(publishedDate)){
+      startDate=OffsetDateTime.ofInstant(publishedDate, ZoneId.systemDefault());
+    }
+    if(Objects.nonNull(closedDate)){
+      endDate=OffsetDateTime.ofInstant(closedDate, ZoneId.systemDefault());
+    }
+    period1.startDate(startDate).endDate(endDate);
+    return period1;
+
   }
 }

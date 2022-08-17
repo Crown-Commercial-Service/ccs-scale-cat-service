@@ -3,20 +3,14 @@ package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionScores;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.RequirementScore;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
@@ -53,9 +47,10 @@ public class AssessmentCalculationService {
   }
 
   public List<SupplierScores> calculateSupplierScores(final AssessmentEntity assessment,
-      final String principal) {
+      final String principal, List<DimensionRequirement> dimensionRequirements) {
 
     final var assessmentCalculationBase = eliminateZeroScoreSuppliers(
+            dimensionRequirements,
         retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
 
     var supplierScoresMap = new HashMap<String, SupplierScores>();
@@ -81,7 +76,7 @@ public class AssessmentCalculationService {
       var requirementScore = new RequirementScore().name(calcBase.getRequirementName())
           .criterion(calcBase.getSubmissionTypeName()).value(calcBase.getSubmissionValue() == null ?
               0 :
-              Integer.valueOf(calcBase.getSubmissionValue())).score(score);
+              Integer.valueOf(calcBase.getSubmissionValue())).score((score == 0.0d) ? 0.0 : score);
       dimensionScores.addRequirementScoresItem(requirementScore);
 
       if (!dimensionScoresExists) {
@@ -141,28 +136,53 @@ public class AssessmentCalculationService {
    * submission type for any single requirement in particular dimensions (e.g. neither supplier nor
    * sub-contractor can provide services in a required geographical area)
    */
-  private Set<CalculationBase> eliminateZeroScoreSuppliers(
-      final Set<CalculationBase> assessmentCalculationBase) {
+  private Set<CalculationBase> eliminateZeroScoreSuppliers(List<DimensionRequirement> dimensionRequirements,
+                                                           final Set<CalculationBase> assessmentCalculationBase) {
+
+    HashMap<String, List<Integer>>  dimensionMap = new HashMap<>();
 
     // Populate a map with per-supplier per elim-dimension-requirement submission totals
     var supplierDimensionRequirementTotals = new HashMap<String, Map<String, Integer>>();
     assessmentCalculationBase.stream()
-        .filter(cb -> CA_ZERO_SCORE_ELIM_DIMENSIONS.contains(cb.getDimensionName())).forEach(cb -> {
-          var dimRqmtKey = cb.getDimensionName() + '-' + cb.getRequirementName();
-          var supplierDimensionRequirementTotal = supplierDimensionRequirementTotals
-              .computeIfAbsent(cb.getSupplierId(), supplierId -> new HashMap<>());
+            .forEach(cb -> {
+              var dimRqmtKey = cb.getDimensionName() + '-' + cb.getRequirementName();
 
-          supplierDimensionRequirementTotal.merge(dimRqmtKey,cb.getSubmissionValue() == null ?
-              0 :
-              Integer.valueOf(cb.getSubmissionValue()), Integer::sum);
-        });
+              var dimension = cb.getDimensionId();
+
+              var supplierDimensionRequirementTotal = supplierDimensionRequirementTotals
+                      .computeIfAbsent(cb.getSupplierId(), supplierId -> new HashMap<>());
+
+              var dimensions = dimensionMap
+                      .computeIfAbsent(cb.getSupplierId(), supplierId -> new ArrayList<>());
+
+              if(!dimensions.contains(dimension)){
+                dimensions.add(dimension);
+              }
+
+              supplierDimensionRequirementTotal.merge(dimRqmtKey,cb.getSubmissionValue() == null ?
+                      0 :
+                      Integer.valueOf(cb.getSubmissionValue()), Integer::sum);
+            });
 
     // Retain only those suppliers with +0 submission values for each elim-dimension-requirement
     var retainSuppliers = supplierDimensionRequirementTotals.entrySet().stream()
-        .filter(e -> !e.getValue().containsValue(0)).map(Entry::getKey).collect(Collectors.toSet());
+            .filter(e -> !e.getValue().containsValue(0) &&
+                    hasSameValues(dimensionMap.get(e.getKey()), dimensionRequirements))
+            .map(Entry::getKey).collect(Collectors.toSet());
 
     return assessmentCalculationBase.stream()
-        .filter(cb -> retainSuppliers.contains(cb.getSupplierId())).collect(Collectors.toSet());
+            .filter(cb -> retainSuppliers.contains(cb.getSupplierId())).collect(Collectors.toSet());
+  }
+
+
+  private boolean hasSameValues(List<Integer> dims, List<DimensionRequirement> dimensionRequirements){
+    for(DimensionRequirement requirement : dimensionRequirements){
+      int id = requirement.getDimensionId();
+      if(dims.contains(id))
+        continue;
+      else return false;
+    }
+    return true;
   }
 
 }

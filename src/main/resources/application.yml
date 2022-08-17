@@ -87,6 +87,7 @@ config:
         750: ACTIVE
         800: ACTIVE
         900: ACTIVE
+        975: ACTIVE
         500: COMPLETE
         950: COMPLETE
         1400: COMPLETE
@@ -168,7 +169,11 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
-      
+      getRfxByComponent:  
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
+      getCompanyProfileByDUNSNumber:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
+         
       # This is far more performant for summary-level only data
       searchRfxSummary:
         endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
@@ -186,8 +191,16 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
+      openEnvelope:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/openEnvelope  
       invalidateEvent:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/invalidate
+      award:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/awardRfx
+      preAward:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/preawardRfx
+      completeTechnical:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/completetechnical      
           
       # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:

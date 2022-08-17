@@ -25,6 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
@@ -202,7 +203,8 @@ class ProfileManagementServiceTest {
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
     when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
-        .thenReturn(Optional.of(SubUser.builder().build()));
+        .thenReturn(Optional.of(SubUser.builder().
+                ssoCodeData(SSOCodeData.builder().ssoCode(Set.of(SSOCode.builder().ssoUserLogin(USERID).build())).build()).build()));
 
     var ex = assertThrows(UserRolesConflictException.class,
         () -> profileManagementService.getUserRoles(USERID));
@@ -340,6 +342,63 @@ class ProfileManagementServiceTest {
 
     assertEquals(RegisterUserResponse.UserActionEnum.EXISTED, registerUserResponse.getUserAction());
     assertEquals(RegisterUserResponse.UserActionEnum.EXISTED, registerUserResponse.getUserAction());
+    assertEquals(List.of(RegisterUserResponse.RolesEnum.SUPPLIER), registerUserResponse.getRoles());
+  }
+  
+  /*
+   * CON-1682-AC17 (Supplier update)
+   */
+  @Test
+  void testRegisterUserUpdateJaggaerSupplierSuperUser() {
+
+    var userProfileResponseInfo =
+        new UserProfileResponseInfo().organisationId(ORG_SYS_ID).userName(USERID)
+            .organisationId(ORG_SYS_ID).detail(new UserResponseDetail().rolePermissionInfo(
+                List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
+    when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
+        .thenReturn(Optional.empty());
+    when(conclaveService.extractUserPersonalContacts(any()))
+        .thenReturn(UserContactPoints.builder().build());
+    
+    when(jaggaerService.createUpdateCompany(any()))
+        .thenReturn(CreateUpdateCompanyResponse.builder().bravoId(1234).build());
+
+    var registerUserResponse = profileManagementService.registerUser(USERID);
+
+    assertEquals(RegisterUserResponse.UserActionEnum.CREATED, registerUserResponse.getUserAction());
+    assertEquals(List.of(RegisterUserResponse.RolesEnum.SUPPLIER), registerUserResponse.getRoles());
+  }
+  
+  /*
+   * CON-1682-AC17 (Supplier update)
+   */
+  @Test
+  void testRegisterUserUpdateJaggaerSupplierSubUser() {
+
+    var userProfileResponseInfo =
+        new UserProfileResponseInfo().organisationId(ORG_SYS_ID).userName(USERID)
+            .organisationId(ORG_SYS_ID).detail(new UserResponseDetail().rolePermissionInfo(
+                List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
+
+    when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
+    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
+    when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
+        .thenReturn(Optional.empty());
+    when(conclaveService.extractUserPersonalContacts(any()))
+        .thenReturn(UserContactPoints.builder().build());
+    when(jaggaerService.createUpdateCompany(any()))
+        .thenReturn(CreateUpdateCompanyResponse.builder().bravoId(1234).build());
+    when(userProfileService.getSupplierDataByDUNSNumber(any()))
+    .thenReturn(Optional.of(ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().bravoId("12345").build()).build()));
+
+    var registerUserResponse = profileManagementService.registerUser(USERID);
+
+    assertEquals(RegisterUserResponse.UserActionEnum.CREATED, registerUserResponse.getUserAction());
     assertEquals(List.of(RegisterUserResponse.RolesEnum.SUPPLIER), registerUserResponse.getRoles());
   }
 

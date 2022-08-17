@@ -70,8 +70,8 @@ class TendersControllerTest {
         .perform(
             get("/tenders/event-types").with(validCATJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(7))
-        .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "DA", "FC", "FCA", "DAA", "TBD")));
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(8));
+       // .andExpect(jsonPath("$[*]", contains("EOI", "RFI", "DA", "PA", "FC", "FCA", "DAA", "TBD")));
   }
 
   @Test
@@ -131,7 +131,7 @@ class TendersControllerTest {
   }
 
   @Test
-  void putUser_200_OK() throws Exception {
+  void putUser_500_InternalServerError() throws Exception {
     when(profileManagementService.registerUser(PRINCIPAL)).thenReturn(new RegisterUserResponse()
         .userAction(UserActionEnum.EXISTED).organisationAction(OrganisationActionEnum.EXISTED)
         .roles(List.of(
@@ -139,11 +139,12 @@ class TendersControllerTest {
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().isOk())
+        .andDo(print()).andExpect(status().isInternalServerError())
         .andExpect(content().contentType(APPLICATION_JSON))
-        .andExpect(jsonPath("$.userAction").value("existed"))
-        .andExpect(jsonPath("$.organisationAction").value("existed"))
-        .andExpect(jsonPath("$.roles[0]", is("buyer")));
+            .andExpect(jsonPath("$.errors", hasSize(1)))
+            .andExpect(jsonPath("$.errors[0].status", is("500 INTERNAL_SERVER_ERROR")))
+            .andExpect(jsonPath("$.errors[0].title", is("Jaggaer User Exist Scenario")))
+            .andExpect(jsonPath("$.errors[0].detail", is("Jaggaer sub or super user already exists")));
   }
 
   @Test

@@ -1,18 +1,33 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
-import java.util.*;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EnvelopeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
@@ -36,6 +51,8 @@ public class SupplierService {
   private static final String RPA_OPEN_ENVELOPE_ERROR_DESC = "Technical button not found";
   private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+  public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
+
 
   /**
    * Retrieves suppliers from the Agreements Service based on the CA and Lot and resolves each to a
@@ -101,15 +118,14 @@ public class SupplierService {
    * @return status
    */
   public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
-      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments) {
+      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
-      scoreAndCommentMap.put(scoreAndComment.getOrganisationId().replace("GB-COH-", ""),
-          scoreAndComment);
+      scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
     }
 
     var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
@@ -150,19 +166,22 @@ public class SupplierService {
     } catch (JaggaerRPAException je) {
       // Start evaluation event
       if (je.getMessage().contains(RPA_EVALUATE_ERROR_DESC)) {
-        jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
-        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
-            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+        jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
+        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+            RPAProcessNameEnum.ASSIGN_SCORE);
       }
       // Open envelope event
       else if (je.getMessage().contains(RPA_OPEN_ENVELOPE_ERROR_DESC)) {
-        return this.callOpenEnvelopeAndUpdateSupplier(buyerUser.getEmail(), buyerEncryptedPwd,
-            procurementEvent.getExternalReferenceId(), inputBuilder.build());
+        jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
+        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
+            RPAProcessNameEnum.ASSIGN_SCORE);
       } else
         throw je;
-
+    } finally {
+      if (scoringComplete) {
+        jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+      }
     }
-
   }
 
   /**
@@ -185,5 +204,32 @@ public class SupplierService {
     log.info("Update SupplierScoreAndComment after OpenEnvelope");
     return rpaGenericService.callRPAMessageAPI(processInput, RPAProcessNameEnum.ASSIGN_SCORE);
   }
-
+  
+  public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId,
+      final String eventId) {
+    var componentFilter = "EVAL_SUPPLIER_ENVELOPE_COMMENTS==ALL;OFFERS";
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(), 
+        new HashSet<>(Arrays.asList(componentFilter)));
+    return exportRfxResponse.getOffersList().getOffer().stream()
+        .map(e -> new ScoreAndCommentNonOCDS()
+            .organisationId(retryableTendersDBDelegate
+                .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
+                .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
+                .getOrganisationId())
+            .score(e.getTechPoints()).comment(extractComment(e.getSupplierId(), 
+                exportRfxResponse.getEvaluationCommentList())))
+        .toList();
+  }
+  
+  private String extractComment(Integer supplierId, EvaluationCommentList evaluationCommentList) {
+    String defaultComment = "No comment found";
+    if (Objects.nonNull(evaluationCommentList.getEnvelopeSupplierCommentList())) {
+      Optional<String> comment = evaluationCommentList.getEnvelopeSupplierCommentList()
+          .getEnvelopeSupplierComment().stream().filter(e -> e.getSupplierId().equals(supplierId))
+          .map(e -> e.getCommentData().stream().findAny().get().getComment()).findAny();
+      defaultComment = comment.isPresent() ? comment.get() : defaultComment;
+    }
+    return defaultComment;
+  }
 }

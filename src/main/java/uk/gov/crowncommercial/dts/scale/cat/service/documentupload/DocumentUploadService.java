@@ -52,6 +52,7 @@ public class DocumentUploadService {
 
   static final String TENDERS_S3_OBJECT_KEY_FORMAT = "/%s/%s/%s";
   static final Tika TIKA = new Tika();
+  static final long DEFAULT_SIZE_VALIDATION = 1000;
 
   private final AmazonS3 documentUploadS3Client;
   private final AmazonS3 tendersS3Client;
@@ -86,7 +87,7 @@ public class DocumentUploadService {
     var mimetype = TIKA.detect(multipartFile.getOriginalFilename());
     final MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
     parts.add("typeValidation[]", mimetype);
-    parts.add("sizeValidation", multipartFile.getSize());
+    parts.add("sizeValidation", multipartFile.getSize() + 1000);
     parts.add("documentFile", multipartFile.getResource());
 
     final var documentStatus = ofNullable(
@@ -238,9 +239,7 @@ public class DocumentUploadService {
             unprocessedDocUpload.getProcurementEvent().getEventID(),
             unprocessedDocUpload.getDocumentId());
 
-    var s3ObjectMetadata = new ObjectMetadata();
-    s3ObjectMetadata.setContentType(unprocessedDocUpload.getMimetype());
-    s3ObjectMetadata.setContentLength(unprocessedDocUpload.getSize());
+    var s3ObjectMetadata = remoteS3Object.getObjectMetadata();
 
     log.debug(
         "Copying object: [{}] from remote S3 bucket: [{}] to object: [{}] in Tenders S3 bucket: [{}]",

@@ -8,8 +8,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.poifs.crypt.EncryptionInfo;
@@ -31,6 +34,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPATransferS3Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Component
@@ -41,6 +45,7 @@ public class RPAExportScheduledTask {
   private static final String SHEET_NAME = "Buyers_Details";
   private static final String MIMETYPE_XLSX =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  private static final String ACCOUNT_ID = "1039241";
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final EncryptionService encryptionService;
@@ -84,9 +89,14 @@ public class RPAExportScheduledTask {
     }
     // Query DB for non-exported buyers and go from there..
     var nonExportedBuyers = retryableTendersDBDelegate.findByExported(false);
+    
+    Map<String, SubUser> jaggaerBuyerMap = nonExportedJaggaerBuyers.stream()
+        .filter(jaggerUser -> nonExportedBuyers.stream()
+            .anyMatch(buyerDetail -> buyerDetail.getUserId().equals(jaggerUser.getUserId())))
+        .collect(Collectors.toMap(SubUser::getUserId, Function.identity()));
 
     if (!nonExportedBuyers.isEmpty()) {
-      var workbook = generateWorkbook(nonExportedBuyers);
+      var workbook = generateWorkbook(nonExportedBuyers, jaggaerBuyerMap);
       transferToS3(workbook);
       nonExportedBuyers.forEach(buyer -> buyer.setExported(Boolean.TRUE));
       retryableTendersDBDelegate.saveAll(nonExportedBuyers);
@@ -95,7 +105,7 @@ public class RPAExportScheduledTask {
         nonExportedBuyers.size());
   }
 
-  private XSSFWorkbook generateWorkbook(final Set<BuyerUserDetails> buyerUsers) {
+  private XSSFWorkbook generateWorkbook(final Set<BuyerUserDetails> buyerUsers, final Map<String, SubUser> jaggaerUsers) {
     var workbook = new XSSFWorkbook();
     var sheet = workbook.createSheet(SHEET_NAME);
     var row = sheet.createRow(0);
@@ -105,9 +115,18 @@ public class RPAExportScheduledTask {
     font.setBold(true);
     font.setFontHeight(16);
     style.setFont(font);
-    createCell(row, 0, "UserId", style);
-    createCell(row, 1, "Password", style);
-    writeData(buyerUsers, workbook);
+    createCell(row, 0, "accountId", style);
+    createCell(row, 1, "Username", style);
+    createCell(row, 2, "password", style);
+    createCell(row, 3, "First Name", style);
+    createCell(row, 4, "Last Name", style);
+    createCell(row, 5, "Email", style);
+    createCell(row, 6, "Telephone", style);
+    createCell(row, 7, "Preferred Language", style);
+    createCell(row, 8, "Time Zone", style);
+    createCell(row, 9, "division", style);
+
+    writeData(buyerUsers, workbook, jaggaerUsers);
     return workbook;
   }
 
@@ -124,7 +143,8 @@ public class RPAExportScheduledTask {
     cell.setCellStyle(style);
   }
 
-  private void writeData(final Set<BuyerUserDetails> buyerUsers, final XSSFWorkbook workbook) {
+  private void writeData(final Set<BuyerUserDetails> buyerUsers, final XSSFWorkbook workbook,
+      final Map<String, SubUser> jaggaerUserMap) {
     var style = workbook.createCellStyle();
     var font = workbook.createFont();
     var sheet = workbook.getSheet(SHEET_NAME);
@@ -135,9 +155,18 @@ public class RPAExportScheduledTask {
     buyerUsers.forEach(user -> {
       var row = sheet.createRow(rowCount.getAndIncrement());
       var columnCount = 0;
-      createCell(row, columnCount++, user.getUserId(), style);
+      createCell(row, columnCount++, ACCOUNT_ID, style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
       createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
           style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getName(), style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getSurName(), style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber(),
+          style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getLanguage(), style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getTimezone(), style);
+      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getDivision(), style);
     });
   }
 

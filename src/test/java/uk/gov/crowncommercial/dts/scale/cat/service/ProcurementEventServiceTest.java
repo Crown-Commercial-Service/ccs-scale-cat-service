@@ -175,6 +175,15 @@ class ProcurementEventServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
 
+  @MockBean
+  private AgreementsService agreementsService;
+  
+  @MockBean
+  private ContractDetailsRepo contractDetailsRepo;
+  
+  @MockBean
+  private AwardService awardService;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
@@ -255,7 +264,7 @@ class ProcurementEventServiceTest {
     assertEquals(TenderStatus.PLANNING, eventStatus.getStatus());
     assertEquals(ViewEventType.DA, eventStatus.getEventType());
 
-    verify(assessmentService, never()).createEmptyAssessment(any(), any(), any(), any());
+    verify(assessmentService, times(1)).createEmptyAssessment(any(), any(), any(), any());
   }
 
   @Test
@@ -979,7 +988,8 @@ class ProcurementEventServiceTest {
     var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).publishDate(OffsetDateTime.now()).
+        closeDate(OffsetDateTime.now().plusMonths(2)).build();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
@@ -1647,7 +1657,8 @@ class ProcurementEventServiceTest {
     var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).publishDate(OffsetDateTime.now()).
+        closeDate(OffsetDateTime.now()).build();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
@@ -1686,7 +1697,8 @@ class ProcurementEventServiceTest {
     var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).publishDate(OffsetDateTime.now()).
+        closeDate(OffsetDateTime.now()).build();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
@@ -1725,7 +1737,8 @@ class ProcurementEventServiceTest {
     var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).publishDate(OffsetDateTime.now()).
+        closeDate(OffsetDateTime.now()).build();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours
@@ -1765,7 +1778,8 @@ class ProcurementEventServiceTest {
     var events = Set.of(event);
 
     var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).build();
+    var rfxSetting = RfxSetting.builder().statusCode(300).rfxId(RFX_ID).publishDate(OffsetDateTime.now()).
+        closeDate(OffsetDateTime.now()).build();
     rfxResponse.setRfxSetting(rfxSetting);
 
     // Mock behaviours

@@ -6,6 +6,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.RequirementTaxon;
 
 public interface RequirementTaxonRepo extends JpaRepository<RequirementTaxon, Integer> {
 
-  Optional<RequirementTaxon> findByRequirementIdAndTaxonToolId(final Integer requirementId,
-      final Integer toolId);
+  Optional<RequirementTaxon> findByRequirementIdAndTaxonSubmissionGroupAssessmentToolsId(final Integer requirementId,
+                                                                                    final Integer toolId);
 }

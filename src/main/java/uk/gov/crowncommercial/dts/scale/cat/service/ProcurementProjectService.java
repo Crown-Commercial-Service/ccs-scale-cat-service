@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -269,7 +270,7 @@ public class ProcurementProjectService {
         .map(i -> getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId()))
         .filter(Objects::nonNull).collect(Collectors.toSet());
   }
-
+  
   /**
    * Add/Update Project Team Member (owner, team members, email recipients).
    *
@@ -431,6 +432,10 @@ public class ProcurementProjectService {
           dbEvent.getEventName(), Optional.ofNullable(dbEvent.getExternalReferenceId()),
           ViewEventType.fromValue(dbEvent.getEventType()), TenderStatus.PLANNING, ReleaseTag.TENDER,
           Optional.ofNullable(dbEvent.getAssessmentId()));
+
+          eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
+
+
     } else {
       log.trace("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {
@@ -444,11 +449,8 @@ public class ProcurementProjectService {
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
-        if (Objects.nonNull(dbEvent.getPublishDate()) && Objects.nonNull(dbEvent.getCloseDate())) {
-          eventSummary.tenderPeriod(new Period1()
-              .startDate(OffsetDateTime.ofInstant(dbEvent.getPublishDate(), ZoneId.systemDefault()))
-              .endDate(OffsetDateTime.ofInstant(dbEvent.getCloseDate(), ZoneId.systemDefault())));
-        }
+        eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
+
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
             .filter(
@@ -456,15 +458,37 @@ public class ProcurementProjectService {
             .findFirst().orElseThrow(
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
+        // update the tender period from rfx
+        eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),rfxSetting.getCloseDate().toInstant()));
 
       } catch (Exception e) {
         // No data found in Jagger
         log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
       }
+
+
     }
     eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
+
     projectPackageSummary.activeEvent(eventSummary);
     return Optional.of(projectPackageSummary);
+  }
+
+  private Period1 getTenderPeriod(Instant publishedDate, Instant closedDate) {
+
+    Period1 period1=new Period1();
+
+    OffsetDateTime startDate=null;
+    OffsetDateTime endDate=null;
+    if(Objects.nonNull(publishedDate)){
+      startDate=OffsetDateTime.ofInstant(publishedDate, ZoneId.systemDefault());
+    }
+    if(Objects.nonNull(closedDate)){
+      endDate=OffsetDateTime.ofInstant(closedDate, ZoneId.systemDefault());
+    }
+    period1.startDate(startDate).endDate(endDate);
+    return period1;
+
   }
 
   /**
