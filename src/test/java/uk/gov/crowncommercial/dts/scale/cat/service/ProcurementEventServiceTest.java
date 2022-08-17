@@ -53,7 +53,7 @@ class ProcurementEventServiceTest {
 
   private static final Integer PROC_PROJECT_ID = 1;
   private static final Integer PROC_EVENT_DB_ID = 2;
-  private static final String PROC_EVENT_ID = "ocds-b5fd17-2";
+  private static final String PROC_EVENT_ID = "ocds-pfhb7i-2";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final String JAGGAER_USER_ID = "12345";
   private static final String RFX_ID = "rfq_0001";
@@ -62,7 +62,7 @@ class ProcurementEventServiceTest {
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
   private static final String OCDS_AUTH_NAME = "ocds";
-  private static final String OCID_PREFIX = "b5fd17";
+  private static final String OCID_PREFIX = "pfhb7i";
   private static final String ORIGINAL_EVENT_NAME = "Old Name";
   private static final String UPDATED_EVENT_NAME = "New Name";
   private static final String ORIGINAL_EVENT_TYPE = "TBD";
@@ -1006,7 +1006,7 @@ class ProcurementEventServiceTest {
     assertEquals(ViewEventType.RFI, eventSummary.getEventType());
     assertEquals(TenderStatus.ACTIVE, eventSummary.getStatus());
     assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
-    assertEquals("ocds-b5fd17-2", eventSummary.getId());
+    assertEquals("ocds-pfhb7i-2", eventSummary.getId());
     assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
   }
 
@@ -1675,7 +1675,7 @@ class ProcurementEventServiceTest {
     assertEquals(ViewEventType.RFI, eventSummary.getEventType());
     assertEquals(TenderStatus.ACTIVE, eventSummary.getStatus());
     assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
-    assertEquals("ocds-b5fd17-2", eventSummary.getId());
+    assertEquals("ocds-pfhb7i-2", eventSummary.getId());
     assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
     assertEquals(DashboardStatus.CLOSED, eventSummary.getDashboardStatus());
   }
@@ -1715,7 +1715,7 @@ class ProcurementEventServiceTest {
     assertEquals(ViewEventType.RFI, eventSummary.getEventType());
     assertEquals(TenderStatus.ACTIVE, eventSummary.getStatus());
     assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
-    assertEquals("ocds-b5fd17-2", eventSummary.getId());
+    assertEquals("ocds-pfhb7i-2", eventSummary.getId());
     assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
     assertEquals(DashboardStatus.CLOSED, eventSummary.getDashboardStatus());
   }
@@ -1755,7 +1755,7 @@ class ProcurementEventServiceTest {
     assertEquals(ViewEventType.RFI, eventSummary.getEventType());
     assertEquals(TenderStatus.ACTIVE, eventSummary.getStatus());
     assertEquals(RFX_REF_CODE, eventSummary.getEventSupportId());
-    assertEquals("ocds-b5fd17-2", eventSummary.getId());
+    assertEquals("ocds-pfhb7i-2", eventSummary.getId());
     assertEquals(ASSESSMENT_ID, eventSummary.getAssessmentId());
     assertEquals(DashboardStatus.COMPLETE, eventSummary.getDashboardStatus());
   }

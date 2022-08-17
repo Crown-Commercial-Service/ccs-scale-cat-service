@@ -61,7 +61,7 @@ class EventsControllerTest {
   private static final String MESSAGES_PATH = "messages";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
-  private static final String EVENT_ID = "ocds-b5fd17-1";
+  private static final String EVENT_ID = "ocds-pfhb7i-1";
   private static final String EVENT_NAME = "NAME";
   private static final String JAGGAER_ID = "1";
   private static final ViewEventType EVENT_TYPE = ViewEventType.TBD;

@@ -33,7 +33,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 class DocumentTemplateServiceTest {
 
   private static final Integer PROC_PROJECT_ID = 1;
-  private static final String EVENT_ID = "ocds-b5fd17-1";
+  private static final String EVENT_ID = "ocds-pfhb7i-1";
   private static final String PROJECT_NAME = "Test RFI project";
   private static final String TEMPLATE_RESOURCE1_FILENAME = "RFI_template1.odt";
   private static final String TEMPLATE_RESOURCE2_FILENAME = "RFI_template2.odt";
@@ -168,7 +168,7 @@ class DocumentTemplateServiceTest {
     var procurementProject =
         ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJECT_NAME).build();
     var procurementEvent = ProcurementEvent.builder().id(1).ocdsAuthorityName("ocds")
-        .ocidPrefix("b5fd17").eventType("RFI").project(procurementProject).build();
+        .ocidPrefix("pfhb7i").eventType("RFI").project(procurementProject).build();
     var draftProformaOutputStream = new ByteArrayOutputStream();
     draftProformaOutputStream.write(DRAFT_PROFORMA_CONTENT);
 
