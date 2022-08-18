@@ -55,4 +55,6 @@ public class Constants {
       Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC, ViewEventType.DA);
 
 
+  public static final String UNLIMITED_VALUE = "1000000";
+
 }
