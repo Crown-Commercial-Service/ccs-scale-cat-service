@@ -177,8 +177,8 @@ public class MessageService {
     // convert to message summary
     MessageSummary messageSummary=new MessageSummary().counts(
                     new MessageTotals()
-                            .messagesTotal(messagesResponse.getTotRecords())
-                            .pageTotal((messagesResponse.getReturnedRecords() / messageRequestInfo.getPageSize()) + 1))
+                            .messagesTotal(messages.size())
+                            .pageTotal((messages.size() / messageRequestInfo.getPageSize()) + 1))
                             .messages(getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
                             messageRequestInfo.getPageSize()));
 
