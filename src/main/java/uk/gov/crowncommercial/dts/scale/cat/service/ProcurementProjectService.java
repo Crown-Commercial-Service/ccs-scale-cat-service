@@ -27,6 +27,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import javax.transaction.Transactional;
+
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 
 /**
@@ -634,6 +637,7 @@ public class ProcurementProjectService {
    * @param tenderStatus
    * @param principal
    */
+  @Transactional
   public void closeProcurementProject(final Integer projectId, final TenderStatus tenderStatus,
       final String principal) {
     var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
