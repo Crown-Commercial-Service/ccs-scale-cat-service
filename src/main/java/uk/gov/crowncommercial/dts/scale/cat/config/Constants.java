@@ -45,8 +45,9 @@ public class Constants {
   public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES =
       Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC);
 
+
   public static final Set<ViewEventType> TENDER_DB_ONLY_EVENT_TYPES =
-      Set.of(ViewEventType.FCA, ViewEventType.DAA);
+          Set.of(ViewEventType.FCA, ViewEventType.DAA,ViewEventType.PA);
 
   public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD =
       Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI,ViewEventType.PA);
