@@ -43,8 +43,7 @@ import java.util.stream.Stream;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 
 /**
@@ -129,8 +128,8 @@ public class ProcurementEventService {
     } else {
       // copy suppliers & close event
       var existingEvent = project.getProcurementEvents().stream().iterator().next();
-      terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED, principal);
 
+       terminateEvent(projectId, existingEvent.getEventID(), TerminationType.CANCELLED, principal);
       if (existingEvent.isTendersDBOnly()) {
         var supplierOrgIds = getSuppliersFromTendersDB(existingEvent).getSuppliers().stream()
             .map(OrganizationReference1::getId).collect(Collectors.toSet());
@@ -351,6 +350,9 @@ public class ProcurementEventService {
     if (validationService.isEventAbandoned(exportRfxResponse, updateEvent.getEventType())) {
       var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(procId);
       if (procurementEvents != null && procurementEvents.size() == 1) {
+
+
+
         this.terminateEvent(procId, eventId, TerminationType.CANCELLED, principal);
         // procurementProjectService.closeProcurementProject(procId,TenderStatus.CANCELLED,principal);
       }
@@ -1176,7 +1178,7 @@ public class ProcurementEventService {
    *
    * @param procId
    * @param eventId
-   * @param reasonType
+   * @param type
    */
   @Transactional
   public void terminateEvent(final Integer procId, final String eventId, final TerminationType type,

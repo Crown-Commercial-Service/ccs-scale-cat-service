@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.AssessmentToolCalculator;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.AssessmentToolFactory;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
@@ -72,6 +74,8 @@ public class AssessmentService {
     private final AssessmentCalculationService assessmentCalculationService;
     private final SupplierSubmissionDataRepo ssDataRepo;
 
+    private final AssessmentToolFactory toolFactory;
+
     /**
      * Get the Dimensions for an Assessment Tool.
      *
@@ -85,18 +89,19 @@ public class AssessmentService {
         var tool = retryableTendersDBDelegate.findAssessmentToolById(toolId).orElseThrow(
                 () -> new ResourceNotFoundException(String.format(ERR_MSG_FMT_TOOL_NOT_FOUND, toolId)));
 
-        var dimensions = retryableTendersDBDelegate.findDimensionsByToolId(tool.getId());
+        var dimensions = tool.getDimensionMapping();
 
-        return dimensions.stream().map(d -> {
+        return dimensions.stream().map(dm -> {
             // Build DimensionDefinition
             var dd = new DimensionDefinition();
+            DimensionEntity d = dm.getDimension();
             dd.setDimensionId(d.getId());
             dd.setName(d.getName());
 
             // Build WeightingRange
             var wr = new WeightingRange();
-            wr.setMin(d.getMinWeightingPercentage().intValue());
-            wr.setMax(d.getMaxWeightingPercentage().intValue());
+            wr.setMin(dm.getMinWeightingPercentage().intValue());
+            wr.setMax(dm.getMaxWeightingPercentage().intValue());
             dd.setWeightingRange(wr);
 
             // Build Options
@@ -294,7 +299,7 @@ public class AssessmentService {
 
         if (includeScores) {
             principalForScores.ifPresent(principal -> response
-                    .setScores(assessmentCalculationService.calculateSupplierScores(assessment, principal, dimensions)));
+                    .setScores(getSupplierScores(assessment, principal, dimensions)));
         }
         response.setExternalToolId(assessment.getTool().getExternalToolId());
         response.setAssessmentId(assessmentId);
@@ -302,6 +307,13 @@ public class AssessmentService {
         response.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
 
         return response;
+    }
+
+
+    private List<SupplierScores> getSupplierScores(final AssessmentEntity assessment,
+                                                   final String principal, List<DimensionRequirement> dimensionRequirements){
+        AssessmentToolCalculator calculator = toolFactory.getAssessmentTool(assessment);
+        return calculator.calculateSupplierScores(assessment, principal, dimensionRequirements, retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
     }
 
     /**
@@ -558,10 +570,14 @@ public class AssessmentService {
                     dimensionRequirement.getDimensionId(), dimensionId));
         }
 
+        List<AssessmentToolDimension> dimensionMapping = assessment.getTool().getDimensionMapping();
+
         // Verify dimension exists
-        var dimension = retryableTendersDBDelegate.findDimensionById(dimensionId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+        AssessmentToolDimension assessmentToolDimension =  dimensionMapping.stream().filter(d -> d.getDimension().getId().equals(dimensionId)).findFirst().orElseThrow(() -> new ResourceNotFoundException(
                         String.format(ERR_MSG_FMT_DIMENSION_NOT_FOUND, dimensionId)));
+
+
+        var dimension = assessmentToolDimension.getDimension();
 
         // Verify dimension is valid for tool
         validateDimensionExistsInTool(assessment.getTool(), dimension);
@@ -574,8 +590,8 @@ public class AssessmentService {
         }
 
         // Verify that the dimension weighting falls within the allowed range
-        var minWeighting = dimension.getMinWeightingPercentage().intValue();
-        var maxWeighting = dimension.getMaxWeightingPercentage().intValue();
+        int minWeighting = assessmentToolDimension.getMinWeightingPercentage().intValue();
+        int maxWeighting = assessmentToolDimension.getMaxWeightingPercentage().intValue();
 
         var newWeighting =
                 dimensionRequirement.getWeighting() == null ? 0 : dimensionRequirement.getWeighting();
@@ -583,8 +599,8 @@ public class AssessmentService {
         if (Integer.compare(newWeighting, minWeighting) < 0
                 || Integer.compare(newWeighting, maxWeighting) > 0) {
             throw new ValidationException(format(ERR_MSG_FMT_DIMENSION_WEIGHT_RANGE,
-                    dimension.getMinWeightingPercentage().intValue(),
-                    dimension.getMaxWeightingPercentage().intValue()));
+                    minWeighting,
+                    maxWeighting));
         }
         return dimension;
     }
@@ -798,7 +814,7 @@ public class AssessmentService {
                     rtOption.setName(rt.getRequirement().getName());
                     rtOption.setRequirementId(rt.getRequirement().getId());
                     rtOption.setGroupRequirement(rt.getRequirement().getGroupRequirement());
-
+                    rtOption.setDescription(assessmentTaxon.getDescription());
                     // If it is a group requirement - no need to duplicate in the `groups` collection
                     if (Boolean.TRUE.equals(rt.getRequirement().getGroupRequirement())) {
                         rtOption.setGroups(recurseUpTree(assessmentTaxon.getParentTaxon(), new ArrayList<>()));
@@ -834,6 +850,7 @@ public class AssessmentService {
         log.trace("  - traverse up taxon tree :" + assessmentTaxon.getName());
         var rtOptionGroup = new DimensionOptionGroups();
         rtOptionGroup.setName(assessmentTaxon.getName());
+        rtOptionGroup.setDescription(assessmentTaxon.getDescription());
         optionGroups.add(rtOptionGroup);
 
         // Recurse

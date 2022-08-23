@@ -343,7 +343,7 @@ class ProcurementProjectServiceTest {
     event.setEventName(EVENT_NAME);
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
-    event.setOcidPrefix("b5fd17");
+    event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
 
     Set<ProcurementEvent> events = new HashSet<>();
@@ -486,7 +486,7 @@ class ProcurementProjectServiceTest {
     event.setEventName(EVENT_NAME);
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
-    event.setOcidPrefix("b5fd17");
+    event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);

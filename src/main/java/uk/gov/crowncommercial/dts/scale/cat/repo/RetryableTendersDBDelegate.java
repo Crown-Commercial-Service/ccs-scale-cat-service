@@ -157,7 +157,7 @@ public class RetryableTendersDBDelegate {
 
   @TendersRetryable
   public Set<DimensionEntity> findDimensionsByToolId(final Integer toolId) {
-    return dimensionRepo.findByAssessmentTaxonsToolId(toolId);
+    return dimensionRepo.findByAssessmentToolsId(toolId);
   }
 
   @TendersRetryable
@@ -175,7 +175,7 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<RequirementTaxon> findRequirementTaxon(final Integer requirementId,
       final Integer toolId) {
-    return requirementTaxonRepo.findByRequirementIdAndTaxonToolId(requirementId, toolId);
+    return requirementTaxonRepo.findByRequirementIdAndTaxonSubmissionGroupAssessmentToolsId(requirementId, toolId);
   }
 
   @TendersRetryable
@@ -195,7 +195,7 @@ public class RetryableTendersDBDelegate {
 
   @TendersRetryable
   public Set<AssessmentTaxon> findAssessmentTaxonByToolAndDimension(final Integer assessmentToolId, Integer dimensionId) {
-    return assessmentTaxonRepo.findByAssessmentToolAndDimension(assessmentToolId, dimensionId);
+    return assessmentTaxonRepo.findBySubmissionGroupAssessmentToolsIdAndDimensionsId(assessmentToolId, dimensionId);
   }
 
   @TendersRetryable
