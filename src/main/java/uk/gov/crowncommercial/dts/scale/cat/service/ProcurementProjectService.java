@@ -1,15 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,20 +9,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import javax.transaction.Transactional;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
 
-import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -47,6 +46,8 @@ public class ProcurementProjectService {
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
+
+  private final EventTransitionService eventTransitionService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
@@ -644,8 +645,8 @@ public class ProcurementProjectService {
     if (CollectionUtils.isEmpty(procurementEvents)) {
       log.info("No events exists for this project");
     } else {
-      procurementEventService.terminateEvent(projectId,
-          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal);
+      eventTransitionService.terminateEvent(projectId,
+          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal, false);
     }
   }
 }
