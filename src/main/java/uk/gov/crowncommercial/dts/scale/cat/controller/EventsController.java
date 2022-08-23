@@ -13,6 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
+import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 
 import javax.servlet.http.HttpServletResponse;
@@ -38,6 +39,9 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
+
+
+  private final EventTransitionService eventTransitionService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
 
@@ -281,7 +285,7 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
 
-    procurementEventService.terminateEvent(procId, eventId, type.getTerminationType(), principal);
+    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, true);
     return new StringValueResponse("OK");
   }
 

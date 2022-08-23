@@ -46,7 +46,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
         DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-        ApplicationFlagsConfig.class, RPAGenericService.class},
+        ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class },
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
@@ -183,6 +183,9 @@ class ProcurementEventServiceTest {
   
   @MockBean
   private AwardService awardService;
+
+  @MockBean
+  private EventTransitionService eventTransitionService;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -1149,8 +1152,8 @@ class ProcurementEventServiceTest {
         .thenReturn(procurementEvent);
 
     // Invoke
-    procurementEventService.terminateEvent(PROC_PROJECT_ID, PROC_EVENT_ID,
-        TerminationType.CANCELLED, PRINCIPAL);
+    eventTransitionService.terminateEvent(PROC_PROJECT_ID, PROC_EVENT_ID,
+        TerminationType.CANCELLED, PRINCIPAL, true);
 
     // Verify
     verify(jaggaerService).invalidateEvent(request);

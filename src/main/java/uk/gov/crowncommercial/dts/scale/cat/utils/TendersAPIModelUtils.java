@@ -19,6 +19,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
+
 /**
  * Utility methods for building and manipulating the sources generated from the Tenders API
  */
@@ -31,12 +33,7 @@ public class TendersAPIModelUtils {
           "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed");
   private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval", "Final Evaluation - Saved");
   private static final List<String> AWARD_STATUS_LIST= List.of("Awarded","Mixed Awarding");
-  private static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";
-  private static final String EVALUATED_STATUS = "Final Evaluation";
-  private static final String CLOSED_STATUS = "CLOSED";
 
-  private static final String CANCELLED_STATUS = "cancelled";
-  private static final String COMPLETE_STATUS = "COMPLETE";
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final ApplicationFlagsConfig appFlagsConfig;
@@ -169,15 +166,14 @@ public class TendersAPIModelUtils {
     if (Objects.nonNull(tenderStatus)) {
       if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {
         return DashboardStatus.COMPLETE;
-      } else if (tenderStatus.strip().equalsIgnoreCase(CLOSED_STATUS)
-          || tenderStatus.strip().equalsIgnoreCase(CANCELLED_STATUS)) {
+      } else if (CLOSED_STATUS_LIST.contains(tenderStatus.strip().toLowerCase())) {
         return DashboardStatus.CLOSED;
       }
     }
     return null;
   }
 
-  private DashboardStatus evaluateDashboardStatusFromRfxSettingStatus(RfxSetting rfxSetting) {
+  public static DashboardStatus evaluateDashboardStatusFromRfxSettingStatus(RfxSetting rfxSetting) {
     if (rfxSetting.getStatus().strip().equalsIgnoreCase(TO_BE_EVALUATED_STATUS)) {
       return DashboardStatus.TO_BE_EVALUATED;
     } else {
