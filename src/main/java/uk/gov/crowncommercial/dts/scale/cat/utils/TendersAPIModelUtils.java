@@ -127,7 +127,7 @@ public class TendersAPIModelUtils {
    * SCAT-4788 - need to call this to populate EventSummary.dashboardStatus and
    * EventDetail.nonOCDS.dashboardStatus
    */
-  public DashboardStatus getDashboardStatus(
+  public static DashboardStatus getDashboardStatus(
       final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
     var tenderStatus = procurementEvent.getTenderStatus();
@@ -161,7 +161,7 @@ public class TendersAPIModelUtils {
     return DashboardStatus.UNKNOWN;
   }
 
-  private DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
+  private static DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
 
     if (Objects.nonNull(tenderStatus)) {
       if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {
