@@ -26,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 @RestController
@@ -215,4 +214,29 @@ public class AssessmentsController extends AbstractRestController {
         );
 
   }
+
+  /**
+   * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
+   */
+  @PostMapping("/gcloud")
+  public Integer createGcloudAssessment(@RequestBody final Assessment assessment, final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("createGcloudAssessment invoked on behalf of principal: {}", principal);
+
+    // TODO: Update class this takes in, create service method
+
+    return assessmentService.createGcloudAssessment(assessment, principal);
+  }
+
+  /**
+   * Retrieves requested Gcloud assessment
+   */
+  // TODO: GET /assessments/{assessment-id}/gcloud
+
+  /**
+   * Updates a saved Gcloud assessment
+   */
+  // TODO: PUT /assessments/{assessment-id}/gcloud
+
+  // TODO: Export assessment (once specced)
 }
