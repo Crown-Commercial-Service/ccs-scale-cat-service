@@ -225,10 +225,13 @@ public class AssessmentService {
     public Integer createGcloudAssessment(final GCloudAssessment assessment, final String principal) {
         log.debug("Creating GCloud assessment");
 
+        // We need to check the tool is found, but not be concerned with DimensionMapping errors - it's expected as they're not needed here
         var tool = retryableTendersDBDelegate
                 .findAssessmentToolByExternalToolId(assessment.getExternalToolId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         format(ERR_MSG_FMT_TOOL_NOT_FOUND, assessment.getExternalToolId())));
+
+        // TODO: Error is here - dimensionMappings is null
 
         var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
                 () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
@@ -239,6 +242,7 @@ public class AssessmentService {
         assessmentEntity.setAssessmentName(assessment.getAssessmentName());
         assessmentEntity.setStatus(AssessmentStatusEntity.ACTIVE); // Map this to active per the createAssessment function above
         assessmentEntity.setDimensionRequirements(assessment.getDimensionRequirements());
+        assessmentEntity.setTimestamps(createTimestamps(principal));
         assessmentEntity.setTool(tool);
 
         // Set the assessment results, if any

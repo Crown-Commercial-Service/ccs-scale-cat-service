@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
 
@@ -35,4 +36,7 @@ public class GCloudAssessmentResult {
 
     @Column(name = "service_link")
     private String serviceLink;
+
+    @Embedded
+    private Timestamps timestamps;
 }

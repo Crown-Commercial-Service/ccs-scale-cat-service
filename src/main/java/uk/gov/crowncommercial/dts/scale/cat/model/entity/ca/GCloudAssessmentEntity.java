@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.repo.GCloudAssessmentResult;
 
 import javax.persistence.*;
@@ -28,7 +29,7 @@ public class GCloudAssessmentEntity {
     private AssessmentStatusEntity status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "external_tool_id")
+    @JoinColumn(name = "assessment_tool_id")
     AssessmentTool tool;
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
@@ -37,4 +38,7 @@ public class GCloudAssessmentEntity {
 
     @Column(name = "dimension_reqs")
     private String dimensionRequirements;
+
+    @Embedded
+    private Timestamps timestamps;
 }
