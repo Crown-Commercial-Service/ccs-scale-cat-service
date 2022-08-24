@@ -26,6 +26,7 @@ public class RetryableTendersDBDelegate {
   private final JourneyRepo journeyRepo;
   private final DocumentTemplateRepo documentTemplateRepo;
   private final AssessmentRepo assessmentRepo;
+  private final GCloudAssessmentRepo gcloudAssessmentRepo;
   private final AssessmentToolRepo assessmentToolRepo;
   private final AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
   private final DimensionRepo dimensionRepo;
@@ -132,6 +133,11 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public AssessmentEntity save(final AssessmentEntity assessment) {
     return assessmentRepo.saveAndFlush(assessment);
+  }
+
+  @TendersRetryable
+  public GCloudAssessmentEntity save(final GCloudAssessmentEntity assessment) {
+    return gcloudAssessmentRepo.saveAndFlush(assessment);
   }
 
   @TendersRetryable

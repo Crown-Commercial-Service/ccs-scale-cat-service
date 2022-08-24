@@ -219,11 +219,9 @@ public class AssessmentsController extends AbstractRestController {
    * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
    */
   @PostMapping("/gcloud")
-  public Integer createGcloudAssessment(@RequestBody final Assessment assessment, final JwtAuthenticationToken authentication) {
+  public Integer createGcloudAssessment(@RequestBody final GCloudAssessment assessment, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createGcloudAssessment invoked on behalf of principal: {}", principal);
-
-    // TODO: Update class this takes in, create service method
 
     return assessmentService.createGcloudAssessment(assessment, principal);
   }

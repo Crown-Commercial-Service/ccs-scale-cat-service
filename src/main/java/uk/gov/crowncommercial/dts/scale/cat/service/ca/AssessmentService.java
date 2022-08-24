@@ -9,7 +9,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 
-import org.aspectj.lang.annotation.DeclareParents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -212,6 +211,39 @@ public class AssessmentService {
         validateAssessmentDimensionWeightings(entity);
 
         return retryableTendersDBDelegate.save(entity).getId();
+    }
+
+    /**
+     * Create a GCloud Assessment.
+     *
+     * @param assessment
+     * @param principal
+     * @return
+     */
+    @Transactional
+    public Integer createGcloudAssessment(final GCloudAssessment assessment, final String principal) {
+        log.debug("Creating GCloud assessment");
+
+        var tool = retryableTendersDBDelegate
+                .findAssessmentToolByExternalToolId(assessment.getExternalToolId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        format(ERR_MSG_FMT_TOOL_NOT_FOUND, assessment.getExternalToolId())));
+
+        var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
+                () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
+
+        // Now create a GCloudAssessmentEntity and populate it from our input
+        GCloudAssessmentEntity assessmentEntity = new GCloudAssessmentEntity();
+
+        assessmentEntity.setAssessmentName(assessment.getAssessmentName());
+        assessmentEntity.setStatus(AssessmentStatusEntity.ACTIVE); // Map this to active per the createAssessment function above
+        assessmentEntity.setDimensionRequirements(assessment.getDimensionRequirements());
+        assessmentEntity.setTool(tool);
+
+        // TODO: Set results
+
+        // Save our entity
+        return retryableTendersDBDelegate.save(assessmentEntity).getId();
     }
 
     /**
