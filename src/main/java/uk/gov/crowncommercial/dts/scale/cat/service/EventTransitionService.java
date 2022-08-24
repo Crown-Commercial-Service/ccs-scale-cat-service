@@ -24,12 +24,17 @@ import java.util.Set;
 import static java.lang.String.format;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.evaluateDashboardStatusFromRfxSettingStatus;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getDashboardStatus;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class EventTransitionService {
 
+  public static final String CAN_NOT_COMPLETE_ERROR_MESSAGE =
+      "You can not complete the event id : '%s' , event type : '%s' , you can only terminate the event";
+  public static final String CAN_NOT_ELIGIBILE_ERROR_MESSAGE =
+      "You can not complete the event id '%s' , eventType: '%s' as its not eligible to be completed, Status : '%s' ";
   private final UserProfileService userProfileService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
@@ -45,30 +50,33 @@ public class EventTransitionService {
 
     if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(
         ViewEventType.fromValue(existingEvent.getEventType()))) {
-      throw new OperationNotSupportedException(
-          String.format(
-              "You can not complete the event '%s' , you can only terminate the event",
-              existingEvent.getEventType()));
+
+      throwExceptionWithMsg(CAN_NOT_COMPLETE_ERROR_MESSAGE, existingEvent, null);
+
     } else if (COMPLETE_EVENT_TYPES.contains(
         ViewEventType.fromValue(existingEvent.getEventType()))) {
-
-      dashboardStatus = getDashboardStatus(existingEvent, rfxResponse);
+      dashboardStatus = getDashboardStatusForRfx(existingEvent, rfxResponse);
 
       if (DashboardStatus.EVALUATING.equals(dashboardStatus)
-          || DashboardStatus.TO_BE_EVALUATED.equals(dashboardStatus)) { // check with Mark
+          || DashboardStatus.TO_BE_EVALUATED.equals(dashboardStatus)) {
+        updateDbEvent(existingEvent, principal, COMPLETE_STATUS);
+      } else {
+        throwExceptionWithMsg(CAN_NOT_ELIGIBILE_ERROR_MESSAGE, existingEvent, dashboardStatus);
+      }
+
+    } else if (ASSESMENT_COMPLETE_EVENT_TYPES.contains(
+        ViewEventType.fromValue(existingEvent.getEventType()))) {
+
+        dashboardStatus = getDashboardStatus( null!=rfxResponse?rfxResponse.getRfxSetting():null,existingEvent);
+
+      if (DashboardStatus.ASSESSMENT.equals(dashboardStatus)) {
         updateDbEvent(existingEvent, principal, COMPLETE_STATUS);
 
       } else {
-        throw new OperationNotSupportedException(
-            String.format(
-                "You can not complete the event '%s' as its not eligible to be completed, Status : '%s' ",
-                existingEvent.getEventID(), dashboardStatus));
+        throwExceptionWithMsg(CAN_NOT_ELIGIBILE_ERROR_MESSAGE, existingEvent, dashboardStatus);
       }
     } else {
-      throw new OperationNotSupportedException(
-          String.format(
-              "You can not complete the event '%s' , you can only terminate the event",
-              existingEvent.getEventType()));
+      throwExceptionWithMsg(CAN_NOT_COMPLETE_ERROR_MESSAGE, existingEvent, null);
     }
   }
 
@@ -97,63 +105,59 @@ public class EventTransitionService {
     if (terminatingEvent.isTendersDBOnly()) {
       updateDbEvent(terminatingEvent, principal, type.name());
     } else {
-        final var invalidateEventRequest =
-            InvalidateEventRequest.builder()
-                .invalidateReason(type.getValue())
-                .rfxId(terminatingEvent.getExternalEventId())
-                .rfxReferenceCode(terminatingEvent.getExternalReferenceId())
-                .operatorUser(OwnerUser.builder().id(user).build())
-                .build();
-        log.info("Invalidate event request: {}", invalidateEventRequest);
-        jaggaerService.invalidateEvent(invalidateEventRequest);
-        // update status
-        updateStatusAndDates(principal, terminatingEvent, type);
+      final var invalidateEventRequest =
+          InvalidateEventRequest.builder()
+              .invalidateReason(type.getValue())
+              .rfxId(terminatingEvent.getExternalEventId())
+              .rfxReferenceCode(terminatingEvent.getExternalReferenceId())
+              .operatorUser(OwnerUser.builder().id(user).build())
+              .build();
+      log.info("Invalidate event request: {}", invalidateEventRequest);
+      jaggaerService.invalidateEvent(invalidateEventRequest);
+      // update status
+      updateStatusAndDates(principal, terminatingEvent, type);
     }
 
-    if(openCompletedEvent){
-        openCompletedEvent(procId,terminatingEvent,principal);
+    if (openCompletedEvent) {
+      openCompletedEvent(procId, terminatingEvent, principal);
     }
   }
 
-    @Transactional
-    public void openCompletedEvent(
-            final Integer projectId,
-            final ProcurementEvent terminatedEvent,
-            final String principal){
-        var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+  @Transactional
+  public void openCompletedEvent(
+      final Integer projectId, final ProcurementEvent terminatedEvent, final String principal) {
+    var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
-    Optional<ProcurementEvent> previousEventOptional=procurementEvents.stream()
-        .filter(
-            procurementEvent ->
-                (COMPLETE_STATUS.equalsIgnoreCase(procurementEvent.getTenderStatus())))
-        .sorted(Comparator.comparing(ProcurementEvent::getCloseDate)).findFirst();
+    Optional<ProcurementEvent> previousEventOptional =
+        procurementEvents.stream()
+            .filter(
+                procurementEvent ->
+                    (COMPLETE_STATUS.equalsIgnoreCase(procurementEvent.getTenderStatus())))
+            .sorted(Comparator.comparing(ProcurementEvent::getCloseDate))
+            .findFirst();
 
-        if(previousEventOptional.isPresent()){
-            ProcurementEvent completedEvent=previousEventOptional.get();
-            /*ViewEventType previousEventType=ViewEventType.fromValue(previousEventOptional.get().getEventType());
-            ViewEventType terminatedEventType=ViewEventType.fromValue(terminatedEvent.getEventType());*/
-            // extract Dashboard status
-            completedEvent.setTenderStatus(TenderStatus.PLANNING.getValue());
-        }
+    if (previousEventOptional.isPresent()) {
+      ProcurementEvent completedEvent = previousEventOptional.get();
+      completedEvent.setTenderStatus(TenderStatus.PLANNING.getValue());
+    } else {
+      Optional<ProcurementEvent> tbdEvent =
+          procurementEvents.stream()
+              .filter(
+                  procurementEvent ->
+                      (ViewEventType.fromValue(procurementEvent.getEventType())
+                          .equals(ViewEventType.TBD)))
+              .sorted(Comparator.comparing(ProcurementEvent::getCloseDate))
+              .findFirst();
+      if (tbdEvent.isPresent()) {
+        tbdEvent.get().setTenderStatus(TenderStatus.PLANNING.getValue());
+      }
     }
+  }
 
   public void updateStatusAndDates(
-      final String principal, final ProcurementEvent procurementEvent,TerminationType type) {
+      final String principal, final ProcurementEvent procurementEvent, TerminationType type) {
 
     var exportRfxResponse = getSingleRfx(procurementEvent.getExternalEventId());
-
-    /*var tenderStatus = TenderStatus.CANCELLED.getValue();
-    if (exportRfxResponse.getRfxSetting() != null) {
-      var rfxStatus =
-          jaggaerAPIConfig
-              .getRfxStatusAndEventTypeToTenderStatus()
-              .get(exportRfxResponse.getRfxSetting().getStatusCode());
-
-      tenderStatus =
-          rfxStatus != null && rfxStatus.get(procurementEvent.getEventType()) != null
-              ? rfxStatus.get(procurementEvent.getEventType()).getValue()
-              : null;
-    }*/
 
     procurementEvent.setUpdatedAt(Instant.now());
     procurementEvent.setUpdatedBy(principal);
@@ -172,8 +176,6 @@ public class EventTransitionService {
     retryableTendersDBDelegate.save(procurementEvent);
   }
 
-
-
   private ExportRfxResponse getSingleRfx(final String externalEventId) {
     return jaggaerService.searchRFx(Set.of(externalEventId)).stream()
         .findFirst()
@@ -181,7 +183,7 @@ public class EventTransitionService {
             () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
   }
 
-  private DashboardStatus getDashboardStatus(
+  private DashboardStatus getDashboardStatusForRfx(
       ProcurementEvent existingEvent, ExportRfxResponse rfxResponse) {
     DashboardStatus dashboardStatus;
     if (Objects.nonNull(rfxResponse) && Objects.nonNull(rfxResponse.getRfxSetting())) {
@@ -202,4 +204,24 @@ public class EventTransitionService {
     existingEvent.setCloseDate(Instant.now());
     retryableTendersDBDelegate.save(existingEvent);
   }
+
+  private void throwExceptionWithMsg(
+      String errorMessage, ProcurementEvent existingEvent, DashboardStatus dashboardStatus) {
+
+    if (Objects.isNull(dashboardStatus)) {
+      throw new OperationNotSupportedException(
+          String.format(
+              CAN_NOT_COMPLETE_ERROR_MESSAGE,
+              existingEvent.getEventID(),
+              existingEvent.getEventType()));
+    } else {
+      throw new OperationNotSupportedException(
+          String.format(
+              CAN_NOT_ELIGIBILE_ERROR_MESSAGE,
+              existingEvent.getEventID(),
+              existingEvent.getEventType(),
+              dashboardStatus));
+    }
+  }
+
 }

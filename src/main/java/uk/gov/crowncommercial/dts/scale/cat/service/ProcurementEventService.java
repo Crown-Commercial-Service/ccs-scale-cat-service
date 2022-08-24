@@ -917,22 +917,6 @@ public class ProcurementEventService {
       event.setCapabilityAssessmentSuppliers(supplierSelectionSet);
     }
 
-    /*supplierOrgMappings.stream().forEach(org -> {
-        log.debug("Creating new SupplierSelection record for organisation [{}]",
-            org.getOrganisationId());
-        var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
-            .createdAt(Instant.now()).createdBy(principal).build();
-          if(Objects.nonNull(event.getCapabilityAssessmentSuppliers())){
-            event.getCapabilityAssessmentSuppliers().add(selection);
-          }else{
-            event.setCapabilityAssessmentSuppliers(Collections.emptySet());
-            event.getCapabilityAssessmentSuppliers().add(selection);
-          }
-    });*/
-
-
-
-
     return retryableTendersDBDelegate.save(event);
   }
 
