@@ -22,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
+import uk.gov.crowncommercial.dts.scale.cat.repo.GCloudAssessmentResult;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.SupplierSubmissionDataRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
@@ -240,7 +241,21 @@ public class AssessmentService {
         assessmentEntity.setDimensionRequirements(assessment.getDimensionRequirements());
         assessmentEntity.setTool(tool);
 
-        // TODO: Set results
+        // Set the assessment results, if any
+        Set<GCloudAssessmentResult> results = Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result -> {
+            // For each result we have, map it to a GCloudAssessmentResult
+            GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
+
+            resultEntity.setAssessment(assessmentEntity);
+            resultEntity.setServiceName(result.getServiceName());
+            resultEntity.setSupplierName(result.getSupplier().getName());
+            resultEntity.setServiceDescription(result.getServiceDescription());
+            resultEntity.setServiceLink(result.getServiceLink().toString());
+
+            return resultEntity;
+        }).collect(Collectors.toSet());
+
+        assessmentEntity.setResults(results);
 
         // Save our entity
         return retryableTendersDBDelegate.save(assessmentEntity).getId();

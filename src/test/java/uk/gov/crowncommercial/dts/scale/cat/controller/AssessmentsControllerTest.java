@@ -42,6 +42,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
+  private static final String GCLOUD_ASSESSMENTS_PATH = "/assessments/gcloud";
   private static final String SUPPLIERS_FOR_DIMENSION_PATH =
       ASSESSMENTS_PATH + "/tools/{tool-id}/dimensions/{dimension-id}/data?lot-id=";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
@@ -208,6 +209,21 @@ class AssessmentsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$").value(1));
 
     verify(assessmentService, times(1)).createAssessment(assessment, PRINCIPAL);
+  }
+
+  @Test
+  void createGcloudAssessment_200_OK() throws Exception {
+    GCloudAssessment assessment = new GCloudAssessment();
+
+    when(assessmentService.createGcloudAssessment(assessment, PRINCIPAL)).thenReturn(1);
+
+    mockMvc
+            .perform(post(GCLOUD_ASSESSMENTS_PATH).with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(assessment)))
+            .andDo(print()).andExpect(status().isOk())
+            .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$").value(1));
+
+    verify(assessmentService, times(1)).createGcloudAssessment(assessment, PRINCIPAL);
   }
 
   @Test

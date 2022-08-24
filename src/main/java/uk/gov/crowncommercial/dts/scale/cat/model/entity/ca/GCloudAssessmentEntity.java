@@ -2,8 +2,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import uk.gov.crowncommercial.dts.scale.cat.repo.GCloudAssessmentResult;
 
 import javax.persistence.*;
+import java.util.Set;
 
 @Entity
 @Table(name = "gcloud_assessments")
@@ -28,6 +30,10 @@ public class GCloudAssessmentEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "external_tool_id")
     AssessmentTool tool;
+
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "assessment_id")
+    Set<GCloudAssessmentResult> results;
 
     @Column(name = "dimension_reqs")
     private String dimensionRequirements;
