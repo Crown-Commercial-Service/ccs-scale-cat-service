@@ -51,3 +51,6 @@ build/
 
 # ODT lock files
 **/.~lock*
+
+# Local secrets
+!**/src/main/resources/local-env-local-pg.yml
