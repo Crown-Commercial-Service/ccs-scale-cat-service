@@ -53,4 +53,4 @@ build/
 **/.~lock*
 
 # Local secrets
-!**/src/main/resources/local-env-local-pg.yml
+!./src/main/resources/local-env-local-pg.yml
