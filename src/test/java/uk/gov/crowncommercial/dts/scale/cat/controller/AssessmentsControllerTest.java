@@ -11,10 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+
+import java.util.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +49,7 @@ class AssessmentsControllerTest {
   private static final Integer LOT_ID = 1;
   private static final Integer DIMENSION_ID = 1;
   private static final String DIMENSION_NAME = "Security Clearance";
+  private static final String SERVICE_NAME = "Physical and Environmental Security";
   private static final CriteriaSelectionType CRITERIA_TYPE = CriteriaSelectionType.SELECT;
   private static final String EXTERNAL_TOOL_ID = "2";
   private static final Integer TOOL_ID = 2;
@@ -193,6 +193,30 @@ class AssessmentsControllerTest {
             .value(CRITERION_NAME_SUPPLIER))
         .andExpect(jsonPath("$.dimensionRequirements[0].requirements[0].values[0].value")
             .value(REQUIREMENT_SC_CTC));
+  }
+
+  @Test
+  void getGcloudAssessment_200_OK() throws Exception {
+    GCloudAssessment assessment = new GCloudAssessment();
+    assessment.setAssessmentId(ASSESSMENT_ID);
+    assessment.setExternalToolId(EXTERNAL_TOOL_ID);
+
+    GCloudResult result = new GCloudResult();
+    result.setServiceName(SERVICE_NAME);
+    ArrayList<GCloudResult> resultList = new ArrayList<>();
+    resultList.add(result);
+    assessment.setResults(resultList);
+
+    when(assessmentService.getGcloudAssessment(ASSESSMENT_ID)).thenReturn(assessment);
+
+    mockMvc
+            .perform(get(ASSESSMENTS_PATH + "/{assessmentID}/gcloud", ASSESSMENT_ID)
+                    .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+            .andDo(print()).andExpect(status().isOk())
+            .andExpect(content().contentType(APPLICATION_JSON))
+            .andExpect(jsonPath("$.assessment-id").value(ASSESSMENT_ID))
+            .andExpect(jsonPath("$.external-tool-id").value(TOOL_ID))
+            .andExpect(jsonPath("$.results[0].serviceName").value(SERVICE_NAME));
   }
 
   @Test
