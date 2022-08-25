@@ -264,6 +264,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public void deleteGcloudAssessmentResultsById(final Integer assessmentId) {
+    gCloudAssessmentResultRepo.deleteAllByAssessmentId(assessmentId);
+  }
+
+  @TendersRetryable
   public List<ProjectUserMapping> saveAll(final List<ProjectUserMapping> projectUserMappings) {
     return projectUserMappingRepo.saveAll(projectUserMappings);
   }

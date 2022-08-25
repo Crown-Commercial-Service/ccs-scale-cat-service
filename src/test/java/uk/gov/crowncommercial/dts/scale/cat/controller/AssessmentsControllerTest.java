@@ -5,8 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -248,6 +247,20 @@ class AssessmentsControllerTest {
             .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$").value(1));
 
     verify(assessmentService, times(1)).createGcloudAssessment(assessment, PRINCIPAL);
+  }
+
+  @Test
+  void updateGcloudAssessment_200_OK() throws Exception {
+    GCloudAssessment assessment = new GCloudAssessment();
+    assessment.setAssessmentId(ASSESSMENT_ID);
+
+    mockMvc
+            .perform(put(ASSESSMENTS_PATH + "/{assessmentID}/gcloud", ASSESSMENT_ID)
+                    .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(assessment)))
+            .andDo(print()).andExpect(status().isOk());
+
+    verify(assessmentService, times(1)).updateGcloudAssessment(assessment, ASSESSMENT_ID, PRINCIPAL);
   }
 
   @Test

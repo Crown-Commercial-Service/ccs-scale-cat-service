@@ -63,6 +63,7 @@ public class AssessmentsController extends AbstractRestController {
     return assessmentService.createAssessment(assessment, principal);
   }
 
+  // TODO: GET mapping needs extending
   @GetMapping
   public List<AssessmentSummary> getAssessmentsForUser(
       final JwtAuthenticationToken authentication) {
@@ -240,7 +241,13 @@ public class AssessmentsController extends AbstractRestController {
   /**
    * Updates a saved Gcloud assessment
    */
-  // TODO: PUT /assessments/{assessment-id}/gcloud
+  @PutMapping("/{assessment-id}/gcloud")
+  public void updateGcloudAssessment(@RequestBody final GCloudAssessment assessment, final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("updateGcloudAssessment invoked on behalf of principal: {}", principal);
+
+    assessmentService.updateGcloudAssessment(assessment, assessmentId, principal);
+  }
 
   // TODO: Export assessment (once specced)
 }

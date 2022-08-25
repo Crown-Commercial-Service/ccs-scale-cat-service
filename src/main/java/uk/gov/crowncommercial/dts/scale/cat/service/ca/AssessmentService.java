@@ -265,6 +265,60 @@ public class AssessmentService {
     }
 
     /**
+     * Update a GCloud Assessment.
+     *
+     * @param assessment
+     * @param assessmentId
+     * @param principal
+     * @return
+     */
+    @Transactional
+    public void updateGcloudAssessment(final GCloudAssessment assessment, final Integer assessmentId, final String principal) {
+        log.debug("Updating Gcloud assessment " + assessmentId);
+
+        // First of all, retrieve the existing assessment from the database, to make sure it exists
+        GCloudAssessmentEntity model = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+        if (model != null) {
+            // We now know the assessment does exist, so now we can proceed to update it
+            model.setId(assessmentId);
+            model.setAssessmentName(assessment.getAssessmentName());
+
+            if (assessment.getStatus() == AssessmentStatus.ACTIVE) {
+                model.setStatus(AssessmentStatusEntity.ACTIVE);
+            } else {
+                model.setStatus(AssessmentStatusEntity.COMPLETE);
+            }
+
+            model.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
+            model.setDimensionRequirements(assessment.getDimensionRequirements());
+            model.setTimestamps(createTimestamps(principal));
+
+            // We do not map results here - we need to now update the core record, then clear down results and re-create them fresh
+            retryableTendersDBDelegate.save(model);
+
+            // Now we first need to clear down all the existing results for this assessment in the DB
+            retryableTendersDBDelegate.deleteGcloudAssessmentResultsById(assessmentId);
+
+            // Finally we can now spool up our results and re-save them
+            for (GCloudResult result : assessment.getResults()) {
+                GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
+
+                resultEntity.setAssessmentId(assessmentId);
+                resultEntity.setServiceName(result.getServiceName());
+                resultEntity.setSupplierName(result.getSupplier().getName());
+                resultEntity.setServiceDescription(result.getServiceDescription());
+                resultEntity.setServiceLink(result.getServiceLink().toString());
+                resultEntity.setTimestamps(createTimestamps(principal));
+
+                retryableTendersDBDelegate.save(resultEntity);
+            }
+        }
+    }
+
+    /**
      * Get Assessments for a User.
      *
      * @param principal
