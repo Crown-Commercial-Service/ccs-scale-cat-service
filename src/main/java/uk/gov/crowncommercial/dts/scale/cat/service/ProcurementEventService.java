@@ -2,11 +2,11 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -124,7 +124,8 @@ public class ProcurementEventService {
     List<Supplier> suppliers = null;
 
     // check any valid events existed before
-    Optional<ProcurementEvent> existingEventOptional = getExistingValidEvents(project.getProcurementEvents());
+    Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents())?getExistingValidEvents(project.getProcurementEvents()):Optional.empty();
+
 
     if (!existingEventOptional.isPresent()) {
       log.info("No events exists for this project");
