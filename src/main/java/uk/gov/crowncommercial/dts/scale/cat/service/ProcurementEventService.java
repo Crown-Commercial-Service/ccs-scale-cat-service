@@ -123,12 +123,14 @@ public class ProcurementEventService {
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     List<Supplier> suppliers = null;
 
-    // check any events before
-    if (CollectionUtils.isEmpty(project.getProcurementEvents())) {
+    // check any valid events existed before
+    Optional<ProcurementEvent> existingEventOptional = getExistingValidEvents(project.getProcurementEvents());
+
+    if (!existingEventOptional.isPresent()) {
       log.info("No events exists for this project");
     } else {
       // complete the event and copy suppliers
-      var existingEvent = project.getProcurementEvents().stream().iterator().next();
+      var existingEvent = existingEventOptional.get();
 
       eventTransitionService.completeExistingEvent(existingEvent,principal);
 
@@ -259,6 +261,12 @@ public class ProcurementEventService {
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
         TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+  }
+
+  private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
+
+    return procurementEvents.stream().filter(event-> !CLOSED_STATUS_LIST.contains(event.getTenderStatus())).findFirst();
+
   }
 
   /**
@@ -883,8 +891,8 @@ public class ProcurementEventService {
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
       eventSummary.tenderPeriod(getTenderPeriod(
-          rfxSetting.getPublishDate() == null ? null : rfxSetting.getPublishDate().toInstant(),
-          rfxSetting.getCloseDate() == null ? null : rfxSetting.getCloseDate().toInstant()));
+              ( null==rfxSetting || rfxSetting.getPublishDate() == null ) ? null : rfxSetting.getPublishDate().toInstant(),
+               ( null==rfxSetting || rfxSetting.getCloseDate() == null ) ? null : rfxSetting.getCloseDate().toInstant()));
 
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       return eventSummary;
