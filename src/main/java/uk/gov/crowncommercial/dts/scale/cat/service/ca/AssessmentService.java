@@ -5,6 +5,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
@@ -35,6 +36,7 @@ public class AssessmentService {
 
     private static final String ERR_MSG_FMT_TOOL_NOT_FOUND = "Assessment Tool [%s] not found";
     private static final String ERR_MSG_FMT_ASSESSMENT_NOT_FOUND = "Assessment [%s] not found";
+    private static final String ERR_MSG_FMT_ASSESSMENT_RESULTS_NOT_FOUND = "Assessment [%s] results not found";
     private static final String ERR_MSG_FMT_DIMENSION_NOT_FOUND = "Dimension [%s] not found";
     private static final String ERR_MSG_FMT_REQUIREMENT_TAXON_NOT_FOUND =
             "Requirement Taxon for Requirement [%s] and Tool [%s] not found";
@@ -357,6 +359,50 @@ public class AssessmentService {
         return response;
     }
 
+    /**
+     * Get GCloud Assessment details.
+     *
+     * @param assessmentId
+     * @return
+     */
+    @Transactional
+    public GCloudAssessment getGcloudAssessment(final Integer assessmentId) {
+        GCloudAssessmentEntity assessment = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+        // Now build the results
+        Set<GCloudAssessmentResult> results = retryableTendersDBDelegate.findGcloudResultsByAssessmentId(assessmentId);
+        if (results.isEmpty()) {
+            throw new ResourceNotFoundException(format(ERR_MSG_FMT_ASSESSMENT_RESULTS_NOT_FOUND, assessmentId));
+        }
+
+        ArrayList<GCloudResult> resultsList = new ArrayList<>();
+
+        for (GCloudAssessmentResult result : results) {
+            GCloudResult resultModel = new GCloudResult();
+            resultModel.setServiceName(result.getServiceName());
+            resultModel.setServiceDescription(result.getServiceDescription());
+            resultModel.setServiceLink(URI.create(result.getServiceLink()));
+
+            Supplier supplierModel = new Supplier();
+            supplierModel.setName(result.getSupplierName());
+            resultModel.setSupplier(supplierModel);
+
+            resultsList.add(resultModel);
+        }
+
+        // Now map everything to our return model and output
+        GCloudAssessment responseModel = new GCloudAssessment();
+        responseModel.setAssessmentId(assessment.getId());
+        responseModel.setAssessmentName(assessment.getAssessmentName());
+        responseModel.setExternalToolId(assessment.getExternalToolId().toString());
+        responseModel.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
+        responseModel.setDimensionRequirements(assessment.getDimensionRequirements());
+        responseModel.setResults(resultsList);
+
+        return responseModel;
+    }
 
     private List<SupplierScores> getSupplierScores(final AssessmentEntity assessment,
                                                    final String principal, List<DimensionRequirement> dimensionRequirements){

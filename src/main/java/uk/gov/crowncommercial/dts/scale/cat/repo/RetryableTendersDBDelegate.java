@@ -147,6 +147,16 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Optional<GCloudAssessmentEntity> findGcloudAssessmentById(final Integer id) {
+    return gcloudAssessmentRepo.findById(id);
+  }
+
+  @TendersRetryable
+  public Set<GCloudAssessmentResult> findGcloudResultsByAssessmentId(final Integer id) {
+    return gCloudAssessmentResultRepo.findByAssessmentId(id);
+  }
+
+  @TendersRetryable
   public AssessmentDimensionWeighting save(
       final AssessmentDimensionWeighting assessmentDimensionWeighting) {
     return assessmentDimensionWeightingRepo.saveAndFlush(assessmentDimensionWeighting);

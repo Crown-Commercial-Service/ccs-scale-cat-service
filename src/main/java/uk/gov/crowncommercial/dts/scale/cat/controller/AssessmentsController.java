@@ -229,7 +229,13 @@ public class AssessmentsController extends AbstractRestController {
   /**
    * Retrieves requested Gcloud assessment
    */
-  // TODO: GET /assessments/{assessment-id}/gcloud
+  @GetMapping("/{assessment-id}/gcloud")
+  public GCloudAssessment getGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getGcloudAssessment invoked on behalf of principal: {}", principal);
+
+    return assessmentService.getGcloudAssessment(assessmentId);
+  }
 
   /**
    * Updates a saved Gcloud assessment
