@@ -225,14 +225,6 @@ public class AssessmentService {
     public Integer createGcloudAssessment(final GCloudAssessment assessment, final String principal) {
         log.debug("Creating GCloud assessment");
 
-        // We need to check the tool is found, but not be concerned with DimensionMapping errors - it's expected as they're not needed here
-        var tool = retryableTendersDBDelegate
-                .findAssessmentToolByExternalToolId(assessment.getExternalToolId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        format(ERR_MSG_FMT_TOOL_NOT_FOUND, assessment.getExternalToolId())));
-
-        // TODO: Error is here - dimensionMappings is null
-
         var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
                 () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
 
@@ -243,26 +235,31 @@ public class AssessmentService {
         assessmentEntity.setStatus(AssessmentStatusEntity.ACTIVE); // Map this to active per the createAssessment function above
         assessmentEntity.setDimensionRequirements(assessment.getDimensionRequirements());
         assessmentEntity.setTimestamps(createTimestamps(principal));
-        assessmentEntity.setTool(tool);
+        assessmentEntity.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
 
-        // Set the assessment results, if any
-        Set<GCloudAssessmentResult> results = Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result -> {
-            // For each result we have, map it to a GCloudAssessmentResult
-            GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
+        // Save our assessment entity
+        Integer saveResult = retryableTendersDBDelegate.save(assessmentEntity).getId();
 
-            resultEntity.setAssessment(assessmentEntity);
-            resultEntity.setServiceName(result.getServiceName());
-            resultEntity.setSupplierName(result.getSupplier().getName());
-            resultEntity.setServiceDescription(result.getServiceDescription());
-            resultEntity.setServiceLink(result.getServiceLink().toString());
+        if (saveResult > 0) {
+            // Now setup any assessment results we have, if any
+            Set<GCloudAssessmentResult> results = Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result -> {
+                // For each result we have, map it to a GCloudAssessmentResult and save it into the database
+                GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
 
-            return resultEntity;
-        }).collect(Collectors.toSet());
+                resultEntity.setAssessmentId(saveResult);
+                resultEntity.setServiceName(result.getServiceName());
+                resultEntity.setSupplierName(result.getSupplier().getName());
+                resultEntity.setServiceDescription(result.getServiceDescription());
+                resultEntity.setServiceLink(result.getServiceLink().toString());
+                resultEntity.setTimestamps(createTimestamps(principal));
 
-        assessmentEntity.setResults(results);
+                retryableTendersDBDelegate.save(resultEntity);
 
-        // Save our entity
-        return retryableTendersDBDelegate.save(assessmentEntity).getId();
+                return resultEntity;
+            }).collect(Collectors.toSet());
+        }
+
+        return saveResult;
     }
 
     /**

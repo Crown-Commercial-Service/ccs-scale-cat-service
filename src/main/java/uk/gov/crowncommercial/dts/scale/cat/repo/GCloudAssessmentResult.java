@@ -21,9 +21,8 @@ public class GCloudAssessmentResult {
     @Column(name = "gcloud_result_id")
     Integer id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "assessment_id")
-    GCloudAssessmentEntity assessment;
+    @Column(name = "assessment_id")
+    private Integer assessmentId;
 
     @Column(name = "service_name")
     private String serviceName;

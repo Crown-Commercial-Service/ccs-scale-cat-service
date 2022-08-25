@@ -28,10 +28,10 @@ public class GCloudAssessmentEntity {
     @Enumerated(EnumType.STRING)
     private AssessmentStatusEntity status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assessment_tool_id")
-    AssessmentTool tool;
+    @Column(name = "external_tool_id")
+    private Integer externalToolId;
 
+    @ToString.Exclude
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "assessment_id")
     Set<GCloudAssessmentResult> results;
