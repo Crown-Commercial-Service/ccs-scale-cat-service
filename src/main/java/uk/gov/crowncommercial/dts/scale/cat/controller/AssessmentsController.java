@@ -26,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 @RestController
@@ -63,15 +64,12 @@ public class AssessmentsController extends AbstractRestController {
     return assessmentService.createAssessment(assessment, principal);
   }
 
-  // TODO: GET mapping needs extending
   @GetMapping
-  public List<AssessmentSummary> getAssessmentsForUser(
-      final JwtAuthenticationToken authentication) {
-
+  public List<AssessmentSummary> getAssessmentsForUser(final @RequestParam(required = false, name = "external-tool-id") Integer externalToolId, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getAssessmentsForUser invoked on behalf of principal: {}", principal);
 
-    return assessmentService.getAssessmentsForUser(principal);
+    return assessmentService.getAssessmentsForUser(principal, externalToolId);
   }
 
   @GetMapping("/{assessment-id}")

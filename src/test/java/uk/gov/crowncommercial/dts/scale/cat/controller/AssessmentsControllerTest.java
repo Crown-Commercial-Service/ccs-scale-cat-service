@@ -79,12 +79,11 @@ class AssessmentsControllerTest {
 
   @Test
   void getAssessments_200_OK() throws Exception {
-
     var assessmentSummary = new AssessmentSummary();
     assessmentSummary.setAssessmentId(ASSESSMENT_ID);
     assessmentSummary.setExternalToolId(EXTERNAL_TOOL_ID);
 
-    when(assessmentService.getAssessmentsForUser(PRINCIPAL)).thenReturn(List.of(assessmentSummary));
+    when(assessmentService.getAssessmentsForUser(PRINCIPAL, null)).thenReturn(List.of(assessmentSummary));
 
     mockMvc.perform(get(ASSESSMENTS_PATH).with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())

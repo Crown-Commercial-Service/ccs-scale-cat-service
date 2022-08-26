@@ -132,6 +132,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Set<GCloudAssessmentEntity> findGcloudAssessmentsForUser(final String userId) {
+    return gcloudAssessmentRepo.findByTimestampsCreatedBy(userId);
+  }
+
+  @TendersRetryable
   public AssessmentEntity save(final AssessmentEntity assessment) {
     return assessmentRepo.saveAndFlush(assessment);
   }
