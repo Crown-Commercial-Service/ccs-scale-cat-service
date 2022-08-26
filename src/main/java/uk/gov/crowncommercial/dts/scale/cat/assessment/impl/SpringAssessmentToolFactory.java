@@ -8,6 +8,7 @@ import uk.gov.crowncommercial.dts.scale.cat.assessment.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentToolDimension;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import java.util.*;
 
@@ -22,7 +23,6 @@ public class SpringAssessmentToolFactory implements ApplicationContextAware, Ass
 
     public AssessmentToolCalculator getAssessmentTool(AssessmentEntity assessment){
         AssessmentTool tool = assessment.getTool();
-      //  String toolId = tool.getExternalToolId();
 
         List<AssessmentToolDimension> toolDimensionList =  tool.getDimensionMapping();
 
@@ -30,15 +30,13 @@ public class SpringAssessmentToolFactory implements ApplicationContextAware, Ass
         Map<String, ExclusionPolicy> exclusionPolicies = new HashMap<>();
 
         AssessmentScoreCalculator toolCalculator = getAssessmentCalculator(0);
-
+        RetryableTendersDBDelegate retryableTendersDBDelegate = context.getBean(RetryableTendersDBDelegate.class);
         for(AssessmentToolDimension atd : toolDimensionList){
             dimCalcList.put(atd.getDimension().getName(), getDimensionCalculator(atd));
             exclusionPolicies.put(atd.getDimension().getName(), getExclusionPolicy(atd));
         }
 
-        AssessmentToolCalculator calculator = new BasicAssessmentToolCalculator(toolCalculator, dimCalcList, exclusionPolicies);
-
-        return calculator;
+        return new BasicAssessmentToolCalculator(toolCalculator, dimCalcList, exclusionPolicies, retryableTendersDBDelegate);
     }
 
 
