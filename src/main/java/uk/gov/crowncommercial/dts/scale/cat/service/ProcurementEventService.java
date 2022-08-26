@@ -36,6 +36,7 @@ import javax.validation.ValidationException;
 import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -891,13 +892,31 @@ public class ProcurementEventService {
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
-      eventSummary.tenderPeriod(getTenderPeriod(
-              ( null==rfxSetting || rfxSetting.getPublishDate() == null ) ? null : rfxSetting.getPublishDate().toInstant(),
-               ( null==rfxSetting || rfxSetting.getCloseDate() == null ) ? null : rfxSetting.getCloseDate().toInstant()));
 
-      eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+      updateTenderPeriod(event, rfxSetting, eventSummary);
+      if(Objects.nonNull(eventSummary)){
+         eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+      }
       return eventSummary;
     }).collect(Collectors.toList());
+  }
+
+  private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
+    if(Objects.nonNull(rfxSetting)){
+        eventSummary.tenderPeriod(getTenderPeriod(
+            ( rfxSetting.getPublishDate() == null ) ? null : rfxSetting.getPublishDate().toInstant(),
+             ( rfxSetting.getCloseDate() == null ) ? null : rfxSetting.getCloseDate().toInstant()));
+        // there may be possibility where close date is not available from jaggaer
+        if(Objects.nonNull(eventSummary.getTenderPeriod())){
+          eventSummary.getTenderPeriod().setEndDate(event.getCloseDate() == null ? null : OffsetDateTime.ofInstant(event.getCloseDate(), ZoneId.systemDefault()));
+        }
+    }else{
+      eventSummary.tenderPeriod(getTenderPeriod(
+              ( event.getPublishDate() == null ) ? null : event.getPublishDate(),
+              ( event.getCloseDate() == null ) ? null : event.getCloseDate()));
+    }
+
+
   }
 
   /**

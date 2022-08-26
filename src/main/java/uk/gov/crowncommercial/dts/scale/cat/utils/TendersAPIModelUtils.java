@@ -111,12 +111,16 @@ public class TendersAPIModelUtils {
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();
-    eventDetailOCDS.setId(rfxSetting.getRfxId());
-    eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
-    eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
-    eventDetailOCDS
-        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    // TODO: TBC - mappings required
+    // TODO : Verify with Nick whats the functionality from RFI(=) to FCA(=)
+    if (Objects.nonNull(rfxSetting)) {
+      eventDetailOCDS.setId(rfxSetting.getRfxId());
+      eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
+      eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
+      eventDetailOCDS.setStatus(
+          jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+      // TODO: TBC - mappings required
+
+    }
     eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     eventDetail.setOCDS(eventDetailOCDS);
 

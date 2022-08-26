@@ -646,8 +646,11 @@ public class ProcurementProjectService {
     if (CollectionUtils.isEmpty(procurementEvents)) {
       log.info("No events exists for this project");
     } else {
-      eventTransitionService.terminateEvent(projectId,
-          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal, false);
+      procurementEvents.forEach(
+              event -> {
+                eventTransitionService.terminateEvent(
+                    projectId, event.getEventID(), TerminationType.WITHDRAWN, principal, false);
+              });
     }
   }
 }
