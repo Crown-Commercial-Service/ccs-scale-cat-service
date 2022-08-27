@@ -102,6 +102,7 @@ public class ProcurementEventService {
 
   private final EventTransitionService eventTransitionService;
 
+  private final TenderDBEventService tenderDBEventService;
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -349,6 +350,11 @@ public class ProcurementEventService {
     log.debug("Update Event {}", updateEvent);
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+    if(event.isTendersDBOnly()){
+      return tenderDBEventService.updateDBProcurementEvent(event, updateEvent, principal);
+    }
+
     var exportRfxResponse = getSingleRfx(event.getExternalEventId());
 
     if (updateEvent.getEventType() != null) {
