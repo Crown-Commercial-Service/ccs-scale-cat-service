@@ -43,8 +43,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 @Slf4j
 public class DocGenService {
 
-  public static final String PLACEHOLDER_ERROR = "«ERROR»";
-  public static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
+  public static final String PLACEHOLDER_ERROR = "";
+  public static final String PLACEHOLDER_UNKNOWN = "";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
 
@@ -204,10 +204,11 @@ public class DocGenService {
           replaceList(documentTemplateSource, dataReplacement, textODT);
           break;
         default:
-          log.warn("Unrecognised target type - assume simple text");
+          replaceText(documentTemplateSource, "", textODT);
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
+      replaceText(documentTemplateSource, "", textODT);
     }
 
   }
