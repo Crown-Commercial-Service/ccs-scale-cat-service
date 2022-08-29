@@ -14,4 +14,7 @@ public class Organization {
 
   String id;
 
+  String name;
+
+  private Address address;
 }
