@@ -109,13 +109,15 @@ public class EventsController extends AbstractRestController {
   public ResponseEntity<InputStreamResource> exportScroes(
           @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
           final JwtAuthenticationToken authentication,
+          @RequestParam(name="maxScore", required = false) Float maxScore,
+          @RequestParam(name="minScore", required = false) Float minScore,
           @RequestHeader(name = "mime-type", required = false,
                   defaultValue = "text/csv") final String mimeType) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
-    List<SupplierScore> scores = scoreExportService.getScores(procId, eventId, null, null, Optional.of(principal));
+    List<SupplierScore> scores = scoreExportService.getScores(procId, eventId, minScore, maxScore, Optional.of(principal));
     return scoreExportService.export(procId, eventId, scores, mimeType);
   }
 

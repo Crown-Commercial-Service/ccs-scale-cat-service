@@ -10,11 +10,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
@@ -23,19 +19,17 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessmen
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ValidationService;
 
-import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -43,8 +37,8 @@ import java.util.stream.Collectors;
 public class AssessmentScoreExportService {
     private final AssessmentService assessmentService;
     private final AgreementsService agreementService;
+
     private final ValidationService validationService;
-    private final ProcurementProjectRepo ppRepo;
     private final ObjectMapper mapper;
 
     private static final String SUPPLIER_SCORE = "Supplier_Score_%s_%s.csv";
@@ -52,28 +46,32 @@ public class AssessmentScoreExportService {
 
     public List<SupplierScore> getScores(final Integer projectId, final String eventId,
                                          final Float minScore, final Float maxScore,
-                                         final Optional<String> principalForScores){
+                                         final Optional<String> principalForScores) {
 
 
         ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
         Integer assessmentId = event.getAssessmentId();
-        if(null == assessmentId){
-            throw new ResourceNotFoundException("AssessmentId not found for project " + projectId +", eventId " + eventId);
+        if (null == assessmentId) {
+            throw new ResourceNotFoundException("AssessmentId not found for project " + projectId + ", eventId " + eventId);
         }
+
+        ProcurementProject project = event.getProject();
         Assessment assessment = assessmentService.getAssessment(assessmentId, true, principalForScores);
         List<SupplierScores> calculatedScores = assessment.getScores();
 
-        ProcurementProject project = event.getProject();
-        Collection<LotSupplier> suppliers = agreementService.getLotSuppliers(project.getCaNumber(),  project.getLotNumber());
+
+        Collection<LotSupplier> suppliers = agreementService.getLotSuppliers(project.getCaNumber(), project.getLotNumber());
         Map<String, LotSupplier> supplierMap = new HashMap<>(suppliers.size() * 2);
-        for(LotSupplier supplier : suppliers){
+        for (LotSupplier supplier : suppliers) {
             supplierMap.put(supplier.getOrganization().getId(), supplier);
         }
 
-        Predicate<SupplierScores>  filter = getFilter(minScore, maxScore);
+
+        Predicate<SupplierScores> filter = getFilter(minScore, maxScore);
 
         List<SupplierScore> scoreList = calculatedScores.stream().filter(filter)
-                .map(d -> convert(d,supplierMap))
+
+                .map(d -> convert(d, supplierMap))
                 .toList();
         return scoreList;
     }
@@ -81,7 +79,7 @@ public class AssessmentScoreExportService {
     public ResponseEntity<InputStreamResource> export(
             final Integer projectId, final String eventId,
             final List<SupplierScore> supplierScores,
-                    final String mimeType) {
+            final String mimeType) {
         if (mimeType.equalsIgnoreCase("text/csv"))
             return printToCsv(supplierScores, String.format(SUPPLIER_SCORE, projectId, eventId));
         else if (mimeType.equalsIgnoreCase(MediaType.APPLICATION_JSON_VALUE))
@@ -90,20 +88,20 @@ public class AssessmentScoreExportService {
     }
 
 
-    public SupplierScore convert(SupplierScores input, Map<String, LotSupplier> supplierMap){
+    public SupplierScore convert(SupplierScores input, Map<String, LotSupplier> supplierMap) {
         SupplierScore output = new SupplierScore();
         String supplierDunsNumber = input.getSupplier().getId();
         output.setScore(input.getTotal());
         output.setIdentifier(supplierDunsNumber);
         LotSupplier supplier = supplierMap.get(supplierDunsNumber);
-        if(null != supplier){
+        if (null != supplier) {
             Set<Contact> contacts = supplier.getLotContacts();
-            if(null != contacts && contacts.size() > 0){
+            if (null != contacts && contacts.size() > 0) {
                 Iterator<Contact> itr = contacts.stream().iterator();
-                while(itr.hasNext()){
+                while (itr.hasNext()) {
                     Contact ct = itr.next();
                     ContactPoint contact = ct.getContactPoint();
-                    if(null != contact){
+                    if (null != contact) {
                         output.setContactEmail(contact.getEmail());
                         output.setContactFaxNumber(contact.getFaxNumber());
                         output.setContactName(contact.getName());
@@ -115,12 +113,14 @@ public class AssessmentScoreExportService {
             }
 
             Organization org = supplier.getOrganization();
-            if(null != org) {
+            if (null != org) {
                 Address address = org.getAddress();
                 if (null != address) {
                     output.setLocality(address.getLocality());
                     output.setCountryName(address.getCountryName());
                     output.setStreetAddress(address.getStreetAddress());
+                    output.setRegion(address.getRegion());
+                    output.setPostalCode(address.getPostalCode());
                 }
 
                 output.setName(org.getName());
@@ -129,24 +129,25 @@ public class AssessmentScoreExportService {
         return output;
     }
 
-    private Predicate<SupplierScores> getFilter(Float minScore, Float maxScore){
+    private Predicate<SupplierScores> getFilter(Float minScore, Float maxScore) {
 
-        if(null != minScore){
-            if(null != maxScore){
+        if (null != minScore) {
+            if (null != maxScore) {
                 return new MinMaxScorePredicate(minScore, maxScore);
-            }else
+            } else
                 return new MinScorePredicate(minScore);
-        }else {
-            if(null != maxScore)
+        } else {
+            if (null != maxScore)
                 return new MaxScorePredicate(maxScore);
             else
                 return new NoopPredicate();
         }
     }
 
-    private static class MinScorePredicate implements Predicate<SupplierScores>{
+    private static class MinScorePredicate implements Predicate<SupplierScores> {
         private final double minScore;
-        public MinScorePredicate(double minScore){
+
+        public MinScorePredicate(double minScore) {
             this.minScore = minScore;
         }
 
@@ -157,9 +158,10 @@ public class AssessmentScoreExportService {
         }
     }
 
-    private static class MaxScorePredicate implements Predicate<SupplierScores>{
+    private static class MaxScorePredicate implements Predicate<SupplierScores> {
         private final double maxScore;
-        public MaxScorePredicate(double maxScore){
+
+        public MaxScorePredicate(double maxScore) {
             this.maxScore = maxScore;
         }
 
@@ -170,9 +172,10 @@ public class AssessmentScoreExportService {
         }
     }
 
-    private static class MinMaxScorePredicate implements Predicate<SupplierScores>{
+    private static class MinMaxScorePredicate implements Predicate<SupplierScores> {
         private final double maxScore, minScore;
-        public MinMaxScorePredicate(double minScore, double maxScore){
+
+        public MinMaxScorePredicate(double minScore, double maxScore) {
             this.maxScore = maxScore;
             this.minScore = minScore;
         }
@@ -184,7 +187,7 @@ public class AssessmentScoreExportService {
         }
     }
 
-    private static class NoopPredicate implements Predicate<SupplierScores>{
+    private static class NoopPredicate implements Predicate<SupplierScores> {
         @Override
         public boolean test(SupplierScores supplierScores) {
             return true;
@@ -201,13 +204,14 @@ public class AssessmentScoreExportService {
                 .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
     }
 
-    private ResponseEntity<InputStreamResource> printToCsv(List<SupplierScore> supplierScores, String filename) {
+    private ResponseEntity<InputStreamResource> printToCsv(List<SupplierScore> supplierScores, String
+            filename) {
         var out = new ByteArrayOutputStream();
         try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
 
-            csvPrinter.printRecord("name","identifier","streetAddress","locality","region","postalCode",
-                    "countryName","contactName","contactEmail","contactTelephone","contactFaxNumber",
-                    "contactUrl","score");
+            csvPrinter.printRecord("name", "identifier", "streetAddress", "locality", "region", "postalCode",
+                    "countryName", "contactName", "contactEmail", "contactTelephone", "contactFaxNumber",
+                    "contactUrl", "score");
             for (SupplierScore calculationBase : supplierScores) {
                 writeRecord(calculationBase, csvPrinter);
             }
@@ -229,7 +233,7 @@ public class AssessmentScoreExportService {
         csvPrinter.printRecord(ssd.getName(), ssd.getIdentifier(),
                 ssd.getStreetAddress(), ssd.getLocality(), ssd.getRegion(),
                 ssd.getPostalCode(), ssd.getCountryName(),
-                ssd.getContactName(),ssd.getContactEmail(), ssd.getContactTelephone() ,
+                ssd.getContactName(), ssd.getContactEmail(), ssd.getContactTelephone(),
                 ssd.getContactFaxNumber(), ssd.getContactUrl(), ssd.getScore());
 
     }
