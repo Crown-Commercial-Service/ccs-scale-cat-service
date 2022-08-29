@@ -1,17 +1,41 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ValidationService;
 
-import java.util.List;
-import java.util.Optional;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,31 +43,89 @@ import java.util.function.Predicate;
 public class AssessmentScoreExportService {
     private final AssessmentService assessmentService;
     private final AgreementsService agreementService;
+    private final ValidationService validationService;
     private final ProcurementProjectRepo ppRepo;
+    private final ObjectMapper mapper;
 
-    public List<SupplierScore> getScores(final Integer assessmentId,
+    private static final String SUPPLIER_SCORE = "Supplier_Score_%s_%s.csv";
+    private static final String NOT_SUPPORTED_MIME_TYPE = "Mime Type application/json not supported";
+
+    public List<SupplierScore> getScores(final Integer projectId, final String eventId,
                                          final Float minScore, final Float maxScore,
                                          final Optional<String> principalForScores){
 
+
+        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
+        Integer assessmentId = event.getAssessmentId();
+        if(null == assessmentId){
+            throw new ResourceNotFoundException("AssessmentId not found for project " + projectId +", eventId " + eventId);
+        }
         Assessment assessment = assessmentService.getAssessment(assessmentId, true, principalForScores);
         List<SupplierScores> calculatedScores = assessment.getScores();
-//        ProcurementProject project = ppRepo.findDistinctByProcurementEventsAssessmentId(assessmentId);
-//        Collection<LotSupplier> suppliers = agreementService.getLotSuppliers(project.getCaNumber(),  project.getLotNumber());
 
-     //   Map<String, LotSupplier> supplierMap = suppliers.stream().collect(Collectors.toMap(LotSupplier::getOrganization))
+        ProcurementProject project = event.getProject();
+        Collection<LotSupplier> suppliers = agreementService.getLotSuppliers(project.getCaNumber(),  project.getLotNumber());
+        Map<String, LotSupplier> supplierMap = new HashMap<>(suppliers.size() * 2);
+        for(LotSupplier supplier : suppliers){
+            supplierMap.put(supplier.getOrganization().getId(), supplier);
+        }
 
         Predicate<SupplierScores>  filter = getFilter(minScore, maxScore);
 
         List<SupplierScore> scoreList = calculatedScores.stream().filter(filter)
-                .map(this::convert)
+                .map(d -> convert(d,supplierMap))
                 .toList();
         return scoreList;
     }
 
-    public SupplierScore convert(SupplierScores input){
+    public ResponseEntity<InputStreamResource> export(
+            final Integer projectId, final String eventId,
+            final List<SupplierScore> supplierScores,
+                    final String mimeType) {
+        if (mimeType.equalsIgnoreCase("text/csv"))
+            return printToCsv(supplierScores, String.format(SUPPLIER_SCORE, projectId, eventId));
+        else if (mimeType.equalsIgnoreCase(MediaType.APPLICATION_JSON_VALUE))
+            return printToJson(supplierScores);
+        else throw new NotSupportedException(NOT_SUPPORTED_MIME_TYPE);
+    }
+
+
+    public SupplierScore convert(SupplierScores input, Map<String, LotSupplier> supplierMap){
         SupplierScore output = new SupplierScore();
+        String supplierDunsNumber = input.getSupplier().getId();
         output.setScore(input.getTotal());
-        output.setIdentifier(input.getSupplier().getId());
+        output.setIdentifier(supplierDunsNumber);
+        LotSupplier supplier = supplierMap.get(supplierDunsNumber);
+        if(null != supplier){
+            Set<Contact> contacts = supplier.getLotContacts();
+            if(null != contacts && contacts.size() > 0){
+                Iterator<Contact> itr = contacts.stream().iterator();
+                while(itr.hasNext()){
+                    Contact ct = itr.next();
+                    ContactPoint contact = ct.getContactPoint();
+                    if(null != contact){
+                        output.setContactEmail(contact.getEmail());
+                        output.setContactFaxNumber(contact.getFaxNumber());
+                        output.setContactName(contact.getName());
+                        output.setContactTelephone(contact.getTelephone());
+                        output.setContactUrl(contact.getUrl());
+                        break;
+                    }
+                }
+            }
+
+            Organization org = supplier.getOrganization();
+            if(null != org) {
+                Address address = org.getAddress();
+                if (null != address) {
+                    output.setLocality(address.getLocality());
+                    output.setCountryName(address.getCountryName());
+                    output.setStreetAddress(address.getStreetAddress());
+                }
+
+                output.setName(org.getName());
+            }
+        }
         return output;
     }
 
@@ -107,5 +189,48 @@ public class AssessmentScoreExportService {
         public boolean test(SupplierScores supplierScores) {
             return true;
         }
+    }
+
+    @SneakyThrows
+    private ResponseEntity<InputStreamResource> printToJson(List<SupplierScore> supplierScores) {
+
+        var out = new ByteArrayOutputStream();
+        mapper.writer().writeValue(out, supplierScores);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
+    }
+
+    private ResponseEntity<InputStreamResource> printToCsv(List<SupplierScore> supplierScores, String filename) {
+        var out = new ByteArrayOutputStream();
+        try (var csvPrinter = new CSVPrinter(new PrintWriter(out), CSVFormat.DEFAULT)) {
+
+            csvPrinter.printRecord("name","identifier","streetAddress","locality","region","postalCode",
+                    "countryName","contactName","contactEmail","contactTelephone","contactFaxNumber",
+                    "contactUrl","score");
+            for (SupplierScore calculationBase : supplierScores) {
+                writeRecord(calculationBase, csvPrinter);
+            }
+            csvPrinter.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("fail to import data to CSV file: " + e.getMessage());
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(new InputStreamResource(new ByteArrayInputStream(out.toByteArray())));
+    }
+
+
+    private void writeRecord(final SupplierScore ssd, final CSVPrinter csvPrinter)
+            throws IOException {
+        csvPrinter.printRecord(ssd.getName(), ssd.getIdentifier(),
+                ssd.getStreetAddress(), ssd.getLocality(), ssd.getRegion(),
+                ssd.getPostalCode(), ssd.getCountryName(),
+                ssd.getContactName(),ssd.getContactEmail(), ssd.getContactTelephone() ,
+                ssd.getContactFaxNumber(), ssd.getContactUrl(), ssd.getScore());
+
     }
 }
