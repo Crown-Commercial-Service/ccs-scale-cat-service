@@ -8,21 +8,27 @@ import uk.gov.crowncommercial.dts.scale.cat.assessment.DimensionScoreCalculator;
 import uk.gov.crowncommercial.dts.scale.cat.assessment.ExclusionPolicy;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentToolDimension;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
+
 @RequiredArgsConstructor
 public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
     private final AssessmentScoreCalculator assessmentScoreCalculator;
     private final Map<String, DimensionScoreCalculator> dimensionScoreCalculators;
     private final Map<String, ExclusionPolicy> exclusionPolicies;
-
+    private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
     public List<SupplierScores> calculateSupplierScores(final AssessmentEntity assessment,
                                                         final String principal, List<DimensionRequirement> dimensionRequirements, Set<CalculationBase> calculationBaseSet) {
@@ -74,6 +80,13 @@ public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
         return suppliersScores;
     }
 
+    @Override
+    public List<SupplierScores> calculateAndPersistSupplierScores(AssessmentEntity assessment, String principal, List<DimensionRequirement> dimensionRequirements, Set<CalculationBase> calculationBaseSet) {
+        List<SupplierScores> suppliersScoresList = calculateSupplierScores(assessment, principal, dimensionRequirements, calculationBaseSet);
+        updateAssessmentResult(assessment, suppliersScoresList, principal);
+        return suppliersScoresList;
+    }
+
     private Set<CalculationBase> eliminateZeroScoreSuppliers(AssessmentEntity assessment,
                                                             Map<String, DimensionRequirement> dimensionRequirementMap,
                                                              Set<CalculationBase> assessmentCalculationBase) {
@@ -108,5 +121,24 @@ public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
 
             assessmentScoreCalculator.calculateSupplierTotalScore(supplierScores);
         });
+    }
+
+
+    private void updateAssessmentResult(final AssessmentEntity assessment, List<SupplierScores> scores , final String principal) {
+        for(SupplierScores score: scores) {
+            String supplierOrgId = score.getSupplier().getId();
+            BigDecimal supplierTotal = BigDecimal.valueOf(score.getTotal());
+            var assessmentResult = retryableTendersDBDelegate
+                    .findByAssessmentIdAndSupplierOrganisationId(assessment.getId(), supplierOrgId)
+                    .orElse(AssessmentResult.builder().assessment(assessment)
+                            .supplierOrganisationId(supplierOrgId).timestamps(createTimestamps(principal)).build());
+            assessmentResult.setAssessmentResultValue(supplierTotal);
+
+            if (assessmentResult.getId() != null) {
+                updateTimestamps(assessmentResult.getTimestamps(), principal);
+            }
+
+            retryableTendersDBDelegate.save(assessmentResult);
+        }
     }
 }

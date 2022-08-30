@@ -111,12 +111,16 @@ public class TendersAPIModelUtils {
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();
-    eventDetailOCDS.setId(rfxSetting.getRfxId());
-    eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
-    eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
-    eventDetailOCDS
-        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    // TODO: TBC - mappings required
+    // TODO : Verify with Nick whats the functionality from RFI(=) to FCA(=)
+    if (Objects.nonNull(rfxSetting)) {
+      eventDetailOCDS.setId(rfxSetting.getRfxId());
+      eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
+      eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
+      eventDetailOCDS.setStatus(
+          jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+      // TODO: TBC - mappings required
+
+    }
     eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     eventDetail.setOCDS(eventDetailOCDS);
 
@@ -127,7 +131,7 @@ public class TendersAPIModelUtils {
    * SCAT-4788 - need to call this to populate EventSummary.dashboardStatus and
    * EventDetail.nonOCDS.dashboardStatus
    */
-  public DashboardStatus getDashboardStatus(
+  public static DashboardStatus getDashboardStatus(
       final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
     var tenderStatus = procurementEvent.getTenderStatus();
@@ -161,7 +165,7 @@ public class TendersAPIModelUtils {
     return DashboardStatus.UNKNOWN;
   }
 
-  private DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
+  private static DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
 
     if (Objects.nonNull(tenderStatus)) {
       if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {

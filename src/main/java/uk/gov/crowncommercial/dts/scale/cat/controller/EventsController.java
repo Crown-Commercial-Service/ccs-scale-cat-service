@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -11,10 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
@@ -23,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -39,7 +43,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
-
+  private final AssessmentScoreExportService scoreExportService;
 
   private final EventTransitionService eventTransitionService;
   private final DocGenService docGenService;
@@ -99,6 +103,22 @@ public class EventsController extends AbstractRestController {
     log.info("getSuppliers invoked on behalf of principal: {}", principal);
 
     return procurementEventService.getSuppliers(procId, eventId);
+  }
+
+  @GetMapping("/{eventID}/scores/export")
+  public ResponseEntity<InputStreamResource> exportScroes(
+          @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+          final JwtAuthenticationToken authentication,
+          @RequestParam(name="maxScore", required = false) Float maxScore,
+          @RequestParam(name="minScore", required = false) Float minScore,
+          @RequestHeader(name = "mime-type", required = false,
+                  defaultValue = "text/csv") final String mimeType) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("getSuppliers invoked on behalf of principal: {}", principal);
+
+    List<SupplierScore> scores = scoreExportService.getScores(procId, eventId, minScore, maxScore, Optional.of(principal));
+    return scoreExportService.export(procId, eventId, scores, mimeType);
   }
 
   @GetMapping("/{eventID}/suppliers/{supplierID}")

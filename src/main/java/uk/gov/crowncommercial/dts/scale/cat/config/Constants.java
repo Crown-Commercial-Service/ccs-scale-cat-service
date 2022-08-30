@@ -61,8 +61,12 @@ public class Constants {
   public static final Set<ViewEventType> TENDER_NON_DB_EVENT_TYPES =
       Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC, ViewEventType.DA);
 
+  public static final Set<ViewEventType> ASSESMENT_COMPLETE_EVENT_TYPES =
+          Set.of(ViewEventType.PA,ViewEventType.FCA, ViewEventType.DAA);
+
   public static final Set<ViewEventType> COMPLETE_EVENT_TYPES =
-          Set.of(ViewEventType.PA,ViewEventType.FCA, ViewEventType.DAA,ViewEventType.RFI,ViewEventType.EOI);
+          Set.of(ViewEventType.RFI,ViewEventType.EOI);
+
   public static final Set<ViewEventType> FC_DA_NON_COMPLETE_EVENT_TYPES =
           Set.of(ViewEventType.FC,ViewEventType.DA);
 

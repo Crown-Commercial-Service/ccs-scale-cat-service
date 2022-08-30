@@ -2,11 +2,11 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
@@ -36,6 +36,7 @@ import javax.validation.ValidationException;
 import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -123,12 +124,15 @@ public class ProcurementEventService {
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     List<Supplier> suppliers = null;
 
-    // check any events before
-    if (CollectionUtils.isEmpty(project.getProcurementEvents())) {
+    // check any valid events existed before
+    Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents())?getExistingValidEvents(project.getProcurementEvents()):Optional.empty();
+
+
+    if (!existingEventOptional.isPresent()) {
       log.info("No events exists for this project");
     } else {
       // complete the event and copy suppliers
-      var existingEvent = project.getProcurementEvents().stream().iterator().next();
+      var existingEvent = existingEventOptional.get();
 
       eventTransitionService.completeExistingEvent(existingEvent,principal);
 
@@ -259,6 +263,12 @@ public class ProcurementEventService {
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
         TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+  }
+
+  private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
+
+    return procurementEvents.stream().filter(event-> !CLOSED_STATUS_LIST.contains(event.getTenderStatus())).findFirst();
+
   }
 
   /**
@@ -882,13 +892,31 @@ public class ProcurementEventService {
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
-      eventSummary.tenderPeriod(getTenderPeriod(
-          rfxSetting.getPublishDate() == null ? null : rfxSetting.getPublishDate().toInstant(),
-          rfxSetting.getCloseDate() == null ? null : rfxSetting.getCloseDate().toInstant()));
 
-      eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+      updateTenderPeriod(event, rfxSetting, eventSummary);
+      if(Objects.nonNull(eventSummary)){
+         eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+      }
       return eventSummary;
     }).collect(Collectors.toList());
+  }
+
+  private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
+    if(Objects.nonNull(rfxSetting)){
+        eventSummary.tenderPeriod(getTenderPeriod(
+            ( rfxSetting.getPublishDate() == null ) ? null : rfxSetting.getPublishDate().toInstant(),
+             ( rfxSetting.getCloseDate() == null ) ? null : rfxSetting.getCloseDate().toInstant()));
+        // there may be possibility where close date is not available from jaggaer
+        if(Objects.nonNull(eventSummary.getTenderPeriod())){
+          eventSummary.getTenderPeriod().setEndDate(event.getCloseDate() == null ? null : OffsetDateTime.ofInstant(event.getCloseDate(), ZoneId.systemDefault()));
+        }
+    }else{
+      eventSummary.tenderPeriod(getTenderPeriod(
+              ( event.getPublishDate() == null ) ? null : event.getPublishDate(),
+              ( event.getCloseDate() == null ) ? null : event.getCloseDate()));
+    }
+
+
   }
 
   /**
@@ -916,22 +944,6 @@ public class ProcurementEventService {
     }else{
       event.setCapabilityAssessmentSuppliers(supplierSelectionSet);
     }
-
-    /*supplierOrgMappings.stream().forEach(org -> {
-        log.debug("Creating new SupplierSelection record for organisation [{}]",
-            org.getOrganisationId());
-        var selection = SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
-            .createdAt(Instant.now()).createdBy(principal).build();
-          if(Objects.nonNull(event.getCapabilityAssessmentSuppliers())){
-            event.getCapabilityAssessmentSuppliers().add(selection);
-          }else{
-            event.setCapabilityAssessmentSuppliers(Collections.emptySet());
-            event.getCapabilityAssessmentSuppliers().add(selection);
-          }
-    });*/
-
-
-
 
     return retryableTendersDBDelegate.save(event);
   }
@@ -1142,7 +1154,7 @@ public class ProcurementEventService {
         attachments.add(attachment);
       });
       // Get draft documents
-      dTemplateService.getTemplatesByEventType(procId, eventId).stream().forEach(template -> {
+      dTemplateService.getTemplatesByAgreementAndLot(procId, eventId).stream().forEach(template -> {
         attachments.add(dTemplateService.getDraftDocument(procId, eventId,
             DocumentKey.fromString(template.getId())));
       });

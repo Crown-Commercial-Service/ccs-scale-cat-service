@@ -498,7 +498,7 @@ public class AssessmentService {
     private List<SupplierScores> getSupplierScores(final AssessmentEntity assessment,
                                                    final String principal, List<DimensionRequirement> dimensionRequirements){
         AssessmentToolCalculator calculator = toolFactory.getAssessmentTool(assessment);
-        return calculator.calculateSupplierScores(assessment, principal, dimensionRequirements, retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
+        return calculator.calculateAndPersistSupplierScores(assessment, principal, dimensionRequirements, retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
     }
 
     /**

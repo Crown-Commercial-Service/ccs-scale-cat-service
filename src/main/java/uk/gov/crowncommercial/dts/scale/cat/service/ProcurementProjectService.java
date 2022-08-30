@@ -469,12 +469,13 @@ public class ProcurementProjectService {
         // No data found in Jagger
         log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
       }
-
-
     }
-    eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
 
-    projectPackageSummary.activeEvent(eventSummary);
+    if(null != eventSummary) {
+      eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
+      projectPackageSummary.activeEvent(eventSummary);
+    }
+    
     return Optional.of(projectPackageSummary);
   }
 
@@ -645,8 +646,11 @@ public class ProcurementProjectService {
     if (CollectionUtils.isEmpty(procurementEvents)) {
       log.info("No events exists for this project");
     } else {
-      eventTransitionService.terminateEvent(projectId,
-          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal, false);
+      procurementEvents.forEach(
+              event -> {
+                eventTransitionService.terminateEvent(
+                    projectId, event.getEventID(), TerminationType.WITHDRAWN, principal, false);
+              });
     }
   }
 }
