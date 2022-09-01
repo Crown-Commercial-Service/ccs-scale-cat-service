@@ -83,6 +83,7 @@ public class EventsController extends AbstractRestController {
         event.setEventType(eventType);
         EventSummary updSummary = procurementEventService.updateProcurementEvent(procId, eventId, event, principal);
         summary.setEventType(updSummary.getEventType());
+        summary.setAssessmentId(updSummary.getAssessmentId());
         return summary;
       }
     }
