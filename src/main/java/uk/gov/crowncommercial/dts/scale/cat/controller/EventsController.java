@@ -30,7 +30,9 @@ import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static java.util.Optional.ofNullable;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
 
 /**
  *
@@ -68,6 +70,22 @@ public class EventsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
+
+
+    if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getEventType()) {
+      DefineEventType eventType = createEvent.getNonOCDS().getEventType();
+     String eventTypeValue = createEvent.getNonOCDS().getEventType().getValue();
+      if(TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))){
+        createEvent.getNonOCDS().setEventType(null);
+        EventSummary summary = procurementEventService.createEvent(procId, createEvent, null, principal);
+        String eventId = summary.getId();
+        UpdateEvent event = new UpdateEvent();
+        event.setEventType(eventType);
+        EventSummary updSummary = procurementEventService.updateProcurementEvent(procId, eventId, event, principal);
+        summary.setEventType(updSummary.getEventType());
+        return summary;
+      }
+    }
 
     return procurementEventService.createEvent(procId, createEvent, null, principal);
   }
