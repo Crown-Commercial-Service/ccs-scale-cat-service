@@ -267,8 +267,14 @@ public class ProcurementEventService {
 
   private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
 
-    return procurementEvents.stream().filter(event-> !CLOSED_STATUS_LIST.contains(event.getTenderStatus().toLowerCase())).findFirst();
+    return procurementEvents.stream().filter(event-> !isClosedStatus(event.getTenderStatus())).findFirst();
 
+  }
+
+  private boolean isClosedStatus(String tenderStatus){
+    if(null == tenderStatus)
+      return false;
+    return CLOSED_STATUS_LIST.contains(tenderStatus.toLowerCase());
   }
 
   /**
