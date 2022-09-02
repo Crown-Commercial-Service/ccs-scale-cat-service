@@ -267,7 +267,7 @@ public class ProcurementEventService {
 
   private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
 
-    return procurementEvents.stream().filter(event-> !CLOSED_STATUS_LIST.contains(event.getTenderStatus())).findFirst();
+    return procurementEvents.stream().filter(event-> !CLOSED_STATUS_LIST.contains(event.getTenderStatus().toLowerCase())).findFirst();
 
   }
 
