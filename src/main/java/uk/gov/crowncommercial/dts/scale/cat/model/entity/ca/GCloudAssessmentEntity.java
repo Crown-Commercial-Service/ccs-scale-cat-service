@@ -3,7 +3,6 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.repo.GCloudAssessmentResult;
 
 import javax.persistence.*;
 import java.util.Set;

@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.repo;
+package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

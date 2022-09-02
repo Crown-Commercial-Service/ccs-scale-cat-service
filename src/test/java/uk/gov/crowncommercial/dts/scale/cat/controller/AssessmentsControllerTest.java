@@ -40,7 +40,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
-  private static final String GCLOUD_ASSESSMENTS_PATH = "/assessments/gcloud";
   private static final String SUPPLIERS_FOR_DIMENSION_PATH =
       ASSESSMENTS_PATH + "/tools/{tool-id}/dimensions/{dimension-id}/data?lot-id=";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
@@ -48,7 +47,6 @@ class AssessmentsControllerTest {
   private static final Integer LOT_ID = 1;
   private static final Integer DIMENSION_ID = 1;
   private static final String DIMENSION_NAME = "Security Clearance";
-  private static final String SERVICE_NAME = "Physical and Environmental Security";
   private static final CriteriaSelectionType CRITERIA_TYPE = CriteriaSelectionType.SELECT;
   private static final String EXTERNAL_TOOL_ID = "2";
   private static final Integer TOOL_ID = 2;
@@ -194,30 +192,6 @@ class AssessmentsControllerTest {
   }
 
   @Test
-  void getGcloudAssessment_200_OK() throws Exception {
-    GCloudAssessment assessment = new GCloudAssessment();
-    assessment.setAssessmentId(ASSESSMENT_ID);
-    assessment.setExternalToolId(EXTERNAL_TOOL_ID);
-
-    GCloudResult result = new GCloudResult();
-    result.setServiceName(SERVICE_NAME);
-    ArrayList<GCloudResult> resultList = new ArrayList<>();
-    resultList.add(result);
-    assessment.setResults(resultList);
-
-    when(assessmentService.getGcloudAssessment(ASSESSMENT_ID)).thenReturn(assessment);
-
-    mockMvc
-            .perform(get(ASSESSMENTS_PATH + "/{assessmentID}/gcloud", ASSESSMENT_ID)
-                    .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
-            .andDo(print()).andExpect(status().isOk())
-            .andExpect(content().contentType(APPLICATION_JSON))
-            .andExpect(jsonPath("$.assessment-id").value(ASSESSMENT_ID))
-            .andExpect(jsonPath("$.external-tool-id").value(TOOL_ID))
-            .andExpect(jsonPath("$.results[0].serviceName").value(SERVICE_NAME));
-  }
-
-  @Test
   void createAssessment_200_OK() throws Exception {
 
     var assessment = new Assessment();
@@ -231,35 +205,6 @@ class AssessmentsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$").value(1));
 
     verify(assessmentService, times(1)).createAssessment(assessment, PRINCIPAL);
-  }
-
-  @Test
-  void createGcloudAssessment_200_OK() throws Exception {
-    GCloudAssessment assessment = new GCloudAssessment();
-
-    when(assessmentService.createGcloudAssessment(assessment, PRINCIPAL)).thenReturn(1);
-
-    mockMvc
-            .perform(post(GCLOUD_ASSESSMENTS_PATH).with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(assessment)))
-            .andDo(print()).andExpect(status().isOk())
-            .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$").value(1));
-
-    verify(assessmentService, times(1)).createGcloudAssessment(assessment, PRINCIPAL);
-  }
-
-  @Test
-  void updateGcloudAssessment_200_OK() throws Exception {
-    GCloudAssessment assessment = new GCloudAssessment();
-    assessment.setAssessmentId(ASSESSMENT_ID);
-
-    mockMvc
-            .perform(put(ASSESSMENTS_PATH + "/{assessmentID}/gcloud", ASSESSMENT_ID)
-                    .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(assessment)))
-            .andDo(print()).andExpect(status().isOk());
-
-    verify(assessmentService, times(1)).updateGcloudAssessment(assessment, ASSESSMENT_ID, PRINCIPAL);
   }
 
   @Test
