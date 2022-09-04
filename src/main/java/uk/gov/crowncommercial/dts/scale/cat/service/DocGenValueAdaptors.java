@@ -1,7 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -71,8 +74,16 @@ public class DocGenValueAdaptors {
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorPublishDate() {
     var formattedDatetime =
-        OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+        OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     return (event, requestCache) -> List.of(formattedDatetime);
+  }
+  
+  @Bean("DocumentValueAdaptorPublishDateAndTime")
+  @RequestScope
+  public DocGenValueAdaptor documentValueAdaptorPublishDateAndTime() {
+    return (event, requestCache) -> List
+        .of(LocalDateTime.ofInstant(event.getPublishDate(), ZoneOffset.systemDefault())
+            .format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
   }
 
   @Bean("DocumentValueAdaptorProcLead")
