@@ -177,6 +177,8 @@ public class EventTransitionService {
   }
 
   private ExportRfxResponse getSingleRfx(final String externalEventId) {
+    if(null == externalEventId)
+      return null;
     return jaggaerService.searchRFx(Set.of(externalEventId)).stream()
         .findFirst()
         .orElseThrow(

@@ -67,7 +67,7 @@ public class ProcurementEventService {
       "Document upload record for ID [%s] not found";
   public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
       "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
-  public static final Set<String> RESPONSE_STATES = Set.of("Replied", "Successful");
+  public static final Set<String> RESPONSE_STATES = Set.of("Not Replied");
   private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
       "No Supplier Responses found for the given event '%s'  ";
   private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
@@ -267,8 +267,14 @@ public class ProcurementEventService {
 
   private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
 
-    return procurementEvents.stream().filter(event-> !CLOSED_STATUS_LIST.contains(event.getTenderStatus())).findFirst();
+    return procurementEvents.stream().filter(event-> !isClosedStatus(event.getTenderStatus())).findFirst();
 
+  }
+
+  private boolean isClosedStatus(String tenderStatus){
+    if(null == tenderStatus)
+      return false;
+    return CLOSED_STATUS_LIST.contains(tenderStatus.toLowerCase());
   }
 
   /**
@@ -679,10 +685,10 @@ public class ProcurementEventService {
     return new Responders()
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
-        .responseState(RESPONSE_STATES.contains(supplier.getStatus().trim())
+        .responseState(!RESPONSE_STATES.contains(supplier.getStatus().trim())
             ? Responders.ResponseStateEnum.SUBMITTED
             : Responders.ResponseStateEnum.DRAFT)
-        .readState(RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
+        .readState(!RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
         .responseDate(null != respondedDateTime ? respondedDateTime.toLocalDate() : null);
   }
