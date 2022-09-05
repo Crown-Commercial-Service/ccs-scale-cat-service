@@ -89,6 +89,12 @@ class ProcurementEventServiceTest {
   private UserProfileService userProfileService;
 
   @MockBean
+  private GCloudAssessmentRepo gCloudAssessmentRepo;
+
+  @MockBean
+  private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
+
+  @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
 
   @MockBean
