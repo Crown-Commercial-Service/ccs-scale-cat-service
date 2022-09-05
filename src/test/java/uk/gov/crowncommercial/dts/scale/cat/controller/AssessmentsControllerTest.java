@@ -5,16 +5,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+
+import java.util.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,12 +77,11 @@ class AssessmentsControllerTest {
 
   @Test
   void getAssessments_200_OK() throws Exception {
-
     var assessmentSummary = new AssessmentSummary();
     assessmentSummary.setAssessmentId(ASSESSMENT_ID);
     assessmentSummary.setExternalToolId(EXTERNAL_TOOL_ID);
 
-    when(assessmentService.getAssessmentsForUser(PRINCIPAL)).thenReturn(List.of(assessmentSummary));
+    when(assessmentService.getAssessmentsForUser(PRINCIPAL, null)).thenReturn(List.of(assessmentSummary));
 
     mockMvc.perform(get(ASSESSMENTS_PATH).with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
