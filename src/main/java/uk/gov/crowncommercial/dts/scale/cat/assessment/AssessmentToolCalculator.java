@@ -14,4 +14,9 @@ public interface AssessmentToolCalculator {
                                                  final String principal,
                                                  List<DimensionRequirement> dimensionRequirements,
                                                  Set<CalculationBase> calculationBaseSet);
+
+    List<SupplierScores> calculateAndPersistSupplierScores(final AssessmentEntity assessment,
+                                                 final String principal,
+                                                 List<DimensionRequirement> dimensionRequirements,
+                                                 Set<CalculationBase> calculationBaseSet);
 }

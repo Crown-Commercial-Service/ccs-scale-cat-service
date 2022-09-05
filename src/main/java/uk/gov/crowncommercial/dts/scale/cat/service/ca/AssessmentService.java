@@ -5,11 +5,11 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ValidationException;
 
-import org.aspectj.lang.annotation.DeclareParents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -172,6 +172,7 @@ public class AssessmentService {
         entity.setStatus(AssessmentStatusEntity.ACTIVE);
         entity.setBuyerOrganisationId(conclaveUser.getOrganisationId());
         entity.setTimestamps(createTimestamps(principal));
+        entity.setAssessmentName(assessment.getAssessmentName());
 
         Set<AssessmentSelection> assessmentSelections = new HashSet<>();
 
@@ -221,16 +222,52 @@ public class AssessmentService {
      * @return
      */
     @Transactional
-    public List<AssessmentSummary> getAssessmentsForUser(final String principal) {
-        var assessments = retryableTendersDBDelegate.findAssessmentsForUser(principal);
+    public List<AssessmentSummary> getAssessmentsForUser(final String principal, final Integer externalToolId) {
+        // First get a list of normal assessments
+        Set<AssessmentEntity> assessments = retryableTendersDBDelegate.findAssessmentsForUser(principal);
 
-        return assessments.stream().map(a -> {
-            var summary = new AssessmentSummary();
-            summary.setAssessmentId(a.getId());
-            summary.setExternalToolId(a.getTool().getExternalToolId());
-            summary.setStatus(AssessmentStatus.fromValue(a.getStatus().toString().toLowerCase()));
-            return summary;
-        }).toList();
+        // Next get a list of Gcloud assessments
+        Set<GCloudAssessmentEntity> gcloudAssessments = retryableTendersDBDelegate.findGcloudAssessmentsForUser(principal);
+
+        // Now if an externalToolId has been provided, filter both lists to only contain entries matching that ID
+        if (externalToolId != null && externalToolId > 0) {
+            if (!gcloudAssessments.isEmpty()) {
+                gcloudAssessments = gcloudAssessments.stream().filter((assessment) -> assessment.getExternalToolId() == externalToolId).collect(Collectors.toSet());
+            }
+
+            if (!assessments.isEmpty()) {
+                assessments = assessments.stream().filter((assessment) -> assessment.getTool().getExternalToolId() == externalToolId.toString()).collect(Collectors.toSet());
+            }
+        }
+
+        // Finally, combine our two lists and return
+        List<AssessmentSummary> resultsModel = new ArrayList<>();
+
+        if (!assessments.isEmpty()) {
+            for (AssessmentEntity assessmentResult : assessments) {
+                AssessmentSummary summaryModel = new AssessmentSummary();
+                summaryModel.setAssessmentId(assessmentResult.getId());
+                summaryModel.setAssessmentName(assessmentResult.getAssessmentName());
+                summaryModel.setExternalToolId(assessmentResult.getTool().getExternalToolId());
+                summaryModel.setStatus(AssessmentStatus.fromValue(assessmentResult.getStatus().toString().toLowerCase()));
+
+                resultsModel.add(summaryModel);
+            }
+        }
+
+        if (!gcloudAssessments.isEmpty()) {
+            for (GCloudAssessmentEntity gcloudResult : gcloudAssessments) {
+                AssessmentSummary summaryModel = new AssessmentSummary();
+                summaryModel.setAssessmentId(gcloudResult.getId());
+                summaryModel.setAssessmentName(gcloudResult.getAssessmentName());
+                summaryModel.setExternalToolId(gcloudResult.getExternalToolId().toString());
+                summaryModel.setStatus(AssessmentStatus.fromValue(gcloudResult.getStatus().toString().toLowerCase()));
+
+                resultsModel.add(summaryModel);
+            }
+        }
+
+        return resultsModel;
     }
 
     /**
@@ -309,11 +346,10 @@ public class AssessmentService {
         return response;
     }
 
-
     private List<SupplierScores> getSupplierScores(final AssessmentEntity assessment,
                                                    final String principal, List<DimensionRequirement> dimensionRequirements){
         AssessmentToolCalculator calculator = toolFactory.getAssessmentTool(assessment);
-        return calculator.calculateSupplierScores(assessment, principal, dimensionRequirements, retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
+        return calculator.calculateAndPersistSupplierScores(assessment, principal, dimensionRequirements, retryableTendersDBDelegate.findCalculationBaseByAssessmentId(assessment.getId()));
     }
 
     /**
