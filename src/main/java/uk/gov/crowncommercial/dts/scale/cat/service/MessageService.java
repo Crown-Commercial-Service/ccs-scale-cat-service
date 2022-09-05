@@ -76,6 +76,11 @@ public class MessageService {
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
+    
+    String messageClassification = nonOCDS.getClassification().getValue();
+    if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
+      messageClassification = "(unclassified)";
+    }
 
     // Creating RPA process input string
     var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
@@ -83,7 +88,7 @@ public class MessageService {
         .ittCode(procurementEvent.getExternalReferenceId())
         .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
         .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
-        .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
+        .messageClassification(messageClassification).senderName("")
         .supplierName("").messageReceivedDate("");
 
     // To reply the message

@@ -26,6 +26,8 @@ public class RetryableTendersDBDelegate {
   private final JourneyRepo journeyRepo;
   private final DocumentTemplateRepo documentTemplateRepo;
   private final AssessmentRepo assessmentRepo;
+  private final GCloudAssessmentRepo gcloudAssessmentRepo;
+  private final GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
   private final AssessmentToolRepo assessmentToolRepo;
   private final AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
   private final DimensionRepo dimensionRepo;
@@ -113,7 +115,14 @@ public class RetryableTendersDBDelegate {
   public Set<DocumentTemplate> findByEventType(final String eventType) {
     return documentTemplateRepo.findByEventType(eventType);
   }
-
+  
+  @TendersRetryable
+  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumber(
+      final String eventType, final String commercialAgreementNumber, final String lotNumber) {
+    return documentTemplateRepo.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType,
+        commercialAgreementNumber, lotNumber);
+  }
+  
   @TendersRetryable
   public Set<DocumentTemplate> findByEventStage(final String eventStage) {
     return documentTemplateRepo.findByEventStage(eventStage);
@@ -130,13 +139,33 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Set<GCloudAssessmentEntity> findGcloudAssessmentsForUser(final String userId) {
+    return gcloudAssessmentRepo.findByTimestampsCreatedBy(userId);
+  }
+
+  @TendersRetryable
   public AssessmentEntity save(final AssessmentEntity assessment) {
     return assessmentRepo.saveAndFlush(assessment);
   }
 
   @TendersRetryable
+  public GCloudAssessmentEntity save(final GCloudAssessmentEntity assessment) {
+    return gcloudAssessmentRepo.saveAndFlush(assessment);
+  }
+
+  @TendersRetryable
   public Optional<AssessmentEntity> findAssessmentById(final Integer id) {
     return assessmentRepo.findById(id);
+  }
+
+  @TendersRetryable
+  public Optional<GCloudAssessmentEntity> findGcloudAssessmentById(final Integer id) {
+    return gcloudAssessmentRepo.findById(id);
+  }
+
+  @TendersRetryable
+  public Set<GCloudAssessmentResult> findGcloudResultsByAssessmentId(final Integer id) {
+    return gCloudAssessmentResultRepo.findByAssessmentId(id);
   }
 
   @TendersRetryable
@@ -227,6 +256,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public GCloudAssessmentResult save(final GCloudAssessmentResult assessmentResult) {
+    return gCloudAssessmentResultRepo.save(assessmentResult);
+  }
+
+  @TendersRetryable
   public ProjectUserMapping save(final ProjectUserMapping projectUserMapping) {
     return projectUserMappingRepo.save(projectUserMapping);
   }
@@ -239,6 +273,11 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public void deleteAll(final List<ProjectUserMapping> projectUserMappings) {
     projectUserMappingRepo.deleteAll(projectUserMappings);
+  }
+
+  @TendersRetryable
+  public void deleteGcloudAssessmentResultsById(final Integer assessmentId) {
+    gCloudAssessmentResultRepo.deleteAllByAssessmentId(assessmentId);
   }
 
   @TendersRetryable

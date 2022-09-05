@@ -34,6 +34,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
+import javax.transaction.Transactional;
+
 /**
  *
  */
@@ -110,6 +112,8 @@ public class CriteriaService {
 
   }
 
+
+  @Transactional
   public Question putQuestionOptionDetails(final Question question, final Integer projectId,
       final String eventId, final String criterionId, final String groupId,
       final String questionId) {

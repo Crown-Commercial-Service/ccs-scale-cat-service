@@ -41,4 +41,7 @@ public class DocumentTemplateSource {
   @Column(name = "options_property")
   @Enumerated(EnumType.STRING)
   OptionsProperty optionsProperty;
+  
+  @Column(name = "conditional_value")
+  String conditionalValue;
 }

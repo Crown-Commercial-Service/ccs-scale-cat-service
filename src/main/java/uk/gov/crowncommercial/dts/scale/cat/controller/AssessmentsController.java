@@ -3,6 +3,9 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -13,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,7 +30,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
 @RestController
@@ -65,13 +68,11 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @GetMapping
-  public List<AssessmentSummary> getAssessmentsForUser(
-      final JwtAuthenticationToken authentication) {
-
+  public List<AssessmentSummary> getAssessmentsForUser(final @RequestParam(required = false, name = "external-tool-id") Integer externalToolId, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getAssessmentsForUser invoked on behalf of principal: {}", principal);
 
-    return assessmentService.getAssessmentsForUser(principal);
+    return assessmentService.getAssessmentsForUser(principal, externalToolId);
   }
 
   @GetMapping("/{assessment-id}")

@@ -46,7 +46,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
+import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -90,7 +92,13 @@ class EventsControllerTest {
   private ProcurementEventService procurementEventService;
 
   @MockBean
+  private EventTransitionService eventTransitionService;
+
+  @MockBean
   private DocGenService docGenService;
+
+  @MockBean
+  private AssessmentScoreExportService exportService;
 
   @MockBean
   private Principal principal;
