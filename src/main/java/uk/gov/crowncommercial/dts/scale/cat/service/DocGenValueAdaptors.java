@@ -15,6 +15,7 @@ import org.springframework.web.context.annotation.RequestScope;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 
@@ -67,7 +68,7 @@ public class DocGenValueAdaptors {
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgName() {
     return (event, requestCache) -> List
-        .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getLegalName());
+        .of(getBuyerOrgName(event, requestCache).getIdentifier().getLegalName());
   }
   
   @Bean("DocumentValueAdaptorPublishDate")
@@ -143,6 +144,21 @@ public class DocGenValueAdaptors {
           .orElseThrow(() -> new TendersDBDataException(
               "Project [" + event.getProject().getId() + "] has no procurement lead"));
     });
+  }
+  
+  private OrganisationProfileResponseInfo getBuyerOrgName(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    return (OrganisationProfileResponseInfo) requestCache.computeIfAbsent("CACHE_KEY_ORG_NAME", k -> {
+
+      var projectOrgId = Optional.ofNullable(event.getProject().getOrganisationMapping())
+          .orElseThrow(() -> new TendersDBDataException(
+              "Project [" + event.getProject().getId() + "] has no org mapping"))
+          .getOrganisationId();
+      return conclaveService.getOrganisation(projectOrgId)
+          .orElseThrow(() -> new TendersDBDataException(
+              "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
+    });
+
   }
 
 }

@@ -246,17 +246,17 @@ public class DocGenService {
     }
   }
   
+  //TODO remove static content and add in app.yaml file
   private String eoiConditionalAndOptionalData(String dataReplacement) {
     String conditionlaData = "";
-    if (dataReplacement.contentEquals("Replacement or New")) {
+    if (dataReplacement.contentEquals("Replacement or New")
+        || dataReplacement.contentEquals("Expanded")) {
       conditionlaData = "This Project is a" + conditionlaData;
-      return conditionlaData;
-    } else if (dataReplacement.contentEquals("Not Sure")) {
+    } else if (dataReplacement.contentEquals("Not sure")) {
       conditionlaData =
           "The buyer is unsure whether it will be a new or a replacement product or service.";
-      return conditionlaData;
-    }
-    return dataReplacement;
+    } 
+    return conditionlaData.isEmpty() ? dataReplacement : conditionlaData;
 
   }
    
