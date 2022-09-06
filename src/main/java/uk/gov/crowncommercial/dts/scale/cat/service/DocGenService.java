@@ -235,15 +235,31 @@ public class DocGenService {
         StringJoiner value = new StringJoiner(" ");
         value.add(documentTemplateSource.getConditionalValue() == null ? ""
             : documentTemplateSource.getConditionalValue());
-        value.add(dataReplacement);
+        value.add(dataReplacement.contains("Yes") ? "" : dataReplacement);
         dataReplacement = value.toString();
       }
+      
+      dataReplacement = eoiConditionalAndOptionalData(dataReplacement);
       
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
   }
+  
+  private String eoiConditionalAndOptionalData(String dataReplacement) {
+    String conditionlaData = "";
+    if (dataReplacement.contentEquals("Replacement or New")) {
+      conditionlaData = "This Project is a" + conditionlaData;
+      return conditionlaData;
+    } else if (dataReplacement.contentEquals("Not Sure")) {
+      conditionlaData =
+          "The buyer is unsure whether it will be a new or a replacement product or service.";
+      return conditionlaData;
+    }
+    return dataReplacement;
 
+  }
+   
   void replaceList(final DocumentTemplateSource documentTemplateSource,
       final List<String> dataReplacement, final TextDocument textODT) {
 
@@ -275,6 +291,7 @@ public class DocGenService {
       }
       var isLineRequired = false;
       var columnIndex = -1;
+      
       for (var r = 1; r <= dataReplacement.size(); r++) {
         var row = table.getRowByIndex(r);
 
@@ -326,7 +343,6 @@ public class DocGenService {
       }
     } else {
       log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
-      replaceText(documentTemplateSource, "", textODT);
     }
   }
 }
