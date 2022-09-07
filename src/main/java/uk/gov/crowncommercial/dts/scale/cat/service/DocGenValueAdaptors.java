@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.jena.atlas.logging.Log;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
@@ -83,8 +84,7 @@ public class DocGenValueAdaptors {
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorPublishDateAndTime() {
     return (event, requestCache) -> List
-        .of(LocalDateTime.ofInstant(event.getPublishDate(), ZoneOffset.systemDefault())
-            .format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
+        .of(getPublishedDateAndTime(event, requestCache));
   }
 
   @Bean("DocumentValueAdaptorProcLead")
@@ -159,6 +159,16 @@ public class DocGenValueAdaptors {
               "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
     });
 
+  }
+  
+  private String getPublishedDateAndTime(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    return (String) requestCache.computeIfAbsent("CACHE_KEY_ORG_NAME" + event.getEventID(), k -> {
+      var publishedDate =
+          LocalDateTime.ofInstant(event.getPublishDate(), ZoneOffset.systemDefault())
+              .format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+      return publishedDate;
+    });
   }
 
 }
