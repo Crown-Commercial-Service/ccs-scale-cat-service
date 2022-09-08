@@ -79,7 +79,7 @@ public class MessageService {
     
     String messageClassification = nonOCDS.getClassification().getValue();
     if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
-      messageClassification = "(unclassified)";
+      messageClassification = "";
     }
 
     // Creating RPA process input string
