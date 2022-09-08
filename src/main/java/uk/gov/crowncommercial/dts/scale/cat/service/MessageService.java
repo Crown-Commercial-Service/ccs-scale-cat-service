@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -78,7 +79,7 @@ public class MessageService {
     
     String messageClassification = nonOCDS.getClassification().getValue();
     if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
-      messageClassification = "(unclassified)";
+      messageClassification = "";
     }
 
     // Creating RPA process input string
@@ -122,6 +123,71 @@ public class MessageService {
     }
     return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
         RPAProcessNameEnum.BUYER_MESSAGING);
+  }
+
+  /**
+   * Which sends outbound message to all suppliers and single supplier. And also responds supplier
+   * messages
+   *
+   * @param profile
+   * @param projectId
+   * @param eventId
+   * @param message {@link Message}
+   * @return
+   * @throws JsonProcessingException
+   */
+  public String asyncSendOrRespondMessage(final String profile, final Integer projectId,
+      final String eventId, final Message message, Integer threadCount) {
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var buyerUser = userService.resolveBuyerUserProfile(profile)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+    var ocds = message.getOCDS();
+    var nonOCDS = message.getNonOCDS();
+
+    // Creating RPA process input string
+    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
+        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
+        .ittCode(procurementEvent.getExternalReferenceId())
+        .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
+        .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
+        .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
+        .supplierName("").messageReceivedDate("");
+
+    // To reply the message
+    if (nonOCDS.getParentId() != null) {
+      var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
+      if (messageDetails == null) {
+        throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
+      }
+      var messageRecievedDate = rpaGenericService
+          .handleDSTDate(messageDetails.getReceiveDate(), buyerUser.getTimezoneCode())
+          .format(DATE_TIME_FORMATTER);
+      log.info("MessageRecievedDate: {}", messageRecievedDate);
+      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
+          .senderName(messageDetails.getSender().getName());
+    }
+
+    // Adding supplier details
+    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
+      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
+        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
+      }
+      var suppliers =
+          rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
+              .map(OrganizationReference1::getId).collect(Collectors.toList()));
+      var supplierJoiner = new StringJoiner(RPA_DELIMETER);
+      suppliers.getFirst().stream().forEach(supplier -> {
+        supplierJoiner.add(supplier.getCompanyData().getName());
+      });
+      var supplierString = supplierJoiner.toString();
+      log.info("Suppliers list: {}", supplierString);
+      inputBuilder.supplierName(supplierString);
+    }
+
+    IntStream.range(0, threadCount).forEach(thread -> rpaGenericService
+        .asyncCallRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.BUYER_MESSAGING));
+
+    return "Ok";
   }
 
   /**

@@ -9,12 +9,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.jena.atlas.logging.Log;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 
@@ -67,7 +69,7 @@ public class DocGenValueAdaptors {
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgName() {
     return (event, requestCache) -> List
-        .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getLegalName());
+        .of(getBuyerOrgName(event, requestCache).getIdentifier().getLegalName());
   }
   
   @Bean("DocumentValueAdaptorPublishDate")
@@ -82,8 +84,7 @@ public class DocGenValueAdaptors {
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorPublishDateAndTime() {
     return (event, requestCache) -> List
-        .of(LocalDateTime.ofInstant(event.getPublishDate(), ZoneOffset.systemDefault())
-            .format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
+        .of(getPublishedDateAndTime(event, requestCache));
   }
 
   @Bean("DocumentValueAdaptorProcLead")
@@ -142,6 +143,31 @@ public class DocGenValueAdaptors {
       return projectTeamMembers.stream().filter(tm -> tm.getNonOCDS().getProjectOwner()).findFirst()
           .orElseThrow(() -> new TendersDBDataException(
               "Project [" + event.getProject().getId() + "] has no procurement lead"));
+    });
+  }
+  
+  private OrganisationProfileResponseInfo getBuyerOrgName(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    return (OrganisationProfileResponseInfo) requestCache.computeIfAbsent("CACHE_KEY_ORG_NAME", k -> {
+
+      var projectOrgId = Optional.ofNullable(event.getProject().getOrganisationMapping())
+          .orElseThrow(() -> new TendersDBDataException(
+              "Project [" + event.getProject().getId() + "] has no org mapping"))
+          .getOrganisationId();
+      return conclaveService.getOrganisation(projectOrgId)
+          .orElseThrow(() -> new TendersDBDataException(
+              "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
+    });
+
+  }
+  
+  private String getPublishedDateAndTime(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    return (String) requestCache.computeIfAbsent("CACHE_KEY_ORG_NAME" + event.getEventID(), k -> {
+      var publishedDate =
+          LocalDateTime.ofInstant(event.getPublishDate(), ZoneOffset.systemDefault())
+              .format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+      return publishedDate;
     });
   }
 

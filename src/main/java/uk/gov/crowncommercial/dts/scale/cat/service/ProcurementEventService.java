@@ -72,7 +72,7 @@ public class ProcurementEventService {
       "No Supplier Responses found for the given event '%s'  ";
   private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
       "Supplier [%s] not found in Conclave";
-
+  private static final String ERR_MSG_RFX_NOT_FOUND = "Rfx [%s] not found in Jaggaer";
 
   private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   private static final String COMPLETE_STATUS = "complete";

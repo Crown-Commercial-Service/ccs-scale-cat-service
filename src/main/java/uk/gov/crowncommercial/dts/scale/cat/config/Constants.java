@@ -56,7 +56,7 @@ public class Constants {
       Set.of(ViewEventType.FCA, ViewEventType.DAA,ViewEventType.PA);
 
   public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD =
-      Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI,ViewEventType.PA);
+      Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI);
 
   public static final Set<ViewEventType> TENDER_NON_DB_EVENT_TYPES =
       Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC, ViewEventType.DA);
@@ -71,6 +71,7 @@ public class Constants {
           Set.of(ViewEventType.FC,ViewEventType.DA);
 
   public static final String UNLIMITED_VALUE = "1000000";
+
 
 
   public static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";

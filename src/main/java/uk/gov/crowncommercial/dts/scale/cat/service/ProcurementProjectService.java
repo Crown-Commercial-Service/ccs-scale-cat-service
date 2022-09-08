@@ -31,6 +31,10 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 
+import javax.transaction.Transactional;
+
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
  */
@@ -475,7 +479,7 @@ public class ProcurementProjectService {
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
       projectPackageSummary.activeEvent(eventSummary);
     }
-    
+
     return Optional.of(projectPackageSummary);
   }
 
