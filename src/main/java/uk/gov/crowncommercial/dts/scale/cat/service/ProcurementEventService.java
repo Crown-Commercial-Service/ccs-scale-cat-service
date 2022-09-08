@@ -1387,6 +1387,7 @@ public class ProcurementEventService {
    * @param eventId
    * @param principal
    */
+  @Transactional
   public void signProcurement(final Integer procId, final String eventId, final Contract request,
       final String principal) {
     var user = userProfileService.resolveBuyerUserProfile(principal)
