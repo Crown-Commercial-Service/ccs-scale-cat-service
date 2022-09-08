@@ -288,7 +288,7 @@ private Integer getPageTotal(Integer count, Integer pageSize)
       final MessageRead messageRead, final String jaggaerUserId) {
 
     final Predicate<Receiver> receiverPredicate =
-        receiver -> (MessageRead.READ.equals(messageRead) || MessageRead.ALL.equals(messageRead)) && receiver.getId().equals(jaggaerUserId);
+        receiver -> MessageRead.READ.equals(messageRead) && receiver.getId().equals(jaggaerUserId);
     Boolean read;
     if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals(message.getDirection())) {
       read = Boolean.FALSE;
