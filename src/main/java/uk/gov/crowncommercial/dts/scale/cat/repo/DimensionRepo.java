@@ -9,6 +9,8 @@ public interface DimensionRepo extends JpaRepository<DimensionEntity, Integer> {
 
   Optional<DimensionEntity> findByName(final String name);
 
-  Set<DimensionEntity> findByAssessmentTaxonsToolId(final Integer toolId);
+  Set<DimensionEntity> findByAssessmentToolsId(final Integer toolId);
+
+//  Set<DimensionEntity> findByAssessmentTaxonsToolId(final Integer toolId);
 
 }

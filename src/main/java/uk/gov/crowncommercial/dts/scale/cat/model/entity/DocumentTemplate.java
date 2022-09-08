@@ -30,6 +30,15 @@ public class DocumentTemplate {
 
   @Column(name = "event_stage")
   String eventStage;
+  
+  @Column(name = "commercial_agreement_number")
+  String commercialAgreementNumber; 
+  
+  @Column(name = "lot_number")
+  String lotNumber;
+  
+  @Column(name = "template_group")
+  Integer templateGroup;
 
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "document_template_id")

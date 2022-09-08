@@ -26,8 +26,9 @@ public class LotRequirementTaxon {
   @JoinColumn(name = "requirement_taxon_id")
   RequirementTaxon productTaxon;
 
-  @Column(name = "lot_id")
-  private Integer lotId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "submission_group_id")
+  SubmissionGroup submissionGroup;
 
   @Embedded
   private Timestamps timestamps;

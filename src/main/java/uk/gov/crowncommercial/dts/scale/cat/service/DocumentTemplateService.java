@@ -50,6 +50,23 @@ public class DocumentTemplateService {
     return getTemplates(retryableTendersDBDelegate.findByEventType(event.getEventType()),
         String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()));
   }
+  
+  /**
+   * Lists the template documents for a given procurement event (by event type and CommercialAgreementNumber And LotNumber).
+   *
+   * @param procId
+   * @param eventId
+   * @return a collection of document summaries
+   */
+  public Collection<DocumentSummary> getTemplatesByAgreementAndLot(final Integer procId,
+      final String eventId) {
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    return getTemplates(
+        retryableTendersDBDelegate.findByEventTypeAndCommercialAgreementNumberAndLotNumber(
+            event.getEventType(), event.getProject().getCaNumber(),
+            event.getProject().getLotNumber()),
+        String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()));
+  }
 
   /**
    * Lists the template documents for a given procurement event (by event stage).

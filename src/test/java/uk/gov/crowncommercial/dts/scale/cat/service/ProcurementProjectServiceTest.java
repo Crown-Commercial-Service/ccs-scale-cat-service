@@ -51,7 +51,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class,
-        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class},
+        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class,EventTransitionService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
@@ -109,11 +109,16 @@ class ProcurementProjectServiceTest {
   @MockBean
   private AgreementsService agreementsService;
 
+  @MockBean
+  private EventTransitionService eventTransitionService;
+
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
   @Autowired
   private ProcurementProjectService procurementProjectService;
+
+
 
   @MockBean
   private JaggaerService jaggaerService;
@@ -343,7 +348,7 @@ class ProcurementProjectServiceTest {
     event.setEventName(EVENT_NAME);
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
-    event.setOcidPrefix("b5fd17");
+    event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
 
     Set<ProcurementEvent> events = new HashSet<>();
@@ -486,7 +491,7 @@ class ProcurementProjectServiceTest {
     event.setEventName(EVENT_NAME);
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
-    event.setOcidPrefix("b5fd17");
+    event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
