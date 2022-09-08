@@ -141,9 +141,9 @@ public class MessageService {
         receiver -> MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
             || MessageRead.READ.equals(messageRequestInfo.getMessageRead())
                 && receiver.getId().equals(jaggaerUserId);
-
+    var pageStart =  messageRequestInfo.getPage() == 1 ? 1 : (messageRequestInfo.getPageSize() * (messageRequestInfo.getPage()-1));
     var messagesResponse =
-        jaggaerService.getMessages(event.getExternalReferenceId(), messageRequestInfo.getPage());
+        jaggaerService.getMessages(event.getExternalReferenceId(),  pageStart);
     var allMessages = messagesResponse.getMessageList().getMessage();
 
     /**
@@ -178,7 +178,7 @@ public class MessageService {
     MessageSummary messageSummary=new MessageSummary().counts(
                     new MessageTotals()
                             .messagesTotal(messages.size())
-                            .pageTotal((messages.size() / messageRequestInfo.getPageSize()) + 1))
+                            .pageTotal(getPageTotal(messagesResponse.getTotRecords(), messageRequestInfo.getPageSize())))
                             .messages(getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
                             messageRequestInfo.getPageSize()));
 
@@ -187,7 +187,21 @@ public class MessageService {
     }
       return messageSummary;
   }
+private Integer getPageTotal(Integer count, Integer pageSize)
+{
 
+  Integer pageTotal = new Integer(0);
+  if(count > 0)
+  {
+    pageTotal = (int) Math.ceil((double) count / pageSize);;
+    if(pageTotal > 0 && (count > (pageSize * pageTotal)))
+    {
+      pageTotal++;
+    }
+  }
+
+  return pageTotal;
+}
   private Links1 getLinks(
       final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
       final Integer pageSize) {
@@ -274,7 +288,7 @@ public class MessageService {
       final MessageRead messageRead, final String jaggaerUserId) {
 
     final Predicate<Receiver> receiverPredicate =
-        receiver -> MessageRead.READ.equals(messageRead) && receiver.getId().equals(jaggaerUserId);
+        receiver -> (MessageRead.READ.equals(messageRead) || MessageRead.ALL.equals(messageRead)) && receiver.getId().equals(jaggaerUserId);
     Boolean read;
     if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals(message.getDirection())) {
       read = Boolean.FALSE;
