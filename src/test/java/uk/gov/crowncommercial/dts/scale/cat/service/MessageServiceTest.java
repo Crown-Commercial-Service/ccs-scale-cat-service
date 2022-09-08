@@ -451,7 +451,7 @@ class MessageServiceTest {
     var messageRequestInfo =
             MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
                     .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
-                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(2)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
                     .pageSize(20).principal(PRINCIPAL).build();
     var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
 
@@ -459,7 +459,7 @@ class MessageServiceTest {
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
             .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID, 20)).thenReturn(messagesResponse);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
     when(retryableTendersDBDelegate
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
@@ -470,7 +470,7 @@ class MessageServiceTest {
     assertNotNull(response);
     assertEquals(1, response.getMessages().size());
     assertEquals(1, response.getCounts().getMessagesTotal());
-    assertEquals(6, response.getCounts().getPageTotal());
+    assertEquals(1, response.getCounts().getPageTotal());
     assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
   }
   @Test
