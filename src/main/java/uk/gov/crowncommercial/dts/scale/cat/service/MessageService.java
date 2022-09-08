@@ -141,9 +141,9 @@ public class MessageService {
         receiver -> MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
             || MessageRead.READ.equals(messageRequestInfo.getMessageRead())
                 && receiver.getId().equals(jaggaerUserId);
-    var pageStart =  messageRequestInfo.getPage() == 1 ? 1 : (messageRequestInfo.getPageSize() * (messageRequestInfo.getPage()-1));
+   // var pageStart =  messageRequestInfo.getPage() == 1 ? 1 : ((messageRequestInfo.getPageSize() * (messageRequestInfo.getPage()-1)));
     var messagesResponse =
-        jaggaerService.getMessages(event.getExternalReferenceId(),  pageStart);
+        jaggaerService.getMessages(event.getExternalReferenceId(), 1);
     var allMessages = messagesResponse.getMessageList().getMessage();
 
     /**
@@ -173,13 +173,13 @@ public class MessageService {
     // sort messages
     sortMessages(messages, messageRequestInfo.getMessageSort(),
         messageRequestInfo.getMessageSortOrder());
-
+    int fromIndex = (messageRequestInfo.getPage() - 1) * messageRequestInfo.getPageSize();
     // convert to message summary
     MessageSummary messageSummary=new MessageSummary().counts(
                     new MessageTotals()
                             .messagesTotal(messages.size())
-                            .pageTotal(getPageTotal(messagesResponse.getTotRecords(), messageRequestInfo.getPageSize())))
-                            .messages(getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
+                            .pageTotal((int)Math.ceil((double) messages.size()/messageRequestInfo.getPageSize())))
+                            .messages(getCatMessages(messages.subList(fromIndex, Math.min(fromIndex + messageRequestInfo.getPageSize(), messages.size())), messageRequestInfo.getMessageRead(), jaggaerUserId,
                             messageRequestInfo.getPageSize()));
 
     if( !UNLIMITED_VALUE.equals(messageRequestInfo.getPageSize().toString())){
@@ -187,21 +187,7 @@ public class MessageService {
     }
       return messageSummary;
   }
-private Integer getPageTotal(Integer count, Integer pageSize)
-{
 
-  Integer pageTotal = new Integer(0);
-  if(count > 0)
-  {
-    pageTotal = (int) Math.ceil((double) count / pageSize);;
-    if(pageTotal > 0 && (count > (pageSize * pageTotal)))
-    {
-      pageTotal++;
-    }
-  }
-
-  return pageTotal;
-}
   private Links1 getLinks(
       final List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> messages,
       final Integer pageSize) {
