@@ -2,13 +2,16 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.transaction.Transactional;
+import org.apache.commons.validator.GenericValidator;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -46,6 +49,7 @@ public class DocGenService {
   public static final String PLACEHOLDER_ERROR = "";
   public static final String PLACEHOLDER_UNKNOWN = "";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+  static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
 
   private final ApplicationContext applicationContext;
@@ -120,7 +124,10 @@ public class DocGenService {
 
         case SQL:
           return List.of(getValueFromDB(event, documentTemplateSource));
-
+        
+        case STATIC:  
+          return List.of(getStaticValueFromDB(event, documentTemplateSource));
+          
         default:
           log.warn("Unrecognised source type - unable to process");
           return List.of(PLACEHOLDER_ERROR);
@@ -170,7 +177,13 @@ public class DocGenService {
     var getter = ReflectionUtils.findMethod(ProcurementEvent.class, "get" + column);
     return (String) ReflectionUtils.invokeMethod(getter, event);
   }
-
+  
+  String getStaticValueFromDB(final ProcurementEvent event,
+      final DocumentTemplateSource documentTemplateSource) {
+    var tableColumnSource = documentTemplateSource.getSourcePath();
+    return tableColumnSource;
+  }
+  
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
       final List<String> dataReplacement, final TextDocument textODT)
       throws InvalidNavigationException {
@@ -186,7 +199,7 @@ public class DocGenService {
           break;
 
         case DATETIME:
-          var formattedDatetime = DATE_FMT.format(OffsetDateTime.parse(dataReplacement.get(0)));
+          var formattedDatetime = formatDateorDateAndTime(dataReplacement.get(0));
           replaceText(documentTemplateSource, formattedDatetime, textODT);
           break;
 
@@ -213,16 +226,63 @@ public class DocGenService {
     }
 
   }
+  
+  String formatDateorDateAndTime(String dateValue) {
+    if (dateValue.length() <= 10) {
+      return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
+    } else {
+      return DATE_FMT.format(OffsetDateTime.parse(dateValue));
+    }
+  }
 
   void replaceText(final DocumentTemplateSource documentTemplateSource,
-      final String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+      String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
 
     var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
     while (textNavigation.hasNext()) {
       var item = (TextSelection) textNavigation.nextSelection();
+
+      if (item.getText().contains("Conditional") && !dataReplacement.isBlank()) {
+        StringJoiner value = new StringJoiner(" ");
+        value.add(documentTemplateSource.getConditionalValue() == null ? ""
+            : documentTemplateSource.getConditionalValue());
+        
+        //FC-DA related condition
+        //TODO Should move to seperate method
+        if (dataReplacement.contains("Yes")) {
+          value.add("There is an existing supplier providing the products and services:");
+        } else if (dataReplacement.contains("No")) {
+          value.add("");
+        } else {
+          value.add(dataReplacement);
+        }
+        dataReplacement = value.toString();
+      }
+
+      dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
+          documentTemplateSource.getConditionalValue() == null ? ""
+              : documentTemplateSource.getConditionalValue());
+
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
+  }
+  
+  //TODO remove static content and add in app.yaml file
+  private String eoiConditionalAndOptionalData(String dataReplacement, String conditionalValue) {
+    String conditionlaData = "";
+    if (dataReplacement.contentEquals("Replacement products or services")
+        || dataReplacement.contentEquals("Expanded products or services")
+        || dataReplacement.contentEquals("New products or services")) {
+      conditionlaData = conditionalValue + dataReplacement;
+      return conditionlaData;
+    } else if (dataReplacement.contentEquals("Not sure")) {
+      conditionlaData =
+          "The buyer is unsure whether it will be a new or a replacement product or service.";
+      return conditionlaData;
+    }
+    
+    return dataReplacement;
   }
 
   void replaceList(final DocumentTemplateSource documentTemplateSource,
@@ -247,7 +307,7 @@ public class DocGenService {
   }
 
   void populateTableColumn(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT) {
+      final List<String> dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
     var table = textODT.getTableByName(documentTemplateSource.getTableName());
     if (table != null) {
       // Append rows if necessary (assume header row present)
@@ -256,6 +316,7 @@ public class DocGenService {
       }
       var isLineRequired = false;
       var columnIndex = -1;
+      
       for (var r = 1; r <= dataReplacement.size(); r++) {
         var row = table.getRowByIndex(r);
 

@@ -27,6 +27,9 @@ public class AssessmentEntity {
   @Column(name = "buyer_organisation_id")
   private String buyerOrganisationId;
 
+  @Column(name = "assessment_name")
+  private String assessmentName;
+
   @Column(name = "status")
   @Enumerated(EnumType.STRING)
   private AssessmentStatusEntity status;

@@ -258,7 +258,7 @@ public class UserProfileService {
     }
     return Optional.empty();
   }
-  
+
   /**
   *
   * Return Supplier CompanyData for given supplier duns number
