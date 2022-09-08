@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.assessment.impl;
 
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.CalculationParams;
 import uk.gov.crowncommercial.dts.scale.cat.assessment.DimensionScoreCalculator;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.RequirementScore;
@@ -111,7 +112,7 @@ public class PricingDimensionCalculator implements DimensionScoreCalculator {
   @Override
   public void calculateDimensionScore(final Collection<SupplierScores> suppliersScores,SupplierScores supplierScores,
       final String supplierId, final Integer dimensionId, final AssessmentEntity assessment,
-      final Set<CalculationBase> assessmentCalculationBase) {
+      final Set<CalculationBase> assessmentCalculationBase, final CalculationParams params ) {
 
     calculateDimensionScoreHelper(supplierScores, supplierId,
             getSubmissionTypes(assessmentCalculationBase, supplierScores));

@@ -25,7 +25,7 @@ public interface DimensionScoreCalculator extends BaseCalculator {
     void calculateDimensionScore(Collection<SupplierScores> suppliersScores, SupplierScores supplierScore,
                                  final String supplierId,
                                  Integer dimensionId, final AssessmentEntity assessment,
-                                 Set<CalculationBase> assessmentCalculationBase);
+                                 Set<CalculationBase> assessmentCalculationBase, CalculationParams params);
 
     /**
      * Calculates a score for an individual requirement, i.e. a single row in the calculation base
@@ -42,4 +42,9 @@ public interface DimensionScoreCalculator extends BaseCalculator {
     void postCalculate(Collection<SupplierScores> suppliersScores,
                              final AssessmentEntity assessment,
                              Set<CalculationBase> assessmentCalculationBase);
+
+
+    default boolean subContractorsAccepted(){
+        return true;
+    }
 }
