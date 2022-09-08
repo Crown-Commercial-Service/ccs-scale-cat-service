@@ -36,6 +36,12 @@ class RetryableTendersDBDelegateTest {
   private ProcurementEventRepo procurementEventRepo;
 
   @MockBean
+  private GCloudAssessmentRepo gCloudAssessmentRepo;
+  
+  @MockBean
+  private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
+
+  @MockBean
   private OrganisationMappingRepo organisationMappingRepo;
 
   @MockBean

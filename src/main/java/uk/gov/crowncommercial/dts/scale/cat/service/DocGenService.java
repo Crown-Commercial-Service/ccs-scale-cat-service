@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.transaction.Transactional;
@@ -43,8 +44,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 @Slf4j
 public class DocGenService {
 
-  public static final String PLACEHOLDER_ERROR = "«ERROR»";
-  public static final String PLACEHOLDER_UNKNOWN = "«UNKNOWN»";
+  public static final String PLACEHOLDER_ERROR = "";
+  public static final String PLACEHOLDER_UNKNOWN = "";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
 
@@ -57,9 +58,10 @@ public class DocGenService {
 
   public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-
     for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
-        .findByEventType(procurementEvent.getEventType())) {
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumber(procurementEvent.getEventType(),
+            procurementEvent.getProject().getCaNumber(),
+            procurementEvent.getProject().getLotNumber())) {
       uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
           documentTemplate);
     }
@@ -119,7 +121,10 @@ public class DocGenService {
 
         case SQL:
           return List.of(getValueFromDB(event, documentTemplateSource));
-
+        
+        case STATIC:  
+          return List.of(getStaticValueFromDB(event, documentTemplateSource));
+          
         default:
           log.warn("Unrecognised source type - unable to process");
           return List.of(PLACEHOLDER_ERROR);
@@ -169,7 +174,13 @@ public class DocGenService {
     var getter = ReflectionUtils.findMethod(ProcurementEvent.class, "get" + column);
     return (String) ReflectionUtils.invokeMethod(getter, event);
   }
-
+  
+  String getStaticValueFromDB(final ProcurementEvent event,
+      final DocumentTemplateSource documentTemplateSource) {
+    var tableColumnSource = documentTemplateSource.getSourcePath();
+    return tableColumnSource;
+  }
+  
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
       final List<String> dataReplacement, final TextDocument textODT)
       throws InvalidNavigationException {
@@ -204,20 +215,30 @@ public class DocGenService {
           replaceList(documentTemplateSource, dataReplacement, textODT);
           break;
         default:
-          log.warn("Unrecognised target type - assume simple text");
+          replaceText(documentTemplateSource, "", textODT);
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
+      replaceText(documentTemplateSource, "", textODT);
     }
 
   }
 
   void replaceText(final DocumentTemplateSource documentTemplateSource,
-      final String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+       String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
 
     var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
     while (textNavigation.hasNext()) {
       var item = (TextSelection) textNavigation.nextSelection();
+      
+      if (item.getText().contains("Conditional") && !dataReplacement.isBlank()) {
+        StringJoiner value = new StringJoiner(" ");
+        value.add(documentTemplateSource.getConditionalValue() == null ? ""
+            : documentTemplateSource.getConditionalValue());
+        value.add(dataReplacement);
+        dataReplacement = value.toString();
+      }
+      
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
@@ -245,7 +266,7 @@ public class DocGenService {
   }
 
   void populateTableColumn(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT) {
+      final List<String> dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
     var table = textODT.getTableByName(documentTemplateSource.getTableName());
     if (table != null) {
       // Append rows if necessary (assume header row present)
@@ -305,6 +326,7 @@ public class DocGenService {
       }
     } else {
       log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
+      replaceText(documentTemplateSource, "", textODT);
     }
   }
 }

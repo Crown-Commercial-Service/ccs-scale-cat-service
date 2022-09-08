@@ -11,6 +11,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
@@ -19,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.*;
@@ -41,7 +43,7 @@ class MessageControllerTest {
     private static final String MESSAGES_PATH = "messages";
     private static final String PRINCIPAL = "jsmith@ccs.org.uk";
     private static final Integer PROC_PROJECT_ID = 1;
-    private static final String EVENT_ID = "ocds-b5fd17-1";
+    private static final String EVENT_ID = "ocds-pfhb7i-1";
 
     @Autowired
     private MockMvc mockMvc;
@@ -60,17 +62,18 @@ class MessageControllerTest {
     @Test
     void getMessages_200_OK() throws Exception {
 
-        var  messageRequestInfo = MessageRequestInfo.builder()
-                .procId(PROC_PROJECT_ID)
-                .eventId(EVENT_ID)
-                .messageDirection(MessageDirection.RECEIVED)
-                .messageRead(MessageRead.ALL)
-                .messageSort(MessageSort.DATE)
-                .messageSortOrder(MessageSortOrder.ASCENDING)
-                .page(1)
-                .pageSize(20)
-                .principal(PRINCIPAL)
-                .build();
+    var messageRequestInfo =
+        MessageRequestInfo.builder()
+            .procId(PROC_PROJECT_ID)
+            .eventId(EVENT_ID)
+            .messageDirection(MessageDirection.RECEIVED)
+            .messageRead(MessageRead.ALL)
+            .messageSort(MessageSort.DATE)
+            .messageSortOrder(MessageSortOrder.ASCENDING)
+            .page(1)
+            .pageSize(Integer.parseInt(Constants.UNLIMITED_VALUE))
+            .principal(PRINCIPAL)
+            .build();
 
         when(messageService.getMessagesSummary(messageRequestInfo))
                 .thenReturn(new MessageSummary()
@@ -78,7 +81,9 @@ class MessageControllerTest {
                                 .OCDS(new CaTMessageOCDS().title("Test")
                                         .author(new CaTMessageOCDSAllOfAuthor().id("test").name("Test Author")))
                                         .nonOCDS(new CaTMessageNonOCDS()
-                                                .read(false).direction(CaTMessageNonOCDS.DirectionEnum.SENT))
+                                                .read(false).direction(CaTMessageNonOCDS.DirectionEnum.SENT)
+                                                .isBroadcast(false)
+                                                .receiverList(Collections.emptyList()))
                                 ))
                         .counts(new MessageTotals().pageTotal(10).messagesTotal(100))
                         .links(new Links1().first(new URI( "/first/"))

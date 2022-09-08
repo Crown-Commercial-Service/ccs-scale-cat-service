@@ -47,7 +47,7 @@ class DocumentTemplatesControllerTest {
       "/tenders/projects/{procID}/events/{eventID}/documents/templates";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
-  private static final String EVENT_ID = "ocds-b5fd17-1";
+  private static final String EVENT_ID = "ocds-pfhb7i-1";
   private static final String DOC_KEY = "YnV5ZXItNzYxMzg1MS1yZmlfdGVtcGxhdGUub2R0";
   private static final String ERR_MSG_TEMPLATE_NOT_FOUND = "Template not found";
 
@@ -77,7 +77,7 @@ class DocumentTemplatesControllerTest {
     var docSummary2 = new DocumentSummary().fileName("template2.odt").id("template2DocKey")
         .fileSize(524L).description("Document Template 2").audience(DocumentAudienceType.SUPPLIER);
 
-    when(documentTemplateService.getTemplatesByEventType(PROC_PROJECT_ID, EVENT_ID))
+    when(documentTemplateService.getTemplatesByAgreementAndLot(PROC_PROJECT_ID, EVENT_ID))
         .thenReturn(Set.of(docSummary1, docSummary2));
 
     mockMvc

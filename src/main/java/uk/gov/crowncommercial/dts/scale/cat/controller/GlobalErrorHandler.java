@@ -205,4 +205,16 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
         "Mime type not supported ", exception.getMessage());
   }
+
+  @ResponseStatus(BAD_REQUEST)
+  @ExceptionHandler({OperationNotSupportedException.class})
+  public Errors handleOperationNotSupportedException(
+          final OperationNotSupportedException exception) {
+    log.warn(exception.getMessage());
+
+    return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
+            "Can not complete an Event", exception.getMessage());
+  }
+
+
 }
