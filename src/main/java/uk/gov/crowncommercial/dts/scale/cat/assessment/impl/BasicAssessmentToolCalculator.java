@@ -2,22 +2,22 @@ package uk.gov.crowncommercial.dts.scale.cat.assessment.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
-import uk.gov.crowncommercial.dts.scale.cat.assessment.AssessmentScoreCalculator;
-import uk.gov.crowncommercial.dts.scale.cat.assessment.AssessmentToolCalculator;
-import uk.gov.crowncommercial.dts.scale.cat.assessment.DimensionScoreCalculator;
-import uk.gov.crowncommercial.dts.scale.cat.assessment.ExclusionPolicy;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.ValueCount;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentToolDimension;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.SupplierSubmissionDataRepo;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
@@ -26,6 +26,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updat
 @RequiredArgsConstructor
 public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
     private final AssessmentScoreCalculator assessmentScoreCalculator;
+    private final SupplierSubmissionDataRepo supplierSubmissionDataRepo;
     private final Map<String, DimensionScoreCalculator> dimensionScoreCalculators;
     private final Map<String, ExclusionPolicy> exclusionPolicies;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -111,12 +112,20 @@ public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
     private void calculateSupplierScoreTotals(final List<SupplierScores> suppliersScores,
                                               final AssessmentEntity assessment, final String principal,
                                               final Set<CalculationBase> assessmentCalculationBase) {
+
+        List<ValueCount> subContractorCountList = supplierSubmissionDataRepo.getSubContractorSubmissionCount(assessment.getTool().getId());
+        Map<String, ValueCount> subContractorCountMap = subContractorCountList.stream()
+                .collect(Collectors.toMap(ValueCount::getDataValue, Function.identity()));
+
+        CalculationParams params = new CalculationParams();
         suppliersScores.forEach(supplierScores -> {
+            String supplierId = supplierScores.getSupplier().getId();
+            params.setIncludeSubContractors(subContractorCountMap.containsKey(supplierId));
             supplierScores.getDimensionScores().forEach(dimensionScores -> {
                 dimensionScoreCalculators.get(dimensionScores.getName()).calculateDimensionScore(suppliersScores,
                         supplierScores,
                         supplierScores.getSupplier().getId(), dimensionScores.getDimensionId(), assessment,
-                        assessmentCalculationBase);
+                        assessmentCalculationBase, params);
             });
 
             assessmentScoreCalculator.calculateSupplierTotalScore(supplierScores);

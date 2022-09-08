@@ -9,6 +9,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentToolDimension;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.SupplierSubmissionDataRepo;
 
 import java.util.*;
 
@@ -16,7 +17,7 @@ import java.util.*;
 public class SpringAssessmentToolFactory implements ApplicationContextAware, AssessmentToolFactory {
 
     private final List<String> exclusionPolicy = Arrays.asList("EXCL_NoopPolicy", "EXCL_AllReqNonZero", "EXCL_AtleastOneNonZero");
-    private final List<String> dimensionCalculator = Arrays.asList("DIM_NoopCalculator", "DIM_StandardWeighted", "DIM_Pricing");
+    private final List<String> dimensionCalculator = Arrays.asList("DIM_NoopCalculator", "DIM_StandardCombined", "DIM_Pricing", "DIM_StandardWeighted");
     private final List<String> assessmentCalculator = Arrays.asList("ASMT_StandardWeighted");
 
     private ApplicationContext context;
@@ -35,8 +36,8 @@ public class SpringAssessmentToolFactory implements ApplicationContextAware, Ass
             dimCalcList.put(atd.getDimension().getName(), getDimensionCalculator(atd));
             exclusionPolicies.put(atd.getDimension().getName(), getExclusionPolicy(atd));
         }
-
-        return new BasicAssessmentToolCalculator(toolCalculator, dimCalcList, exclusionPolicies, retryableTendersDBDelegate);
+        SupplierSubmissionDataRepo supplierSubmissionDataRepo = context.getBean(SupplierSubmissionDataRepo.class);
+        return new BasicAssessmentToolCalculator(toolCalculator, supplierSubmissionDataRepo, dimCalcList,exclusionPolicies, retryableTendersDBDelegate);
     }
 
 
