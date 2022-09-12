@@ -3,8 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.repo.readonly;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.ValueCount;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
 
 import java.util.List;
 import java.util.Set;
@@ -32,4 +32,11 @@ import java.util.Set;
     Set<SupplierSubmissionData> findByDimensionIdAndExtToolIdAndLotId(@Param("dimensionId") Integer dimensionId,
                                                                                   @Param("toolId") String toolId,
                                                                                   @Param("lotId") String lotId);
+
+    @Query (value = "select COUNT(ssd.supplierId) AS dataCount, ssd.supplierId AS dataValue " +
+            " from SupplierSubmissionData ssd " +
+            " where submissionTypeName = 'Sub Contractor'" +
+            " and toolId  = :toolId" +
+            " GROUP BY supplierId")
+    List<ValueCount> getSubContractorSubmissionCount(@Param("toolId") Integer toolId);
 }

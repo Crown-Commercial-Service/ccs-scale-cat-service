@@ -4,10 +4,7 @@ import static java.lang.String.format;
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.net.URI;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -79,7 +76,7 @@ public class MessageService {
     
     String messageClassification = nonOCDS.getClassification().getValue();
     if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
-      messageClassification = "(unclassified)";
+      messageClassification = "";
     }
 
     // Creating RPA process input string
@@ -212,9 +209,9 @@ public class MessageService {
         receiver -> MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
             || MessageRead.READ.equals(messageRequestInfo.getMessageRead())
                 && receiver.getId().equals(jaggaerUserId);
-
+   // var pageStart =  messageRequestInfo.getPage() == 1 ? 1 : ((messageRequestInfo.getPageSize() * (messageRequestInfo.getPage()-1)));
     var messagesResponse =
-        jaggaerService.getMessages(event.getExternalReferenceId(), messageRequestInfo.getPage());
+        jaggaerService.getMessages(event.getExternalReferenceId(), 1);
     var allMessages = messagesResponse.getMessageList().getMessage();
 
     /**
@@ -244,13 +241,14 @@ public class MessageService {
     // sort messages
     sortMessages(messages, messageRequestInfo.getMessageSort(),
         messageRequestInfo.getMessageSortOrder());
-
+    int fromIndex = (messageRequestInfo.getPage() - 1) * messageRequestInfo.getPageSize();
+    var pageMessages = fromIndex >= messages.size() ? Collections.<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message>emptyList() : messages.subList(fromIndex, Math.min(fromIndex + messageRequestInfo.getPageSize(), messages.size()));
     // convert to message summary
     MessageSummary messageSummary=new MessageSummary().counts(
                     new MessageTotals()
                             .messagesTotal(messages.size())
-                            .pageTotal((messages.size() / messageRequestInfo.getPageSize()) + 1))
-                            .messages(getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
+                            .pageTotal((int)Math.ceil((double) messages.size()/messageRequestInfo.getPageSize())))
+                            .messages(getCatMessages(pageMessages, messageRequestInfo.getMessageRead(), jaggaerUserId,
                             messageRequestInfo.getPageSize()));
 
     if( !UNLIMITED_VALUE.equals(messageRequestInfo.getPageSize().toString())){
