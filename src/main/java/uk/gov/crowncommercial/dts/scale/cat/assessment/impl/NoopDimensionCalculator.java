@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.assessment.impl;
 
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.assessment.CalculationParams;
 import uk.gov.crowncommercial.dts.scale.cat.assessment.DimensionScoreCalculator;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
@@ -17,7 +18,9 @@ public class NoopDimensionCalculator implements DimensionScoreCalculator {
     }
 
     @Override
-    public void calculateDimensionScore(Collection<SupplierScores> suppliersScores, SupplierScores supplierScore, String supplierId, Integer dimensionId, AssessmentEntity assessment, Set<CalculationBase> assessmentCalculationBase) {
+    public void calculateDimensionScore(Collection<SupplierScores> suppliersScores, SupplierScores supplierScore, String supplierId,
+                                        Integer dimensionId, AssessmentEntity assessment, Set<CalculationBase> assessmentCalculationBase,
+                                        final CalculationParams params ) {
 
     }
 
