@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -21,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -282,10 +284,14 @@ public class AwardService {
     }
 
     // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
-    return new AwardSummary().id("1").date(exportRfxResponse.getRfxSetting().getLastUpdate())
+    return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
         .addSuppliersItem(new OrganizationReference1().id(supplier.getOrganisationId()))
         .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
             ? AwardState.AWARD
             : AwardState.PRE_AWARD);
+  }
+
+  private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
+    return offerDetailLastUpdated.compareTo(rfxsettingLastUpdated) >=0 ? offerDetailLastUpdated : rfxsettingLastUpdated;
   }
 }
