@@ -466,8 +466,8 @@ public class ProcurementProjectService {
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
-        // and if the closed data from tender has value it takes precedence
-        eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():rfxSetting.getCloseDate().toInstant()));
+        // and if the closed date from tender has value it takes precedence
+        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       } catch (Exception e) {
         // No data found in Jagger
@@ -483,22 +483,12 @@ public class ProcurementProjectService {
     return Optional.of(projectPackageSummary);
   }
 
-  private Period1 getTenderPeriod(Instant publishedDate, Instant closedDate) {
-
-    Period1 period1=new Period1();
-
-    OffsetDateTime startDate=null;
-    OffsetDateTime endDate=null;
-    if(Objects.nonNull(publishedDate)){
-      startDate=OffsetDateTime.ofInstant(publishedDate, ZoneId.systemDefault());
-    }
-    if(Objects.nonNull(closedDate)){
-      endDate=OffsetDateTime.ofInstant(closedDate, ZoneId.systemDefault());
-    }
-    period1.startDate(startDate).endDate(endDate);
-    return period1;
+  private Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
+    return null!=offsetDateTime?offsetDateTime.toInstant():null;
 
   }
+
+
 
   /**
    * Get a Team Member.
