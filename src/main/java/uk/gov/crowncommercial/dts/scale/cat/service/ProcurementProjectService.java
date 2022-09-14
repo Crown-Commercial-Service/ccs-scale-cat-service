@@ -458,8 +458,6 @@ public class ProcurementProjectService {
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
-        eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
-
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
             .filter(
@@ -468,7 +466,8 @@ public class ProcurementProjectService {
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
-        eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),rfxSetting.getCloseDate().toInstant()));
+        // and if the closed data from tender has value it takes precedence
+        eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():rfxSetting.getCloseDate().toInstant()));
 
       } catch (Exception e) {
         // No data found in Jagger
@@ -641,11 +640,11 @@ public class ProcurementProjectService {
   /**
    *
    * @param projectId
-   * @param tenderStatus
+   * @param terminationType
    * @param principal
    */
   @Transactional
-  public void closeProcurementProject(final Integer projectId, final TenderStatus tenderStatus,
+  public void closeProcurementProject(final Integer projectId, final TerminationType terminationType,
       final String principal) {
     var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
     if (CollectionUtils.isEmpty(procurementEvents)) {
@@ -654,7 +653,7 @@ public class ProcurementProjectService {
       procurementEvents.forEach(
               event -> {
                 eventTransitionService.terminateEvent(
-                    projectId, event.getEventID(), TerminationType.WITHDRAWN, principal, false);
+                    projectId, event.getEventID(), terminationType, principal, false);
               });
     }
   }
