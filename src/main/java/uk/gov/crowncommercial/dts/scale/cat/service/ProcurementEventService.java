@@ -913,7 +913,7 @@ public class ProcurementEventService {
             ( rfxSetting.getPublishDate() == null ) ? null : rfxSetting.getPublishDate().toInstant(),
              ( rfxSetting.getCloseDate() == null ) ? null : rfxSetting.getCloseDate().toInstant()));
         // there may be possibility where close date is not available from jaggaer
-        if(Objects.nonNull(eventSummary.getTenderPeriod())){
+        if(Objects.isNull(eventSummary.getTenderPeriod().getEndDate())){
           eventSummary.getTenderPeriod().setEndDate(event.getCloseDate() == null ? null : OffsetDateTime.ofInstant(event.getCloseDate(), ZoneId.systemDefault()));
         }
     }else{
