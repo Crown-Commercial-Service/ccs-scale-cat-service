@@ -38,6 +38,9 @@ public class GCloudAssessmentEntity {
     @Column(name = "dimension_reqs")
     private String dimensionRequirements;
 
+    @Column(name = "results_summary")
+    private String resultsSummary;
+
     @Embedded
     private Timestamps timestamps;
 }
