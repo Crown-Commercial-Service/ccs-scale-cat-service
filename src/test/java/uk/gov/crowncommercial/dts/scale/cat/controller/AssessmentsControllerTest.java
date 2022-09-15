@@ -229,4 +229,101 @@ class AssessmentsControllerTest {
     criterion.setOptions(List.of(REQUIREMENT_SC_NONE, REQUIREMENT_SC_CTC));
     return List.of(criterion);
   }
+  
+  // for testing cat users role for access
+  @Test
+  void createUpdateDimension_200_OK() throws Exception {
+
+    var assessment = new Assessment();
+    var dimension = new DimensionDefinition();
+    assessment.setAssessmentId(ASSESSMENT_ID);
+    dimension.setDimensionId(DIMENSION_ID);
+    var dimensionRequirement = new DimensionRequirement();
+
+    var criterion = new Criterion();
+    criterion.setCriterionId(CRITERION_ID);
+
+    criterion.setValue(REQUIREMENT_SC_CTC);
+
+    var requirement = new Requirement();
+    requirement.setName(OPTION_NAME);
+    requirement.setRequirementId(1);
+    requirement.setWeighting(25);
+    requirement.setValues(List.of(criterion));
+    dimensionRequirement.setName(DIMENSION_NAME);
+    dimensionRequirement.setWeighting(50);
+
+    CriterionDefinition definition = new CriterionDefinition();
+    definition.setCriterionId("1");
+    definition.setName("test");
+    definition.setOptions(Arrays.asList("option1"));
+    definition.setType(CriteriaSelectionType.INTEGER);
+
+    dimensionRequirement.setRequirements(List.of(requirement));
+    dimensionRequirement.setIncludedCriteria(List.of(definition));
+
+    DimensionRequirement[] dimensionRequirementArray = new DimensionRequirement[1];
+    dimensionRequirementArray[0] = dimensionRequirement;
+
+    when(assessmentService.updateDimension(ASSESSMENT_ID, DIMENSION_ID,dimensionRequirement,PRINCIPAL,true))
+            .thenReturn(1);
+
+    mockMvc.perform(put(ASSESSMENTS_PATH + "/{assessmentID}/dimensions/{dimension-id}", ASSESSMENT_ID,DIMENSION_ID)
+                    .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(dimensionRequirement)))
+            .andDo(print()).andExpect(status().isOk())
+            .andExpect(content().contentType(APPLICATION_JSON));
+
+
+
+  }
+  // for testing buyer role for access
+  @Test
+  void createUpdateDimension_403_Unauthorized() throws Exception {
+
+
+    var assessment = new Assessment();
+    var dimension = new DimensionDefinition();
+    assessment.setAssessmentId(ASSESSMENT_ID);
+    dimension.setDimensionId(DIMENSION_ID);
+    var dimensionRequirement = new DimensionRequirement();
+
+    var criterion = new Criterion();
+    criterion.setCriterionId(CRITERION_ID);
+
+    criterion.setValue(REQUIREMENT_SC_CTC);
+
+    var requirement = new Requirement();
+    requirement.setName(OPTION_NAME);
+    requirement.setRequirementId(1);
+    requirement.setWeighting(25);
+    requirement.setValues(List.of(criterion));
+    dimensionRequirement.setName(DIMENSION_NAME);
+    dimensionRequirement.setWeighting(50);
+
+    CriterionDefinition definition = new CriterionDefinition();
+    definition.setCriterionId("1");
+    definition.setName("test");
+    definition.setOptions(Arrays.asList("option1"));
+    definition.setType(CriteriaSelectionType.INTEGER);
+
+    dimensionRequirement.setRequirements(List.of(requirement));
+    dimensionRequirement.setIncludedCriteria(List.of(definition));
+
+    DimensionRequirement[] dimensionRequirementArray = new DimensionRequirement[1];
+    dimensionRequirementArray[0] = dimensionRequirement;
+
+    when(assessmentService.updateDimension(ASSESSMENT_ID, DIMENSION_ID,dimensionRequirement,PRINCIPAL,true))
+            .thenReturn(1);
+    validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("JAEGGER_BUYER"))
+            .jwt(jwt -> jwt.subject(PRINCIPAL));
+
+    mockMvc.perform(put(ASSESSMENTS_PATH + "/{assessmentID}/dimensions/{dimension-id}", ASSESSMENT_ID,DIMENSION_ID)
+                    .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(dimensionRequirement)))
+            .andDo(print()).andExpect(status().isForbidden())
+            .andExpect(content().contentType(APPLICATION_JSON));
+  }
 }
