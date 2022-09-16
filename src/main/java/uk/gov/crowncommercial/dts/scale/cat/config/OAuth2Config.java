@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import java.util.Arrays;
 import java.util.stream.Stream;
+
+import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -30,6 +32,8 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
   private static final String[] LD_ROLES = new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER"};
 
+  private static final String[] LD_AND_CAT_ROLES = ArrayUtils.addAll(CAT_ROLES, LD_ROLES);
+
   @Override
   protected void configure(final HttpSecurity http) throws Exception {
 
@@ -42,8 +46,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
         .antMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
-        .antMatchers("/tenders/users/**").hasAnyAuthority(LD_ROLES)
-        .antMatchers("/tenders/users/**").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .antMatchers("/tenders/orgs/**").hasAnyAuthority(LD_ROLES)
         .antMatchers("/error/**").hasAnyAuthority(
             Stream.concat(Arrays.stream(CAT_ROLES), Arrays.stream(LD_ROLES)).toArray(String[]::new))
