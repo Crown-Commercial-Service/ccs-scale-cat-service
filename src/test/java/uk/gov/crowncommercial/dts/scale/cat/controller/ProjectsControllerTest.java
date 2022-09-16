@@ -131,7 +131,7 @@ class ProjectsControllerTest {
   }
 
   @ParameterizedTest
-  @NullAndEmptySource
+  //@NullAndEmptySource
   @ValueSource(strings = {"_Lot 1", " Lot a", " ", "!"})
   void createProcurementProject_400_BadRequest_LotId_Missing(final String input) throws Exception {
     testCreateFromAgreement400BadRequestHelper(

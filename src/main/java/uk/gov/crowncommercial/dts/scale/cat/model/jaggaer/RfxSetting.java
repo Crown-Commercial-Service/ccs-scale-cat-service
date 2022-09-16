@@ -26,6 +26,7 @@ public class RfxSetting {
   String rfxType;
   String status;
   Integer statusCode;
+  OffsetDateTime lastUpdate;
   OffsetDateTime publishDate;
   OffsetDateTime closeDate;
 
