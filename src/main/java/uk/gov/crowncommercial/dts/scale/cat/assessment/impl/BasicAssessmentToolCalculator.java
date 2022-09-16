@@ -5,18 +5,12 @@ import org.springframework.data.util.Pair;
 import uk.gov.crowncommercial.dts.scale.cat.assessment.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.ValueCount;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentToolDimension;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.SupplierSubmissionDataRepo;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -76,7 +70,7 @@ public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
         var suppliersScores = supplierScoresMap.values().stream().collect(Collectors.toList());
         dimensionScoreCalculators.values().stream().forEach(calc -> calc.preCalculate(suppliersScores, assessment, calculationBaseSet));
 
-        calculateSupplierScoreTotals(suppliersScores, assessment, principal, assessmentCalculationBase);
+        calculateSupplierScoreTotals(suppliersScores, dimensionRequirementMap, assessment, principal, assessmentCalculationBase);
         dimensionScoreCalculators.values().stream().forEach(calc -> calc.postCalculate(suppliersScores, assessment, calculationBaseSet));
         return suppliersScores;
     }
@@ -110,6 +104,7 @@ public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
 
 
     private void calculateSupplierScoreTotals(final List<SupplierScores> suppliersScores,
+                                              Map<String, DimensionRequirement> dimensionRequirementMap,
                                               final AssessmentEntity assessment, final String principal,
                                               final Set<CalculationBase> assessmentCalculationBase) {
 
@@ -117,11 +112,34 @@ public class BasicAssessmentToolCalculator implements AssessmentToolCalculator {
         Map<String, ValueCount> subContractorCountMap = subContractorCountList.stream()
                 .collect(Collectors.toMap(ValueCount::getDataValue, Function.identity()));
 
-        CalculationParams params = new CalculationParams();
+        Map<Integer, CalculationParams> paramMap = new HashMap<>();
+
+        for (DimensionRequirement req : dimensionRequirementMap.values()) {
+            List<CriterionDefinition> criterions =  req.getIncludedCriteria();
+            CalculationParams params = new CalculationParams();
+            paramMap.put(req.getDimensionId(), params);
+            for(CriterionDefinition cd : criterions){
+                if(cd.getCriterionId().equals("0")){
+                    boolean includeSubContractor = criterions.stream().filter(c -> c.getCriterionId().equals("1")).findFirst().isPresent();
+                    params.setIncludeSubContractors(includeSubContractor);
+                }
+            }
+
+        }
+
+
+
         suppliersScores.forEach(supplierScores -> {
             String supplierId = supplierScores.getSupplier().getId();
-            params.setIncludeSubContractors(subContractorCountMap.containsKey(supplierId));
+
             supplierScores.getDimensionScores().forEach(dimensionScores -> {
+                CalculationParams params = paramMap.get(dimensionScores.getDimensionId());
+                if(null == params){
+                    params = new CalculationParams();
+                    params.setIncludeSubContractors(true);
+                }
+                if(params.isIncludeSubContractors())
+                    params.setIncludeSubContractors(subContractorCountMap.containsKey(supplierId));
                 dimensionScoreCalculators.get(dimensionScores.getName()).calculateDimensionScore(suppliersScores,
                         supplierScores,
                         supplierScores.getSupplier().getId(), dimensionScores.getDimensionId(), assessment,
