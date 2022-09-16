@@ -43,6 +43,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
         .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/tenders/users/**").hasAnyAuthority(LD_ROLES)
+        .antMatchers("/tenders/users/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/tenders/orgs/**").hasAnyAuthority(LD_ROLES)
         .antMatchers("/error/**").hasAnyAuthority(
             Stream.concat(Arrays.stream(CAT_ROLES), Arrays.stream(LD_ROLES)).toArray(String[]::new))
