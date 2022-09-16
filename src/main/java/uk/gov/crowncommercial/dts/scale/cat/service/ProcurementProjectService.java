@@ -466,7 +466,7 @@ public class ProcurementProjectService {
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
-        // and if the closed date from tender has value it takes precedence
+        // fixed for SCAT-6566  : if the closed date from tender db event has a value it takes precedence
         eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       } catch (Exception e) {

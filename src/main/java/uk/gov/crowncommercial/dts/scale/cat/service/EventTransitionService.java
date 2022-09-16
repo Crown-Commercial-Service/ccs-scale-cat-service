@@ -166,7 +166,7 @@ public class EventTransitionService {
       procurementEvent.setPublishDate(
           exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
     }
-    // fixed for SCAT-6566
+    // fixed for SCAT-6566 - Db event close date takes precedence
     procurementEvent.setCloseDate(Instant.now());
     procurementEvent.setTenderStatus(type.getValue());
 
