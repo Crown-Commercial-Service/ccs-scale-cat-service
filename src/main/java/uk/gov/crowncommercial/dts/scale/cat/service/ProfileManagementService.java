@@ -6,6 +6,8 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
+
+import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -27,6 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.Role
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
@@ -556,4 +559,56 @@ public class ProfileManagementService {
     }
     return Optional.empty();
   }
+
+  public List<User> getOrgUsers(String principal) {
+
+    Assert.hasLength(principal, "principal must not be empty");
+    List<uk.gov.crowncommercial.dts.scale.cat.model.generated.User> userList=new ArrayList<>();
+
+    var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
+            () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
+    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
+
+
+    var optSupplierCompanyData =
+            userProfileService.resolveCompanyProfileData(conclaveService.getOrganisationIdentifer(conclaveUserOrg));
+
+    if(optSupplierCompanyData.isPresent()){
+
+      CompanyInfo companyInfo = optSupplierCompanyData.get().getReturnCompanyInfo();
+
+      if( CollectionUtils.isNotEmpty(optSupplierCompanyData.get().getReturnSubUser().getSubUsers())){
+        optSupplierCompanyData.get().getReturnSubUser().getSubUsers().forEach(subUser -> {
+          if(Objects.nonNull(subUser.getSsoCodeData())){
+
+            Optional<SSOCode> ssoCodeOptional=subUser.getSsoCodeData().getSsoCode().stream().findFirst();
+            if(ssoCodeOptional.isPresent() &&  !Objects.isNull(ssoCodeOptional.get().getSsoUserLogin())){
+              uk.gov.crowncommercial.dts.scale.cat.model.generated.User user= new uk.gov.crowncommercial.dts.scale.cat.model.generated.User();
+
+              user.setUserId(ssoCodeOptional.get().getSsoUserLogin());
+               user.setName(String.join(" ",subUser.getName(),subUser.getSurName()));
+               user.addRolesItem(deriveRoleItem(companyInfo.getType()));
+               userList.add(user);
+            }
+          }
+        });
+      }
+    }
+    return userList;
+  }
+
+  private User.RolesEnum deriveRoleItem(CompanyType companyType) {
+      if(Objects.nonNull(companyType)){
+        if(companyType.equals(CompanyType.BUYER)){
+          return User.RolesEnum.BUYER;
+        }else if (companyType.equals(CompanyType.SELLER)){
+          return User.RolesEnum.SUPPLIER;
+        }
+      }
+      return null;
+  }
+
+
 }
