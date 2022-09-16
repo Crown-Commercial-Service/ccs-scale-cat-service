@@ -74,6 +74,8 @@ public class AssessmentService {
     private final AssessmentCalculationService assessmentCalculationService;
     private final SupplierSubmissionDataRepo ssDataRepo;
 
+    private final AssessmentDimensionCriteriaService assessmentDimensionCriteriaService;
+
     private final AssessmentToolFactory toolFactory;
 
     /**
@@ -285,6 +287,8 @@ public class AssessmentService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
 
+        Map<String, List<CriterionDefinition>> criterionMap = assessmentDimensionCriteriaService.getCriterionDefinition(assessment);
+
         // Build DimensionRequirements
         var dimensions = assessment.getDimensionWeightings().stream().map(dw -> {
 
@@ -292,9 +296,15 @@ public class AssessmentService {
             req.setDimensionId(dw.getDimension().getId());
             req.setName(dw.getDimension().getName());
             req.setWeighting(dw.getWeightingPercentage().intValue());
+            String key = dw.getDimension().getName();
 
             // Build Criteria for Dimension (includedCriteria)
-            req.setIncludedCriteria(getAssessmentDimensionCriteria(dw));
+            if(criterionMap.containsKey(key)){
+                req.setIncludedCriteria(criterionMap.get(dw.getDimension().getName()));
+            }else{
+                // this condition will never occur, will verify and remove the associated methods in future.
+                req.setIncludedCriteria(getAssessmentDimensionCriteria(dw));
+            }
 
             // Build Requirements
             var requirements = assessment.getAssessmentSelections().stream()
@@ -461,6 +471,8 @@ public class AssessmentService {
             dimensionRequirement.getRequirements().stream()
                     .forEach(r -> updateRequirement(assessmentId, dimensionId, r, principal));
         }
+
+        assessmentDimensionCriteriaService.save(dimensionRequirement.getIncludedCriteria(), assessment, dimension, principal);
 
         return dimensionId;
     }
@@ -964,8 +976,11 @@ public class AssessmentService {
     private List<CriterionDefinition> getAssessmentDimensionCriteria(
             final AssessmentDimensionWeighting assessmentDimensionWeighting) {
 
+        DimensionEntity dimension = assessmentDimensionWeighting.getDimension();
+
+
         return buildCriteria(assessmentDimensionWeighting.getDimension(),
-                assessmentDimensionWeighting.getDimensionSubmissionTypes());
+                dimension.getDimensionSubmissionTypes());
     }
 
     private List<CriterionDefinition> buildCriteria(final DimensionEntity dimension,
@@ -981,6 +996,7 @@ public class AssessmentService {
             criterion.setCriterionId(st.getSubmissionType().getCode());
             criterion.setName(st.getSubmissionType().getName());
             criterion.setType(selectionType);
+            criterion.setMandatory(Boolean.TRUE.equals(st.getMandatory()));
             if (CriteriaSelectionType.SELECT == selectionType
                     || CriteriaSelectionType.MULTISELECT == selectionType) {
                 criterion.setOptions(options);
