@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
@@ -16,10 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -32,6 +30,7 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_ASSESSMENT_RESULTS_NOT_FOUND = "Assessment [%s] results not found";
     private static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
     private static final String ERR_MSG_FMT_ASSESSMENT_NOT_FOUND = "Assessment [%s] not found";
+    private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
 
     private final ConclaveService conclaveService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -181,5 +180,32 @@ public class GCloudAssessmentService {
         responseModel.setResults(resultsList);
 
         return responseModel;
+    }
+
+    /**
+     * Delete a GCloud Assessment.
+     *
+     * @param assessmentId
+     * @return
+     */
+    @Transactional
+    public void deleteGcloudAssessment(final Integer assessmentId) {
+        log.debug("Deleting Gcloud assessment " + assessmentId);
+
+        // First of all, retrieve the existing assessment from the database - we need to check its state before just deleting it
+        GCloudAssessmentEntity model = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+        if (model != null) {
+            // We found the assessment - now check its status, we only proceed if it's still active
+            if (Objects.equals(model.getStatus().toString().toLowerCase(), AssessmentStatus.ACTIVE.toString().toLowerCase())) {
+                // Assessment is active, so we are able to delete it.  We need to delete the assessment itself and any results attached
+                retryableTendersDBDelegate.deleteGcloudAssessmentById(assessmentId);
+            } else {
+                // Assessment is not active - we can't delete this.  Throw an error instead
+                throw(new AuthorisationFailureException(format(ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT, assessmentId)));
+            }
+        }
     }
 }
