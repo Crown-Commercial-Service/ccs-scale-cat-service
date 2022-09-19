@@ -69,11 +69,18 @@ public class QuestionAndAnswerService {
     var user = conclaveService.getUserProfile(principal);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 
+    boolean isSupplier = false;
+    
     // check the supplier is in org mapping with conclave userid or duns number
-    var supplier = user.get().getDetail().getRolePermissionInfo().stream()
-        .anyMatch(conclaveUser -> conclaveUser.getRoleKey().equals("JAEGGER_SUPPLIER"));
+    var buyer = user.get().getDetail().getRolePermissionInfo().stream()
+        .anyMatch(conclaveUser -> conclaveUser.getRoleKey().equals("JAEGGER_BUYER"));
+    if (!buyer) {
+      // check the supplier is in org mapping with conclave userid or duns number
+      isSupplier = user.get().getDetail().getRolePermissionInfo().stream()
+          .anyMatch(conclaveUser -> conclaveUser.getRoleKey().equals("JAEGGER_SUPPLIER"));
+    }
 
-    if (supplier) {
+    if (isSupplier) {
       // get all suppliers for this event in jaggaer
       var jaggaerSuppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId())
           .getSuppliersList().getSupplier();
