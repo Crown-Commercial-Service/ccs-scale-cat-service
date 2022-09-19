@@ -63,13 +63,13 @@ public class ProjectsController extends AbstractRestController {
 
   @PutMapping("/{procID}/close")
   public StringValueResponse closeProcurementProject(@PathVariable("procID") final Integer procId,
-      @RequestBody final TenderStatus tenderStatus,
+      @RequestBody final TerminationType terminationType,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("closeProcurementProject invoked on behalf of principal: {}", principal);
 
-    procurementProjectService.closeProcurementProject(procId, tenderStatus, principal);
+    procurementProjectService.closeProcurementProject(procId, terminationType, principal);
 
     return new StringValueResponse("OK");
   }

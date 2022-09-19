@@ -173,7 +173,9 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
       getCompanyProfileByDUNSNumber:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
-         
+      getCompanyProfileByBravoID:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID=={{PRINCIPAL}}
+
       # This is far more performant for summary-level only data
       searchRfxSummary:
         endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
