@@ -147,7 +147,7 @@ class QuestionAndAnswerServiceTest {
 
     // Invoke
     var response =
-        questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_OCID);
+        questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_OCID, PRINCIPAL);
 
     // Assert
     assertAll(() -> assertNotNull(response));

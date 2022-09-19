@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static org.springframework.util.CollectionUtils.isEmpty;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -10,11 +11,15 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
 import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  *
@@ -27,6 +32,10 @@ public class QuestionAndAnswerService {
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final QuestionAndAnswerRepo questionAndAnswerRepo;
+  private final ConclaveService conclaveService;
+  private final JaggaerService jaggaerService;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final AgreementsService agreementsService;
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String Q_AND_A_NOT_FOUND = "QuestionAndAnswer not found by this id %s";
 
@@ -53,10 +62,51 @@ public class QuestionAndAnswerService {
     return convertQandA(questionAndAnswerRepo.save(questionAndAnswer));
   }
 
-  public List<QandA> getQuestionAndAnswerByEvent(final Integer projectId, final String eventId) {
+  public QandAWithProjectDetails getQuestionAndAnswerByEvent(final Integer projectId,
+      final String eventId, final String principal) {
+
+    // check the roles of supplier
+    var user = conclaveService.getUserProfile(principal);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var qandAnswers = questionAndAnswerRepo.findByEventId(procurementEvent.getId());
-    return covertQandAList(qandAnswers);
+
+    // check the supplier is in org mapping with conclave userid or duns number
+    var supplier = user.get().getDetail().getRolePermissionInfo().stream()
+        .anyMatch(conclaveUser -> conclaveUser.getRoleKey().equals("JAEGGER_SUPPLIER"));
+
+    if (supplier) {
+      // get all suppliers for this event in jaggaer
+      var jaggaerSuppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId())
+          .getSuppliersList().getSupplier();
+
+      // find supplier org-mapping
+      var supplierOrgMapping = retryableTendersDBDelegate
+          .findOrganisationMappingByOrganisationId(user.get().getOrganisationId());
+      if (supplierOrgMapping.isEmpty()) {
+        var errorDesc = String.format("No supplier organisation mappings found in Tenders DB %s",
+            supplierOrgMapping);
+        log.error(errorDesc);
+        throw new ResourceNotFoundException(errorDesc);
+      }
+
+      // Validate supplier
+      boolean validSupplier = jaggaerSuppliers.stream().anyMatch(js -> js.getCompanyData().getId()
+          .equals(supplierOrgMapping.get().getExternalOrganisationId()));
+      if (!validSupplier) {
+        throw new AuthorisationFailureException("User not authoried to access this resource");
+      }
+    }
+
+    var covertedQandAList =
+        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+    var agreementNo = procurementEvent.getProject().getCaNumber();
+    var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+    var response = new QandAWithProjectDetails().agreementId(agreementNo)
+        .projectId(procurementEvent.getProject().getId())
+        .projectName(procurementEvent.getProject().getProjectName())
+        .agreementName(agreementDetails.getName())
+        .lotId(procurementEvent.getProject().getLotNumber());
+    response.setQandA(covertedQandAList);
+    return response;
   }
 
   private QandA convertQandA(QuestionAndAnswer questionAndAnswer) {
