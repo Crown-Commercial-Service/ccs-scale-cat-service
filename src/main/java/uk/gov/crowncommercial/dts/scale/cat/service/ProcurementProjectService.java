@@ -35,6 +35,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 import javax.transaction.Transactional;
 
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -483,10 +484,7 @@ public class ProcurementProjectService {
     return Optional.of(projectPackageSummary);
   }
 
-  private Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
-    return null!=offsetDateTime?offsetDateTime.toInstant():null;
 
-  }
 
 
 
