@@ -112,4 +112,15 @@ public class GCloudAssessmentsController extends AbstractRestController {
             }
         }
     }
+
+    /**
+     * Deletes a specified GCloud Assessment
+     */
+    @DeleteMapping("/{assessment-id}")
+    public void deleteGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication) {
+        var principal = getPrincipalFromJwt(authentication);
+        log.info("deleteGcloudAssessment invoked on behalf of principal: {}", principal);
+
+        assessmentService.deleteGcloudAssessment(assessmentId);
+    }
 }

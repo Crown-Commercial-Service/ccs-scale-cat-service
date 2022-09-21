@@ -161,16 +161,13 @@ public class EventTransitionService {
 
     procurementEvent.setUpdatedAt(Instant.now());
     procurementEvent.setUpdatedBy(principal);
+    
     if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
       procurementEvent.setPublishDate(
           exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
     }
-    if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
-      procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
-    } else {
-      procurementEvent.setCloseDate(Instant.now());
-    }
-
+    // fixed for SCAT-6566 - Db event close date takes precedence
+    procurementEvent.setCloseDate(Instant.now());
     procurementEvent.setTenderStatus(type.getValue());
 
     retryableTendersDBDelegate.save(procurementEvent);

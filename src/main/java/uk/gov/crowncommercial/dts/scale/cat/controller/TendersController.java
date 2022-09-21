@@ -12,11 +12,13 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.apache.commons.lang3.StringUtils.trim;
@@ -78,5 +80,16 @@ public class TendersController extends AbstractRestController {
     } else {
       return ResponseEntity.status(HttpStatus.CREATED).body(registerUserResponse);
     }
+  }
+
+
+  @GetMapping("/users")
+  public List<User> getOrgUsers(final JwtAuthenticationToken authentication,@RequestParam(name="org-id",required = false) final String organisationId) {
+
+   var principal = getPrincipalFromJwt(authentication);
+
+   log.info("getAllUsers for on behalf of principal: {} ", principal);
+   // We are not retrieving org users based on organisationId
+   return profileManagementService.getOrgUsers(principal);
   }
 }

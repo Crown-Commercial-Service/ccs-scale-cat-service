@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
 import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
 
 /**
@@ -58,11 +59,11 @@ public class QuestionAndAnswerController extends AbstractRestController {
   }
 
   @GetMapping
-  public ResponseEntity<List<QandA>> getQuestionAdnAnswers(
+  public ResponseEntity<QandAWithProjectDetails> getQuestionAdnAnswers(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getQuestionAdnAnswers invoked on behalf of principal: {}", principal);
-    return ResponseEntity.ok(questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId));
+    return ResponseEntity.ok(questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal));
   }
 }

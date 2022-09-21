@@ -238,4 +238,9 @@ public class TendersAPIModelUtils {
     return period1;
 
   }
+
+  public static Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
+    return null!=offsetDateTime?offsetDateTime.toInstant():null;
+
+  }
 }
