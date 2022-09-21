@@ -40,6 +40,7 @@ public class JaggaerAPIConfig {
   private Map<String, String> getSupplierCompanyProfileBySSOUserLogin;
   private Map<String, String> getSupplierSubUserProfile;
   private Map<String, String> getCompanyProfileByDUNSNumber;
+  private Map<String, String> getCompanyProfileByBravoID;
   private Map<String, String> createUpdateCompany;
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;
