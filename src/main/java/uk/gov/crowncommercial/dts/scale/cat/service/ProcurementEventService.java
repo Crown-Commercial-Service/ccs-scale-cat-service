@@ -404,7 +404,7 @@ public class ProcurementEventService {
 
       if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())
           && updateEvent.getAssessmentId() == null && event.getAssessmentId() == null) {
-        if (!isAssessmentToolPresent(event, updateEvent.getEventType())) {
+        if (isAssessmentToolPresent(event, updateEvent.getEventType())) {
           createAssessment = true;
         }
       }
@@ -489,7 +489,7 @@ public class ProcurementEventService {
         .stream().filter(let -> eventType.name().equals(let.getType())).findFirst()
         .orElseThrow(() -> new ValidationException(format(ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT,
             eventType, event.getProject().getCaNumber(), event.getProject().getLotNumber())));
-    return Objects.isNull(lotEventType.getAssessmentToolId());
+    return Objects.nonNull(lotEventType.getAssessmentToolId());
   }
 
   /**
