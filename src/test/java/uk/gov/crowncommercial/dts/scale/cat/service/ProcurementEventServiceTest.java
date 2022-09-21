@@ -26,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -565,6 +566,10 @@ class ProcurementEventServiceTest {
     event.setExternalEventId(RFX_ID);
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
+    
+    var letype = new LotEventType();
+    letype.setAssessmentToolId("1");
+    letype.setType(UPDATED_EVENT_TYPE_CAP_ASS);
 
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
@@ -574,6 +579,7 @@ class ProcurementEventServiceTest {
             .thenReturn(ASSESSMENT_ID);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+    when(agreementsService.getLotEventTypes(any(), any())).thenReturn(Set.of(letype));
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
