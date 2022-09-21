@@ -418,7 +418,7 @@ public class MessageService {
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
         .attachments(message.getAttachmentList().getAttachment().stream()
             .map(att -> new MessageNonOCDSAllOfAttachments().id(Integer.valueOf(att.getFileId()))
-                .name(att.getFileName()))
+                .name(att.getFileName()).size(att.getFileSize()))
             .collect(Collectors.toList()))
         .readList(message.getReadingList().getReading().stream()
             .map(reading -> new ContactPoint1().name(reading.getReaderName()))
