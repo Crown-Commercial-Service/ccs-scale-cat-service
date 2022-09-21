@@ -46,6 +46,7 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 /**
  *
  */
@@ -909,13 +910,13 @@ public class ProcurementEventService {
 
   private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
     if(Objects.nonNull(rfxSetting)){
-        eventSummary.tenderPeriod(getTenderPeriod(
-            ( rfxSetting.getPublishDate() == null ) ? null : rfxSetting.getPublishDate().toInstant(),
-             ( rfxSetting.getCloseDate() == null ) ? null : rfxSetting.getCloseDate().toInstant()));
-        // there may be possibility where close date is not available from jaggaer
+
+      eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=event.getCloseDate()?event.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
+
+      // there may be possibility where close date is not available from jaggaer
         if(Objects.isNull(eventSummary.getTenderPeriod().getEndDate())){
           eventSummary.getTenderPeriod().setEndDate(event.getCloseDate() == null ? null : OffsetDateTime.ofInstant(event.getCloseDate(), ZoneId.systemDefault()));
-        }
+      }
     }else{
       eventSummary.tenderPeriod(getTenderPeriod(
               ( event.getPublishDate() == null ) ? null : event.getPublishDate(),

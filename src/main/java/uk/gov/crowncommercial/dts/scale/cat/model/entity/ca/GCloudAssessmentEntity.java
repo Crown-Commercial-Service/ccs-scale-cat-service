@@ -31,8 +31,7 @@ public class GCloudAssessmentEntity {
     private Integer externalToolId;
 
     @ToString.Exclude
-    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "assessment_id")
+    @OneToMany(mappedBy="assessmentId", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     Set<GCloudAssessmentResult> results;
 
     @Column(name = "dimension_reqs")

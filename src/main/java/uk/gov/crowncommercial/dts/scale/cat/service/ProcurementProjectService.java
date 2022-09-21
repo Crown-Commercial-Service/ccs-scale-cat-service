@@ -35,6 +35,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 import javax.transaction.Transactional;
 
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -458,8 +459,6 @@ public class ProcurementProjectService {
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
-        eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
-
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
             .filter(
@@ -468,7 +467,8 @@ public class ProcurementProjectService {
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
-        eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),rfxSetting.getCloseDate().toInstant()));
+        // fixed for SCAT-6566  : if the closed date from tender db event has a value it takes precedence
+        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       } catch (Exception e) {
         // No data found in Jagger
@@ -484,22 +484,9 @@ public class ProcurementProjectService {
     return Optional.of(projectPackageSummary);
   }
 
-  private Period1 getTenderPeriod(Instant publishedDate, Instant closedDate) {
 
-    Period1 period1=new Period1();
 
-    OffsetDateTime startDate=null;
-    OffsetDateTime endDate=null;
-    if(Objects.nonNull(publishedDate)){
-      startDate=OffsetDateTime.ofInstant(publishedDate, ZoneId.systemDefault());
-    }
-    if(Objects.nonNull(closedDate)){
-      endDate=OffsetDateTime.ofInstant(closedDate, ZoneId.systemDefault());
-    }
-    period1.startDate(startDate).endDate(endDate);
-    return period1;
 
-  }
 
   /**
    * Get a Team Member.
@@ -641,11 +628,11 @@ public class ProcurementProjectService {
   /**
    *
    * @param projectId
-   * @param tenderStatus
+   * @param terminationType
    * @param principal
    */
   @Transactional
-  public void closeProcurementProject(final Integer projectId, final TenderStatus tenderStatus,
+  public void closeProcurementProject(final Integer projectId, final TerminationType terminationType,
       final String principal) {
     var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
     if (CollectionUtils.isEmpty(procurementEvents)) {
@@ -654,7 +641,7 @@ public class ProcurementProjectService {
       procurementEvents.forEach(
               event -> {
                 eventTransitionService.terminateEvent(
-                    projectId, event.getEventID(), TerminationType.WITHDRAWN, principal, false);
+                    projectId, event.getEventID(), terminationType, principal, false);
               });
     }
   }

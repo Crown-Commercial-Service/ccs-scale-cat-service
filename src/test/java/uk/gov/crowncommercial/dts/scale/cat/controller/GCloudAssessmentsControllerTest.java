@@ -109,4 +109,14 @@ public class GCloudAssessmentsControllerTest {
 
         verify(assessmentService, times(1)).updateGcloudAssessment(assessment, ASSESSMENT_ID, PRINCIPAL);
     }
+
+    @Test
+    void deleteGcloudAssessment_200_OK() throws Exception {
+        mockMvc
+                .perform(delete(ASSESSMENTS_PATH + "/{assessmentID}", ASSESSMENT_ID)
+                        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+                .andDo(print()).andExpect(status().isOk());
+
+        verify(assessmentService, times(1)).deleteGcloudAssessment(ASSESSMENT_ID);
+    }
 }
