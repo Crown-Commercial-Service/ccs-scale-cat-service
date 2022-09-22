@@ -468,7 +468,9 @@ public class ProcurementProjectService {
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
         // fixed for SCAT-6566  : if the closed date from tender db event has a value it takes precedence
-        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
+        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),
+                (tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent).equals(DashboardStatus.CLOSED) && null!=dbEvent.getCloseDate())?
+                        dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       } catch (Exception e) {
         // No data found in Jagger

@@ -920,10 +920,11 @@ public class ProcurementEventService {
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
 
-      updateTenderPeriod(event, rfxSetting, eventSummary);
+
       if(Objects.nonNull(eventSummary)){
          eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       }
+      updateTenderPeriod(event, rfxSetting, eventSummary);
       return eventSummary;
     }).collect(Collectors.toList());
   }
@@ -931,7 +932,7 @@ public class ProcurementEventService {
   private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
     if(Objects.nonNull(rfxSetting)){
 
-      eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=event.getCloseDate()?event.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
+      eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),(eventSummary.getDashboardStatus().equals(DashboardStatus.CLOSED) && null!=event.getCloseDate())?event.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       // there may be possibility where close date is not available from jaggaer
         if(Objects.isNull(eventSummary.getTenderPeriod().getEndDate())){
