@@ -78,6 +78,8 @@ public class ProcurementEventService {
   private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   private static final String COMPLETE_STATUS = "complete";
   public static final String CONTRACT_DETAILS_NOT_FOUND = "Contract details not found";
+  private static final String ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
+      "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
 
   private final UserProfileService userProfileService;
   private final CriteriaService criteriaService;
@@ -402,7 +404,9 @@ public class ProcurementEventService {
 
       if (ASSESSMENT_EVENT_TYPES.contains(updateEvent.getEventType())
           && updateEvent.getAssessmentId() == null && event.getAssessmentId() == null) {
-        createAssessment = true;
+        if (isAssessmentToolPresent(event, updateEvent.getEventType())) {
+          createAssessment = true;
+        }
       }
 
       event.setEventType(updateEvent.getEventType().getValue());
@@ -470,6 +474,22 @@ public class ProcurementEventService {
         Optional.ofNullable(event.getExternalReferenceId()),
         ViewEventType.fromValue(event.getEventType()), TenderStatus.fromValue(status.toString()),
         EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+  }
+
+  /**
+   * check assessment tool id is present
+   *
+   * @param event
+   * @param eventType
+   * @return boolean
+   */
+  private boolean isAssessmentToolPresent(ProcurementEvent event, DefineEventType eventType) {
+    var lotEventType = agreementsService
+        .getLotEventTypes(event.getProject().getCaNumber(), event.getProject().getLotNumber())
+        .stream().filter(let -> eventType.name().equals(let.getType())).findFirst()
+        .orElseThrow(() -> new ValidationException(format(ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT,
+            eventType, event.getProject().getCaNumber(), event.getProject().getLotNumber())));
+    return Objects.nonNull(lotEventType.getAssessmentToolId());
   }
 
   /**
@@ -900,10 +920,11 @@ public class ProcurementEventService {
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
 
-      updateTenderPeriod(event, rfxSetting, eventSummary);
+
       if(Objects.nonNull(eventSummary)){
          eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
       }
+      updateTenderPeriod(event, rfxSetting, eventSummary);
       return eventSummary;
     }).collect(Collectors.toList());
   }
@@ -911,7 +932,7 @@ public class ProcurementEventService {
   private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
     if(Objects.nonNull(rfxSetting)){
 
-      eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=event.getCloseDate()?event.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
+      eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),(eventSummary.getDashboardStatus().equals(DashboardStatus.CLOSED) && null!=event.getCloseDate())?event.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       // there may be possibility where close date is not available from jaggaer
         if(Objects.isNull(eventSummary.getTenderPeriod().getEndDate())){

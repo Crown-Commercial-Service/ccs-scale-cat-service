@@ -10,6 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessmen
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentStatusEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentResult;
@@ -17,6 +18,10 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 
 import java.net.URI;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +36,8 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
     private static final String ERR_MSG_FMT_ASSESSMENT_NOT_FOUND = "Assessment [%s] not found";
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
+
+    private static final String TIMEZONE_NAME = "Europe/London";
 
     private final ConclaveService conclaveService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -55,6 +62,7 @@ public class GCloudAssessmentService {
         assessmentEntity.setAssessmentName(assessment.getAssessmentName());
         assessmentEntity.setStatus(AssessmentStatusEntity.ACTIVE); // Map this to active per the createAssessment function above
         assessmentEntity.setDimensionRequirements(assessment.getDimensionRequirements());
+        assessmentEntity.setResultsSummary(assessment.getResultsSummary());
         assessmentEntity.setTimestamps(createTimestamps(principal));
         assessmentEntity.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
 
@@ -113,6 +121,7 @@ public class GCloudAssessmentService {
 
             model.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
             model.setDimensionRequirements(assessment.getDimensionRequirements());
+            model.setResultsSummary(assessment.getResultsSummary());
             model.setTimestamps(createTimestamps(principal));
 
             // We do not map results here - we need to now update the core record, then clear down results and re-create them fresh
@@ -177,7 +186,16 @@ public class GCloudAssessmentService {
         responseModel.setExternalToolId(assessment.getExternalToolId().toString());
         responseModel.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
         responseModel.setDimensionRequirements(assessment.getDimensionRequirements());
+        responseModel.setResultsSummary(assessment.getResultsSummary());
         responseModel.setResults(resultsList);
+
+        Timestamps timestamps = assessment.getTimestamps();
+
+        if (timestamps.getUpdatedAt() != null) {
+            responseModel.setLastUpdate(LocalDate.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME)));
+        } else {
+            responseModel.setLastUpdate(LocalDate.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME)));
+        }
 
         return responseModel;
     }
