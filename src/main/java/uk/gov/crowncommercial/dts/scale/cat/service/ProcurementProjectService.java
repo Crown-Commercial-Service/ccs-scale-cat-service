@@ -255,7 +255,7 @@ public class ProcurementProjectService {
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
 
-    var exportRfxResponse = jaggaerService.getSingleRfx(dbEvent.getExternalEventId());
+    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
 
     // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
