@@ -19,7 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 
 import java.net.URI;
 
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
 import java.util.*;
@@ -193,9 +193,9 @@ public class GCloudAssessmentService {
         Timestamps timestamps = assessment.getTimestamps();
 
         if (timestamps.getUpdatedAt() != null) {
-            responseModel.setLastUpdate(LocalDate.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME)));
+            responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME)));
         } else {
-            responseModel.setLastUpdate(LocalDate.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME)));
+            responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME)));
         }
 
         return responseModel;
