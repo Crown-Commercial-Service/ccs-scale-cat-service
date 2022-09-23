@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 
 @Service
 @RequiredArgsConstructor
@@ -122,7 +123,7 @@ public class GCloudAssessmentService {
             model.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
             model.setDimensionRequirements(assessment.getDimensionRequirements());
             model.setResultsSummary(assessment.getResultsSummary());
-            model.setTimestamps(createTimestamps(principal));
+            model.setTimestamps(updateTimestamps(model.getTimestamps(), principal));
 
             // We do not map results here - we need to now update the core record, then clear down results and re-create them fresh
             retryableTendersDBDelegate.save(model);
