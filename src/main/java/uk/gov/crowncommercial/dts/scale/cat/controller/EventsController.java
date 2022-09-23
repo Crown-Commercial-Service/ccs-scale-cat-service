@@ -7,16 +7,16 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.util.StopWatch;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
-import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+import uk.gov.crowncommercial.dts.scale.cat.service.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 
 import javax.servlet.http.HttpServletResponse;
@@ -30,7 +30,6 @@ import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static java.util.Optional.ofNullable;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
 
@@ -250,9 +249,18 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-    docGenService.generateAndUploadDocuments(procId, eventId);
-    procurementEventService.publishEvent(procId, eventId, publishDates, principal);
+    StopWatch generateUpdateDocWatch= new StopWatch();
+    generateUpdateDocWatch.start();
+       docGenService.generateAndUploadDocuments(procId, eventId);
+    generateUpdateDocWatch.stop();
+    log.info("publishEvent : Total time taken to generateAndUploadDocuments for procID {} : eventId :{} : Timetaken : {}  ", procId,eventId,generateUpdateDocWatch.getLastTaskTimeMillis());
 
+
+    StopWatch publishStopWatch= new StopWatch();
+    publishStopWatch.start();
+    procurementEventService.publishEvent(procId, eventId, publishDates, principal);
+    publishStopWatch.stop();
+    log.info("publishEvent : Total time taken to publishEvent service for procID {} : eventId :{} , Timetaken : {}  ", procId,eventId,publishStopWatch.getLastTaskTimeMillis());
     return new StringValueResponse("OK");
   }
 
