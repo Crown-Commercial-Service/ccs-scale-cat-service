@@ -190,7 +190,7 @@ public class DocumentUploadService {
    */
   void processDocuments(final Collection<DocumentUpload> unprocessedDocuments,
       final String principal) {
-    unprocessedDocuments.stream().forEach(unprocessedDocUpload -> {
+    unprocessedDocuments.forEach(unprocessedDocUpload -> {
 
       // Ensure processing of each document takes place only once
       // TODO: Replace with Blocking queue + timeout to avoid deadlocks
