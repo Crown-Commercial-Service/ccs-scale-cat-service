@@ -10,6 +10,6 @@ module "deploy-all" {
   cf_username = var.cf_username
   cf_password = var.cf_password
   dev_mode    = true
-  instances   = 1
+  instances   = 2
   log_level   = "TRACE"
 }
