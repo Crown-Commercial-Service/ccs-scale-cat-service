@@ -451,7 +451,7 @@ class ProcurementProjectServiceTest {
             Arrays.asList(EmailRecipient.builder().user(User.builder().id("6").build()).build()))
         .build());
 
-    when(jaggaerService.getRfx("itt_123")).thenReturn(exportRfxResponse);
+    when(jaggaerService.getSingleRfx("itt_123")).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findProjectUserMappingByProjectId(PROC_PROJECT_ID))
         .thenReturn(new HashSet<>(Arrays.asList(userMapping, userMapping1, userMapping2)));
 
