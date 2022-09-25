@@ -312,7 +312,7 @@ public class DocGenService {
     if (table != null) {
       // Append rows if necessary (assume header row present)
       if (table.getRowCount() - 1 < dataReplacement.size()) {
-        table.appendRows(dataReplacement.size() - table.getRowCount());
+        table.appendRows(dataReplacement.size() + 1 - table.getRowCount());
       }
       var isLineRequired = false;
       var columnIndex = -1;
