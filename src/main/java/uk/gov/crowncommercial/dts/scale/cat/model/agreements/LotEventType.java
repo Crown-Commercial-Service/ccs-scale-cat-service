@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import lombok.Data;
 
+import java.util.Collection;
+
 @Data
 public class LotEventType {
 
@@ -12,4 +14,6 @@ public class LotEventType {
   private Boolean preMarketActivity;
 
   private String assessmentToolId;
+
+  private Collection<QuestionTemplate> templateGroups;
 }
