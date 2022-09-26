@@ -107,11 +107,13 @@ public class QuestionAndAnswerService {
         covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
     var agreementNo = procurementEvent.getProject().getCaNumber();
     var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+    var lotDetails = agreementsService.getLotDetails(agreementNo, procurementEvent.getProject().getLotNumber());
     var response = new QandAWithProjectDetails().agreementId(agreementNo)
         .projectId(procurementEvent.getProject().getId())
         .projectName(procurementEvent.getProject().getProjectName())
         .agreementName(agreementDetails.getName())
-        .lotId(procurementEvent.getProject().getLotNumber());
+        .lotId(procurementEvent.getProject().getLotNumber())
+        .lotName(lotDetails.getName());
     response.setQandA(covertedQandAList);
     return response;
   }
