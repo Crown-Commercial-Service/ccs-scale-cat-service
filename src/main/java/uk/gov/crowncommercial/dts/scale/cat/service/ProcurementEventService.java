@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.RetrieveDocumentCallable;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -38,6 +39,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -816,7 +818,7 @@ public class ProcurementEventService {
    */
   @Transactional
   public void publishEvent(final Integer procId, final String eventId,
-      final PublishDates publishDates, final String principal) {
+      final PublishDates publishDates, final String principal)  {
 
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
@@ -833,7 +835,7 @@ public class ProcurementEventService {
     }
 
     // Fetch and upload all SAFE documents
-    procurementEvent.getDocumentUploads().stream()
+    /*procurementEvent.getDocumentUploads().stream()
         .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
           var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
           var multipartFile = new ByteArrayMultipartFile(
@@ -842,7 +844,47 @@ public class ProcurementEventService {
 
           jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
               documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-        });
+        });*/
+
+    ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+    List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
+    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futures = null;
+    try {
+      futures = executorService.invokeAll(documentCallableList);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+
+    futures.forEach(mapFuture -> {
+
+      try {
+        Map<DocumentUpload, ByteArrayMultipartFile> documentMap=mapFuture.get();
+        var documentUpload=documentMap.keySet().stream().findFirst().get();
+        var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
+
+        jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
+                documentUpload.getDocumentDescription(), documentUpload.getAudience(), documentMap.get(documentUpload));
+
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+
+    });
+
+
+    executorService.shutdown();
+
+    try {
+      if (!executorService.awaitTermination(100, TimeUnit.SECONDS)) {
+        executorService.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      executorService.shutdownNow();
+    }
+
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
