@@ -21,7 +21,7 @@ public class TestUtils {
   public static final String USER_NAME = "Jim Beam";
   public static final String USERID = "jbeam@ccs.org.uk";
 
-  public static Collection<EventType> getEventTypes() {
+  public static Collection<ProjectEventType> getEventTypes() {
     return Set.of(getEventType(DefineEventType.RFI, REQUEST_FOR_INFORMATION, true),
         getEventType(DefineEventType.EOI, EXPRESSION_OF_INTEREST, true),
         getEventType(DefineEventType.FCA, FURTHER_COMPETITION_ASSESSMENT, true),
@@ -29,9 +29,9 @@ public class TestUtils {
         getEventType(DefineEventType.FC, FURTHER_COMPETITION, false));
   }
 
-  public static EventType getEventType(final DefineEventType defineEventType,
+  public static ProjectEventType getEventType(final DefineEventType defineEventType,
       final String description, final boolean preMarketActivity) {
-    var eoiEventType = new EventType();
+    var eoiEventType = new ProjectEventType();
     eoiEventType.setType(defineEventType);
     eoiEventType.setDescription(description);
     eoiEventType.setPreMarketActivity(preMarketActivity);
