@@ -337,7 +337,7 @@ public class ProcurementEventService {
    */
   public EventDetail getEvent(final Integer projectId, final String eventId) {
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    var exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
 
     return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
         event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
@@ -671,7 +671,7 @@ public class ProcurementEventService {
   public ResponseSummary getSupplierResponses(final Integer procId, final String eventId) {
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
 
     final var lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
     var responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
@@ -835,7 +835,7 @@ public class ProcurementEventService {
     }
 
     // Fetch and upload all SAFE documents
-    /*procurementEvent.getDocumentUploads().stream()
+    procurementEvent.getDocumentUploads().stream()
         .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
           var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
           var multipartFile = new ByteArrayMultipartFile(
@@ -844,47 +844,7 @@ public class ProcurementEventService {
 
           jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
               documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-        });*/
-
-    ExecutorService executorService = Executors.newFixedThreadPool(10);
-
-    List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
-    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futures = null;
-    try {
-      futures = executorService.invokeAll(documentCallableList);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-
-    futures.forEach(mapFuture -> {
-
-      try {
-        Map<DocumentUpload, ByteArrayMultipartFile> documentMap=mapFuture.get();
-        var documentUpload=documentMap.keySet().stream().findFirst().get();
-        var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
-
-        jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
-                documentUpload.getDocumentDescription(), documentUpload.getAudience(), documentMap.get(documentUpload));
-
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-
-    });
-
-
-    executorService.shutdown();
-
-    try {
-      if (!executorService.awaitTermination(100, TimeUnit.SECONDS)) {
-        executorService.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      executorService.shutdownNow();
-    }
-
+        });
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
@@ -1078,7 +1038,7 @@ public class ProcurementEventService {
    */
   private EventSuppliers getSuppliersFromJaggaer(final ProcurementEvent event) {
 
-    var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    var existingRfx = jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
     var orgs = new ArrayList<OrganizationReference1>();
 
     if (existingRfx.getSuppliersList().getSupplier() != null) {
@@ -1174,7 +1134,7 @@ public class ProcurementEventService {
       final OrganisationMapping supplierOrgMapping) {
 
     // Get all current suppliers on Rfx and remove the one we want to delete
-    var existingRfx = jaggaerService.getRfx(event.getExternalEventId());
+    var existingRfx = jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
     List<Supplier> updatedSuppliersList = existingRfx.getSuppliersList().getSupplier().stream()
         .filter(
             s -> !s.getCompanyData().getId().equals(supplierOrgMapping.getExternalOrganisationId()))
@@ -1208,14 +1168,14 @@ public class ProcurementEventService {
       final String principal) {
     log.debug("Export all Documents from Event {}", eventId);
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
+    var exportRfxResponse = jaggaerService.getRfxWithWithBuyerAndSellerAttachments(event.getExternalEventId());
     var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
         .get(exportRfxResponse.getRfxSetting().getStatusCode());
     var attachments = new ArrayList<DocumentAttachment>();
 
     if (TenderStatus.ACTIVE != status) {
       // Get documents from S3
-      event.getDocumentUploads().stream().forEach(doc -> {
+      event.getDocumentUploads().forEach(doc -> {
         var documentKey = DocumentKey.fromString(doc.getDocumentId());
         var attachment = DocumentAttachment.builder()
             .data(documentUploadService.retrieveDocument(doc, principal))
@@ -1224,7 +1184,7 @@ public class ProcurementEventService {
         attachments.add(attachment);
       });
       // Get draft documents
-      dTemplateService.getTemplatesByAgreementAndLot(procId, eventId).stream().forEach(template -> {
+      dTemplateService.getTemplatesByAgreementAndLot(procId, eventId).forEach(template -> {
         attachments.add(dTemplateService.getDraftDocument(procId, eventId,
             DocumentKey.fromString(template.getId())));
       });
@@ -1320,7 +1280,7 @@ public class ProcurementEventService {
 
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
 
-    var exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+    var exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
     var supplierList = exportRfxResponse.getSuppliersList();
     verifyForOffers(eventId, exportRfxResponse);
 
@@ -1333,7 +1293,7 @@ public class ProcurementEventService {
       jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
 
       // get rfx response after Start Evaluation And Open Envelope called
-      exportRfxResponse = jaggaerService.getRfx(procurementEvent.getExternalEventId());
+      exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
       supplierList = exportRfxResponse.getSuppliersList();
       verifyForOffers(eventId, exportRfxResponse);
 

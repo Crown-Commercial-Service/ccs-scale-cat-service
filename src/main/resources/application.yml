@@ -169,6 +169,14 @@ config:
         # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+      exportRfxWithEmailRecipients:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=EMAIL_RECIPIENTS
+      exportRfxWithSuppliers:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=SUPPLIERS
+      exportRfxWithSuppliersOffersAndResponseCounters:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=OFFERS;SUPPLIERS;supplier_Response_Counters
+      exportRfxWithBuyerAndSellerAttachments:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=BUYER_ATTACHMENTS;SELLER_ATTACHMENTS;
       getRfxByComponent:  
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
       getCompanyProfileByDUNSNumber:
