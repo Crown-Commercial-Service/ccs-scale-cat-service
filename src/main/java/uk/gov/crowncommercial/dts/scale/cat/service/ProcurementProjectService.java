@@ -218,7 +218,7 @@ public class ProcurementProjectService {
    * @param projectId the project id
    * @return Collection of event types
    */
-  public Collection<EventType> getProjectEventTypes(final Integer projectId) {
+  public Collection<ProjectEventType> getProjectEventTypes(final Integer projectId) {
 
     final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -227,7 +227,7 @@ public class ProcurementProjectService {
         agreementsService.getLotEventTypes(project.getCaNumber(), project.getLotNumber());
 
     return lotEventTypes.stream()
-        .map(lotEventType -> modelMapper.map(lotEventType, EventType.class))
+        .map(lotEventType -> modelMapper.map(lotEventType, ProjectEventType.class))
         .collect(Collectors.toList());
   }
 

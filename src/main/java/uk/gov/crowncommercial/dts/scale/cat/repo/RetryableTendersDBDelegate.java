@@ -127,6 +127,11 @@ public class RetryableTendersDBDelegate {
   public Set<DocumentTemplate> findByEventStage(final String eventStage) {
     return documentTemplateRepo.findByEventStage(eventStage);
   }
+  
+  @TendersRetryable
+  public Set<DocumentTemplate> findByEventStageAndAgreementNumber(final String eventStage, final String agreementNumber) {
+    return documentTemplateRepo.findByEventStageAndCommercialAgreementNumber(eventStage, agreementNumber);
+  }
 
   @TendersRetryable
   public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
