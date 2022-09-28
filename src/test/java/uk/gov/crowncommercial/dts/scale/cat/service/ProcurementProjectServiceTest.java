@@ -365,7 +365,7 @@ class ProcurementProjectServiceTest {
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));
-    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
+    //when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
         .thenReturn(Arrays.asList(project));
 
