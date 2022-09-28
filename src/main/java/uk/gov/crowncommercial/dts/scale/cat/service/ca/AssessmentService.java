@@ -197,10 +197,12 @@ public class AssessmentService {
                                     // Build AssessmentSelections and AssessmentSelectionDetails
                                     if (dreq.getRequirements() != null) {
                                         assessmentSelections.addAll(dreq.getRequirements().stream().map(req -> {
-                                            var assessmentSelection =
-                                                    buildAssessmentSelection(entity, dimension, req, principal);
-                                            populateAssessmentSelectionDetails(assessmentSelection, req, principal);
-                                            return assessmentSelection;
+                                            try {
+                                                var assessmentSelection =
+                                                        buildAssessmentSelection(entity, dimension, req, principal);
+                                                populateAssessmentSelectionDetails(assessmentSelection, req, principal);
+                                                return assessmentSelection;
+                                            }catch (NullPointerException e){throw new ValidationException("Required fields are missing");}
                                         }).collect(Collectors.toSet()));
                                     }
                                     return dimensionWeighting;

@@ -60,7 +60,7 @@ public class RPAGenericService {
         .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
 
     // Find actual suppliers of project and event
-    var suppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId()).getSuppliersList()
+    var suppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId()).getSuppliersList()
         .getSupplier();
 
     // Find all unmatched org ids
