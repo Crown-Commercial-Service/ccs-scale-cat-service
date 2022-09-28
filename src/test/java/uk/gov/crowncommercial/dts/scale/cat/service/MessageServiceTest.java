@@ -261,7 +261,7 @@ class MessageServiceTest {
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
 
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+   // when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
@@ -328,7 +328,7 @@ class MessageServiceTest {
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
 
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
     when(retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));

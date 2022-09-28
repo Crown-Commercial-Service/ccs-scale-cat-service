@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserResponseDetail;
@@ -26,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.LotDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
@@ -177,7 +179,10 @@ class QuestionAndAnswerServiceTest {
 
     var agDetails = new AgreementDetail();
     agDetails.setName("AgreementName");
+    var lotDetails = new LotDetail();
+    lotDetails.setName("Lot Name");
     when(agreementsService.getAgreementDetails(any())).thenReturn(agDetails);
+    when(agreementsService.getLotDetails(any(), any())).thenReturn(lotDetails);
 
     // Invoke
     var response =

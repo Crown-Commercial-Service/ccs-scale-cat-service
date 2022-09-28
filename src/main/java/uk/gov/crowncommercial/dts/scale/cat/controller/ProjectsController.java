@@ -75,7 +75,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @GetMapping("/{proc-id}/event-types")
-  public Collection<EventType> listProcurementEventTypes(
+  public Collection<ProjectEventType> listProcurementEventTypes(
       @PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
 
     log.info("listProcurementEventTypes by project invoked on behalf of principal: {}",
