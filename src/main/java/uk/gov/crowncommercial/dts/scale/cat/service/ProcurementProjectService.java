@@ -218,7 +218,7 @@ public class ProcurementProjectService {
    * @param projectId the project id
    * @return Collection of event types
    */
-  public Collection<EventType> getProjectEventTypes(final Integer projectId) {
+  public Collection<ProjectEventType> getProjectEventTypes(final Integer projectId) {
 
     final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -227,7 +227,7 @@ public class ProcurementProjectService {
         agreementsService.getLotEventTypes(project.getCaNumber(), project.getLotNumber());
 
     return lotEventTypes.stream()
-        .map(lotEventType -> modelMapper.map(lotEventType, EventType.class))
+        .map(lotEventType -> modelMapper.map(lotEventType, ProjectEventType.class))
         .collect(Collectors.toList());
   }
 
@@ -254,7 +254,8 @@ public class ProcurementProjectService {
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
-    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+
+    var exportRfxResponse = jaggaerService.getRfxWithEmailRecipients(dbEvent.getExternalEventId());
 
     // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
@@ -468,7 +469,9 @@ public class ProcurementProjectService {
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
         // fixed for SCAT-6566  : if the closed date from tender db event has a value it takes precedence
-        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),null!=dbEvent.getCloseDate()?dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
+        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),
+                (tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent).equals(DashboardStatus.CLOSED) && null!=dbEvent.getCloseDate())?
+                        dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       } catch (Exception e) {
         // No data found in Jagger

@@ -111,7 +111,7 @@ public class MessageService {
           rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
               .map(OrganizationReference1::getId).collect(Collectors.toList()));
       var supplierJoiner = new StringJoiner(RPA_DELIMETER);
-      suppliers.getFirst().stream().forEach(supplier -> {
+      suppliers.getFirst().forEach(supplier -> {
         supplierJoiner.add(supplier.getCompanyData().getName());
       });
       var supplierString = supplierJoiner.toString();
@@ -418,7 +418,7 @@ public class MessageService {
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
         .attachments(message.getAttachmentList().getAttachment().stream()
             .map(att -> new MessageNonOCDSAllOfAttachments().id(Integer.valueOf(att.getFileId()))
-                .name(att.getFileName()))
+                .name(att.getFileName()).size(att.getFileSize()))
             .collect(Collectors.toList()))
         .readList(message.getReadingList().getReading().stream()
             .map(reading -> new ContactPoint1().name(reading.getReaderName()))

@@ -365,7 +365,7 @@ class ProcurementProjectServiceTest {
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));
-    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
+    //when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
         .thenReturn(Arrays.asList(project));
 
@@ -451,7 +451,7 @@ class ProcurementProjectServiceTest {
             Arrays.asList(EmailRecipient.builder().user(User.builder().id("6").build()).build()))
         .build());
 
-    when(jaggaerService.getRfx("itt_123")).thenReturn(exportRfxResponse);
+    when(jaggaerService.getRfxWithEmailRecipients("itt_123")).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findProjectUserMappingByProjectId(PROC_PROJECT_ID))
         .thenReturn(new HashSet<>(Arrays.asList(userMapping, userMapping1, userMapping2)));
 

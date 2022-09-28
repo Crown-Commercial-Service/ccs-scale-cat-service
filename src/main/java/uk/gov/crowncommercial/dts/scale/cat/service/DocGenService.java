@@ -11,7 +11,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.transaction.Transactional;
-import org.apache.commons.validator.GenericValidator;
+
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -312,7 +312,7 @@ public class DocGenService {
     if (table != null) {
       // Append rows if necessary (assume header row present)
       if (table.getRowCount() - 1 < dataReplacement.size()) {
-        table.appendRows(dataReplacement.size() - table.getRowCount());
+        table.appendRows(dataReplacement.size() + 1 - table.getRowCount());
       }
       var isLineRequired = false;
       var columnIndex = -1;
