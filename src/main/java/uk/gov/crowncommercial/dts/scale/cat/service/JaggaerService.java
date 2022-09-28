@@ -120,6 +120,48 @@ public class JaggaerService {
                 "Unexpected error retrieving rfx"));
   }
 
+
+  public ExportRfxResponse getRfxWithEmailRecipients(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithEmailRecipients().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+  public ExportRfxResponse getRfxWithSuppliers(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithSuppliers().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+  public ExportRfxResponse getRfxWithSuppliersOffersAndResponseCounters(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithSuppliersOffersAndResponseCounters().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+  public ExportRfxResponse getRfxWithWithBuyerAndSellerAttachments(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithBuyerAndSellerAttachments().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+
   /**
    * Searches for an Rfx by <code>rfxId</code> filter. Without any components this simply returns
    * the top-level <code>rfxSetting</code> data and is far more performant that getting the entire
