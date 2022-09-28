@@ -111,7 +111,7 @@ public class MessageService {
           rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
               .map(OrganizationReference1::getId).collect(Collectors.toList()));
       var supplierJoiner = new StringJoiner(RPA_DELIMETER);
-      suppliers.getFirst().stream().forEach(supplier -> {
+      suppliers.getFirst().forEach(supplier -> {
         supplierJoiner.add(supplier.getCompanyData().getName());
       });
       var supplierString = supplierJoiner.toString();
