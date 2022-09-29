@@ -82,7 +82,7 @@ public class QuestionAndAnswerService {
 
     if (isSupplier) {
       // get all suppliers for this event in jaggaer
-      var jaggaerSuppliers = jaggaerService.getRfx(procurementEvent.getExternalEventId())
+      var jaggaerSuppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId())
           .getSuppliersList().getSupplier();
 
       // find supplier org-mapping
