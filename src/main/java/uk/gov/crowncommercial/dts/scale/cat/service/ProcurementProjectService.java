@@ -239,8 +239,10 @@ public class ProcurementProjectService {
    */
   public Collection<ProjectEventType> getProjectEventTypes(final Integer projectId) {
 
-    final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+    final ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    // TODO: Check has Lot been identified (by checking status) and return different events based on the result
 
     final var lotEventTypes =
         agreementsService.getLotEventTypes(project.getCaNumber(), project.getLotNumber());

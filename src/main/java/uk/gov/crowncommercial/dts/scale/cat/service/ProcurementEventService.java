@@ -268,6 +268,19 @@ public class ProcurementEventService {
         TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
   }
 
+  private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
+    // Find a list of any existing, valid events for this project and return the first found (as there should never be more than one)
+    var project = retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
+
+    if (existingEventOptional.isPresent()) {
+      return existingEventOptional.get();
+    }
+
+    return null;
+  }
+
   private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
 
     return procurementEvents.stream().filter(event-> !isClosedStatus(event.getTenderStatus())).findFirst();
