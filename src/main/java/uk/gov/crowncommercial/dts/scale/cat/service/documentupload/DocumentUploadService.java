@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StopWatch;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -140,7 +141,6 @@ public class DocumentUploadService {
   /**
    * Retrieve the given document from the Tenders document store
    *
-   * @param event
    * @param documentUpload
    * @param principal
    * @return
@@ -155,7 +155,16 @@ public class DocumentUploadService {
     switch (documentUpload.getExternalStatus()) {
       case SAFE:
         // Get document from Tenders S3
-        return getFromTendersS3(tendersS3ObjectKey, documentId, principal);
+        log.info("Getting Document from TenderS3 {} ", documentId);
+
+
+        StopWatch retrieveDocStopWatch= new StopWatch();
+        retrieveDocStopWatch.start();
+
+        byte[] tenderDbDoc=getFromTendersS3(tendersS3ObjectKey, documentId, principal);
+        retrieveDocStopWatch.stop();
+        log.info("retrieveDocument : Total time taken to retrieveDocument service for procID {} : eventId :{} , Timetaken : {}  ", documentUpload.getProcurementEvent().getProject().getId(),documentUpload.getProcurementEvent().getEventID(),retrieveDocStopWatch.getLastTaskTimeMillis());
+        return tenderDbDoc;
 
       case PROCESSING:
         // Invoke processing of remote S3 / throw error if still processing / unsafe?
@@ -210,7 +219,9 @@ public class DocumentUploadService {
         documentStatusResponse.ifPresentOrElse(documentStatus -> {
 
           if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
+
             copyDocumentFromRemoteS3(unprocessedDocUpload, documentStatus);
+
             unprocessedDocUpload.setExternalStatus(VirusCheckStatus.SAFE);
             unprocessedDocUpload.setTimestamps(
                 Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));

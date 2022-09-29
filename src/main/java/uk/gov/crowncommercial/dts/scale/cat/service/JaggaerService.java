@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StopWatch;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -423,7 +424,16 @@ public class JaggaerService {
     }
 
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
-    this.uploadDocument(multipartFile, update);
+
+      StopWatch jaggaerUploadStopWatch= new StopWatch();
+      jaggaerUploadStopWatch.start();
+
+      this.uploadDocument(multipartFile, update);
+
+      jaggaerUploadStopWatch.stop();
+      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ",event.getProject().getId(), event.getEventID(),fileName, jaggaerUploadStopWatch.getLastTaskTimeMillis());
+
+
   }
 
   /**

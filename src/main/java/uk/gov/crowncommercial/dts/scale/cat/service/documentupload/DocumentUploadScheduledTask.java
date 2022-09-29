@@ -21,7 +21,7 @@ public class DocumentUploadScheduledTask {
   private final DocumentUploadService documentUploadService;
   private final DocumentUploadRepo documentUploadRepo;
 
-  @Scheduled(fixedDelayString = "PT1M")
+  //@Scheduled(fixedDelayString = "PT1M")
   @Transactional
   void checkDocumentStatus() {
     var unprocessedDocuments = documentUploadRepo.findByExternalStatus(VirusCheckStatus.PROCESSING);
