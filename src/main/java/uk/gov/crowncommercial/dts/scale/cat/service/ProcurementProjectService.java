@@ -242,8 +242,6 @@ public class ProcurementProjectService {
     final ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-    // TODO: Check has Lot been identified (by checking status) and return different events based on the result
-
     final var lotEventTypes =
         agreementsService.getLotEventTypes(project.getCaNumber(), project.getLotNumber());
 
