@@ -246,6 +246,7 @@ public class ProcurementEventService {
 
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
+            .templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue())
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).tenderStatus(tenderStatus);
 
@@ -448,6 +449,11 @@ public class ProcurementEventService {
         tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null
             ? rfxStatus.get(event.getEventType()).getValue()
             : null;
+      }
+
+      if(null != updateEvent.getTemplateGroupId()){
+        if(null == event.getProcurementTemplatePayload())
+          event.setTemplateId(updateEvent.getTemplateGroupId().intValue());
       }
 
       event.setUpdatedAt(Instant.now());

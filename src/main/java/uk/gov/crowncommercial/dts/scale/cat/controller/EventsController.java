@@ -80,6 +80,7 @@ public class EventsController extends AbstractRestController {
         String eventId = summary.getId();
         UpdateEvent event = new UpdateEvent();
         event.setEventType(eventType);
+        event.setTemplateGroupId(createEvent.getNonOCDS().getTemplateGroupId());
         EventSummary updSummary = procurementEventService.updateProcurementEvent(procId, eventId, event, principal);
         summary.setEventType(updSummary.getEventType());
         summary.setAssessmentId(updSummary.getAssessmentId());
