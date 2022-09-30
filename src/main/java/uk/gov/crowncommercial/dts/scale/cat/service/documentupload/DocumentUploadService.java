@@ -6,6 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.DocumentUploadAPIConfi
 import java.io.EOFException;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
@@ -158,12 +159,12 @@ public class DocumentUploadService {
         log.info("Getting Document from TenderS3 {} ", documentId);
 
 
-        StopWatch retrieveDocStopWatch= new StopWatch();
-        retrieveDocStopWatch.start();
-
+        Instant retrieveDocStart= Instant.now();
         byte[] tenderDbDoc=getFromTendersS3(tendersS3ObjectKey, documentId, principal);
-        retrieveDocStopWatch.stop();
-        log.info("retrieveDocument : Total time taken to retrieveDocument service for procID {} : eventId :{} , Timetaken : {}  ", documentUpload.getProcurementEvent().getProject().getId(),documentUpload.getProcurementEvent().getEventID(),retrieveDocStopWatch.getLastTaskTimeMillis());
+        Instant retrieveDocEnd= Instant.now();
+        log.info("retrieveDocument : Total time taken to retrieveDocument service for procID {} : eventId :{} , Timetaken : {}  ",
+                  documentUpload.getProcurementEvent().getProject().getId(),documentUpload.getProcurementEvent().getEventID(),
+                      Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
         return tenderDbDoc;
 
       case PROCESSING:
@@ -286,7 +287,7 @@ public class DocumentUploadService {
     if (documentUploadData.isPresent()) {
       var docStatus = documentUploadData.get();
       docStatus.setExternalStatus(VirusCheckStatus.PROCESSING);
-      docStatus = documentUploadRepo.save(docStatus);
+      //docStatus = documentUploadRepo.save(docStatus);
       this.processDocuments(Set.of(docStatus), principal);
       var tendersS3Object = tendersS3Client
           .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);

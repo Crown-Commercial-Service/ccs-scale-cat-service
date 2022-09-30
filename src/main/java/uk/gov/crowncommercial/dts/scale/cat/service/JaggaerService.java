@@ -7,6 +7,7 @@ import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
@@ -425,13 +426,13 @@ public class JaggaerService {
 
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
 
-      StopWatch jaggaerUploadStopWatch= new StopWatch();
-      jaggaerUploadStopWatch.start();
+    Instant retrieveDocStart= Instant.now();
 
-      this.uploadDocument(multipartFile, update);
+    this.uploadDocument(multipartFile, update);
+    Instant retrieveDocEnd= Instant.now();
 
-      jaggaerUploadStopWatch.stop();
-      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ",event.getProject().getId(), event.getEventID(),fileName, jaggaerUploadStopWatch.getLastTaskTimeMillis());
+      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ",event.getProject().getId(), event.getEventID(),fileName,
+              Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
 
 
   }

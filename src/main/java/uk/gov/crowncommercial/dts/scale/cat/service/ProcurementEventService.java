@@ -895,7 +895,7 @@ public class ProcurementEventService {
       throw new RuntimeException(e);
     }
 
-    futures.forEach(mapFuture -> {
+    futures.stream().parallel().forEach(mapFuture -> {
 
       try {
         Map<DocumentUpload, ByteArrayMultipartFile> documentMap=mapFuture.get();
