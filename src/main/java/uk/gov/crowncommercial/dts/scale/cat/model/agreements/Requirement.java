@@ -13,6 +13,7 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TableDefinition;
 
 import javax.validation.ValidationException;
@@ -49,10 +50,17 @@ public class Requirement {
     Boolean multiAnswer;
     Integer order;
     Integer length;
+    @JsonProperty("inheritance")
+    @NonFinal
+    private DataTemplateInheritanceType inheritance;
     Dependency dependency;
 
     @NonFinal
     List<Option> options; // Maps to QuestionNonOCDSOptions
+
+    public void setInheritance(DataTemplateInheritanceType inheritance){
+      this.inheritance = inheritance;
+    }
 
     /**
      * Updates the {@link #options} list (i.e. the answers provided by the buyer).

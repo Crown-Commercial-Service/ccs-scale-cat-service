@@ -55,6 +55,7 @@ public class CriteriaService {
   private final WebClient jaggaerWebClient;
   private final DependencyMapper dependencyMapper;
 
+  @Transactional
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
       final boolean populateGroups) {
 
@@ -237,10 +238,18 @@ public class CriteriaService {
       var lotEventTypeDataTemplates =
           agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
               event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
-
-      // TODO: Decide how to handle multiple data templates being returned by AS
-      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+        if(null == event.getTemplateId())
+          dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
+              () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+        else{
+          dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
+                  t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
+                    () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+          // TODO  do further pre-processing to assign data.
+        }
+        event.setProcurementTemplatePayload(dataTemplate);
+        event.setUpdatedAt(Instant.now());
+        retryableTendersDBDelegate.save(event);
     }
     return dataTemplate;
   }
