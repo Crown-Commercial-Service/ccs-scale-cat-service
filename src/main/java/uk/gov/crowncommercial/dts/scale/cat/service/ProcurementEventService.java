@@ -246,9 +246,13 @@ public class ProcurementEventService {
 
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
-            .templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue())
+
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+    if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getTemplateGroupId()){
+      eventBuilder.templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue());
+    }
 
     var event = eventBuilder.build();
 

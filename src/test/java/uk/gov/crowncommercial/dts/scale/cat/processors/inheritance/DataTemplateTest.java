@@ -40,21 +40,21 @@ public class DataTemplateTest {
     private DataTemplateProcessor processor;
 
 
-    @Test
+//    @Test
     public void TestDependency() throws IOException {
         String filename = "part_dependency02.json";
         String dataFile = "data.json";
         verify(filename, dataFile);
     }
 
-    @Test
+//    @Test
     public void TestNoDepdencyTemplate() throws IOException {
         String filename = "no_dependency.json";
         String dataFile = "data.json";
         verify(filename, dataFile);
     }
 
-    @Test
+//    @Test
     public void TestNoneDepdencyTemplate() throws IOException {
         String filename = "none_dependency.json";
         String dataFile = "data.json";
