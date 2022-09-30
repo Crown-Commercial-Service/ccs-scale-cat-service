@@ -11,6 +11,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
@@ -80,96 +81,114 @@ public class ProcurementProjectService {
    * @param principal
    * @return draft procurement project
    */
-  public DraftProcurementProject createFromAgreementDetails(final AgreementDetails agreementDetails,
-      final String principal, final String conclaveOrgId) {
+  public DraftProcurementProject createFromAgreementDetails(final AgreementDetails agreementDetails, final String principal, final String conclaveOrgId) {
+    // Before we do anything, check if we've been given a lot ID as part of the request
+    boolean validRequest = true;
 
-    // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
-    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
-        .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
-    var jaggaerBuyerCompanyId = userProfileService.resolveBuyerUserCompany(principal).getBravoId();
+    if (agreementDetails.getLotId() == null || agreementDetails.getLotId().isEmpty()) {
+      // No lot ID has been provided - so we need to check via the Agreements Service whether or not a lot is required for this agreement
+      AgreementDetail agreementModel = agreementsService.getAgreementDetails(agreementDetails.getAgreementId());
 
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
-        .orElseThrow(() -> new AuthorisationFailureException(
-            "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
-
-    var projectTitle =
-        getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
-
-    var tender = Tender.builder().title(projectTitle)
-        .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
-        .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
-        .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
-
-    var projectBuilder = Project.builder().tender(tender);
-
-    // By default, adding the division is disabled
-    if (Boolean.TRUE.equals(jaggaerAPIConfig.getAddDivisionToProjectTeam())) {
-      var userDivision = User.builder().code("DIVISION").build();
-      var projectTeam = ProjectTeam.builder().user(Collections.singleton(userDivision)).build();
-      projectBuilder.projectTeam(projectTeam);
+      if (agreementModel == null || agreementModel.getPreDefinedLotRequired() == null || agreementModel.getPreDefinedLotRequired()) {
+        // The agreement either could not be fetched or it requires a lot.  This is not a valid request
+        validRequest = false;
+      }
     }
-    log.debug("Project to create: {}", projectBuilder.toString());
 
-    var createUpdateProject =
-        new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
+    if (validRequest) {
+      // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
+      var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
+              .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+      var jaggaerBuyerCompanyId = userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
-    var createProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-            .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error creating project"));
+      var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
+              .orElseThrow(() -> new AuthorisationFailureException(
+                      "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
 
-    if (createProjectResponse.getReturnCode() != 0
-        || !"OK".equals(createProjectResponse.getReturnMessage())) {
-      throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
-          createProjectResponse.getReturnMessage());
-    }
-    log.info("Created project: {}", createProjectResponse);
+      var projectTitle =
+              getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
 
-    var procurementProject = ProcurementProject.builder()
-        .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
-        .externalProjectId(createProjectResponse.getTenderCode())
-        .externalReferenceId(createProjectResponse.getTenderReferenceCode())
-        .projectName(projectTitle).createdBy(principal).createdAt(Instant.now())
-        .updatedBy(principal).updatedAt(Instant.now()).build();
+      var tender = Tender.builder().title(projectTitle)
+              .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
+              .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
+              .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
 
-    /*
-     * Get existing buyer user org mapping or create as part of procurement project persistence.
-     * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
-     * self-service company).
-     */
-    var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
-    var organisationMapping =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+      var projectBuilder = Project.builder().tender(tender);
 
-    // Adapt save strategy based on org mapping status (new/existing)
-    if (organisationMapping.isEmpty()) {
-      procurementProject.setOrganisationMapping(retryableTendersDBDelegate
-          .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
-              .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-              .createdAt(Instant.now()).createdBy(principal).build()));
+      // By default, adding the division is disabled
+      if (Boolean.TRUE.equals(jaggaerAPIConfig.getAddDivisionToProjectTeam())) {
+        var userDivision = User.builder().code("DIVISION").build();
+        var projectTeam = ProjectTeam.builder().user(Collections.singleton(userDivision)).build();
+        projectBuilder.projectTeam(projectTeam);
+      }
+      log.debug("Project to create: {}", projectBuilder.toString());
+
+      var createUpdateProject =
+              new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
+
+      var createProjectResponse =
+              ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                      .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                      .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                      .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                              "Unexpected error creating project"));
+
+      if (createProjectResponse.getReturnCode() != 0
+              || !"OK".equals(createProjectResponse.getReturnMessage())) {
+        throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
+                createProjectResponse.getReturnMessage());
+      }
+      log.info("Created project: {}", createProjectResponse);
+
+      var procurementProject = ProcurementProject.builder()
+              .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
+              .externalProjectId(createProjectResponse.getTenderCode())
+              .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+              .projectName(projectTitle).createdBy(principal).createdAt(Instant.now())
+              .updatedBy(principal).updatedAt(Instant.now()).build();
+
+      /*
+       * Get existing buyer user org mapping or create as part of procurement project persistence.
+       * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
+       * self-service company).
+       */
+      var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
+      var organisationMapping =
+              retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+
+      // Adapt save strategy based on org mapping status (new/existing)
+      if (organisationMapping.isEmpty()) {
+        procurementProject.setOrganisationMapping(retryableTendersDBDelegate
+                .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
+                        .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+                        .createdAt(Instant.now()).createdBy(principal).build()));
+      } else {
+        procurementProject = retryableTendersDBDelegate.save(procurementProject);
+        procurementProject.setOrganisationMapping(organisationMapping.get());
+      }
+      retryableTendersDBDelegate.save(procurementProject);
+
+      var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
+              new CreateEvent(), null, principal);
+
+      // add current user to project
+      addProjectUserMapping(jaggaerUserId, procurementProject, principal);
+
+      return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
+              procurementProject.getId(), eventSummary.getId(), projectTitle,
+              conclaveUserOrg.getIdentifier().getLegalName());
     } else {
-      procurementProject = retryableTendersDBDelegate.save(procurementProject);
-      procurementProject.setOrganisationMapping(organisationMapping.get());
+      throw new AuthorisationFailureException("A lot is required for this commercial agreement.");
     }
-    retryableTendersDBDelegate.save(procurementProject);
-
-    var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
-        new CreateEvent(), null, principal);
-
-    // add current user to project
-    addProjectUserMapping(jaggaerUserId, procurementProject, principal);
-
-    return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
-        procurementProject.getId(), eventSummary.getId(), projectTitle,
-        conclaveUserOrg.getIdentifier().getLegalName());
   }
 
   String getDefaultProjectTitle(final AgreementDetails agreementDetails,
       final String organisation) {
-    return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"),
-        agreementDetails.getAgreementId(), agreementDetails.getLotId(), organisation);
+    if (!agreementDetails.getLotId().isEmpty()) {
+      return String.format(jaggaerAPIConfig.getCreateProject().get("defaultTitleFormat"), agreementDetails.getAgreementId(), agreementDetails.getLotId(), organisation);
+    } else {
+      return String.format("%s-%s", agreementDetails.getAgreementId(), organisation);
+    }
   }
 
   /**
@@ -220,7 +239,7 @@ public class ProcurementProjectService {
    */
   public Collection<ProjectEventType> getProjectEventTypes(final Integer projectId) {
 
-    final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+    final ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
     final var lotEventTypes =
@@ -255,7 +274,7 @@ public class ProcurementProjectService {
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
 
-    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+    var exportRfxResponse = jaggaerService.getRfxWithEmailRecipients(dbEvent.getExternalEventId());
 
     // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
