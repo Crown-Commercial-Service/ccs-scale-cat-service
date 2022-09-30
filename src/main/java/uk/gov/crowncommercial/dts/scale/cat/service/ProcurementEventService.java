@@ -758,7 +758,7 @@ public class ProcurementEventService {
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
         .responseState(!RESPONSE_STATES.contains(supplier.getStatus().trim())
-            ? Responders.ResponseStateEnum.SUBMITTED
+            ? supplier.getStatusCode() == -2 ? Responders.ResponseStateEnum.DECLINED : Responders.ResponseStateEnum.SUBMITTED
             : Responders.ResponseStateEnum.DRAFT)
         .readState(!RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
