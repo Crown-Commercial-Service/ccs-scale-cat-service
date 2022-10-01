@@ -19,8 +19,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -153,13 +155,13 @@ public class DocumentUploadService {
     switch (documentUpload.getExternalStatus()) {
       case SAFE:
         // Get document from Tenders S3
-        return getFromTendersS3(tendersS3ObjectKey);
+        return getFromTendersS3(tendersS3ObjectKey, documentId, principal);
 
       case PROCESSING:
         // Invoke processing of remote S3 / throw error if still processing / unsafe?
         processDocuments(Set.of(documentUpload), principal);
         if (documentUpload.getExternalStatus() == VirusCheckStatus.SAFE) {
-          return getFromTendersS3(tendersS3ObjectKey);
+          return getFromTendersS3(tendersS3ObjectKey, documentId, principal);
         } else {
           throw new DocumentUploadApplicationException(
               "Requested document is still being processed and is unavilable to download");
@@ -188,7 +190,7 @@ public class DocumentUploadService {
    */
   void processDocuments(final Collection<DocumentUpload> unprocessedDocuments,
       final String principal) {
-    unprocessedDocuments.stream().forEach(unprocessedDocUpload -> {
+    unprocessedDocuments.forEach(unprocessedDocUpload -> {
 
       // Ensure processing of each document takes place only once
       // TODO: Replace with Blocking queue + timeout to avoid deadlocks
@@ -250,10 +252,38 @@ public class DocumentUploadService {
         remoteS3Object.getObjectContent(), s3ObjectMetadata);
   }
 
-  private byte[] getFromTendersS3(final String tendersS3ObjectKey) throws IOException {
-    var tendersS3Object = tendersS3Client
-        .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
-    return IOUtils.toByteArray(tendersS3Object.getObjectContent());
+  private byte[] getFromTendersS3(final String tendersS3ObjectKey, final String documentId, final String principal)
+      throws IOException {
+    try {
+      S3Object tendersS3Object = tendersS3Client
+          .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
+      return IOUtils.toByteArray(tendersS3Object.getObjectContent());
+    } catch (AmazonServiceException e) {
+      var objectData = processFailedS3Documents(tendersS3ObjectKey, documentId, principal);
+      if (Objects.isNull(objectData))
+        throw e;
+      return objectData;
+    }
+  }
+  
+  private byte[] processFailedS3Documents(final String tendersS3ObjectKey, final String documentId, final String principal)
+      throws AmazonServiceException, SdkClientException, IOException {
+    // reference of doc key format - tendersS3ObjectKey();
+    log.debug("Processing failed s3 documents");
+    log.debug("Document Id: {}", documentId);
+    var documentUploadData = documentUploadRepo.findByDocumentId(documentId);
+    if (documentUploadData.isPresent()) {
+      var docStatus = documentUploadData.get();
+      docStatus.setExternalStatus(VirusCheckStatus.PROCESSING);
+      docStatus = documentUploadRepo.save(docStatus);
+      this.processDocuments(Set.of(docStatus), principal);
+      var tendersS3Object = tendersS3Client
+          .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
+      log.debug("Document processed successfully and found in s3 bucket");
+      return IOUtils.toByteArray(tendersS3Object.getObjectContent());
+    }
+    log.debug("Document upload data not found with id: {}", documentId);
+    return null;
   }
 
   private String tendersS3ObjectKey(final Integer projectId, final String eventId,

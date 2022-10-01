@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -20,7 +21,9 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -166,13 +169,13 @@ public class AwardService {
    */
   public Collection<DocumentSummary> getAwardTemplates(final Integer procId, final String eventId) {
     var documentSummaries = new HashSet<DocumentSummary>();
-    validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
     documentSummaries
         .addAll(getTemplates(retryableTendersDBDelegate.findByEventStage(AWARDED_FILE_TYPE),
             AWARDED_TEMPLATE_DESCRIPTION));
-    documentSummaries
-        .addAll(getTemplates(retryableTendersDBDelegate.findByEventStage(ORDER_FORM_FILE_TYPE),
-            ORDER_FORM_TEMPLATE_DESCRIPTION));
+    documentSummaries.addAll(getTemplates(retryableTendersDBDelegate
+        .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber()),
+        ORDER_FORM_TEMPLATE_DESCRIPTION));
     documentSummaries.addAll(
         getTemplates(retryableTendersDBDelegate.findByEventStage(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE),
             UN_SUCCESSFUL_TEMPLATE_DESCRIPTION));
@@ -191,8 +194,9 @@ public class AwardService {
   public Collection<DocumentAttachment> getAwardTemplate(final Integer procId, final String eventId,
       final DocumentsKey documentKey) {
     var documentAttachments = new HashSet<DocumentAttachment>();
-    validationService.validateProjectAndEventIds(procId, eventId);
-    var docs = retryableTendersDBDelegate.findByEventStage(documentKey.getFileType());
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var docs = retryableTendersDBDelegate.findByEventStageAndAgreementNumber(
+        documentKey.getFileType(), event.getProject().getCaNumber());
     var resources = docs.stream()
         .map(template -> documentTemplateResourceService.getResource(template.getTemplateUrl()))
         .collect(Collectors.toList());
@@ -234,9 +238,10 @@ public class AwardService {
   public Collection<DocumentAttachment> getAllAwardTemplate(final Integer procId,
       final String eventId) {
     var documentAttachments = new HashSet<DocumentAttachment>();
-    validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId);
     var award = retryableTendersDBDelegate.findByEventStage(AWARDED_FILE_TYPE);
-    var orderform = retryableTendersDBDelegate.findByEventStage(ORDER_FORM_FILE_TYPE);
+    var orderform = retryableTendersDBDelegate
+        .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber());
     var unsuccessful =
         retryableTendersDBDelegate.findByEventStage(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE);
 
@@ -282,10 +287,14 @@ public class AwardService {
     }
 
     // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
-    return new AwardSummary().id("1").date(offerDetails.getLastUpdateDate())
+    return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
         .addSuppliersItem(new OrganizationReference1().id(supplier.getOrganisationId()))
         .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
             ? AwardState.AWARD
             : AwardState.PRE_AWARD);
+  }
+
+  private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
+    return offerDetailLastUpdated.compareTo(rfxsettingLastUpdated) >=0 ? offerDetailLastUpdated : rfxsettingLastUpdated;
   }
 }

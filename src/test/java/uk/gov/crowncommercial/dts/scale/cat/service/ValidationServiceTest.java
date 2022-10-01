@@ -34,10 +34,10 @@ import static org.mockito.Mockito.when;
 class ValidationServiceTest {
 
   private static final Integer PROC_PROJECT_ID = 1;
-  private static final String PROC_EVENT_ID = "ocds-b5fd17-2";
+  private static final String PROC_EVENT_ID = "ocds-pfhb7i-2";
   private static final String PROC_EVENT_INTERNAL_ID = "2";
   private static final String PROC_EVENT_AUTHORITY = "ocds";
-  private static final String PROC_EVENT_PREFIX = "b5fd17";
+  private static final String PROC_EVENT_PREFIX = "pfhb7i";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
 
   @Autowired

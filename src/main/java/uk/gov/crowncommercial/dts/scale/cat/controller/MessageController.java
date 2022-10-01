@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.UNLIMITED_VALUE;
 
 /**
  * Message Controller which provides outbound messages API to jaggaer
@@ -24,6 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
 @Slf4j
 @Validated
 public class MessageController extends AbstractRestController {
+
 
   private final MessageService messageService;
 
@@ -69,7 +71,7 @@ public class MessageController extends AbstractRestController {
       @RequestParam(name = "sort-order", required = false,
           defaultValue = "ASCENDING") MessageSortOrder messageSortOrder,
       @RequestParam(name = "page", required = false, defaultValue = "1") Integer page,
-      @RequestParam(name = "page-size", required = false, defaultValue = "20") Integer pageSize,
+      @RequestParam(name = "page-size", required = false, defaultValue = UNLIMITED_VALUE) Integer pageSize,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);

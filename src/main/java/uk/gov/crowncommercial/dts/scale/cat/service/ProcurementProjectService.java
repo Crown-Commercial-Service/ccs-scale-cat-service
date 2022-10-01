@@ -1,15 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,17 +9,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import javax.transaction.Transactional;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+
+import javax.transaction.Transactional;
+
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -44,6 +52,8 @@ public class ProcurementProjectService {
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
+
+  private final EventTransitionService eventTransitionService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
@@ -208,7 +218,7 @@ public class ProcurementProjectService {
    * @param projectId the project id
    * @return Collection of event types
    */
-  public Collection<EventType> getProjectEventTypes(final Integer projectId) {
+  public Collection<ProjectEventType> getProjectEventTypes(final Integer projectId) {
 
     final var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -217,7 +227,7 @@ public class ProcurementProjectService {
         agreementsService.getLotEventTypes(project.getCaNumber(), project.getLotNumber());
 
     return lotEventTypes.stream()
-        .map(lotEventType -> modelMapper.map(lotEventType, EventType.class))
+        .map(lotEventType -> modelMapper.map(lotEventType, ProjectEventType.class))
         .collect(Collectors.toList());
   }
 
@@ -244,7 +254,8 @@ public class ProcurementProjectService {
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
-    var exportRfxResponse = jaggaerService.getRfx(dbEvent.getExternalEventId());
+
+    var exportRfxResponse = jaggaerService.getRfxWithEmailRecipients(dbEvent.getExternalEventId());
 
     // Get Project Owner
     var projectOwner = jaggaerProject.getTender().getProjectOwner();
@@ -270,7 +281,7 @@ public class ProcurementProjectService {
         .map(i -> getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId()))
         .filter(Objects::nonNull).collect(Collectors.toSet());
   }
-
+  
   /**
    * Add/Update Project Team Member (owner, team members, email recipients).
    *
@@ -449,8 +460,6 @@ public class ProcurementProjectService {
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
 
-        eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
-
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
             .filter(
@@ -459,37 +468,28 @@ public class ProcurementProjectService {
                 () -> new TendersDBDataException("Unexplained data mismatch from Rfx search"));
         rfxSetting = exportRfxResponse.getRfxSetting();
         // update the tender period from rfx
-        eventSummary.setTenderPeriod(getTenderPeriod(rfxSetting.getPublishDate().toInstant(),rfxSetting.getCloseDate().toInstant()));
+        // fixed for SCAT-6566  : if the closed date from tender db event has a value it takes precedence
+        eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()),
+                (tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent).equals(DashboardStatus.CLOSED) && null!=dbEvent.getCloseDate())?
+                        dbEvent.getCloseDate():getInstantFromDate(rfxSetting.getCloseDate())));
 
       } catch (Exception e) {
         // No data found in Jagger
         log.debug("Unable to find RFX records for event id : " + dbEvent.getExternalEventId());
       }
-
-
     }
-    eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
 
-    projectPackageSummary.activeEvent(eventSummary);
+    if(null != eventSummary) {
+      eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
+      projectPackageSummary.activeEvent(eventSummary);
+    }
+
     return Optional.of(projectPackageSummary);
   }
 
-  private Period1 getTenderPeriod(Instant publishedDate, Instant closedDate) {
 
-    Period1 period1=new Period1();
 
-    OffsetDateTime startDate=null;
-    OffsetDateTime endDate=null;
-    if(Objects.nonNull(publishedDate)){
-      startDate=OffsetDateTime.ofInstant(publishedDate, ZoneId.systemDefault());
-    }
-    if(Objects.nonNull(closedDate)){
-      endDate=OffsetDateTime.ofInstant(closedDate, ZoneId.systemDefault());
-    }
-    period1.startDate(startDate).endDate(endDate);
-    return period1;
 
-  }
 
   /**
    * Get a Team Member.
@@ -631,17 +631,21 @@ public class ProcurementProjectService {
   /**
    *
    * @param projectId
-   * @param tenderStatus
+   * @param terminationType
    * @param principal
    */
-  public void closeProcurementProject(final Integer projectId, final TenderStatus tenderStatus,
+  @Transactional
+  public void closeProcurementProject(final Integer projectId, final TerminationType terminationType,
       final String principal) {
     var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
     if (CollectionUtils.isEmpty(procurementEvents)) {
       log.info("No events exists for this project");
     } else {
-      procurementEventService.terminateEvent(projectId,
-          procurementEvents.iterator().next().getEventID(), TerminationType.WITHDRAWN, principal);
+      procurementEvents.forEach(
+              event -> {
+                eventTransitionService.terminateEvent(
+                    projectId, event.getEventID(), terminationType, principal, false);
+              });
     }
   }
 }
