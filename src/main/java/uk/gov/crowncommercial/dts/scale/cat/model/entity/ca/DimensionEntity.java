@@ -29,6 +29,12 @@ public class DimensionEntity {
 
   @EqualsAndHashCode.Exclude
   @ManyToMany(fetch = FetchType.LAZY)
+  @JoinTable(name = "assessment_tool_dimensions", joinColumns = @JoinColumn(name = "dimension_id"),
+          inverseJoinColumns = @JoinColumn(name = "assessment_tool_id"))
+  Set<AssessmentTool> assessmentTools;
+
+  @EqualsAndHashCode.Exclude
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "assessment_taxon_dimensions", joinColumns = @JoinColumn(name = "dimension_id"),
       inverseJoinColumns = @JoinColumn(name = "assessment_taxon_id"))
   Set<AssessmentTaxon> assessmentTaxons;
@@ -46,12 +52,6 @@ public class DimensionEntity {
 
   @Column(name = "dimension_descr")
   private String description;
-
-  @Column(name = "min_weighting_pct")
-  private BigDecimal minWeightingPercentage;
-
-  @Column(name = "max_weighting_pct")
-  private BigDecimal maxWeightingPercentage;
 
   @Column(name = "min_allowed_value")
   private BigDecimal minAllowedValue;

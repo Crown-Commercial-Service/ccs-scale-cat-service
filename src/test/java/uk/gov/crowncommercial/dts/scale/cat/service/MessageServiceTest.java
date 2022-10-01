@@ -261,7 +261,7 @@ class MessageServiceTest {
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
 
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+   // when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
     when(retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
@@ -328,7 +328,7 @@ class MessageServiceTest {
         rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
             .thenReturn(responseObject);
 
-    when(jaggaerService.getRfx(RFX_ID)).thenReturn(rfxResponse);
+    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
     when(retryableTendersDBDelegate
         .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
@@ -432,6 +432,47 @@ class MessageServiceTest {
     assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
   }
 
+  @Test
+  void givenPageSizeAndPageNumberGetMessagesshouldReturnRecordsAccordingly() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(Arrays.asList(message)).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+
+    var response = messageService.getMessagesSummary(messageRequestInfo);
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(1, response.getMessages().size());
+    assertEquals(1, response.getCounts().getMessagesTotal());
+    assertEquals(1, response.getCounts().getPageTotal());
+    assertEquals(1, response.getMessages().stream().findFirst().get().getOCDS().getId());
+  }
   @Test
   void testGetAttachments() throws Exception {
     // Stub some objects

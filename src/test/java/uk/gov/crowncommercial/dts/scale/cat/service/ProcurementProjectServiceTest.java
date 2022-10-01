@@ -51,7 +51,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class,
-        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class},
+        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class,EventTransitionService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
@@ -109,11 +109,16 @@ class ProcurementProjectServiceTest {
   @MockBean
   private AgreementsService agreementsService;
 
+  @MockBean
+  private EventTransitionService eventTransitionService;
+
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
   @Autowired
   private ProcurementProjectService procurementProjectService;
+
+
 
   @MockBean
   private JaggaerService jaggaerService;
@@ -343,7 +348,7 @@ class ProcurementProjectServiceTest {
     event.setEventName(EVENT_NAME);
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
-    event.setOcidPrefix("b5fd17");
+    event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
 
     Set<ProcurementEvent> events = new HashSet<>();
@@ -360,7 +365,7 @@ class ProcurementProjectServiceTest {
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));
-    when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
+    //when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
         .thenReturn(Arrays.asList(project));
 
@@ -446,7 +451,7 @@ class ProcurementProjectServiceTest {
             Arrays.asList(EmailRecipient.builder().user(User.builder().id("6").build()).build()))
         .build());
 
-    when(jaggaerService.getRfx("itt_123")).thenReturn(exportRfxResponse);
+    when(jaggaerService.getRfxWithEmailRecipients("itt_123")).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findProjectUserMappingByProjectId(PROC_PROJECT_ID))
         .thenReturn(new HashSet<>(Arrays.asList(userMapping, userMapping1, userMapping2)));
 
@@ -486,7 +491,7 @@ class ProcurementProjectServiceTest {
     event.setEventName(EVENT_NAME);
     event.setEventType("RFI");
     event.setOcdsAuthorityName("ocds");
-    event.setOcidPrefix("b5fd17");
+    event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);

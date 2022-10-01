@@ -19,6 +19,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
+
 /**
  * Utility methods for building and manipulating the sources generated from the Tenders API
  */
@@ -31,12 +33,7 @@ public class TendersAPIModelUtils {
           "Commercial Evaluation","Best and Final Offer Evaluation","TIOC Closed");
   private static final List<String> PRE_AWARD_STATUS_LIST= List.of("Final Evaluation - Pre-Awarded","Awarding Approval", "Final Evaluation - Saved");
   private static final List<String> AWARD_STATUS_LIST= List.of("Awarded","Mixed Awarding");
-  private static final String TO_BE_EVALUATED_STATUS = "To be Evaluated";
-  private static final String EVALUATED_STATUS = "Final Evaluation";
-  private static final String CLOSED_STATUS = "CLOSED";
 
-  private static final String CANCELLED_STATUS = "cancelled";
-  private static final String COMPLETE_STATUS = "COMPLETE";
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final ApplicationFlagsConfig appFlagsConfig;
@@ -114,12 +111,16 @@ public class TendersAPIModelUtils {
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();
-    eventDetailOCDS.setId(rfxSetting.getRfxId());
-    eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
-    eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
-    eventDetailOCDS
-        .setStatus(jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
-    // TODO: TBC - mappings required
+    // TODO : Verify with Nick whats the functionality from RFI(=) to FCA(=)
+    if (Objects.nonNull(rfxSetting)) {
+      eventDetailOCDS.setId(rfxSetting.getRfxId());
+      eventDetailOCDS.setTitle(rfxSetting.getShortDescription());
+      eventDetailOCDS.setDescription(rfxSetting.getLongDescription());
+      eventDetailOCDS.setStatus(
+          jaggaerAPIConfig.getRfxStatusToTenderStatus().get(rfxSetting.getStatusCode()));
+      // TODO: TBC - mappings required
+
+    }
     eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     eventDetail.setOCDS(eventDetailOCDS);
 
@@ -130,7 +131,7 @@ public class TendersAPIModelUtils {
    * SCAT-4788 - need to call this to populate EventSummary.dashboardStatus and
    * EventDetail.nonOCDS.dashboardStatus
    */
-  public DashboardStatus getDashboardStatus(
+  public static DashboardStatus getDashboardStatus(
       final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
     var tenderStatus = procurementEvent.getTenderStatus();
@@ -164,20 +165,19 @@ public class TendersAPIModelUtils {
     return DashboardStatus.UNKNOWN;
   }
 
-  private DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
+  private static DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
 
     if (Objects.nonNull(tenderStatus)) {
       if (tenderStatus.strip().equalsIgnoreCase(COMPLETE_STATUS)) {
         return DashboardStatus.COMPLETE;
-      } else if (tenderStatus.strip().equalsIgnoreCase(CLOSED_STATUS)
-          || tenderStatus.strip().equalsIgnoreCase(CANCELLED_STATUS)) {
+      } else if (CLOSED_STATUS_LIST.contains(tenderStatus.strip().toLowerCase())) {
         return DashboardStatus.CLOSED;
       }
     }
     return null;
   }
 
-  private DashboardStatus evaluateDashboardStatusFromRfxSettingStatus(RfxSetting rfxSetting) {
+  public static DashboardStatus evaluateDashboardStatusFromRfxSettingStatus(RfxSetting rfxSetting) {
     if (rfxSetting.getStatus().strip().equalsIgnoreCase(TO_BE_EVALUATED_STATUS)) {
       return DashboardStatus.TO_BE_EVALUATED;
     } else {
@@ -236,6 +236,11 @@ public class TendersAPIModelUtils {
     }
     period1.startDate(startDate).endDate(endDate);
     return period1;
+
+  }
+
+  public static Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
+    return null!=offsetDateTime?offsetDateTime.toInstant():null;
 
   }
 }

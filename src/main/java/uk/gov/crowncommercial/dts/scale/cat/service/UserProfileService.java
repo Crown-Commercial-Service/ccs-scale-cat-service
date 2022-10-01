@@ -39,6 +39,8 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 @Slf4j
 public class UserProfileService {
 
+  public static final String ERR_MSG_FMT_ORG_NOT_FOUND =
+          "Organisation id '%s' not found in organisation mappings";
   private static final JaggaerApplicationException INVALID_COMPANY_PROFILE_DATA_EXCEPTION =
       new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
           "Invalid state: Jaggaer company profile data must contain exactly 1 'GURU' record");
@@ -272,4 +274,26 @@ public class UserProfileService {
                  DUNS_PLACEHOLDER, concalveIdentifier);
      return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
  }
+
+
+  public Optional<ReturnCompanyData> resolveCompanyProfileData(final String organisationIdentifier) {
+
+    // Check if we have an organisation mapping record for the user's company
+    var optSupplierOrgMapping =
+            retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+
+    if (optSupplierOrgMapping.isEmpty()) {
+      throw new IllegalArgumentException(
+              String.format(ERR_MSG_FMT_ORG_NOT_FOUND, organisationIdentifier));
+    }else{
+      var supplierOrgMapping = optSupplierOrgMapping.get();
+      // Get the supplier org from Jaggaer by the bravoID
+      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig.getGetCompanyProfileByBravoID()
+              .get(JaggaerAPIConfig.ENDPOINT).replace(
+                      PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+
+      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
+    }
+  }
+
 }

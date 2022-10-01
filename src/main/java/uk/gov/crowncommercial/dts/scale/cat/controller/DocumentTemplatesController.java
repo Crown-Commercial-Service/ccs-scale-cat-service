@@ -35,7 +35,7 @@ public class DocumentTemplatesController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.debug("getTemplates invoked on behalf of principal: {}", principal);
-    return documentTemplateService.getTemplatesByEventType(procId, eventId);
+    return documentTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
   }
 
   @GetMapping(value = "/{templateID}")

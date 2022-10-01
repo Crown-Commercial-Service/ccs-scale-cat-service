@@ -34,6 +34,9 @@ public class DimensionSubmissionType {
   @Column(name = "selection_type")
   private String selectionType;
 
+  @Column (name ="submission_mandatory")
+  private Boolean mandatory = true;
+
   @Embedded
   private Timestamps timestamps;
 }

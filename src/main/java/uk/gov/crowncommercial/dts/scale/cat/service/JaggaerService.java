@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.lang.String.format;
 import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
@@ -22,12 +23,14 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_RFX_NOT_FOUND;
 
 /**
  * Jaggaer Service.
@@ -116,6 +119,48 @@ public class JaggaerService {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving rfx"));
   }
+
+
+  public ExportRfxResponse getRfxWithEmailRecipients(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithEmailRecipients().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+  public ExportRfxResponse getRfxWithSuppliers(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithSuppliers().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+  public ExportRfxResponse getRfxWithSuppliersOffersAndResponseCounters(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithSuppliersOffersAndResponseCounters().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
+  public ExportRfxResponse getRfxWithWithBuyerAndSellerAttachments(final String externalEventId) {
+
+    final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithBuyerAndSellerAttachments().get(ENDPOINT);
+    return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
+            .bodyToMono(ExportRfxResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving rfx"));
+  }
+
 
   /**
    * Searches for an Rfx by <code>rfxId</code> filter. Without any components this simply returns
@@ -384,9 +429,9 @@ public class JaggaerService {
   /**
    * extend Rfx
    *
-   * @param event
-   * @param endDdate
-   * @param jaggaerUserId
+   * @param rfx
+   * @param operationCode
+   *
    */
   public CreateUpdateRfxResponse extendRfx(final RfxRequest rfx,
       final OperationCode operationCode) {
@@ -408,7 +453,7 @@ public class JaggaerService {
   /**
    * Invalidate Event Rfx
    *
-   * @param InvalidateEventRequest
+   * @param request
    */
   public void invalidateEvent(final InvalidateEventRequest request) {
     final var endPoint = jaggaerAPIConfig.getInvalidateEvent().get(ENDPOINT);
@@ -506,13 +551,17 @@ public class JaggaerService {
   /**
    * Generic method to call start evaluation and open envelope
    *
-   * @param event
+   * @param procurementEvent
    * @param jaggaerUserId
-   * @param envelopeType
    */
   public void startEvaluationAndOpenEnvelope(final ProcurementEvent procurementEvent,
       final String jaggaerUserId) {
     startEvaluation(procurementEvent, jaggaerUserId);
     openEnvelope(procurementEvent, jaggaerUserId, EnvelopeType.TECH);
+  }
+
+  public ExportRfxResponse getSingleRfx(final String externalEventId) {
+    return this.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
+            () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
   }
 }

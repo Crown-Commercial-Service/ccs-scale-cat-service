@@ -1,5 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,6 +57,28 @@ public class DocGenValueAdaptors {
   public DocGenValueAdaptor documentValueAdaptorOrgID() {
     return (event, requestCache) -> List
         .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getId());
+  }
+
+  @Bean("DocumentValueAdaptorOrgName")
+  @RequestScope
+  public DocGenValueAdaptor documentValueAdaptorOrgName() {
+    return (event, requestCache) -> List
+        .of(getBuyerOrgName(event, requestCache).getIdentifier().getLegalName());
+  }
+
+  @Bean("DocumentValueAdaptorPublishDate")
+  @RequestScope
+  public DocGenValueAdaptor documentValueAdaptorPublishDate() {
+    var formattedDatetime = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+    return (event, requestCache) -> List.of(formattedDatetime);
+  }
+
+  @Bean("DocumentValueAdaptorPublishDateAndTime")
+  @RequestScope
+  public DocGenValueAdaptor documentValueAdaptorPublishDateAndTime() {
+    var formattedDatetime =
+        OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+    return (event, requestCache) -> List.of(formattedDatetime);
   }
 
   @Bean("DocumentValueAdaptorProcLead")
@@ -114,6 +138,22 @@ public class DocGenValueAdaptors {
           .orElseThrow(() -> new TendersDBDataException(
               "Project [" + event.getProject().getId() + "] has no procurement lead"));
     });
+  }
+
+  private OrganisationProfileResponseInfo getBuyerOrgName(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    return (OrganisationProfileResponseInfo) requestCache.computeIfAbsent("CACHE_KEY_ORG_NAME",
+        k -> {
+
+          var projectOrgId = Optional.ofNullable(event.getProject().getOrganisationMapping())
+              .orElseThrow(() -> new TendersDBDataException(
+                  "Project [" + event.getProject().getId() + "] has no org mapping"))
+              .getOrganisationId();
+          return conclaveService.getOrganisation(projectOrgId)
+              .orElseThrow(() -> new TendersDBDataException(
+                  "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
+        });
+
   }
 
 }

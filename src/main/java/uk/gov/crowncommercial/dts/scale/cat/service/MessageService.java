@@ -4,10 +4,7 @@ import static java.lang.String.format;
 import static org.springframework.util.CollectionUtils.isEmpty;
 import java.net.URI;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -27,7 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.UNLIMITED_VALUE;
 /**
  *
  */
@@ -76,6 +73,11 @@ public class MessageService {
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
+    
+    String messageClassification = nonOCDS.getClassification().getValue();
+    if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
+      messageClassification = "";
+    }
 
     // Creating RPA process input string
     var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
@@ -83,7 +85,7 @@ public class MessageService {
         .ittCode(procurementEvent.getExternalReferenceId())
         .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
         .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
-        .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
+        .messageClassification(messageClassification).senderName("")
         .supplierName("").messageReceivedDate("");
 
     // To reply the message
@@ -109,7 +111,7 @@ public class MessageService {
           rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
               .map(OrganizationReference1::getId).collect(Collectors.toList()));
       var supplierJoiner = new StringJoiner(RPA_DELIMETER);
-      suppliers.getFirst().stream().forEach(supplier -> {
+      suppliers.getFirst().forEach(supplier -> {
         supplierJoiner.add(supplier.getCompanyData().getName());
       });
       var supplierString = supplierJoiner.toString();
@@ -207,9 +209,9 @@ public class MessageService {
         receiver -> MessageRead.ALL.equals(messageRequestInfo.getMessageRead())
             || MessageRead.READ.equals(messageRequestInfo.getMessageRead())
                 && receiver.getId().equals(jaggaerUserId);
-
+   // var pageStart =  messageRequestInfo.getPage() == 1 ? 1 : ((messageRequestInfo.getPageSize() * (messageRequestInfo.getPage()-1)));
     var messagesResponse =
-        jaggaerService.getMessages(event.getExternalReferenceId(), messageRequestInfo.getPage());
+        jaggaerService.getMessages(event.getExternalReferenceId(), 1);
     var allMessages = messagesResponse.getMessageList().getMessage();
 
     /**
@@ -239,14 +241,20 @@ public class MessageService {
     // sort messages
     sortMessages(messages, messageRequestInfo.getMessageSort(),
         messageRequestInfo.getMessageSortOrder());
-
+    int fromIndex = (messageRequestInfo.getPage() - 1) * messageRequestInfo.getPageSize();
+    var pageMessages = fromIndex >= messages.size() ? Collections.<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message>emptyList() : messages.subList(fromIndex, Math.min(fromIndex + messageRequestInfo.getPageSize(), messages.size()));
     // convert to message summary
-    return new MessageSummary().counts(
-            new MessageTotals().messagesTotal(messagesResponse.getTotRecords()).pageTotal(
-                (messagesResponse.getReturnedRecords() / messageRequestInfo.getPageSize()) + 1))
-        .links(getLinks(messages, messageRequestInfo.getPageSize())).messages(
-            getCatMessages(messages, messageRequestInfo.getMessageRead(), jaggaerUserId,
-                messageRequestInfo.getPageSize()));
+    MessageSummary messageSummary=new MessageSummary().counts(
+                    new MessageTotals()
+                            .messagesTotal(messages.size())
+                            .pageTotal((int)Math.ceil((double) messages.size()/messageRequestInfo.getPageSize())))
+                            .messages(getCatMessages(pageMessages, messageRequestInfo.getMessageRead(), jaggaerUserId,
+                            messageRequestInfo.getPageSize()));
+
+    if( !UNLIMITED_VALUE.equals(messageRequestInfo.getPageSize().toString())){
+      messageSummary.links(getLinks(messages, messageRequestInfo.getPageSize()));
+    }
+      return messageSummary;
   }
 
   private Links1 getLinks(
@@ -350,7 +358,12 @@ public class MessageService {
                 .fromValue(message.getCategory() == null
                     ? uk.gov.crowncommercial.dts.scale.cat.model.generated.CaTMessageNonOCDS.ClassificationEnum.UNCLASSIFIED
                         .getValue()
-                    : message.getCategory().getCategoryName())));
+                    : message.getCategory().getCategoryName()))
+                    .isBroadcast((null==message.getIsBroadcast() || message.getIsBroadcast()<=0)?false:true )
+                    .receiverList(message.getReceiverList().getReceiver().stream().map(
+                                    receiver -> new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
+                            .collect(Collectors.toList()))
+            );
   }
 
   private CaTMessageOCDS getCaTMessageOCDS(
@@ -405,7 +418,7 @@ public class MessageService {
         .direction(MessageNonOCDS.DirectionEnum.fromValue(message.getDirection()))
         .attachments(message.getAttachmentList().getAttachment().stream()
             .map(att -> new MessageNonOCDSAllOfAttachments().id(Integer.valueOf(att.getFileId()))
-                .name(att.getFileName()))
+                .name(att.getFileName()).size(att.getFileSize()))
             .collect(Collectors.toList()))
         .readList(message.getReadingList().getReading().stream()
             .map(reading -> new ContactPoint1().name(reading.getReaderName()))
