@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
@@ -37,6 +38,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
      * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
      */
     @PostMapping("/gcloud")
+    @TrackExecutionTime
     public Integer createGcloudAssessment(@RequestBody final GCloudAssessment assessment, final JwtAuthenticationToken authentication) {
         var principal = getPrincipalFromJwt(authentication);
         log.info("createGcloudAssessment invoked on behalf of principal: {}", principal);
@@ -59,6 +61,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
      * Updates a saved Gcloud assessment
      */
     @PutMapping("/{assessment-id}/gcloud")
+    @TrackExecutionTime
     public void updateGcloudAssessment(@RequestBody final GCloudAssessment assessment, final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication) {
         var principal = getPrincipalFromJwt(authentication);
         log.info("updateGcloudAssessment invoked on behalf of principal: {}", principal);
@@ -70,6 +73,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
      * Exports the results of a requested GCloud Assessment
      */
     @GetMapping(produces="text/csv", path="/{assessment-id}/export/gcloud")
+    @TrackExecutionTime
     public void exportGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication, HttpServletResponse response) {
         var principal = getPrincipalFromJwt(authentication);
         log.info("exportGcloudAssessment invoked on behalf of principal: {}", principal);
@@ -117,6 +121,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
      * Deletes a specified GCloud Assessment
      */
     @DeleteMapping("/{assessment-id}")
+    @TrackExecutionTime
     public void deleteGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication) {
         var principal = getPrincipalFromJwt(authentication);
         log.info("deleteGcloudAssessment invoked on behalf of principal: {}", principal);

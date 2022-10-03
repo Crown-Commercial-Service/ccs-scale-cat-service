@@ -12,7 +12,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -54,6 +55,7 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
 
   @GetMapping
+  @TrackExecutionTime
   public List<EventSummary> getEventsForProject(@PathVariable("procID") final Integer procId,
       final JwtAuthenticationToken authentication) {
 
@@ -64,8 +66,8 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping
-  public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId,
-      @RequestBody final CreateEvent createEvent, final JwtAuthenticationToken authentication) {
+  @TrackExecutionTime
+  public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId, @RequestBody final CreateEvent createEvent, final String isGcloudEventStr, final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
@@ -91,6 +93,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}")
+  @TrackExecutionTime
   public EventDetail getEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
@@ -101,6 +104,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}")
+  @TrackExecutionTime
   public EventSummary updateProcurementEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @Valid @RequestBody final UpdateEvent updateEvent,
@@ -113,6 +117,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/suppliers")
+  @TrackExecutionTime
   public EventSuppliers getSuppliers(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -124,6 +129,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/scores/export")
+  @TrackExecutionTime
   public ResponseEntity<InputStreamResource> exportScroes(
           @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
           final JwtAuthenticationToken authentication,
@@ -140,6 +146,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/suppliers/{supplierID}")
+  @TrackExecutionTime
   public OrganizationReference1 getSupplierInfo(
           @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
           @PathVariable("supplierID") final String suppplierId,
@@ -152,6 +159,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping("/{eventID}/suppliers")
+  @TrackExecutionTime
   public EventSuppliers addSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody final EventSuppliers eventSuppliers,
@@ -167,6 +175,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @DeleteMapping("/{eventID}/suppliers/{supplierID}")
+  @TrackExecutionTime
   public String deleteSupplier(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("supplierID") final String supplierId,
@@ -181,6 +190,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/documents")
+  @TrackExecutionTime
   public Collection<DocumentSummary> getDocumentSummaries(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -192,6 +202,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}/documents")
+  @TrackExecutionTime
   public DocumentSummary uploadDocument(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestParam("data") final MultipartFile multipartFile,
@@ -209,6 +220,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping(value = "/{eventID}/documents/{documentID}")
+  @TrackExecutionTime
   public ResponseEntity<byte[]> getDocument(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("documentID") final String documentId,
@@ -227,6 +239,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @DeleteMapping(value = "/{eventID}/documents/{documentID}")
+  @TrackExecutionTime
   public StringValueResponse deleteDocument(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("documentID") final String documentId,
@@ -241,6 +254,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}/publish")
+  @TrackExecutionTime
   public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody @Valid final PublishDates publishDates,
@@ -265,6 +279,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/documents/export")
+  @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
       HttpServletResponse response, final JwtAuthenticationToken authentication) {
@@ -301,6 +316,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}/publish/extend")
+  @TrackExecutionTime
   public StringValueResponse extendEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody @Valid final ExtendCriteria extendCriteria,
@@ -314,6 +330,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/responses")
+  @TrackExecutionTime
   public ResponseSummary getSupplierResponses(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
@@ -324,6 +341,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @PutMapping("/{eventID}/termination")
+  @TrackExecutionTime
   public StringValueResponse terminateEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody @Valid final TerminationEvent type,
@@ -337,6 +355,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/responses/export")
+  @TrackExecutionTime
   public  ResponseEntity<StreamingResponseBody> exportAllResponses(
           @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
           HttpServletResponse response, final JwtAuthenticationToken authentication){
@@ -374,6 +393,7 @@ public class EventsController extends AbstractRestController {
   }
 
   @GetMapping("/{eventID}/responses/{supplierID}/export")
+  @TrackExecutionTime
   public  ResponseEntity<StreamingResponseBody> exportSupplierResponse(
           @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
           @PathVariable("supplierID") final String supplierId,

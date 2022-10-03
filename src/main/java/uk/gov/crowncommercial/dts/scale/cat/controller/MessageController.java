@@ -9,6 +9,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
 import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
@@ -30,6 +31,7 @@ public class MessageController extends AbstractRestController {
   private final MessageService messageService;
 
   @PostMapping
+  @TrackExecutionTime
   public ResponseEntity<String> createAndRespondMessage(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final Message messageRequest,
@@ -45,6 +47,7 @@ public class MessageController extends AbstractRestController {
   }
 
   @PostMapping("/{threadCount}")
+  @TrackExecutionTime
   public ResponseEntity<String> asyncCreateAndRespondMessage(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("threadCount") final Integer threadCount,
@@ -61,6 +64,7 @@ public class MessageController extends AbstractRestController {
   }
 
   @GetMapping
+  @TrackExecutionTime
   public MessageSummary getMessages(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       @RequestParam(name = "message-direction", required = false,
@@ -85,6 +89,7 @@ public class MessageController extends AbstractRestController {
   }
 
   @GetMapping("/{message-id}")
+  @TrackExecutionTime
   public Message getMessage(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       @PathVariable("message-id") final String messageId,
@@ -97,6 +102,7 @@ public class MessageController extends AbstractRestController {
   }
 
   @GetMapping("/{message-id}/attachments/{document-id}")
+  @TrackExecutionTime
   public ResponseEntity<byte[]> getAttachment(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       @PathVariable("message-id") final String messageId,
