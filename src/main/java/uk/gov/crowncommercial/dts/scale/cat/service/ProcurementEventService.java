@@ -250,8 +250,13 @@ public class ProcurementEventService {
 
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
+
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+    if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getTemplateGroupId()){
+      eventBuilder.templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue());
+    }
 
     var event = eventBuilder.build();
 
@@ -489,6 +494,11 @@ public class ProcurementEventService {
         tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null
             ? rfxStatus.get(event.getEventType()).getValue()
             : null;
+      }
+
+      if(null != updateEvent.getTemplateGroupId()){
+        if(null == event.getProcurementTemplatePayload())
+          event.setTemplateId(updateEvent.getTemplateGroupId().intValue());
       }
 
       event.setUpdatedAt(Instant.now());
@@ -748,7 +758,7 @@ public class ProcurementEventService {
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
         .responseState(!RESPONSE_STATES.contains(supplier.getStatus().trim())
-            ? Responders.ResponseStateEnum.SUBMITTED
+            ? supplier.getStatusCode() == -2 ? Responders.ResponseStateEnum.DECLINED : Responders.ResponseStateEnum.SUBMITTED
             : Responders.ResponseStateEnum.DRAFT)
         .readState(!RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
