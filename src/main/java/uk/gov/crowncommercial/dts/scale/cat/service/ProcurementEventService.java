@@ -874,13 +874,10 @@ public class ProcurementEventService {
 
     });
 
-    try {
-      if (!executorService.awaitTermination(100, TimeUnit.SECONDS)) {
-        executorService.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      executorService.shutdownNow();
-    }
+
+    executorService.shutdownNow();
+
+
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
