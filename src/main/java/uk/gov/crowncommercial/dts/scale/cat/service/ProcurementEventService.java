@@ -887,7 +887,7 @@ public class ProcurementEventService {
 
     ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-    List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
+    List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
     List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futures = null;
     try {
       futures = executorService.invokeAll(documentCallableList);
@@ -912,9 +912,6 @@ public class ProcurementEventService {
       }
 
     });
-
-
-    executorService.shutdown();
 
     try {
       if (!executorService.awaitTermination(100, TimeUnit.SECONDS)) {

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
@@ -26,6 +27,7 @@ public class ProjectsController extends AbstractRestController {
   private final ProcurementProjectService procurementProjectService;
 
   @GetMapping
+  @TrackExecutionTime
   public Collection<ProjectPackageSummary> getProjects(
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
@@ -34,6 +36,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @PostMapping("/agreements")
+  @TrackExecutionTime
   public DraftProcurementProject createProcurementProject(
       @Valid @RequestBody final AgreementDetails agreementDetails,
       final JwtAuthenticationToken authentication) {
@@ -48,6 +51,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @PutMapping("/{procID}/name")
+  @TrackExecutionTime
   public String updateProcurementProjectName(@PathVariable("procID") final Integer procId,
       @RequestBody final ProcurementProjectName projectName,
       final JwtAuthenticationToken authentication) {
@@ -62,6 +66,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @PutMapping("/{procID}/close")
+  @TrackExecutionTime
   public StringValueResponse closeProcurementProject(@PathVariable("procID") final Integer procId,
       @RequestBody final TerminationType terminationType,
       final JwtAuthenticationToken authentication) {
@@ -75,6 +80,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @GetMapping("/{proc-id}/event-types")
+  @TrackExecutionTime
   public Collection<ProjectEventType> listProcurementEventTypes(
       @PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
 
@@ -85,6 +91,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @GetMapping("/{proc-id}/users")
+  @TrackExecutionTime
   public Collection<TeamMember> getProjectUsers(@PathVariable("proc-id") final Integer procId,
       final JwtAuthenticationToken authentication) {
 
@@ -95,6 +102,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @PutMapping("/{proc-id}/users/{user-id}")
+  @TrackExecutionTime
   public TeamMember addProjectUser(@PathVariable("proc-id") final Integer procId,
       @PathVariable("user-id") final String userId,
       @RequestBody final UpdateTeamMember updateTeamMember,
@@ -108,6 +116,7 @@ public class ProjectsController extends AbstractRestController {
   }
 
   @DeleteMapping("/{proc-id}/users/{user-id}")
+  @TrackExecutionTime
   public String deleteTeamMember(@PathVariable("proc-id") final Integer procId,
       @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
 

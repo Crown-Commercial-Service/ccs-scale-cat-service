@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Contract;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
@@ -30,6 +31,7 @@ public class ContractController extends AbstractRestController {
   private final ProcurementEventService procurementEventService;
 
   @PostMapping
+  @TrackExecutionTime
   public StringValueResponse signProcurement(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, @RequestBody final Contract contract,
       final JwtAuthenticationToken authentication) {
@@ -40,6 +42,7 @@ public class ContractController extends AbstractRestController {
   }
 
   @GetMapping
+  @TrackExecutionTime
   public ResponseEntity<Contract> getContract(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       final JwtAuthenticationToken authentication) {
