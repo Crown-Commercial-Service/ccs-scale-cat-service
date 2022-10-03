@@ -835,7 +835,7 @@ public class ProcurementEventService {
     }
 
     // Fetch and upload all SAFE documents
-    procurementEvent.getDocumentUploads().stream()
+    /*procurementEvent.getDocumentUploads().stream()
         .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
           var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
           var multipartFile = new ByteArrayMultipartFile(
@@ -844,7 +844,40 @@ public class ProcurementEventService {
 
           jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
               documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-        });
+        });*/
+
+    ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+    List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
+    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futures = null;
+    try {
+      futures = executorService.invokeAll(documentCallableList);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+
+    futures.stream().parallel().forEach(mapFuture -> {
+
+      try {
+        Map<DocumentUpload, ByteArrayMultipartFile> documentMap=mapFuture.get();
+        var documentUpload=documentMap.keySet().stream().findFirst().get();
+        var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
+
+        jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
+                documentUpload.getDocumentDescription(), documentUpload.getAudience(), documentMap.get(documentUpload));
+
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+
+    });
+
+
+    executorService.shutdownNow();
+
+
 
     validationService.validatePublishDates(publishDates);
     jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);

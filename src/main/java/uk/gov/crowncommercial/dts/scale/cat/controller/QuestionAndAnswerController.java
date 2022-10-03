@@ -9,6 +9,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
 import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
@@ -28,6 +29,7 @@ public class QuestionAndAnswerController extends AbstractRestController {
   private final QuestionAndAnswerService questionAndAnswerService;
 
   @PostMapping
+  @TrackExecutionTime
   public ResponseEntity<QandA> createQuestionAndAnswer(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final QandA questionRequest,
@@ -43,6 +45,7 @@ public class QuestionAndAnswerController extends AbstractRestController {
   }
 
   @PutMapping("/{qAndA-id}")
+  @TrackExecutionTime
   public ResponseEntity<QandA> updateQuestionAndAnswer(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final QandA questionRequest,
@@ -59,6 +62,7 @@ public class QuestionAndAnswerController extends AbstractRestController {
   }
 
   @GetMapping
+  @TrackExecutionTime
   public ResponseEntity<QandAWithProjectDetails> getQuestionAdnAnswers(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       final JwtAuthenticationToken authentication) {
