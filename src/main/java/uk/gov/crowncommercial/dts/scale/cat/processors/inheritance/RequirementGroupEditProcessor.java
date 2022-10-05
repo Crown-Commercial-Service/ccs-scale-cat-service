@@ -14,7 +14,8 @@ public class RequirementGroupEditProcessor implements InheritanceProcessor<Requi
             Requirement question = getQuestion(requirementGroup, req, questions);
             if (null != question) {
                 req.getNonOCDS().setInheritance(EDIT);
-                req.getNonOCDS().updateOptions(question.getNonOCDS().getOptions());
+                if(null != question.getNonOCDS().getOptions())
+                    req.getNonOCDS().updateOptions(question.getNonOCDS().getOptions());
             } else {
                 req.getNonOCDS().setInheritance(null);
             }

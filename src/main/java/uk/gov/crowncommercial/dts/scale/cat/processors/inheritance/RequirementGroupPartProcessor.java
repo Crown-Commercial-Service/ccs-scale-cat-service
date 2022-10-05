@@ -6,6 +6,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInherita
 
 import java.util.Map;
 
+import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType.ASIS;
+
 public class RequirementGroupPartProcessor implements InheritanceProcessor<RequirementGroup> {
     @Override
     public void accept(RequirementGroup requirementGroup, Map<String, Requirement> questions) {
@@ -15,10 +17,20 @@ public class RequirementGroupPartProcessor implements InheritanceProcessor<Requi
                 inheritanceType = req.getNonOCDS().getInheritance();
 
             if(null == inheritanceType)
-                return;
+                continue;
 
             switch (inheritanceType) {
                 case PART, NONE -> req.getNonOCDS().setInheritance(null);
+                case ASIS, EDIT -> {
+                    Requirement question = getQuestion(requirementGroup, req, questions);
+                    if(null != question) {
+                        req.getNonOCDS().setInheritance(inheritanceType);
+                        if(null != question.getNonOCDS().getOptions())
+                            req.getNonOCDS().updateOptions(question.getNonOCDS().getOptions());
+                    }else{
+                        req.getNonOCDS().setInheritance(null);
+                    }
+                }
             }
         }
     }
