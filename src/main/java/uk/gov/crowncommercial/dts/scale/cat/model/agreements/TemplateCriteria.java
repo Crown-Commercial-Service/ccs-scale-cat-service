@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
@@ -24,6 +25,7 @@ public class TemplateCriteria {
   Party relatesTo;
   String relateItems;
   @JsonProperty("inheritanceNonOCDS")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   private DataTemplateInheritanceType inheritanceNonOCDS;
   Set<RequirementGroup> requirementGroups;
 
