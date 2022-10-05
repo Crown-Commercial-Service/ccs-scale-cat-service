@@ -245,6 +245,12 @@ public class ProcurementProjectService {
     final var lotEventTypes =
         agreementsService.getLotEventTypes(project.getCaNumber(), project.getLotNumber());
 
+    //TODO to be removed after the yaml is fixed to include the templateId.
+    lotEventTypes.stream().filter(let -> (let.getTemplateGroups() !=  null)).forEach(lotEventType -> {
+      lotEventType.getTemplateGroups().stream().forEach(questionTemplate -> { questionTemplate.setTemplateGroupId(questionTemplate.getTemplateId());});
+    });
+
+
     return lotEventTypes.stream()
         .map(lotEventType -> modelMapper.map(lotEventType, ProjectEventType.class))
         .collect(Collectors.toList());
