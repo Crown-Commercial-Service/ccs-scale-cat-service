@@ -14,6 +14,7 @@ logging:
     uk.gov.crowncommercial.dts.scale.cat: DEBUG
     # org.eclipse.jetty.client: DEBUG
 
+
 spring:
   jpa:
     open-in-view: false
@@ -24,6 +25,7 @@ spring:
   datasource:
     hikari:
       connectionTimeout: 10000
+      maximumPoolSize: 30
   servlet:
     multipart:
       max-file-size: 300MB # must match config.maxSize

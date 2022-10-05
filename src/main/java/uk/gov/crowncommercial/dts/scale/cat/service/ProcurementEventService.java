@@ -810,6 +810,8 @@ public class ProcurementEventService {
     documentUploadService.deleteDocument(documentUpload);
   }
 
+
+  ExecutorService executorService = Executors.newCachedThreadPool();
   /**
    * Publish an Rfx in Jaggaer
    *
@@ -846,7 +848,8 @@ public class ProcurementEventService {
               documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
         });*/
 
-    ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+
 
     List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
     List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futures = null;
@@ -856,6 +859,7 @@ public class ProcurementEventService {
       throw new RuntimeException(e);
     }
 
+/*
     futures.stream().parallel().forEach(mapFuture -> {
 
       try {
@@ -872,11 +876,35 @@ public class ProcurementEventService {
         throw new RuntimeException(e);
       }
 
-    });
+    });*/
 
 
-    executorService.shutdownNow();
+    while (!futures.isEmpty()) {//worst case :all task worked without exception, then this method should wait for all tasks
+      Iterator<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futureCopiesIterator = futures.iterator();
+      while (futureCopiesIterator.hasNext()) {
+        Future<Map<DocumentUpload, ByteArrayMultipartFile>> future = futureCopiesIterator.next();
+        if (future.isDone()) {//already done
+          futureCopiesIterator.remove();
+          try {
+            future.get();// no longer waiting
+            Map<DocumentUpload, ByteArrayMultipartFile> documentMap=future.get();
+            var documentUpload=documentMap.keySet().stream().findFirst().get();
+            var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
 
+            jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
+                    documentUpload.getDocumentDescription(), documentUpload.getAudience(), documentMap.get(documentUpload));
+
+          } catch (InterruptedException e) {
+            //ignore
+            //only happen when current Thread interrupted
+          } catch (ExecutionException e) {
+            Throwable throwable = e.getCause();// real cause of exception
+            futures.forEach(f -> f.cancel(true));//cancel other tasks that not completed
+            return;
+          }
+        }
+      }
+    }
 
 
     validationService.validatePublishDates(publishDates);
