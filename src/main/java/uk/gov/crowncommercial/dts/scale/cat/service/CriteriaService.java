@@ -136,9 +136,7 @@ public class CriteriaService {
 
     validateProjectDurationQuestion(question, group, requirement);
 
-    if(!eventHelperService.isValidforUpdate(requirement)){
-      throw new IllegalArgumentException("AsIs requirement should not be modified");
-    }
+    eventHelperService.checkValidforUpdate(requirement);
 
     var options = question.getNonOCDS().getOptions();
     if (options == null) {

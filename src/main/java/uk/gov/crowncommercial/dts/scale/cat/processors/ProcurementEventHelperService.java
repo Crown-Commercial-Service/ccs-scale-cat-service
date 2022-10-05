@@ -8,5 +8,5 @@ import java.util.Optional;
 public interface ProcurementEventHelperService {
     Optional<ProcurementEvent> getParentEvent(ProcurementEvent event, Integer parentTemplate);
 
-    boolean isValidforUpdate(Requirement requirement);
+    void checkValidforUpdate(Requirement requirement);
 }

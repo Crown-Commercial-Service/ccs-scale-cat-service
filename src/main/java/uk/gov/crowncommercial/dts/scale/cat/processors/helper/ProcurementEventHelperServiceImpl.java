@@ -24,12 +24,14 @@ public class ProcurementEventHelperServiceImpl implements ProcurementEventHelper
     }
 
     @Override
-    public boolean isValidforUpdate(Requirement requirement) {
+    public void checkValidforUpdate(Requirement requirement) {
         if(null == requirement.getNonOCDS())
-            return true;
+            return ;
 
         DataTemplateInheritanceType inheritanceType = requirement.getNonOCDS().getInheritance();
-        return null == inheritanceType || inheritanceType != DataTemplateInheritanceType.ASIS;
+        if(inheritanceType == DataTemplateInheritanceType.ASIS){
+            throw new IllegalArgumentException("AsIs requirement should not be modified");
+        }
     }
 
     private boolean filterByTemplateId(ProcurementEvent t,String eventType, Integer parentTemplate) {
