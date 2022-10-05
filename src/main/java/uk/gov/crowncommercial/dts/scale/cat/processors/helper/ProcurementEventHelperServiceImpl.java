@@ -34,11 +34,11 @@ public class ProcurementEventHelperServiceImpl implements ProcurementEventHelper
         }
     }
 
-    private boolean filterByTemplateId(ProcurementEvent t,String eventType, Integer parentTemplate) {
-//        if(!isClosedStatus(t.getTenderStatus())) {
-            if (null != t.getTemplateId()) {
-                if (t.getTemplateId().equals(parentTemplate)) {
-                    return eventType.equals(t.getEventType());
+    private boolean filterByTemplateId(ProcurementEvent event,String eventType, Integer parentTemplate) {
+//        if(!isClosedStatus(event.getTenderStatus())) {
+            if (null != event.getTemplateId()) {
+                if (event.getTemplateId().equals(parentTemplate)) {
+                    return eventType.equals(event.getEventType());
                 }
             }
 //        }
