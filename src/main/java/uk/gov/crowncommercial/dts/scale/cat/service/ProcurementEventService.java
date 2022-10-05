@@ -35,6 +35,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 import javax.transaction.Transactional;
 import javax.validation.ValidationException;
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -878,6 +879,7 @@ public class ProcurementEventService {
 
     });*/
 
+    Instant futureProcessingTime= Instant.now();
 
     while (!futures.isEmpty()) {//worst case :all task worked without exception, then this method should wait for all tasks
       Iterator<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futureCopiesIterator = futures.iterator();
@@ -905,6 +907,7 @@ public class ProcurementEventService {
         }
       }
     }
+    log.info("Time Taken to complete future processing", Duration.between(Instant.now(),futureProcessingTime));
 
 
     validationService.validatePublishDates(publishDates);
