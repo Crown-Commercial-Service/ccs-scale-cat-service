@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,7 +54,8 @@ public class RPAExportScheduledTask {
   private final UserProfileService userProfileService;
   private final AmazonS3 rpaTransferS3Client;
 
-  @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
+//  @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
+  @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.MINUTES)
   @Transactional
   public void scheduleSelfServiceBuyers() {
     log.info("Begin scheduled processing of unexported buyer records for RPA");

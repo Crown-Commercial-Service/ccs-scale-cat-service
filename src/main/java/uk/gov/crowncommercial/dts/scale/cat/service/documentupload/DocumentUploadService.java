@@ -7,6 +7,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.io.IOUtils;
@@ -289,6 +290,13 @@ public class DocumentUploadService {
   private String tendersS3ObjectKey(final Integer projectId, final String eventId,
       final String documentId) {
     return String.format(TENDERS_S3_OBJECT_KEY_FORMAT, projectId, eventId, documentId);
+  }
+  
+  public List<DocumentUpload> findDocumentByEventAndDescriptionMatch(ProcurementEvent event,
+      String documentDescription) {
+    var documents = documentUploadRepo.findByProcurementEvent(event);
+    return documents.stream()
+        .filter(doc -> doc.getDocumentDescription().contains(documentDescription)).toList();
   }
 
 }

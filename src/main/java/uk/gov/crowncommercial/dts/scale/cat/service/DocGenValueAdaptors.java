@@ -13,6 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 
 /**
  * Declares beans representing document value adaptors (used as value sources in RFI/EOI document
@@ -25,6 +26,7 @@ public class DocGenValueAdaptors {
   private final AgreementsService agreementService;
   private final ConclaveService conclaveService;
   private final ProcurementProjectService procurementProjectService;
+  private final DocumentUploadService documentUploadService;
 
   @Bean("DocumentValueAdaptorExternalEventID")
   public DocGenValueAdaptor documentValueAdaptorExternalEventID() {
@@ -110,6 +112,21 @@ public class DocGenValueAdaptors {
   @Bean("DocumentValueAdaptorCommonGoodsServices")
   public DocGenValueAdaptor documentValueAdaptorCommonGoodsServices() {
     return (event, requestCache) -> List.of("project and consulting services");
+  }
+  
+  @Bean("DocumentValueAdaptorPricingScheduleFileName")
+  public DocGenValueAdaptor documentValueAdaptorPricingScheduleFileName() {
+    return null;
+  }
+  
+  @Bean("DocumentValueAdaptorTCFileNames")
+  public DocGenValueAdaptor documentValueAdaptorTCFileNames() {
+    return null;
+  }
+  
+  @Bean("DocumentValueAdaptorAssessmentFileNames")
+  public DocGenValueAdaptor documentValueAdaptorAssessmentFileNames() {
+    return null;
   }
 
   private OrganisationProfileResponseInfo getProjectOrgFromConclave(final ProcurementEvent event,
