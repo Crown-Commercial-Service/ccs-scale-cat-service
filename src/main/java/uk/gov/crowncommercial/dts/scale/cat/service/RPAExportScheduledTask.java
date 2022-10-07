@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -158,21 +159,25 @@ public class RPAExportScheduledTask {
     buyerUsers.forEach(user -> {
       var row = sheet.createRow(rowCount.getAndIncrement());
       var columnCount = 0;
-      createCell(row, columnCount++, ACCOUNT_ID, style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getName(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getSurName(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber(),
-          style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getLanguage(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getTimezone(), style);
-      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
-          style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getBusinessUnit(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getDivision(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getRightsProfile(), style);
-      createCell(row, columnCount++, "", style);
+      if (jaggaerUserMap.get(user.getUserId()) != null) {
+        createCell(row, columnCount++, ACCOUNT_ID, style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getName(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getSurName(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber(),
+            style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getLanguage(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getTimezone(), style);
+        createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+            style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getBusinessUnit(),
+            style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getDivision(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getRightsProfile(),
+            style);
+        createCell(row, columnCount++, "", style);
+      }
     });
   }
 
