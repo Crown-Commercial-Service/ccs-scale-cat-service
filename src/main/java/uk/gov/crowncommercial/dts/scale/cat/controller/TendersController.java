@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
@@ -35,6 +36,7 @@ public class TendersController extends AbstractRestController {
   private final ProfileManagementService profileManagementService;
 
   @GetMapping("/event-types")
+  @TrackExecutionTime
   public Collection<ViewEventType> listProcurementEventTypes(
       final JwtAuthenticationToken authentication) {
 
@@ -45,6 +47,7 @@ public class TendersController extends AbstractRestController {
   }
 
   @GetMapping("/users/{user-id}")
+  @TrackExecutionTime
   public GetUserResponse getUser(@PathVariable("user-id") final String userId,
       final JwtAuthenticationToken authentication) {
 
@@ -62,6 +65,7 @@ public class TendersController extends AbstractRestController {
   }
 
   @PutMapping("/users/{user-id}")
+  @TrackExecutionTime
   public ResponseEntity<RegisterUserResponse> registerUser(
       @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
 
@@ -84,6 +88,7 @@ public class TendersController extends AbstractRestController {
 
 
   @GetMapping("/users")
+  @TrackExecutionTime
   public List<User> getOrgUsers(final JwtAuthenticationToken authentication,@RequestParam(name="org-id",required = false) final String organisationId) {
 
    var principal = getPrincipalFromJwt(authentication);

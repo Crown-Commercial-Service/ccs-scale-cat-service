@@ -11,4 +11,5 @@ module "deploy-all" {
   cf_password = var.cf_password
   dev_mode    = true
   log_level   = "TRACE"
+  eetime_enabled = true
 }

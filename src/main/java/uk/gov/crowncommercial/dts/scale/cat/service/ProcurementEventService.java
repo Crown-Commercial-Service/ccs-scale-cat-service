@@ -30,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.DocumentUploadCallable;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.RetrieveDocumentCallable;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -859,6 +860,8 @@ public class ProcurementEventService {
     documentUploadService.deleteDocument(documentUpload);
   }
 
+
+  ExecutorService executorService = Executors.newCachedThreadPool();
   /**
    * Publish an Rfx in Jaggaer
    *
@@ -883,24 +886,14 @@ public class ProcurementEventService {
           "You cannot publish an event unless it is in a 'planned' state");
     }
 
-    // Fetch and upload all SAFE documents
-    procurementEvent.getDocumentUploads().stream()
-        .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
-          var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
-          var multipartFile = new ByteArrayMultipartFile(
-              documentUploadService.retrieveDocument(documentUpload, principal),
-              docKey.getFileName(), documentUpload.getMimetype());
-
-          jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
-              documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-        });
+    retrieveAndUploadDocuments(principal, procurementEvent);
 
     validationService.validatePublishDates(publishDates);
-    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
-
-    // after publish get rfx details and update tender status, publish date and close date
-    updateStatusAndDates(principal, procurementEvent);
+      jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+      // after publish get rfx details and update tender status, publish date and close date
+      updateStatusAndDates(principal, procurementEvent);
   }
+
 
 
 
@@ -1494,7 +1487,42 @@ public class ProcurementEventService {
   }
 
 
+  private void retrieveAndUploadDocuments(String principal, ProcurementEvent procurementEvent) {
+    List<RetrieveDocumentCallable> retrieveDocumentCallableList= procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload, principal)).toList();
+    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> retriveDocumentfutures = null;
+    try {
+      retriveDocumentfutures = executorService.invokeAll(retrieveDocumentCallableList);
+    } catch (InterruptedException e) {
+      // TODO : Handle this and propagate your response properly
+      throw new RuntimeException(e);
+    }
 
+    ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
+    List<DocumentUploadCallable> documentUploadCallableList=new ArrayList<>();
+
+    retriveDocumentfutures.forEach(retriveDocumentfuture->{
+
+      Map<DocumentUpload, ByteArrayMultipartFile> documentMap = null;
+
+      try {
+        documentMap = retriveDocumentfuture.get();
+      }catch(InterruptedException|ExecutionException exception){
+        // TODO : Handle this and propagate your response properly
+        throw new RuntimeException(exception);
+      }
+
+      var documentUpload=documentMap.keySet().stream().findFirst().get();
+      documentUploadCallableList.add(new DocumentUploadCallable(jaggaerService, procurementEvent,documentUpload,documentMap.get(documentUpload)));
+    });
+
+    try {
+
+      jaggerUploadExecutorService.invokeAll(documentUploadCallableList);
+
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
 
 }
