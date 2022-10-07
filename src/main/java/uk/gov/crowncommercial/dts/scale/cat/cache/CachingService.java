@@ -7,6 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Component
@@ -23,7 +24,7 @@ public class CachingService {
         evictAllCaches();
     }
     private void evictAllCaches() {
-    log.info("Clearing cache started at " + Instant.now());
+    log.info("Clearing cache started at " + LocalDateTime.now());
         cacheManager.getCacheNames()
                 .parallelStream()
                 .forEach(cacheName -> {
@@ -34,6 +35,6 @@ public class CachingService {
                     }
                 });
 
-        log.info("Clearing cache Completed at " + Instant.now());
+        log.info("Clearing cache Completed at " + LocalDateTime.now());
     }
 }
