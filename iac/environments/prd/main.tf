@@ -14,4 +14,5 @@ module "deploy-all" {
   log_level   = "DEBUG"
   dev_mode    = true
   resolve_buyer_users_by_sso = true
+  eetime_enabled = false
 }

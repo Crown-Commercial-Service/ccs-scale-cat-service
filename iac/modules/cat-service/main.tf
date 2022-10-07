@@ -174,6 +174,7 @@ resource "cloudfoundry_app" "cat_service" {
     "JBP_CONFIG_SPRING_AUTO_RECONFIGURATION" : "{enabled: false}"
     "SPRING_PROFILES_ACTIVE": "cloud"
     "config.flags.devMode" : var.dev_mode
+    "endpoint.executiontime.enabled" : var.eetime_enabled
     "config.flags.resolveBuyerUsersBySSO" : var.resolve_buyer_users_by_sso
     "logging.level.uk.gov.crowncommercial.dts.scale.cat" : var.log_level
 

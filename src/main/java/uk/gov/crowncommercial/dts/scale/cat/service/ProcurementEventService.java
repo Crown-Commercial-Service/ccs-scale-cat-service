@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.DocumentUploadCallable;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.RetrieveDocumentCallable;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -35,7 +36,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 import javax.transaction.Transactional;
 import javax.validation.ValidationException;
 import java.net.URI;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -837,85 +837,14 @@ public class ProcurementEventService {
           "You cannot publish an event unless it is in a 'planned' state");
     }
 
-    // Fetch and upload all SAFE documents
-    /*procurementEvent.getDocumentUploads().stream()
-        .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
-          var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
-          var multipartFile = new ByteArrayMultipartFile(
-              documentUploadService.retrieveDocument(documentUpload, principal),
-              docKey.getFileName(), documentUpload.getMimetype());
-
-          jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
-              documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-        });*/
-
-
-
-
-    List<RetrieveDocumentCallable> documentCallableList=procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload,principal)).toList();
-    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futures = null;
-    try {
-      futures = executorService.invokeAll(documentCallableList);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-
-/*
-    futures.stream().parallel().forEach(mapFuture -> {
-
-      try {
-        Map<DocumentUpload, ByteArrayMultipartFile> documentMap=mapFuture.get();
-        var documentUpload=documentMap.keySet().stream().findFirst().get();
-        var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
-
-        jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
-                documentUpload.getDocumentDescription(), documentUpload.getAudience(), documentMap.get(documentUpload));
-
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-
-    });*/
-
-    Instant futureProcessingTime= Instant.now();
-
-    while (!futures.isEmpty()) {//worst case :all task worked without exception, then this method should wait for all tasks
-      Iterator<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> futureCopiesIterator = futures.iterator();
-      while (futureCopiesIterator.hasNext()) {
-        Future<Map<DocumentUpload, ByteArrayMultipartFile>> future = futureCopiesIterator.next();
-        if (future.isDone()) {//already done
-          futureCopiesIterator.remove();
-          try {
-            future.get();// no longer waiting
-            Map<DocumentUpload, ByteArrayMultipartFile> documentMap=future.get();
-            var documentUpload=documentMap.keySet().stream().findFirst().get();
-            var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
-
-            jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
-                    documentUpload.getDocumentDescription(), documentUpload.getAudience(), documentMap.get(documentUpload));
-
-          } catch (InterruptedException e) {
-            //ignore
-            //only happen when current Thread interrupted
-          } catch (ExecutionException e) {
-            Throwable throwable = e.getCause();// real cause of exception
-            futures.forEach(f -> f.cancel(true));//cancel other tasks that not completed
-            return;
-          }
-        }
-      }
-    }
-    log.info("Time Taken to complete future processing", Duration.between(Instant.now(),futureProcessingTime));
-
+    retrieveAndUploadDocuments(principal, procurementEvent);
 
     validationService.validatePublishDates(publishDates);
-    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
-
-    // after publish get rfx details and update tender status, publish date and close date
-    updateStatusAndDates(principal, procurementEvent);
+      jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+      // after publish get rfx details and update tender status, publish date and close date
+      updateStatusAndDates(principal, procurementEvent);
   }
+
 
 
 
@@ -1509,7 +1438,42 @@ public class ProcurementEventService {
   }
 
 
+  private void retrieveAndUploadDocuments(String principal, ProcurementEvent procurementEvent) {
+    List<RetrieveDocumentCallable> retrieveDocumentCallableList= procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload, principal)).toList();
+    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> retriveDocumentfutures = null;
+    try {
+      retriveDocumentfutures = executorService.invokeAll(retrieveDocumentCallableList);
+    } catch (InterruptedException e) {
+      // TODO : Handle this and propagate your response properly
+      throw new RuntimeException(e);
+    }
 
+    ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
+    List<DocumentUploadCallable> documentUploadCallableList=new ArrayList<>();
+
+    retriveDocumentfutures.forEach(retriveDocumentfuture->{
+
+      Map<DocumentUpload, ByteArrayMultipartFile> documentMap = null;
+
+      try {
+        documentMap = retriveDocumentfuture.get();
+      }catch(InterruptedException|ExecutionException exception){
+        // TODO : Handle this and propagate your response properly
+        throw new RuntimeException(exception);
+      }
+
+      var documentUpload=documentMap.keySet().stream().findFirst().get();
+      documentUploadCallableList.add(new DocumentUploadCallable(jaggaerService, procurementEvent,documentUpload,documentMap.get(documentUpload)));
+    });
+
+    try {
+
+      jaggerUploadExecutorService.invokeAll(documentUploadCallableList);
+
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
 
 }
