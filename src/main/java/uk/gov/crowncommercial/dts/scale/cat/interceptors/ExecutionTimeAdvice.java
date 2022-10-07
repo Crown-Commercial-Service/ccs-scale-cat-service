@@ -5,12 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
 @Slf4j
-//@ConditionalOnExpression("${endpoint.executiontime.enabled:true}")
+@ConditionalOnExpression("${endpoint.executiontime.enabled:false}")
 public class ExecutionTimeAdvice {
 
     @Around("@annotation(uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime)")

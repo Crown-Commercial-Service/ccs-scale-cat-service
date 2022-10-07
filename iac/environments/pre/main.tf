@@ -13,4 +13,5 @@ module "deploy-all" {
   instances   = 3
   log_level   = "INFO"
   dev_mode    = true
+  eetime_enabled = false
 }
