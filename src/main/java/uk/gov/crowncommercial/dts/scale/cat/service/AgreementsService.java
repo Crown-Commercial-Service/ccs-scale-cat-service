@@ -38,23 +38,53 @@ public class AgreementsService {
     var getLotEventTypeDataTemplatesUri =
         agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
 
-    final ParameterizedTypeReference<List<List<TemplateCriteria>>> typeRefTemplateCriteria =
+    final ParameterizedTypeReference<List<DataTemplate>> typeRefTemplateCriteria =
         new ParameterizedTypeReference<>() {};
 
+    try {
+      var dataTemplates = ofNullable(agreementsServiceWebClient.get()
+              .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
+              .bodyToMono(typeRefTemplateCriteria)
+              .onErrorMap(IOException.class, UncheckedIOException::new)
+              .retryWhen(Retry
+                      .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
+                              Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
+                      .filter(WebclientWrapper::is5xxServerError))
+              .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
+              .orElseThrow(() -> new AgreementsServiceApplicationException(String
+                      .format("Unexpected error retrieving {} template from AS", eventType.name())));
+      return dataTemplates;
+    }catch(Throwable e){
+      // TODO This try-catch block and the fallbackQuery function to be removed after agreement service upgraded.
+      return fallbackQuery(agreementId, lotId, eventType);
+    }
+  }
+
+  private List<DataTemplate> fallbackQuery(final String agreementId,
+                                           final String lotId, final ViewEventType eventType) {
+
+    var getLotEventTypeDataTemplatesUri =
+            agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
+
+    final ParameterizedTypeReference<List<List<TemplateCriteria>>> typeRefTemplateCriteria =
+            new ParameterizedTypeReference<>() {
+            };
+
     var dataTemplates = ofNullable(agreementsServiceWebClient.get()
-        .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
-        .bodyToMono(typeRefTemplateCriteria)
-        .onErrorMap(IOException.class, UncheckedIOException::new)
-        .retryWhen(Retry
-            .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
-                Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
-            .filter(WebclientWrapper::is5xxServerError))
-        .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
+            .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
+            .bodyToMono(typeRefTemplateCriteria)
+            .onErrorMap(IOException.class, UncheckedIOException::new)
+            .retryWhen(Retry
+                    .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
+                            Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
+                    .filter(WebclientWrapper::is5xxServerError))
+            .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new AgreementsServiceApplicationException(String
-                .format("Unexpected error retrieving {} template from AS", eventType.name())));
+                    .format("Unexpected error retrieving {} template from AS", eventType.name())));
 
     return dataTemplates.stream().map(tcs -> DataTemplate.builder().criteria(tcs).build())
-        .collect(Collectors.toList());
+            .collect(Collectors.toList());
+
   }
 
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {

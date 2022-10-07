@@ -35,4 +35,8 @@ public class AgreementDetail {
    */
   private LocalDate endDate;
 
+  /**
+   * Whether or not a lot is required by this Commercial Agreement
+   */
+  private Boolean preDefinedLotRequired;
 }

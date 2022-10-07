@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
@@ -12,6 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudRes
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentStatusEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentResult;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -37,6 +39,8 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
     private static final String ERR_MSG_FMT_ASSESSMENT_NOT_FOUND = "Assessment [%s] not found";
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
+    private static final String ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID = "External Tool Id [%s] is not valid for Gcloud Assessment operations";
+    private static final String TOOL_NAME_GCLOUD = "GCloud 13 Search";
 
     private static final String TIMEZONE_NAME = "Europe/London";
 
@@ -56,6 +60,11 @@ public class GCloudAssessmentService {
 
         var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
                 () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
+
+        // Make sure the object we've been passed contains the GCloud ExternalToolId before proceeding
+        if (!isExternalToolIdValidForGcloud(assessment.getExternalToolId())) {
+            throw new NotSupportedException(String.format(ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID, assessment.getExternalToolId()));
+        }
 
         // Now create a GCloudAssessmentEntity and populate it from our input
         GCloudAssessmentEntity assessmentEntity = new GCloudAssessmentEntity();
@@ -108,6 +117,11 @@ public class GCloudAssessmentService {
         GCloudAssessmentEntity model = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+
+        // Make sure the object we've been passed contains the GCloud ExternalToolId before proceeding
+        if (!isExternalToolIdValidForGcloud(assessment.getExternalToolId())) {
+            throw new NotSupportedException(String.format(ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID, assessment.getExternalToolId()));
+        }
 
         if (model != null) {
             // We now know the assessment does exist, so now we can proceed to update it
@@ -226,5 +240,30 @@ public class GCloudAssessmentService {
                 throw(new AuthorisationFailureException(format(ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT, assessmentId)));
             }
         }
+    }
+
+    /**
+     * Check whether the provided External Tool ID matches the stored GCloud Assessment Tool ID
+     *
+     * @param externalToolId
+     * @return
+     */
+    private boolean isExternalToolIdValidForGcloud(final String externalToolId) {
+        // Always assume the ID isn't valid until the DB tells us otherwise
+        boolean isValid = false;
+
+        // Now we need to check that the ID provided exists as a Tool, and matches the GCloud Tool ID
+        Optional<AssessmentTool> optionalTool = retryableTendersDBDelegate.findAssessmentToolByExternalToolId(externalToolId);
+
+        if (optionalTool.isPresent()) {
+            AssessmentTool matchingTool = optionalTool.get();
+
+            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)) {
+                // Looks like a tool exists for this ID, and it's the Gcloud tool, so this is valid
+                isValid = true;
+            }
+        }
+
+        return isValid;
     }
 }

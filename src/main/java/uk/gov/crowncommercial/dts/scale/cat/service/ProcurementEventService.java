@@ -20,6 +20,8 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentStatusEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
@@ -248,8 +250,13 @@ public class ProcurementEventService {
 
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
+
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+    if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getTemplateGroupId()){
+      eventBuilder.templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue());
+    }
 
     var event = eventBuilder.build();
 
@@ -268,6 +275,43 @@ public class ProcurementEventService {
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
         TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+  }
+
+  private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
+    // Find a list of any existing, valid events for this project and return the first found (as there should never be more than one)
+    ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
+
+    if (existingEventOptional.isPresent()) {
+      return existingEventOptional.get();
+    }
+
+    return null;
+  }
+
+  public Boolean isLotIdentifiedForGcloudAssessment(final Integer projectId) {
+    // We assume that the lot is not identified unless the assessment status is complete
+    Boolean isLotIdentified = false;
+
+    // To determine the assessment status, first get the first valid event
+    ProcurementEvent validEvent = getExistingValidEventForProject(projectId);
+
+    if (validEvent != null && validEvent.getAssessmentId() != null) {
+      // Now use the assessment ID against this event to fetch the Gcloud assessment
+      Optional<GCloudAssessmentEntity> optionalAssessment = retryableTendersDBDelegate.findGcloudAssessmentById(validEvent.getAssessmentId());
+
+      if (optionalAssessment.isPresent()) {
+        // We've got the GCloud assessment, so now just check its status and set the boolean accordingly
+        GCloudAssessmentEntity assessment = optionalAssessment.get();
+
+        if (assessment.getStatus() == AssessmentStatusEntity.COMPLETE) {
+          isLotIdentified = true;
+        }
+      }
+    }
+
+    return isLotIdentified;
   }
 
   private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
@@ -450,6 +494,11 @@ public class ProcurementEventService {
         tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null
             ? rfxStatus.get(event.getEventType()).getValue()
             : null;
+      }
+
+      if(null != updateEvent.getTemplateGroupId()){
+        if(null == event.getProcurementTemplatePayload())
+          event.setTemplateId(updateEvent.getTemplateGroupId().intValue());
       }
 
       event.setUpdatedAt(Instant.now());
@@ -709,7 +758,7 @@ public class ProcurementEventService {
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
         .responseState(!RESPONSE_STATES.contains(supplier.getStatus().trim())
-            ? Responders.ResponseStateEnum.SUBMITTED
+            ? supplier.getStatusCode() == -2 ? Responders.ResponseStateEnum.DECLINED : Responders.ResponseStateEnum.SUBMITTED
             : Responders.ResponseStateEnum.DRAFT)
         .readState(!RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
