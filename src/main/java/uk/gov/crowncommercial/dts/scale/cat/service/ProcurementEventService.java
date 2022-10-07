@@ -36,7 +36,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 import javax.transaction.Transactional;
 import javax.validation.ValidationException;
 import java.net.URI;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
