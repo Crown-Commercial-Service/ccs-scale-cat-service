@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -52,6 +52,7 @@ public class EventsController extends AbstractRestController {
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
+  private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
 
   @GetMapping
   public List<EventSummary> getEventsForProject(@PathVariable("procID") final Integer procId,
@@ -64,12 +65,20 @@ public class EventsController extends AbstractRestController {
   }
 
   @PostMapping
-  public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId,
-      @RequestBody final CreateEvent createEvent, final JwtAuthenticationToken authentication) {
+  public EventSummary createProcurementEvent(@PathVariable("procID") final Integer procId, @RequestBody final CreateEvent createEvent, final String isGcloudEventStr, final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
 
+    // Before we perform any action here we need to check if we're dealing with a GCloud event - there's an additional step if we are
+    Boolean isGcloudEvent = Boolean.parseBoolean(isGcloudEventStr);
+    if (isGcloudEvent) {
+      // As this is a GCloud event, check that the lot has been identified for this assessment - we can't proceed if it's not
+      if (!procurementEventService.isLotIdentifiedForGcloudAssessment(procId)) {
+        // Lot has not been identified - throw an error
+        throw new NotSupportedException(ERR_MSG_FMT_LOT_NOT_IDENTIFIED);
+      }
+    }
 
     if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getEventType()) {
       DefineEventType eventType = createEvent.getNonOCDS().getEventType();
@@ -80,6 +89,7 @@ public class EventsController extends AbstractRestController {
         String eventId = summary.getId();
         UpdateEvent event = new UpdateEvent();
         event.setEventType(eventType);
+        event.setTemplateGroupId(createEvent.getNonOCDS().getTemplateGroupId());
         EventSummary updSummary = procurementEventService.updateProcurementEvent(procId, eventId, event, principal);
         summary.setEventType(updSummary.getEventType());
         summary.setAssessmentId(updSummary.getAssessmentId());

@@ -34,6 +34,7 @@ public class AgreementsServiceClientConfig {
     var client = HttpClient.create(provider);
 
     return WebClient.builder().clientConnector(new ReactorClientHttpConnector(client))
+        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
         .baseUrl(agreementsServiceAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
         .defaultHeader("x-api-key", agreementsServiceAPIConfig.getApiKey()).build();
