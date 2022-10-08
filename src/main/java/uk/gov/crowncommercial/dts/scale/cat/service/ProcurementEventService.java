@@ -366,7 +366,8 @@ public class ProcurementEventService {
         .supplier(suppliers != null ? suppliers
             : supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
         .build();
-    var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
+    var rfx = Rfx.builder().rfxSetting(rfxSetting)
+        //.rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
