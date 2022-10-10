@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -323,7 +324,8 @@ public class ProcurementEventService {
         .supplier(suppliers != null ? suppliers
             : supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
         .build();
-    var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
+    var rfx = Rfx.builder().rfxSetting(rfxSetting)
+            //.rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
@@ -896,6 +898,10 @@ public class ProcurementEventService {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
+   /* var externalEventIdsAllProjects = events.stream().filter(event -> Objects.nonNull(event.getExternalEventId())).collect(Collectors.toSet());
+
+    var allRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+*/
     return events.stream().map(event -> {
       TenderStatus statusCode;
       RfxSetting rfxSetting = null;
@@ -1391,7 +1397,7 @@ public class ProcurementEventService {
         .ittCode(externalReferenceId);
     rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
   }
-
+  @TrackExecutionTime
   private ExportRfxResponse getSingleRfx(final String externalEventId) {
     return jaggaerService.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
         () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
