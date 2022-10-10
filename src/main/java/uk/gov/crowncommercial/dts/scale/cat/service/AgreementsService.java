@@ -84,7 +84,7 @@ public class AgreementsService {
   }
 
   @TrackExecutionTime
-  @Cacheable(value = "getLotEventTypes", key = "{#agreementId, #lotId}")
+  @Cacheable(value = "getLotDetails", key = "{#agreementId, #lotId}")
   public LotDetail getLotDetails(final String agreementId, final String lotId) {
     var lotDetailUri =
         agreementServiceAPIConfig.getGetLotDetailsForAgreement().get(KEY_URI_TEMPLATE);
