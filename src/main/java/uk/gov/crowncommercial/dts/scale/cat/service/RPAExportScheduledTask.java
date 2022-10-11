@@ -54,8 +54,7 @@ public class RPAExportScheduledTask {
   private final UserProfileService userProfileService;
   private final AmazonS3 rpaTransferS3Client;
 
-//  @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
-  @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.MINUTES)
+  @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
   @Transactional
   public void scheduleSelfServiceBuyers() {
     log.info("Begin scheduled processing of unexported buyer records for RPA");
