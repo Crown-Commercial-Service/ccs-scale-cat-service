@@ -19,7 +19,7 @@ public class StaticDataCacheManager implements CacheManagerCustomizer<Concurrent
     @Override
     public void customize(ConcurrentMapCacheManager cacheManager) {
 
-        List<String> agreementCacheList=List.of("getAgreementDetails", "getLotEventTypes","getLotEventTypes");
+        List<String> agreementCacheList=List.of("getAgreementDetails", "getLotDetails","getLotEventTypes");
         List<String> conclaveServiceCacheList=List.of("getOrganisation","getUserProfile","getUserContacts","getOrganisationIdentity");
         List<String> dbOrgMappingCacheList=List.of("findOrganisationMappingByOrganisationId","findOrganisationMappingByExternalOrganisationId","findOrganisationMappingByOrganisationIdIn");
 
