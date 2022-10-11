@@ -114,6 +114,11 @@ public class DocGenValueAdaptors {
     return (event, requestCache) -> List.of("project and consulting services");
   }
   
+  @Bean("DocumentValueAdaptorProjectId")
+  public DocGenValueAdaptor documentValueAdaptorProjectId() {
+    return (event, requestCache) -> List.of(String.valueOf(event.getProject().getId()));
+  }
+  
   @Bean("DocumentValueAdaptorPricingScheduleFileName")
   public DocGenValueAdaptor documentValueAdaptorPricingScheduleFileName() {
     return null;
@@ -129,6 +134,11 @@ public class DocGenValueAdaptors {
     return null;
   }
 
+  @Bean("DocumentValueAdaptorUploadedleNames")
+  public DocGenValueAdaptor documentValueAdaptorUploadedFileNames() {
+    return (event, requestCache) -> (getUploadedDocumentNames(event, requestCache));
+  }
+  
   private OrganisationProfileResponseInfo getProjectOrgFromConclave(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
 
@@ -172,5 +182,12 @@ public class DocGenValueAdaptors {
         });
 
   }
+  
+  private List<String> getUploadedDocumentNames(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    var docs = documentUploadService.findDocumentByEvent(event);
+    return docs.stream().map(f -> f.getDocumentDescription()).toList();
+  }
+
 
 }

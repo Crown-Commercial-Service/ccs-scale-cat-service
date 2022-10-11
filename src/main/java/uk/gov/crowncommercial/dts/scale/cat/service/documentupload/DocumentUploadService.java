@@ -292,11 +292,9 @@ public class DocumentUploadService {
     return String.format(TENDERS_S3_OBJECT_KEY_FORMAT, projectId, eventId, documentId);
   }
   
-  public List<DocumentUpload> findDocumentByEventAndDescriptionMatch(ProcurementEvent event,
-      String documentDescription) {
+  public List<DocumentUpload> findDocumentByEvent(ProcurementEvent event) {
     var documents = documentUploadRepo.findByProcurementEvent(event);
-    return documents.stream()
-        .filter(doc -> doc.getDocumentDescription().contains(documentDescription)).toList();
+    return documents.stream().toList();
   }
 
 }
