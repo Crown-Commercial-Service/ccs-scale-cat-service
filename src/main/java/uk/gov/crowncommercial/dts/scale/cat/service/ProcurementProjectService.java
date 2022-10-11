@@ -324,7 +324,7 @@ public class ProcurementProjectService {
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     var jaggaerUser = userProfileService.resolveBuyerUserProfile(userId)
-        .orElseThrow(() -> new JaggaerApplicationException("Unable to find user in Jaggaer"));
+        .orElseThrow(() -> new JaggaerUserNotExistException("Unable to find user in Jaggaer"));
     var jaggaerUserId = jaggaerUser.getUserId();
     var user = User.builder().id(jaggaerUserId).build();
 

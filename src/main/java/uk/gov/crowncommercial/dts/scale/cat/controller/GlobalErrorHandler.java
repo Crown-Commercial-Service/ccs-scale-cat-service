@@ -195,7 +195,16 @@ public class GlobalErrorHandler implements ErrorController {
 
   }
 
+  @ResponseStatus(BAD_REQUEST)
+  @ExceptionHandler({JaggaerUserNotExistException.class})
+  public Errors handleJaggaerUserNotExistException(
+          final JaggaerUserNotExistException exception) {
+    log.warn(exception.getMessage());
 
+    return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
+            "Jaggaer User Not Exist Scenario", exception.getMessage());
+
+  }
   @ResponseStatus(BAD_REQUEST)
   @ExceptionHandler({NotSupportedException.class})
   public Errors handleNotSupportedException(
