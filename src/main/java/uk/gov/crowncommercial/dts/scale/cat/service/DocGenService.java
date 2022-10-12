@@ -366,7 +366,15 @@ public class DocGenService {
               cellDisplayText.replace(documentTemplateSource.getPlaceholder(), datum));
         }
       }
+      if (dataReplacement.isEmpty()) {
+        var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+        while (textNavigation.hasNext()) {
+          var item = (TextSelection) textNavigation.nextSelection();
+          item.replaceWith("");
+        }
+      }
     } else {
+     
       log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
     }
   }
