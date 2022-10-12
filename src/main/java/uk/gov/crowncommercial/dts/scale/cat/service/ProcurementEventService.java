@@ -109,6 +109,9 @@ public class ProcurementEventService {
 
   private final EventTransitionService eventTransitionService;
 
+  private static final ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
+  private static final ExecutorService executorService = Executors.newCachedThreadPool();
+
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
    * event name, if specified, otherwise falls back on the default event title logic (using the
@@ -814,7 +817,7 @@ public class ProcurementEventService {
   }
 
 
-  ExecutorService executorService = Executors.newCachedThreadPool();
+
   /**
    * Publish an Rfx in Jaggaer
    *
@@ -1454,7 +1457,7 @@ public class ProcurementEventService {
       throw new RuntimeException(e);
     }
 
-    ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
+
     List<DocumentUploadCallable> documentUploadCallableList=new ArrayList<>();
 
     retriveDocumentfutures.forEach(retriveDocumentfuture->{
