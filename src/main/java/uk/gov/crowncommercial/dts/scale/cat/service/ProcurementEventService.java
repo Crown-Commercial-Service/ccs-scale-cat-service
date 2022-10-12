@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.processors.TwoStageEventService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
@@ -125,7 +126,7 @@ public class ProcurementEventService {
   @Transactional
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downSelectedSuppliers, final String principal) {
-
+    boolean twoStageEvent = false;
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -138,21 +139,32 @@ public class ProcurementEventService {
     if (!existingEventOptional.isPresent()) {
       log.info("No events exists for this project");
     } else {
+      TwoStageEventService twoStageEventService = new TwoStageEventService();
       // complete the event and copy suppliers
       var existingEvent = existingEventOptional.get();
-
-      eventTransitionService.completeExistingEvent(existingEvent,principal);
+      twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
+      if(!twoStageEvent) {
+        eventTransitionService.completeExistingEvent(existingEvent, principal);
+      }else{
+        twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
+      }
 
       if (existingEvent.isTendersDBOnly()) {
         var supplierOrgIds = getSuppliersFromTendersDB(existingEvent).getSuppliers().stream()
-            .map(OrganizationReference1::getId).collect(Collectors.toSet());
+                .map(OrganizationReference1::getId).collect(Collectors.toSet());
 
         suppliers = retryableTendersDBDelegate
-            .findOrganisationMappingByOrganisationIdIn(supplierOrgIds).stream().map(org -> {
-              var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-              return Supplier.builder().companyData(companyData).build();
-            }).collect(Collectors.toList());
+                .findOrganisationMappingByOrganisationIdIn(supplierOrgIds).stream().map(org -> {
+                  var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                  return Supplier.builder().companyData(companyData).build();
+                }).collect(Collectors.toList());
       }
+
+      if(null == suppliers && twoStageEvent) {
+        suppliers = twoStageEventService.getSuppliers(retryableTendersDBDelegate, jaggaerService, existingEvent);
+        //TODO Clarify - is a non-zero-count supplier validation required ??
+      }
+
     }
 
     // Set defaults if no values supplied
@@ -263,7 +275,7 @@ public class ProcurementEventService {
     ProcurementEvent procurementEvent;
 
     // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
-    if (createEventNonOCDS.getEventType() != null
+    if (!twoStageEvent && createEventNonOCDS.getEventType() != null
         && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
       procurementEvent = addSuppliersToTendersDB(event,
           supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true,
@@ -366,7 +378,8 @@ public class ProcurementEventService {
         .supplier(suppliers != null ? suppliers
             : supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
         .build();
-    var rfx = Rfx.builder().rfxSetting(rfxSetting).rfxAdditionalInfoList(rfxAdditionalInfoList)
+    var rfx = Rfx.builder().rfxSetting(rfxSetting)
+        //.rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
