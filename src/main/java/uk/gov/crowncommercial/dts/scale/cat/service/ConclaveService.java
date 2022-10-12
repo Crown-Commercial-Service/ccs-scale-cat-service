@@ -106,7 +106,7 @@ public class ConclaveService {
    */
   public Optional<OrganisationProfileResponseInfo> getOrganisationIdentity(final String orgId) {
 
-     var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
+    final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
     // Sanitise DUNS prefix for CII search..
     var sanitisedOrgId = orgId.replace("US-DUNS", "US-DUN");
 
