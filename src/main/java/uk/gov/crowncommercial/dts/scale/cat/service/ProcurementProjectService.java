@@ -411,13 +411,13 @@ public class ProcurementProjectService {
     var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
         jaggaerUserId, PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
 
-    var externalEventIdsAllProjects = projectUserMappings.stream()
-        .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
-        .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
-
-    var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
-
     if (!CollectionUtils.isEmpty(projectUserMappings)) {
+      var externalEventIdsAllProjects = projectUserMappings.stream()
+          .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
+          .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+      var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+
       return projectUserMappings.stream()
           .map(pum -> convertProjectToProjectPackageSummary(pum, projectUserRfxs))
           .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
