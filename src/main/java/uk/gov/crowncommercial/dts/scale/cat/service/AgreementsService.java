@@ -35,6 +35,8 @@ public class AgreementsService {
   private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
   private final WebclientWrapper webclientWrapper;
 
+  @TrackExecutionTime
+  @Cacheable(value = "getLotEventTypeDataTemplates",  key = "{#agreementId, #lotId,#eventType.value}")
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId,
       final String lotId, final ViewEventType eventType) {
 
@@ -60,6 +62,8 @@ public class AgreementsService {
         .collect(Collectors.toList());
   }
 
+  @TrackExecutionTime
+  @Cacheable(value = "getLotSuppliers",  key = "{#agreementId, #lotId}")
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
@@ -69,6 +73,7 @@ public class AgreementsService {
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
   }
+
 
   @TrackExecutionTime
   @Cacheable(value = "getAgreementDetails", key = "#agreementId")
