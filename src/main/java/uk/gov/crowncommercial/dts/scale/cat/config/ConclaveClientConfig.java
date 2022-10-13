@@ -51,7 +51,7 @@ public class ConclaveClientConfig {
         new JettyClientHttpConnector(new HttpClient(sslContextFactory));
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(conclaveAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+        .baseUrl(conclaveAPIConfig.getIdentitiesBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
         .defaultHeader("x-api-key", conclaveAPIConfig.getIdentitiesApiKey()).build();
   }
 
