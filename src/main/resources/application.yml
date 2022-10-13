@@ -253,6 +253,7 @@ config:
 
     conclaveWrapper:
       # baseUrl: "SET IN ENV"
+      # identitiesBaseUrl: "SET IN ENV"
       # apiKey: "SET IN ENV"
       timeoutDuration: 10
       # Role keys are incorrectly spelt in Conclave
