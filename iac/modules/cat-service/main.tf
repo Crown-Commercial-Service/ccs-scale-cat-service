@@ -71,6 +71,10 @@ data "aws_ssm_parameter" "conclave_wrapper_api_base_url" {
   name = "/cat/${var.environment}/conclave-wrapper-api-base-url"
 }
 
+data "aws_ssm_parameter" "conclave_wrapper_identities_api_base_url" {
+  name = "/cat/${var.environment}/conclave-wrapper-identities-api-base-url"
+}
+
 data "aws_ssm_parameter" "conclave_wrapper_api_key" {
   name = "/cat/${var.environment}/conclave-wrapper-api-key"
 }
@@ -190,6 +194,7 @@ resource "cloudfoundry_app" "cat_service" {
     # Auth server / CII
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
     "config.external.conclave-wrapper.baseUrl" : data.aws_ssm_parameter.conclave_wrapper_api_base_url.value
+    "config.external.conclave-wrapper.identitiesBaseUrl" : data.aws_ssm_parameter.conclave_wrapper_identities_api_base_url.value
     "config.external.conclave-wrapper.apiKey" : data.aws_ssm_parameter.conclave_wrapper_api_key.value
     "config.external.conclave-wrapper.identitiesApiKey" : data.aws_ssm_parameter.conclave_wrapper_identities_api_key.value
     

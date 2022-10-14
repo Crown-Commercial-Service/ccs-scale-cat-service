@@ -91,11 +91,11 @@ public class ConclaveService {
   @Cacheable(value = "getOrganisation", key = "#orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisation(final String orgId) {
 
-    final var templateURI = conclaveAPIConfig.getGetOrganisation().get(KEY_URI_TEMPLATE);
+    final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
 
     try {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
-          conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, orgId);
+              conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, orgId);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new ConclaveApplicationException(
@@ -113,7 +113,6 @@ public class ConclaveService {
   public Optional<OrganisationProfileResponseInfo> getOrganisationIdentity(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
-
     // Sanitise DUNS prefix for CII search..
     var sanitisedOrgId = orgId.replace("US-DUNS", "US-DUN");
 
