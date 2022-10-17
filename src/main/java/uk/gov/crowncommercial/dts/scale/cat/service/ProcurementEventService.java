@@ -54,6 +54,7 @@ import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getDashboardStatus;
 /**
  *
  */
@@ -112,8 +113,8 @@ public class ProcurementEventService {
 
   private final EventTransitionService eventTransitionService;
 
-  private static final ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
-  private static final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -961,20 +962,22 @@ public class ProcurementEventService {
   public List<EventSummary> getEventsForProject(final Integer projectId, final String principal) {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    var externalEventIdsAllProjects = events.stream().map(ProcurementEvent::getExternalEventId).filter(Objects::nonNull).collect(Collectors.toSet());
+    Map<String, RfxSetting> externalIdRfxResponseMap = getAllRfxSettingMap(externalEventIdsAllProjects);
 
     return events.stream().map(event -> {
-      TenderStatus statusCode;
+      TenderStatus statusCode=null;
       RfxSetting rfxSetting = null;
       if (event.getExternalEventId() == null) {
         var assessment = assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE,
             Optional.empty());
         statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
       } else {
-        // var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-        var exportRfxResponse = getSingleRfx(event.getExternalEventId());
-        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-            .get(exportRfxResponse.getRfxSetting().getStatusCode());
-        rfxSetting = exportRfxResponse.getRfxSetting();
+        rfxSetting = externalIdRfxResponseMap.get(event.getExternalEventId());
+        if(Objects.nonNull(rfxSetting)){
+          statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+            .get(rfxSetting.getStatusCode());
+        }
       }
       var eventSummary = tendersAPIModelUtils.buildEventSummary(event.getEventID(),
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
@@ -983,11 +986,22 @@ public class ProcurementEventService {
 
 
       if(Objects.nonNull(eventSummary)){
-         eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+         eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
       }
       updateTenderPeriod(event, rfxSetting, eventSummary);
       return eventSummary;
     }).collect(Collectors.toList());
+  }
+
+  /**
+   * retursn all the rfx events for the given list of externalIds
+   * @param externalEventIdsAllProjects
+   * @return
+   */
+  private Map<String, RfxSetting> getAllRfxSettingMap(Set<String> externalEventIdsAllProjects) {
+
+    var allRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+    return allRfxs.stream().map(ExportRfxResponse::getRfxSetting).collect(Collectors.toMap(RfxSetting::getRfxId, rfxSetting -> rfxSetting));
   }
 
   private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
