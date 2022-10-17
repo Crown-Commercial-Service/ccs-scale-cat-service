@@ -55,8 +55,7 @@ deploy:
     skip_cleanup: true
     script: CF_ENVIRONMENT=nft bash ./deploy.sh
     on:
-    # branch: release/nft
-      branch: feature/SCAT-6766-performance-fixes-to-nft
+    branch: release/nft
 
   # UAT
   - provider: script
