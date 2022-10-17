@@ -11,5 +11,5 @@ module "deploy-all" {
   cf_password = var.cf_password
   dev_mode    = true
   instances   = 3
-  eetime_enabled = false
+  eetime_enabled = true
 }
