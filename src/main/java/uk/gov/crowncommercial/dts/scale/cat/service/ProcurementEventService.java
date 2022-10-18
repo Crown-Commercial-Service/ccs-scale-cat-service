@@ -113,8 +113,8 @@ public class ProcurementEventService {
 
   private final EventTransitionService eventTransitionService;
 
-  private final ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
-  private final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
+  private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
