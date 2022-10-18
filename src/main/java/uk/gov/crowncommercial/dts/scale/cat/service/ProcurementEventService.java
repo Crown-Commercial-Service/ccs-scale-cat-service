@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -31,6 +32,7 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.TwoStageEventService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.DocumentUploadCallable;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.RetrieveDocumentCallable;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -52,6 +54,7 @@ import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getDashboardStatus;
 /**
  *
  */
@@ -109,6 +112,9 @@ public class ProcurementEventService {
   private final AwardService awardService;
 
   private final EventTransitionService eventTransitionService;
+
+  private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
+  private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -872,6 +878,8 @@ public class ProcurementEventService {
     documentUploadService.deleteDocument(documentUpload);
   }
 
+
+
   /**
    * Publish an Rfx in Jaggaer
    *
@@ -896,24 +904,14 @@ public class ProcurementEventService {
           "You cannot publish an event unless it is in a 'planned' state");
     }
 
-    // Fetch and upload all SAFE documents
-    procurementEvent.getDocumentUploads().stream()
-        .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).forEach(documentUpload -> {
-          var docKey = DocumentKey.fromString(documentUpload.getDocumentId());
-          var multipartFile = new ByteArrayMultipartFile(
-              documentUploadService.retrieveDocument(documentUpload, principal),
-              docKey.getFileName(), documentUpload.getMimetype());
-
-          jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
-              documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
-        });
+    retrieveAndUploadDocuments(principal, procurementEvent);
 
     validationService.validatePublishDates(publishDates);
-    jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
-
-    // after publish get rfx details and update tender status, publish date and close date
-    updateStatusAndDates(principal, procurementEvent);
+      jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+      // after publish get rfx details and update tender status, publish date and close date
+      updateStatusAndDates(principal, procurementEvent);
   }
+
 
 
 
@@ -964,20 +962,22 @@ public class ProcurementEventService {
   public List<EventSummary> getEventsForProject(final Integer projectId, final String principal) {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    var externalEventIdsAllProjects = events.stream().map(ProcurementEvent::getExternalEventId).filter(Objects::nonNull).collect(Collectors.toSet());
+    Map<String, RfxSetting> externalIdRfxResponseMap = getAllRfxSettingMap(externalEventIdsAllProjects);
 
     return events.stream().map(event -> {
-      TenderStatus statusCode;
+      TenderStatus statusCode=null;
       RfxSetting rfxSetting = null;
       if (event.getExternalEventId() == null) {
         var assessment = assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE,
             Optional.empty());
         statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
       } else {
-        // var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-        var exportRfxResponse = getSingleRfx(event.getExternalEventId());
-        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-            .get(exportRfxResponse.getRfxSetting().getStatusCode());
-        rfxSetting = exportRfxResponse.getRfxSetting();
+        rfxSetting = externalIdRfxResponseMap.get(event.getExternalEventId());
+        if(Objects.nonNull(rfxSetting)){
+          statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+            .get(rfxSetting.getStatusCode());
+        }
       }
       var eventSummary = tendersAPIModelUtils.buildEventSummary(event.getEventID(),
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
@@ -986,11 +986,22 @@ public class ProcurementEventService {
 
 
       if(Objects.nonNull(eventSummary)){
-         eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+         eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
       }
       updateTenderPeriod(event, rfxSetting, eventSummary);
       return eventSummary;
     }).collect(Collectors.toList());
+  }
+
+  /**
+   * retursn all the rfx events for the given list of externalIds
+   * @param externalEventIdsAllProjects
+   * @return
+   */
+  private Map<String, RfxSetting> getAllRfxSettingMap(Set<String> externalEventIdsAllProjects) {
+
+    var allRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+    return allRfxs.stream().map(ExportRfxResponse::getRfxSetting).collect(Collectors.toMap(RfxSetting::getRfxId, rfxSetting -> rfxSetting));
   }
 
   private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
@@ -1507,7 +1518,42 @@ public class ProcurementEventService {
   }
 
 
+  private void retrieveAndUploadDocuments(String principal, ProcurementEvent procurementEvent) {
+    List<RetrieveDocumentCallable> retrieveDocumentCallableList= procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService,documentUpload, principal)).toList();
+    List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> retriveDocumentfutures = null;
+    try {
+      retriveDocumentfutures = executorService.invokeAll(retrieveDocumentCallableList);
+    } catch (InterruptedException e) {
+      // TODO : Handle this and propagate your response properly
+      throw new RuntimeException(e);
+    }
 
+
+    List<DocumentUploadCallable> documentUploadCallableList=new ArrayList<>();
+
+    retriveDocumentfutures.forEach(retriveDocumentfuture->{
+
+      Map<DocumentUpload, ByteArrayMultipartFile> documentMap = null;
+
+      try {
+        documentMap = retriveDocumentfuture.get();
+      }catch(InterruptedException|ExecutionException exception){
+        // TODO : Handle this and propagate your response properly
+        throw new RuntimeException(exception);
+      }
+
+      var documentUpload=documentMap.keySet().stream().findFirst().get();
+      documentUploadCallableList.add(new DocumentUploadCallable(jaggaerService, procurementEvent,documentUpload,documentMap.get(documentUpload)));
+    });
+
+    try {
+
+      jaggerUploadExecutorService.invokeAll(documentUploadCallableList);
+
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
 
 }

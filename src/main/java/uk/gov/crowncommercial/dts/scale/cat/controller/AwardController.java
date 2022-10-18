@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
@@ -41,6 +42,7 @@ public class AwardController extends AbstractRestController {
   private static final String FILE_NAME = "attachment; filename= %s.zip";
 
   @PostMapping
+  @TrackExecutionTime
   public ResponseEntity<String> createAward(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       final @RequestParam(required = true, name = "award-state") AwardState awardState,
@@ -54,6 +56,7 @@ public class AwardController extends AbstractRestController {
   }
 
   @PutMapping("/{award-id}")
+  @TrackExecutionTime
   public ResponseEntity<String> updateAward(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       final @RequestParam(required = true, name = "award-state") AwardState awardState,
@@ -69,6 +72,7 @@ public class AwardController extends AbstractRestController {
   }
 
   @GetMapping("/templates")
+  @TrackExecutionTime
   public Collection<DocumentSummary> getAwardTemplates(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -78,6 +82,7 @@ public class AwardController extends AbstractRestController {
   }
 
   @GetMapping(value = "/templates/{templateId}")
+  @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> getAwardTemplate(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("templateId") final String templateId, HttpServletResponse response,
@@ -113,6 +118,7 @@ public class AwardController extends AbstractRestController {
   }
   
   @GetMapping(value = "/templates/export")
+  @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportAwardTemplates(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       HttpServletResponse response, final JwtAuthenticationToken authentication) {
@@ -145,6 +151,7 @@ public class AwardController extends AbstractRestController {
   }
   
   @GetMapping
+  @TrackExecutionTime
   public AwardSummary getAwardDetails(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       final @RequestParam(required = true, name = "award-state") AwardState awardState,

@@ -55,7 +55,7 @@ deploy:
     skip_cleanup: true
     script: CF_ENVIRONMENT=nft bash ./deploy.sh
     on:
-      branch: release/nft
+    branch: release/nft
 
   # UAT
   - provider: script

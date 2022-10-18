@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
@@ -48,6 +49,7 @@ public class AssessmentsController extends AbstractRestController {
   private final AssessmentService assessmentService;
 
   @GetMapping("/tools/{tool-id}/dimensions")
+  @TrackExecutionTime
   public List<DimensionDefinition> getDimensions(final @PathVariable("tool-id") Integer toolId,
       final JwtAuthenticationToken authentication) {
 
@@ -58,6 +60,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @PostMapping
+  @TrackExecutionTime
   public Integer createAssessment(@RequestBody final Assessment assessment,
       final JwtAuthenticationToken authentication) {
 
@@ -68,6 +71,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @GetMapping
+  @TrackExecutionTime
   public List<AssessmentSummary> getAssessmentsForUser(final @RequestParam(required = false, name = "external-tool-id") Integer externalToolId, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getAssessmentsForUser invoked on behalf of principal: {}", principal);
@@ -76,6 +80,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @GetMapping("/{assessment-id}")
+  @TrackExecutionTime
   public Assessment getAssessment(final @PathVariable("assessment-id") Integer assessmentId,
       @RequestParam(defaultValue = "false", required = true) final Boolean scores,
       final JwtAuthenticationToken authentication) {
@@ -87,6 +92,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @PutMapping("/{assessment-id}/dimensions/{dimension-id}")
+  @TrackExecutionTime
   public Integer createUpdateDimension(final @PathVariable("assessment-id") Integer assessmentId,
       final @PathVariable("dimension-id") Integer dimensionId,
       @RequestBody final DimensionRequirement dimensionRequirement,
@@ -100,6 +106,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @PutMapping("/{assessment-id}/dimensions")
+  @TrackExecutionTime
   public String createUpdateDimensions(final @PathVariable("assessment-id") Integer assessmentId,
       @RequestBody final DimensionRequirement[] dimensionRequirement,
       final JwtAuthenticationToken authentication) {
@@ -113,6 +120,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @PutMapping("/{assessment-id}/dimensions/{dimension-id}/requirements/{requirement-id}")
+  @TrackExecutionTime
   public Integer createUpdateRequirement(final @PathVariable("assessment-id") Integer assessmentId,
       final @PathVariable("dimension-id") Integer dimensionId,
       final @PathVariable("requirement-id") Integer requirementId,
@@ -139,6 +147,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @DeleteMapping("/{assessment-id}/dimensions/{dimension-id}/requirements/{requirement-id}")
+  @TrackExecutionTime
   public String deleteRequirement(final @PathVariable("assessment-id") Integer assessmentId,
       final @PathVariable("dimension-id") Integer dimensionId,
       final @PathVariable("requirement-id") Integer requirementId,
@@ -153,6 +162,7 @@ public class AssessmentsController extends AbstractRestController {
   }
 
   @GetMapping(value = "/tools/{tool-id}/dimensions/{dimension-id}/data", produces = {"text/csv", "application/json"})
+  @TrackExecutionTime
   public ResponseEntity<InputStreamResource> getSupplierDimensionData(
       final @PathVariable("tool-id") String toolId,
       final @PathVariable("dimension-id") Integer dimensionId,
