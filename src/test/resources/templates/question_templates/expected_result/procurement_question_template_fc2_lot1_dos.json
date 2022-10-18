@@ -1,0 +1,214 @@
+{
+  "criteria":[
+  {
+    "id": "Criterion 1",
+    "title": "About the procurement competition",
+    "source": "buyer",
+    "relatesTo": "buyer",
+    "description": "For Information Only",
+    "relateItems": null,
+	"inheritanceNonOCDS":"Part",
+    "requirementGroups": [
+      {
+        "OCDS": {
+          "id": "Key Dates",
+          "description": "Your timeline",
+          "requirements": [
+            {
+              "OCDS": {
+                "id": "Question 1",
+                "title": "Publication of stage 2",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				  "inheritance":"Edit",
+				"inheritsFrom": "Question 6",
+                "options": null,
+                "answered": false,
+                "mandatory": true,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 1
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 2",
+                "title": "Deadline for suppliers to submit their stage 2 responses",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				  "inheritance":"Edit",
+				  "inheritsFrom": "Question 7",
+                "options": null,
+                "answered": false,
+                "mandatory": true,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 2
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 3",
+                "title": "Supplier presentations (if applicable)",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				"inheritsFrom": "Question 8",
+				"inheritance":"Edit",
+                "options": null,
+                "answered": false,
+                "mandatory": true,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 3
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 4",
+                "title": "Evaluation of stage 2",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				  "inheritance":null,
+				  "inheritsFrom": "Question 9",
+                "options": null,
+                "answered": false,
+                "mandatory": true,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 4
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 5",
+                "title": "Standstill period starts (if you have requested this)",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				   "inheritance":null,
+				  "inheritsFrom": "Question 10",
+                "options": null,
+                "answered": false,
+                "mandatory": true,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 5
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 6",
+                "title": "When you plan to award the contract",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				  "inheritance":"AsIs",
+				  "inheritsFrom": "Question 11",
+                "options": null,
+                "answered": false,
+                "mandatory": false,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 6
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 7",
+                "title": "When you expect the contract to be signed",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				  "inheritance":"AsIs",
+				"inheritsFrom": "Question 12",
+                "options": null,
+                "answered": false,
+                "mandatory": false,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 7
+              }
+            },
+            {
+              "OCDS": {
+                "id": "Question 8",
+                "title": "When you expect the supplier to start",
+                "period": null,
+                "pattern": null,
+                "dataType": "date-time",
+                "maxValue": null,
+                "minValue": null,
+                "description": "",
+                "expectedValue": null
+              },
+              "nonOCDS": {
+				 "inheritance":null,
+				"inheritsFrom": "Question 13",
+                "options": null,
+                "answered": false,
+                "mandatory": true,
+                "multiAnswer": false,
+                "questionType": "DateTime",
+                "order": 8
+              }
+            }
+          ]
+        },
+        "nonOCDS": {
+          "task": "Add timeline",
+		  "inheritance":"Part",
+          "prompt": "<p>The dates and times below form a suggested timeline for a simple procurement. You can amend them to suit your own requirements.</p><p>It’s recommended that you set your times no later than 4pm on a weekday. This is in case you need to contact CCS about your project.<p>",
+          "mandatory": false,
+          "order": 1
+        }
+      }
+    ]
+  }
+]
+}
