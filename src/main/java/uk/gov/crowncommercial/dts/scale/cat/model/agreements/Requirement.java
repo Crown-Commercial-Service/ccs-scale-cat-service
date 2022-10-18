@@ -55,7 +55,8 @@ public class Requirement {
     @JsonProperty("inheritance")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @NonFinal
-    private DataTemplateInheritanceType inheritance;
+    DataTemplateInheritanceType inheritance;
+    String inheritsFrom;
     Dependency dependency;
 
     @NonFinal

@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
@@ -74,6 +76,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByOrganisationIdIn", key = "#organisationIds")
   public Set<OrganisationMapping> findOrganisationMappingByOrganisationIdIn(
       final Set<String> organisationIds) {
     return organisationMappingRepo.findByOrganisationIdIn(organisationIds);
@@ -85,7 +88,10 @@ public class RetryableTendersDBDelegate {
     return organisationMappingRepo.findByExternalOrganisationIdIn(bravoIds);
   }
 
+
+
   @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByExternalOrganisationId", key = "#externalOrganisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
       final Integer externalOrganisationId) {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
@@ -97,6 +103,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByOrganisationId", key = "#organisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
       final String organisationId) {
     return organisationMappingRepo.findByOrganisationId(organisationId);

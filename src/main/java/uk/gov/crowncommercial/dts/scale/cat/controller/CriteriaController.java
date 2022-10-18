@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroup;
@@ -24,6 +25,7 @@ public class CriteriaController extends AbstractRestController {
   private final CriteriaService criteriaService;
 
   @GetMapping
+  @TrackExecutionTime
   public Set<EvalCriteria> getEventEvaluationCriteria(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId, final JwtAuthenticationToken authentication) {
 
@@ -34,6 +36,7 @@ public class CriteriaController extends AbstractRestController {
   }
 
   @GetMapping("/{criterion-id}/groups")
+  @TrackExecutionTime
   public Set<QuestionGroup> getEventEvaluationCriterionGroups(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("criterion-id") final String criterionId,
@@ -46,6 +49,7 @@ public class CriteriaController extends AbstractRestController {
   }
 
   @GetMapping("/{criterion-id}/groups/{group-id}/questions")
+  @TrackExecutionTime
   public Set<Question> getEventEvaluationCriterionGroupQuestions(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("criterion-id") final String criterionId,
@@ -59,6 +63,7 @@ public class CriteriaController extends AbstractRestController {
   }
 
   @PutMapping("/{criterion-id}/groups/{group-id}/questions/{question-id}")
+  @TrackExecutionTime
   public Question putQuestionOptionDetails(@RequestBody final Question question,
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @PathVariable("criterion-id") final String criterionId,

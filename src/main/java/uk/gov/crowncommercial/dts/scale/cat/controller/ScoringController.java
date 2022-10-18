@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
@@ -29,6 +30,7 @@ public class ScoringController extends AbstractRestController {
   private static final String EVENT_STAGE = "SCORING";
 
   @PutMapping
+  @TrackExecutionTime
   public ResponseEntity<String> updateScoreAndComment(@PathVariable("procId") final Integer procId,
       @PathVariable("eventId") final String eventId,
       @RequestBody final List<ScoreAndCommentNonOCDS> scoresAndComments,
@@ -43,6 +45,7 @@ public class ScoringController extends AbstractRestController {
   }
   
   @GetMapping
+  @TrackExecutionTime
   public ResponseEntity<Collection<ScoreAndCommentNonOCDS>> getScores(
       @PathVariable("procId") final Integer procId, @PathVariable("eventId") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -52,6 +55,7 @@ public class ScoringController extends AbstractRestController {
   }
 
   @GetMapping("/templates")
+  @TrackExecutionTime
   public Collection<DocumentSummary> getScoresTemplates(
       @PathVariable("procId") final Integer procId, @PathVariable("eventId") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -62,6 +66,7 @@ public class ScoringController extends AbstractRestController {
   }
 
   @GetMapping(value = "/templates/{templateId}")
+  @TrackExecutionTime
   public ResponseEntity<byte[]> getScoreTemplate(@PathVariable("procId") final Integer procId,
       @PathVariable("eventId") final String eventId,
       @PathVariable("templateId") final String templateId,

@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig.KEY_URI_TEMPLATE;
 import java.util.Optional;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.Builder;
@@ -43,6 +45,7 @@ public class ConclaveService {
    * @param email
    * @return an optional user profile (empty if not found)
    */
+  @Cacheable(value = "getUserProfile", key = "#email")
   public Optional<UserProfileResponseInfo> getUserProfile(final String email) {
 
     final var templateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
@@ -63,6 +66,7 @@ public class ConclaveService {
    * @param userId
    * @return
    */
+  @Cacheable(value = "getUserContacts", key = "#userId")
   public UserContactInfoList getUserContacts(final String userId) {
 
     final var templateURI = conclaveAPIConfig.getGetUserContacts().get(KEY_URI_TEMPLATE);
@@ -84,6 +88,7 @@ public class ConclaveService {
    * @param orgId the internal org identifier
    * @return
    */
+  @Cacheable(value = "getOrganisation", key = "#orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisation(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
@@ -104,6 +109,7 @@ public class ConclaveService {
    * @param orgId the public identifier e.g. US-DUNS-123456789
    * @return
    */
+  @Cacheable(value = "getOrganisationIdentity", key = "#orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisationIdentity(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
