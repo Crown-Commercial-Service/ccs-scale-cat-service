@@ -53,6 +53,7 @@ public class EventsController extends AbstractRestController {
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
+  private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
 
   @GetMapping
   @TrackExecutionTime
@@ -72,6 +73,15 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("createProcuremenEvent invoked on behalf of principal: {}", principal);
 
+    // Before we perform any action here we need to check if we're dealing with a GCloud event - there's an additional step if we are
+    Boolean isGcloudEvent = Boolean.parseBoolean(isGcloudEventStr);
+    if (isGcloudEvent) {
+      // As this is a GCloud event, check that the lot has been identified for this assessment - we can't proceed if it's not
+      if (!procurementEventService.isLotIdentifiedForGcloudAssessment(procId)) {
+        // Lot has not been identified - throw an error
+        throw new NotSupportedException(ERR_MSG_FMT_LOT_NOT_IDENTIFIED);
+      }
+    }
 
     if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getEventType()) {
       DefineEventType eventType = createEvent.getNonOCDS().getEventType();
@@ -82,6 +92,7 @@ public class EventsController extends AbstractRestController {
         String eventId = summary.getId();
         UpdateEvent event = new UpdateEvent();
         event.setEventType(eventType);
+        event.setTemplateGroupId(createEvent.getNonOCDS().getTemplateGroupId());
         EventSummary updSummary = procurementEventService.updateProcurementEvent(procId, eventId, event, principal);
         summary.setEventType(updSummary.getEventType());
         summary.setAssessmentId(updSummary.getAssessmentId());

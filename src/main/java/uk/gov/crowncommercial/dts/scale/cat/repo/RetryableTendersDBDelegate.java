@@ -83,6 +83,14 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Set<OrganisationMapping> findOrganisationMappingByExternalOrganisationIdIn(
+          final Set<Integer> bravoIds) {
+    return organisationMappingRepo.findByExternalOrganisationIdIn(bravoIds);
+  }
+
+
+
+  @TendersRetryable
   @Cacheable(value = "findOrganisationMappingByExternalOrganisationId", key = "#externalOrganisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
       final Integer externalOrganisationId) {

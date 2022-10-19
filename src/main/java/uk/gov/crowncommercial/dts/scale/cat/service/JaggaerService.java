@@ -124,7 +124,7 @@ public class JaggaerService {
 
 
   public ExportRfxResponse getRfxWithEmailRecipients(final String externalEventId) {
-
+    //TODO: This can be a candidate for cache
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithEmailRecipients().get(ENDPOINT);
     return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
@@ -169,7 +169,7 @@ public class JaggaerService {
    * the top-level <code>rfxSetting</code> data and is far more performant that getting the entire
    * Rfx with all components.
    *
-   * @param externalEventId
+   * @param externalEventIds
    * @return the rfx, if a single record found in response data list
    */
   public Set<ExportRfxResponse> searchRFx(final Set<String> externalEventIds) {

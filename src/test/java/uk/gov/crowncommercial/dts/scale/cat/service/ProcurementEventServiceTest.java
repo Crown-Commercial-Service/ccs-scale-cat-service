@@ -1068,7 +1068,7 @@ class ProcurementEventServiceTest {
 
     var supplier = Supplier.builder()
         .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-        .status("Replied").build();
+        .status("Replied").statusCode(3).build();
     var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
         LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
         .build();
@@ -1111,7 +1111,7 @@ class ProcurementEventServiceTest {
 
     var supplier = Supplier.builder()
         .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-        .status("Replied").build();
+        .status("Replied").statusCode(4).build();
     var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
         LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
         .build();

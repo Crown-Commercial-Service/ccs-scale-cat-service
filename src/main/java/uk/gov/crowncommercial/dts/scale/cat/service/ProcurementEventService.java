@@ -21,11 +21,14 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentStatusEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.processors.TwoStageEventService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
@@ -51,6 +54,7 @@ import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getDashboardStatus;
 /**
  *
  */
@@ -109,8 +113,8 @@ public class ProcurementEventService {
 
   private final EventTransitionService eventTransitionService;
 
-  private static final ExecutorService jaggerUploadExecutorService = Executors.newCachedThreadPool();
-  private static final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
+  private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
   /**
    * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -128,7 +132,7 @@ public class ProcurementEventService {
   @Transactional
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
       Boolean downSelectedSuppliers, final String principal) {
-
+    boolean twoStageEvent = false;
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -141,21 +145,32 @@ public class ProcurementEventService {
     if (!existingEventOptional.isPresent()) {
       log.info("No events exists for this project");
     } else {
+      TwoStageEventService twoStageEventService = new TwoStageEventService();
       // complete the event and copy suppliers
       var existingEvent = existingEventOptional.get();
-
-      eventTransitionService.completeExistingEvent(existingEvent,principal);
+      twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
+      if(!twoStageEvent) {
+        eventTransitionService.completeExistingEvent(existingEvent, principal);
+      }else{
+        twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
+      }
 
       if (existingEvent.isTendersDBOnly()) {
         var supplierOrgIds = getSuppliersFromTendersDB(existingEvent).getSuppliers().stream()
-            .map(OrganizationReference1::getId).collect(Collectors.toSet());
+                .map(OrganizationReference1::getId).collect(Collectors.toSet());
 
         suppliers = retryableTendersDBDelegate
-            .findOrganisationMappingByOrganisationIdIn(supplierOrgIds).stream().map(org -> {
-              var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-              return Supplier.builder().companyData(companyData).build();
-            }).collect(Collectors.toList());
+                .findOrganisationMappingByOrganisationIdIn(supplierOrgIds).stream().map(org -> {
+                  var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                  return Supplier.builder().companyData(companyData).build();
+                }).collect(Collectors.toList());
       }
+
+      if(null == suppliers && twoStageEvent) {
+        suppliers = twoStageEventService.getSuppliers(retryableTendersDBDelegate, jaggaerService, existingEvent);
+        //TODO Clarify - is a non-zero-count supplier validation required ??
+      }
+
     }
 
     // Set defaults if no values supplied
@@ -253,15 +268,20 @@ public class ProcurementEventService {
 
     eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
         .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
+
         .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
         .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+    if(null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getTemplateGroupId()){
+      eventBuilder.templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue());
+    }
 
     var event = eventBuilder.build();
 
     ProcurementEvent procurementEvent;
 
     // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
-    if (createEventNonOCDS.getEventType() != null
+    if (!twoStageEvent && createEventNonOCDS.getEventType() != null
         && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
       procurementEvent = addSuppliersToTendersDB(event,
           supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true,
@@ -273,6 +293,43 @@ public class ProcurementEventService {
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
         Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
         TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+  }
+
+  private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
+    // Find a list of any existing, valid events for this project and return the first found (as there should never be more than one)
+    ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
+
+    if (existingEventOptional.isPresent()) {
+      return existingEventOptional.get();
+    }
+
+    return null;
+  }
+
+  public Boolean isLotIdentifiedForGcloudAssessment(final Integer projectId) {
+    // We assume that the lot is not identified unless the assessment status is complete
+    Boolean isLotIdentified = false;
+
+    // To determine the assessment status, first get the first valid event
+    ProcurementEvent validEvent = getExistingValidEventForProject(projectId);
+
+    if (validEvent != null && validEvent.getAssessmentId() != null) {
+      // Now use the assessment ID against this event to fetch the Gcloud assessment
+      Optional<GCloudAssessmentEntity> optionalAssessment = retryableTendersDBDelegate.findGcloudAssessmentById(validEvent.getAssessmentId());
+
+      if (optionalAssessment.isPresent()) {
+        // We've got the GCloud assessment, so now just check its status and set the boolean accordingly
+        GCloudAssessmentEntity assessment = optionalAssessment.get();
+
+        if (assessment.getStatus() == AssessmentStatusEntity.COMPLETE) {
+          isLotIdentified = true;
+        }
+      }
+    }
+
+    return isLotIdentified;
   }
 
   private Optional<ProcurementEvent> getExistingValidEvents(Set<ProcurementEvent> procurementEvents) {
@@ -328,7 +385,7 @@ public class ProcurementEventService {
             : supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
         .build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting)
-            //.rfxAdditionalInfoList(rfxAdditionalInfoList)
+        //.rfxAdditionalInfoList(rfxAdditionalInfoList)
         .suppliersList(suppliersList).build();
 
     return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
@@ -456,6 +513,11 @@ public class ProcurementEventService {
         tenderStatus = rfxStatus != null && rfxStatus.get(event.getEventType()) != null
             ? rfxStatus.get(event.getEventType()).getValue()
             : null;
+      }
+
+      if(null != updateEvent.getTemplateGroupId()){
+        if(null == event.getProcurementTemplatePayload())
+          event.setTemplateId(updateEvent.getTemplateGroupId().intValue());
       }
 
       event.setUpdatedAt(Instant.now());
@@ -715,7 +777,7 @@ public class ProcurementEventService {
         .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
             .name(supplier.getCompanyData().getName()))
         .responseState(!RESPONSE_STATES.contains(supplier.getStatus().trim())
-            ? Responders.ResponseStateEnum.SUBMITTED
+            ? supplier.getStatusCode() == -2 ? Responders.ResponseStateEnum.DECLINED : Responders.ResponseStateEnum.SUBMITTED
             : Responders.ResponseStateEnum.DRAFT)
         .readState(!RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
             : Responders.ReadStateEnum.UNREAD)
@@ -900,24 +962,22 @@ public class ProcurementEventService {
   public List<EventSummary> getEventsForProject(final Integer projectId, final String principal) {
 
     var events = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+    var externalEventIdsAllProjects = events.stream().map(ProcurementEvent::getExternalEventId).filter(Objects::nonNull).collect(Collectors.toSet());
+    Map<String, RfxSetting> externalIdRfxResponseMap = getAllRfxSettingMap(externalEventIdsAllProjects);
 
-   /* var externalEventIdsAllProjects = events.stream().filter(event -> Objects.nonNull(event.getExternalEventId())).collect(Collectors.toSet());
-
-    var allRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
-*/
     return events.stream().map(event -> {
-      TenderStatus statusCode;
+      TenderStatus statusCode=null;
       RfxSetting rfxSetting = null;
       if (event.getExternalEventId() == null) {
         var assessment = assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE,
             Optional.empty());
         statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
       } else {
-        // var exportRfxResponse = jaggaerService.getRfx(event.getExternalEventId());
-        var exportRfxResponse = getSingleRfx(event.getExternalEventId());
-        statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-            .get(exportRfxResponse.getRfxSetting().getStatusCode());
-        rfxSetting = exportRfxResponse.getRfxSetting();
+        rfxSetting = externalIdRfxResponseMap.get(event.getExternalEventId());
+        if(Objects.nonNull(rfxSetting)){
+          statusCode = jaggaerAPIConfig.getRfxStatusToTenderStatus()
+            .get(rfxSetting.getStatusCode());
+        }
       }
       var eventSummary = tendersAPIModelUtils.buildEventSummary(event.getEventID(),
           event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
@@ -926,11 +986,22 @@ public class ProcurementEventService {
 
 
       if(Objects.nonNull(eventSummary)){
-         eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, event));
+         eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
       }
       updateTenderPeriod(event, rfxSetting, eventSummary);
       return eventSummary;
     }).collect(Collectors.toList());
+  }
+
+  /**
+   * retursn all the rfx events for the given list of externalIds
+   * @param externalEventIdsAllProjects
+   * @return
+   */
+  private Map<String, RfxSetting> getAllRfxSettingMap(Set<String> externalEventIdsAllProjects) {
+
+    var allRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
+    return allRfxs.stream().map(ExportRfxResponse::getRfxSetting).collect(Collectors.toMap(RfxSetting::getRfxId, rfxSetting -> rfxSetting));
   }
 
   private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
@@ -1400,7 +1471,7 @@ public class ProcurementEventService {
         .ittCode(externalReferenceId);
     rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
   }
-  @TrackExecutionTime
+
   private ExportRfxResponse getSingleRfx(final String externalEventId) {
     return jaggaerService.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
         () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
