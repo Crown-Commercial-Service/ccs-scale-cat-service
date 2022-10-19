@@ -137,6 +137,15 @@ public class RetryableTendersDBDelegate {
   }
   
   @TendersRetryable
+  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
+      final String eventType, final String commercialAgreementNumber, final String lotNumber,
+      final Integer templateGroup) {
+    return documentTemplateRepo
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType,
+            commercialAgreementNumber, lotNumber, templateGroup);
+  }
+  
+  @TendersRetryable
   public Set<DocumentTemplate> findByEventStage(final String eventStage) {
     return documentTemplateRepo.findByEventStage(eventStage);
   }
