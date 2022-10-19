@@ -62,14 +62,10 @@ public class DocumentTemplateService {
       final String eventId) {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     return getTemplates(
-        event.getTemplateId() == null
-            ? retryableTendersDBDelegate.findByEventTypeAndCommercialAgreementNumberAndLotNumber(
+        retryableTendersDBDelegate
+            .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
                 event.getEventType(), event.getProject().getCaNumber(),
-                event.getProject().getLotNumber())
-            : retryableTendersDBDelegate
-                .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
-                    event.getEventType(), event.getProject().getCaNumber(),
-                    event.getProject().getLotNumber(), event.getTemplateId()),
+                event.getProject().getLotNumber(), event.getTemplateId()),
         String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()));
   }
 

@@ -62,9 +62,9 @@ public class DocGenService {
   public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
-        .findByEventTypeAndCommercialAgreementNumberAndLotNumber(procurementEvent.getEventType(),
-            procurementEvent.getProject().getCaNumber(),
-            procurementEvent.getProject().getLotNumber())) {
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
+            procurementEvent.getEventType(), procurementEvent.getProject().getCaNumber(),
+            procurementEvent.getProject().getLotNumber(), procurementEvent.getTemplateId())) {
       uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
           documentTemplate);
     }
