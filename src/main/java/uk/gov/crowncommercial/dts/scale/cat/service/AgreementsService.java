@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,6 +20,7 @@ import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
@@ -32,6 +35,8 @@ public class AgreementsService {
   private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
   private final WebclientWrapper webclientWrapper;
 
+  @TrackExecutionTime
+  @Cacheable(value = "getLotEventTypeDataTemplates",  key = "{#agreementId, #lotId,#eventType.value}")
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId,
       final String lotId, final ViewEventType eventType) {
 
@@ -87,6 +92,8 @@ public class AgreementsService {
 
   }
 
+  @TrackExecutionTime
+  @Cacheable(value = "getLotSuppliers",  key = "{#agreementId, #lotId}")
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
@@ -97,6 +104,9 @@ public class AgreementsService {
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
   }
 
+
+  @TrackExecutionTime
+  @Cacheable(value = "getAgreementDetails", key = "#agreementId")
   public AgreementDetail getAgreementDetails(final String agreementId) {
     var agreementDetailsUri =
         agreementServiceAPIConfig.getGetAgreementDetail().get(KEY_URI_TEMPLATE);
@@ -108,6 +118,8 @@ public class AgreementsService {
     return agreementDetail.orElseThrow();
   }
 
+  @TrackExecutionTime
+  @Cacheable(value = "getLotDetails", key = "{#agreementId, #lotId}")
   public LotDetail getLotDetails(final String agreementId, final String lotId) {
     var lotDetailUri =
         agreementServiceAPIConfig.getGetLotDetailsForAgreement().get(KEY_URI_TEMPLATE);
@@ -119,7 +131,8 @@ public class AgreementsService {
     return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
         "Lot with ID: [" + lotId + "] for CA: [" + agreementId + "] not found in AS"));
   }
-
+  @TrackExecutionTime
+  @Cacheable(value = "getLotEventTypes", key = "{#agreementId, #lotId}")
   public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
     var getLotEventTypesUri =
         agreementServiceAPIConfig.getGetEventTypesForAgreement().get(KEY_URI_TEMPLATE);

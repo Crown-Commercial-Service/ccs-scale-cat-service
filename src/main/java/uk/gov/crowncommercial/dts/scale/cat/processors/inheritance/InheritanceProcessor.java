@@ -10,7 +10,10 @@ public interface InheritanceProcessor <T>{
 
 
     default Requirement getQuestion(RequirementGroup requirementGroup, Requirement req, Map<String, Requirement> questions) {
-        String key = requirementGroup.getOcds().getId() + ":" + req.getOcds().getId();
-        return questions.get(key);
+        if(null != req.getNonOCDS().getInheritsFrom()) {
+            String key = requirementGroup.getOcds().getId() + ":" + req.getNonOCDS().getInheritsFrom();
+            return questions.get(key);
+        }
+        return null;
     }
 }
