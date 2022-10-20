@@ -47,6 +47,7 @@ public class Requirement {
   public static class NonOCDS {
 
     String questionType;
+    @NonFinal
     Boolean answered;
     Boolean mandatory;
     Boolean multiAnswer;
@@ -64,6 +65,11 @@ public class Requirement {
 
     public void setInheritance(DataTemplateInheritanceType inheritance){
       this.inheritance = inheritance;
+    }
+
+    public void setAnswered(Boolean answered){
+      //TODO - Whether this should be automatically populated based on the options;
+      this.answered = answered;
     }
 
     /**

@@ -144,6 +144,10 @@ public class CriteriaService {
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
 
+    if(null != question.getNonOCDS() && null != question.getNonOCDS().getAnswered()){
+      requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
+    }
+
     validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
         .updateOptions(options.stream()
