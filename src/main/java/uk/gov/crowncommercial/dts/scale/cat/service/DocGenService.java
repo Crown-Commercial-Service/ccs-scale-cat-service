@@ -11,7 +11,6 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.transaction.Transactional;
-
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -47,7 +46,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 public class DocGenService {
 
   public static final String PLACEHOLDER_ERROR = "";
-  public static final String PLACEHOLDER_UNKNOWN = "";
+  public static final String PLACEHOLDER_UNKNOWN = "Not Applicable";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
