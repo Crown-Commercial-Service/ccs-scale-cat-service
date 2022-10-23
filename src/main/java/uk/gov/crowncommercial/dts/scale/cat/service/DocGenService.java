@@ -221,7 +221,7 @@ public class DocGenService {
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
-      replaceText(documentTemplateSource, "", textODT);
+      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT);
     }
 
   }
@@ -316,6 +316,10 @@ public class DocGenService {
       var isLineRequired = false;
       var columnIndex = -1;
       
+      if(dataReplacement.isEmpty()) {
+        dataReplacement.add("");
+      }
+      
       for (var r = 1; r <= dataReplacement.size(); r++) {
         var row = table.getRowByIndex(r);
 
@@ -358,18 +362,20 @@ public class DocGenService {
             var cellNum = table.getCellByPosition(0, r);
             cellNum.setStringValue(String.valueOf(r));
           }
-
+          
           // Replace placeholder ONLY in the cell's display text
           // TODO: Remove OptionsProperty - redundant.
-          cell.setDisplayText(
-              cellDisplayText.replace(documentTemplateSource.getPlaceholder(), datum));
+          cell.setDisplayText(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
+              org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
         }
       }
-      if (dataReplacement.isEmpty()) {
+      
+      if (dataReplacement.isEmpty() || dataReplacement.stream()
+          .anyMatch(org.apache.commons.lang3.StringUtils::isAllBlank)) {
         var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
         while (textNavigation.hasNext()) {
           var item = (TextSelection) textNavigation.nextSelection();
-          item.replaceWith("");
+          item.replaceWith(PLACEHOLDER_UNKNOWN);
         }
       }
     } else {
