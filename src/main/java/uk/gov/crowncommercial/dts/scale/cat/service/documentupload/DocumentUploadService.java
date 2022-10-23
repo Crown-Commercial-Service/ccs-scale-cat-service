@@ -112,8 +112,8 @@ public class DocumentUploadService {
     var documentUpload = DocumentUpload.builder().procurementEvent(event)
         .documentId(docKey.getDocumentId()).externalDocumentId(documentStatus.getId())
         .externalStatus(VirusCheckStatus.PROCESSING).audience(audience)
-        .size(multipartFile.getSize()).documentDescription(documentDescription).mimetype(mimetype)
-        .timestamps(Timestamps.createTimestamps(principal)).build();
+        .size(multipartFile.getSize()).documentDescription(multipartFile.getOriginalFilename())
+        .mimetype(mimetype).timestamps(Timestamps.createTimestamps(principal)).build();
     event.getDocumentUploads().add(documentUpload);
     procurementEventRepo.save(event);
 
