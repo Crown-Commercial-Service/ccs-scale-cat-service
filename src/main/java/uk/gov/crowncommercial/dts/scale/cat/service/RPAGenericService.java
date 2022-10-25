@@ -67,7 +67,7 @@ public class RPAGenericService {
     var unMatchedSuppliers = supplierExternalIds.stream()
         .filter(orgid -> suppliers.stream()
             .noneMatch(supplier -> supplier.getCompanyData().getId().equals(orgid)))
-        .collect(Collectors.toList());
+        .toList();
 
     if (!isEmpty(unMatchedSuppliers)) {
       var errorDesc =
@@ -81,9 +81,14 @@ public class RPAGenericService {
     var matchedSuppliers = suppliers.stream()
         .filter(supplier -> supplierExternalIds.stream()
             .anyMatch(orgId -> orgId.equals(supplier.getCompanyData().getId())))
-        .collect(Collectors.toList());
-
-    return Pair.of(matchedSuppliers, supplierOrgMappings);
+        .toList();
+    
+    return Pair.of(
+        matchedSuppliers.stream()
+            .map(e -> Supplier.builder().companyData(e.getCompanyData())
+                .id(String.valueOf(e.getCompanyData().getId())).build())
+            .toList(),
+        supplierOrgMappings);
   }
 
   /**

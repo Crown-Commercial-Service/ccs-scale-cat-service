@@ -1,7 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
-
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -15,7 +15,8 @@ import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
@@ -27,8 +28,18 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperatorUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ParameterList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoreParameter;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoringRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoringTechEnvelope;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Section;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SectionList;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EnvelopeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierIdentification;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScore;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScoreList;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -52,6 +63,9 @@ public class SupplierService {
   private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
+  public static final String SECTION_NAME = "Tender";
+  public static final String SECTION_POS = "1";
+  public static final String PARAM_POS = "1";
 
 
   /**
@@ -117,8 +131,10 @@ public class SupplierService {
    * @param scoreAndComments
    * @return status
    */
+  @Deprecated
   public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
-      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
+      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments,
+      boolean scoringComplete) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserProfile(profile)
@@ -184,6 +200,61 @@ public class SupplierService {
     }
   }
 
+
+
+  /**
+   * Update supplier score in Jaggaer
+   * 
+   * @param profile
+   * @param projectId
+   * @param eventId
+   * @param scoreAndComments
+   * @return status
+   */
+  public String updateSupplierScores(final String profile, final Integer projectId,
+      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
+    log.info("Calling updateSupplierScoreAndComment for {}", eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
+    for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
+      scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
+    }
+
+    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
+        .stream().map(ScoreAndCommentNonOCDS::getOrganisationId).toList());
+    
+   var supplierScoresList =  new ArrayList<SupplierScore>();
+
+    for (Supplier supplier : validSuppliers.getFirst()) {
+      var orgId = validSuppliers.getSecond().stream()
+          .filter(org -> org.getExternalOrganisationId().equals(Integer.valueOf(supplier.getId())))
+          .findFirst();
+      if (orgId.isPresent()) {
+        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getOrganisationId());
+        var supplierScore = SupplierScore.builder()
+            .supplierIdentification(SupplierIdentification.builder().id(supplier.getId()).build())
+            .scoringTechEnvelope(ScoringTechEnvelope.builder().sectionList(SectionList.builder()
+                .section(Arrays.asList(Section.builder().name(SECTION_NAME).sectionPos(SECTION_POS)
+                    .parameterList(ParameterList.builder()
+                        .parameter(Arrays.asList(ScoreParameter.builder().paramPos(PARAM_POS)
+                            .score(scoreAndCommentNonOCDS.getScore().toString()).build()))
+                        .build())
+                    .build()))
+                .build()).build()).build();
+        
+        supplierScoresList.add(supplierScore);
+      }
+    }
+
+    var scoringRequest = ScoringRequest.builder().rfxReferenceCode(procurementEvent.getExternalReferenceId())
+        .operatorUser(OperatorUser.builder().code(profile).build())
+        .supplierScoreList(SupplierScoreList.builder().supplierScore(supplierScoresList).build()).build();
+    
+    log.info("Scoring Request {}", scoringRequest);
+    jaggaerService.createUpdateScores(scoringRequest);
+    return "Successfully updated scores";
+  }
+
   /**
    * Calls RPA to Open Envelope
    * 
@@ -204,12 +275,12 @@ public class SupplierService {
     log.info("Update SupplierScoreAndComment after OpenEnvelope");
     return rpaGenericService.callRPAMessageAPI(processInput, RPAProcessNameEnum.ASSIGN_SCORE);
   }
-  
+
   public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId,
       final String eventId) {
     var componentFilter = "EVAL_SUPPLIER_ENVELOPE_COMMENTS==ALL;OFFERS";
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(), 
+    var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
         new HashSet<>(Arrays.asList(componentFilter)));
     return exportRfxResponse.getOffersList().getOffer().stream()
         .map(e -> new ScoreAndCommentNonOCDS()
@@ -217,11 +288,11 @@ public class SupplierService {
                 .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
                 .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
                 .getOrganisationId())
-            .score(e.getTechPoints()).comment(extractComment(e.getSupplierId(), 
-                exportRfxResponse.getEvaluationCommentList())))
+            .score(e.getTechPoints()).comment(
+                extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
         .toList();
   }
-  
+
   private String extractComment(Integer supplierId, EvaluationCommentList evaluationCommentList) {
     String defaultComment = "No comment found";
     if (Objects.nonNull(evaluationCommentList.getEnvelopeSupplierCommentList())) {
