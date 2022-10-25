@@ -261,7 +261,10 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-
+      if(item.getText().contains("Project_Budget") && dataReplacement.isBlank())
+      {
+         dataReplacement = PLACEHOLDER_UNKNOWN;
+      }
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
