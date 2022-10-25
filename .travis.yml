@@ -41,8 +41,7 @@ deploy:
     skip_cleanup: true
     script: CF_ENVIRONMENT=dev bash ./deploy.sh
     on:
-      #branch: develop
-      branch: bugfix/SCAT-7226-Scoring-issue
+      branch: develop
 
   # INT (SIT)
   - provider: script
