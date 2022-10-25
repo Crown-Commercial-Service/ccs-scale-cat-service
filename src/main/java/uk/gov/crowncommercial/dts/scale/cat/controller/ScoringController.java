@@ -40,7 +40,7 @@ public class ScoringController extends AbstractRestController {
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("update score and comments to suppliers invoked on behalf of principal: {}", principal,
         conclaveOrgId);
-    return ResponseEntity.ok(supplierService.updateSupplierScoreAndComment(principal, procId,
+    return ResponseEntity.ok(supplierService.updateSupplierScores(principal, procId,
         eventId, scoresAndComments, scoringComplete));
   }
   

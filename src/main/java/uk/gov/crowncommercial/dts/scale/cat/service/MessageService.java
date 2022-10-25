@@ -19,8 +19,11 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateReplyMessage;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperatorUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -38,6 +41,7 @@ public class MessageService {
   private static final DateTimeFormatter DATE_TIME_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000+00:00");
   private static final String RPA_DELIMETER = "~|";
+  private static final String OBJECT_TYPE = "RFQ";
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
@@ -66,6 +70,7 @@ public class MessageService {
    * @return
    * @throws JsonProcessingException
    */
+  @Deprecated
   public String sendOrRespondMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
@@ -121,6 +126,58 @@ public class MessageService {
     return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
         RPAProcessNameEnum.BUYER_MESSAGING);
   }
+  
+  /**
+   * Which sends outbound message to all suppliers and single supplier. And also responds supplier
+   * messages
+   *
+   * @param profile
+   * @param projectId
+   * @param eventId
+   * @param message {@link Message}
+   * @return
+   * @throws JsonProcessingException
+   */
+  public String createOrReplyMessage(final String profile, final Integer projectId,
+      final String eventId, final Message message) {
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var ocds = message.getOCDS();
+    var nonOCDS = message.getNonOCDS();
+
+    String messageClassification = nonOCDS.getClassification().getValue();
+    if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
+      messageClassification = "";
+    }
+
+    var messageRequest = CreateReplyMessage.builder().body(ocds.getDescription())
+        .broadcast(Boolean.TRUE.equals(nonOCDS.getIsBroadcast()) ? "1" : "0")
+        .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
+        .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
+        .operatorUser(OperatorUser.builder().code(profile).build());
+    
+    // Adding supplier details
+    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
+      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
+        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
+      }
+      var suppliers = rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
+          .stream().map(OrganizationReference1::getId).toList());
+
+      messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
+    }
+    
+    // To reply the message
+    if (nonOCDS.getParentId() != null) {
+      var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
+      if (messageDetails == null) {
+        throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
+      }
+      messageRequest.parentMessageId(String.valueOf(messageDetails.getMessageId()));
+    }
+
+    return jaggaerService.createReplyMessage(messageRequest.build()).getMessageId().toString();
+
+  }
 
   /**
    * Which sends outbound message to all suppliers and single supplier. And also responds supplier
@@ -133,6 +190,7 @@ public class MessageService {
    * @return
    * @throws JsonProcessingException
    */
+  @Deprecated
   public String asyncSendOrRespondMessage(final String profile, final Integer projectId,
       final String eventId, final Message message, Integer threadCount) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
