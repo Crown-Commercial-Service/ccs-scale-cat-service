@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -44,6 +45,7 @@ public class Requirement {
   @Value
   @Builder
   @Jacksonized
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class NonOCDS {
 
     String questionType;
