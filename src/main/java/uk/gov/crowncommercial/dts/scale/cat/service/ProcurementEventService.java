@@ -39,6 +39,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import javax.transaction.Transactional;
 import javax.validation.ValidationException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -984,6 +985,8 @@ public class ProcurementEventService {
           ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
           Optional.ofNullable(event.getAssessmentId()));
 
+      if(null != event.getTemplateId())
+        eventSummary.setTemplateGroupId(BigDecimal.valueOf(event.getTemplateId()));
 
       if(Objects.nonNull(eventSummary)){
          eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
