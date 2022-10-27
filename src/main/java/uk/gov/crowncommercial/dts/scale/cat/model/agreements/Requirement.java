@@ -7,8 +7,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import javax.validation.ValidationException;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Builder;
 import lombok.Data;
 import lombok.Value;
@@ -17,8 +21,6 @@ import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TableDefinition;
-
-import javax.validation.ValidationException;
 
 /**
  * Mirror of Tenders API type {@link Question}. Simplified types where possible to avoid duplication
@@ -44,6 +46,7 @@ public class Requirement {
   @Value
   @Builder
   @Jacksonized
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class NonOCDS {
 
     String questionType;
