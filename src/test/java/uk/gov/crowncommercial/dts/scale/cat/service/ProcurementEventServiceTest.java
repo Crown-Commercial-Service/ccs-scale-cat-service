@@ -35,6 +35,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
+import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
+import uk.gov.crowncommercial.dts.scale.cat.processors.store.DOS6SupplierStore;
+import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierStore;
+import uk.gov.crowncommercial.dts.scale.cat.processors.store.JaggaerSupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
@@ -47,7 +51,9 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
         DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-        ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class },
+        ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class,
+            SupplierStoreFactory.class, JaggaerSupplierStore.class, DatabaseSupplierStore.class,
+    DOS6SupplierStore.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementEventServiceTest {
@@ -193,6 +199,18 @@ class ProcurementEventServiceTest {
 
   @MockBean
   private EventTransitionService eventTransitionService;
+
+  @Autowired
+  private SupplierStoreFactory storeFactory;
+
+  @Autowired
+  private JaggaerSupplierStore jaggaerSupplierStore;
+
+  @Autowired
+  private DatabaseSupplierStore databaseSupplierStore;
+
+  @Autowired
+  private DOS6SupplierStore dos6SupplierStore;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -1092,7 +1110,7 @@ class ProcurementEventServiceTest {
 
     assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
     assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
-    assertEquals(LocalDate.now(), response.getResponders().get(0).getResponseDate());
+    assertEquals(LocalDate.now(), response.getResponders().get(0).getResponseDate().toLocalDate());
     assertEquals(1, response.getResponded());
     assertEquals(8, response.getInvited());
     assertEquals(7, response.getNoResponse());
