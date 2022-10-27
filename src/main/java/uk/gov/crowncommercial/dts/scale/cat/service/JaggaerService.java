@@ -7,6 +7,7 @@ import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
@@ -15,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StopWatch;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -122,7 +124,7 @@ public class JaggaerService {
 
 
   public ExportRfxResponse getRfxWithEmailRecipients(final String externalEventId) {
-
+    //TODO: This can be a candidate for cache
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithEmailRecipients().get(ENDPOINT);
     return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
@@ -167,7 +169,7 @@ public class JaggaerService {
    * the top-level <code>rfxSetting</code> data and is far more performant that getting the entire
    * Rfx with all components.
    *
-   * @param externalEventId
+   * @param externalEventIds
    * @return the rfx, if a single record found in response data list
    */
   public Set<ExportRfxResponse> searchRFx(final Set<String> externalEventIds) {
@@ -423,7 +425,16 @@ public class JaggaerService {
     }
 
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
+
+    Instant retrieveDocStart= Instant.now();
+
     this.uploadDocument(multipartFile, update);
+    Instant retrieveDocEnd= Instant.now();
+
+      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ",event.getProject().getId(), event.getEventID(),fileName,
+              Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
+
+
   }
 
   /**

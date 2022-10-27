@@ -6,16 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+
+import javax.validation.ValidationException;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Builder;
 import lombok.Data;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TableDefinition;
-
-import javax.validation.ValidationException;
 
 /**
  * Mirror of Tenders API type {@link Question}. Simplified types where possible to avoid duplication
@@ -41,18 +46,34 @@ public class Requirement {
   @Value
   @Builder
   @Jacksonized
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class NonOCDS {
 
     String questionType;
+    @NonFinal
     Boolean answered;
     Boolean mandatory;
     Boolean multiAnswer;
     Integer order;
     Integer length;
+    @JsonProperty("inheritance")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @NonFinal
+    DataTemplateInheritanceType inheritance;
+    String inheritsFrom;
     Dependency dependency;
 
     @NonFinal
     List<Option> options; // Maps to QuestionNonOCDSOptions
+
+    public void setInheritance(DataTemplateInheritanceType inheritance){
+      this.inheritance = inheritance;
+    }
+
+    public void setAnswered(Boolean answered){
+      //TODO - Whether this should be automatically populated based on the options;
+      this.answered = answered;
+    }
 
     /**
      * Updates the {@link #options} list (i.e. the answers provided by the buyer).

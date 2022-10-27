@@ -11,7 +11,6 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.transaction.Transactional;
-
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -47,7 +46,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 public class DocGenService {
 
   public static final String PLACEHOLDER_ERROR = "";
-  public static final String PLACEHOLDER_UNKNOWN = "";
+  public static final String PLACEHOLDER_UNKNOWN = "Not Applicable";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
@@ -62,9 +61,9 @@ public class DocGenService {
   public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
-        .findByEventTypeAndCommercialAgreementNumberAndLotNumber(procurementEvent.getEventType(),
-            procurementEvent.getProject().getCaNumber(),
-            procurementEvent.getProject().getLotNumber())) {
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
+            procurementEvent.getEventType(), procurementEvent.getProject().getCaNumber(),
+            procurementEvent.getProject().getLotNumber(), procurementEvent.getTemplateId())) {
       uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
           documentTemplate);
     }
@@ -222,7 +221,7 @@ public class DocGenService {
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
-      replaceText(documentTemplateSource, "", textODT);
+      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT);
     }
 
   }
@@ -262,7 +261,10 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-
+      if(item.getText().contains("Project_Budget") && dataReplacement.isBlank())
+      {
+         dataReplacement = PLACEHOLDER_UNKNOWN;
+      }
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
@@ -317,6 +319,10 @@ public class DocGenService {
       var isLineRequired = false;
       var columnIndex = -1;
       
+      if(dataReplacement.isEmpty()) {
+        dataReplacement.add("");
+      }
+      
       for (var r = 1; r <= dataReplacement.size(); r++) {
         var row = table.getRowByIndex(r);
 
@@ -359,14 +365,24 @@ public class DocGenService {
             var cellNum = table.getCellByPosition(0, r);
             cellNum.setStringValue(String.valueOf(r));
           }
-
+          
           // Replace placeholder ONLY in the cell's display text
           // TODO: Remove OptionsProperty - redundant.
-          cell.setDisplayText(
-              cellDisplayText.replace(documentTemplateSource.getPlaceholder(), datum));
+          cell.setDisplayText(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
+              org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
+        }
+      }
+      
+      if (dataReplacement.isEmpty() || dataReplacement.stream()
+          .anyMatch(org.apache.commons.lang3.StringUtils::isAllBlank)) {
+        var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+        while (textNavigation.hasNext()) {
+          var item = (TextSelection) textNavigation.nextSelection();
+          item.replaceWith(PLACEHOLDER_UNKNOWN);
         }
       }
     } else {
+     
       log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
     }
   }

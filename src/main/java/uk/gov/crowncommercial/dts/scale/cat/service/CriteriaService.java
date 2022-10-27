@@ -32,6 +32,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import javax.transaction.Transactional;
@@ -55,6 +57,10 @@ public class CriteriaService {
   private final WebClient jaggaerWebClient;
   private final DependencyMapper dependencyMapper;
 
+  private final DataTemplateProcessor templateProcessor;
+  private final ProcurementEventHelperService eventHelperService;
+
+  @Transactional
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
       final boolean populateGroups) {
 
@@ -130,10 +136,16 @@ public class CriteriaService {
 
     validateProjectDurationQuestion(question, group, requirement);
 
+    eventHelperService.checkValidforUpdate(requirement);
+
     var options = question.getNonOCDS().getOptions();
     if (options == null) {
       log.error("'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
+    }
+
+    if(null != question.getNonOCDS() && null != question.getNonOCDS().getAnswered()){
+      requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
 
     validateQuestionsValues(group, requirement, options);
@@ -237,10 +249,30 @@ public class CriteriaService {
       var lotEventTypeDataTemplates =
           agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
               event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
+        if(null == event.getTemplateId())
+          dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
+              () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+        else{
+          dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
+                  t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
+                    () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
 
-      // TODO: Decide how to handle multiple data templates being returned by AS
-      dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-          () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+          if(null != dataTemplate.getParent()) {
+            Optional<ProcurementEvent> optionalProcurementEvent =  eventHelperService.getParentEvent(event, dataTemplate.getParent());
+            if(optionalProcurementEvent.isPresent()){
+              DataTemplate oldTemplate = optionalProcurementEvent.get().getProcurementTemplatePayload();
+              dataTemplate = templateProcessor.process(dataTemplate, oldTemplate);
+            }else{
+              //TODO   throw exception or leave as it is ??
+              log.info("Parent data template is empty");
+              throw new RuntimeException("Parent event with templateId " + dataTemplate.getParent() + " is not found");
+            }
+          }
+        }
+
+        event.setProcurementTemplatePayload(dataTemplate);
+        event.setUpdatedAt(Instant.now());
+        retryableTendersDBDelegate.save(event);
     }
     return dataTemplate;
   }
@@ -315,6 +347,7 @@ public class CriteriaService {
         .mandatory(r.getNonOCDS().getMandatory())
         .multiAnswer(r.getNonOCDS().getMultiAnswer())
         .length(r.getNonOCDS().getLength())
+            .inheritance(r.getNonOCDS().getInheritance())
         .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
         .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream()
             .map(this::getQuestionNonOCDSOptions

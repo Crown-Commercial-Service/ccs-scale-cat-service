@@ -57,6 +57,7 @@ deploy:
     on:
       branch: release/nft
 
+
   # UAT
   - provider: script
     skip_cleanup: true

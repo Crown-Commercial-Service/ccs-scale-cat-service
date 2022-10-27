@@ -5,14 +5,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 
 /**
  * Declares beans representing document value adaptors (used as value sources in RFI/EOI document
@@ -25,6 +29,7 @@ public class DocGenValueAdaptors {
   private final AgreementsService agreementService;
   private final ConclaveService conclaveService;
   private final ProcurementProjectService procurementProjectService;
+  private final DocumentUploadService documentUploadService;
 
   @Bean("DocumentValueAdaptorExternalEventID")
   public DocGenValueAdaptor documentValueAdaptorExternalEventID() {
@@ -111,7 +116,32 @@ public class DocGenValueAdaptors {
   public DocGenValueAdaptor documentValueAdaptorCommonGoodsServices() {
     return (event, requestCache) -> List.of("project and consulting services");
   }
+  
+  @Bean("DocumentValueAdaptorProjectId")
+  public DocGenValueAdaptor documentValueAdaptorProjectId() {
+    return (event, requestCache) -> List.of(String.valueOf(event.getProject().getId()));
+  }
+  
+  @Bean("DocumentValueAdaptorPricingScheduleFileName")
+  public DocGenValueAdaptor documentValueAdaptorPricingScheduleFileName() {
+    return null;
+  }
+  
+  @Bean("DocumentValueAdaptorTCFileNames")
+  public DocGenValueAdaptor documentValueAdaptorTCFileNames() {
+    return null;
+  }
+  
+  @Bean("DocumentValueAdaptorAssessmentFileNames")
+  public DocGenValueAdaptor documentValueAdaptorAssessmentFileNames() {
+    return null;
+  }
 
+  @Bean("DocumentValueAdaptorUploadedleNames")
+  public DocGenValueAdaptor documentValueAdaptorUploadedFileNames() {
+    return (event, requestCache) -> (getUploadedDocumentNames(event, requestCache));
+  }
+  
   private OrganisationProfileResponseInfo getProjectOrgFromConclave(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
 
@@ -155,5 +185,12 @@ public class DocGenValueAdaptors {
         });
 
   }
+  
+  private List<String> getUploadedDocumentNames(final ProcurementEvent event,
+      final Map<String, Object> requestCache) {
+    var docs = documentUploadService.findDocumentByEvent(event);
+    return docs.stream().map(f -> DocumentKey.fromString(f.getDocumentId()).getFileName()).collect(Collectors.toList());
+  }
+
 
 }
