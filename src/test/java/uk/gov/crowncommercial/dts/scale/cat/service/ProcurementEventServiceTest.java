@@ -1110,7 +1110,7 @@ class ProcurementEventServiceTest {
 
     assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
     assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
-    assertEquals(LocalDate.now(), response.getResponders().get(0).getResponseDate());
+    assertEquals(LocalDate.now(), response.getResponders().get(0).getResponseDate().toLocalDate());
     assertEquals(1, response.getResponded());
     assertEquals(8, response.getInvited());
     assertEquals(7, response.getNoResponse());

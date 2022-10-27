@@ -795,7 +795,7 @@ public class ProcurementEventService {
                     : Responders.ResponseStateEnum.DRAFT)
             .readState(!RESPONSE_STATES.contains(supplier.getStatus().trim()) ? Responders.ReadStateEnum.READ
                     : Responders.ReadStateEnum.UNREAD)
-            .responseDate(null != respondedDateTime ? respondedDateTime.toLocalDate() : null);
+            .responseDate(respondedDateTime);
   }
 
   /**
