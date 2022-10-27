@@ -5,11 +5,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
@@ -186,7 +189,7 @@ public class DocGenValueAdaptors {
   private List<String> getUploadedDocumentNames(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
     var docs = documentUploadService.findDocumentByEvent(event);
-    return docs.stream().map(f -> f.getDocumentDescription()).toList();
+    return docs.stream().map(f -> DocumentKey.fromString(f.getDocumentId()).getFileName()).collect(Collectors.toList());
   }
 
 
