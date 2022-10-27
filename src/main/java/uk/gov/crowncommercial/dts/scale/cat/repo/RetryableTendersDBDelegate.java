@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
@@ -74,12 +76,22 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByOrganisationIdIn", key = "#organisationIds")
   public Set<OrganisationMapping> findOrganisationMappingByOrganisationIdIn(
       final Set<String> organisationIds) {
     return organisationMappingRepo.findByOrganisationIdIn(organisationIds);
   }
 
   @TendersRetryable
+  public Set<OrganisationMapping> findOrganisationMappingByExternalOrganisationIdIn(
+          final Set<Integer> bravoIds) {
+    return organisationMappingRepo.findByExternalOrganisationIdIn(bravoIds);
+  }
+
+
+
+  @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByExternalOrganisationId", key = "#externalOrganisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
       final Integer externalOrganisationId) {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
@@ -91,6 +103,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByOrganisationId", key = "#organisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
       final String organisationId) {
     return organisationMappingRepo.findByOrganisationId(organisationId);
@@ -121,6 +134,19 @@ public class RetryableTendersDBDelegate {
       final String eventType, final String commercialAgreementNumber, final String lotNumber) {
     return documentTemplateRepo.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType,
         commercialAgreementNumber, lotNumber);
+  }
+  
+  @TendersRetryable
+  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
+      final String eventType, final String commercialAgreementNumber, final String lotNumber,
+      final Integer templateGroup) {
+    if (templateGroup == null) {
+      return this.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType,
+          commercialAgreementNumber, lotNumber);
+    }
+    return documentTemplateRepo
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType,
+            commercialAgreementNumber, lotNumber, templateGroup);
   }
   
   @TendersRetryable

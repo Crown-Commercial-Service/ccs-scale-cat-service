@@ -171,13 +171,13 @@ public class AwardService {
     var documentSummaries = new HashSet<DocumentSummary>();
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     documentSummaries
-        .addAll(getTemplates(retryableTendersDBDelegate.findByEventStage(AWARDED_FILE_TYPE),
+        .addAll(getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE,event.getProject().getCaNumber()),
             AWARDED_TEMPLATE_DESCRIPTION));
     documentSummaries.addAll(getTemplates(retryableTendersDBDelegate
         .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber()),
         ORDER_FORM_TEMPLATE_DESCRIPTION));
     documentSummaries.addAll(
-        getTemplates(retryableTendersDBDelegate.findByEventStage(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE),
+        getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE,event.getProject().getCaNumber()),
             UN_SUCCESSFUL_TEMPLATE_DESCRIPTION));
     return documentSummaries;
   }
@@ -217,6 +217,7 @@ public class AwardService {
           documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
       var docKey = new DocumentsKey(documentTemplate.getEventStage(), description,
           DocumentAudienceType.BUYER);
+      
       var docSummary = new DocumentSummary().fileName(templateResource.getFilename())
           .id(docKey.getDocumentId()).fileSize(templateResource.contentLength())
           .description(description).audience(docKey.getAudience());
@@ -239,11 +240,11 @@ public class AwardService {
       final String eventId) {
     var documentAttachments = new HashSet<DocumentAttachment>();
     var event = validationService.validateProjectAndEventIds(procId, eventId);
-    var award = retryableTendersDBDelegate.findByEventStage(AWARDED_FILE_TYPE);
+    var award = retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE, event.getProject().getCaNumber());
     var orderform = retryableTendersDBDelegate
         .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber());
     var unsuccessful =
-        retryableTendersDBDelegate.findByEventStage(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE);
+        retryableTendersDBDelegate.findByEventStageAndAgreementNumber(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE, event.getProject().getCaNumber());
 
     var allTemplates = new HashSet<DocumentTemplate>();
     Stream.of(award, orderform, unsuccessful).forEach(allTemplates::addAll);

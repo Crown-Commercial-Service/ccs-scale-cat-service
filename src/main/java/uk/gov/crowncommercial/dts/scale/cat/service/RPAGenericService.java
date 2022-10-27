@@ -101,12 +101,16 @@ public class RPAGenericService {
         .setRequestTimeout(rpaAPIConfig.getRequestTimeout()).setSync(true);
     log.info("RPA Request: {}", request.toString());
 
+    String accessToken=getAccessToken();
+
+
     var response =
         webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), getAccessToken());
+            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(),accessToken);
     log.info("RPA Response: {}", objectMapper.writeValueAsString(response));
 
     return validateResponse(response);
+
   }
 
   /**
@@ -125,9 +129,12 @@ public class RPAGenericService {
         .setRequestTimeout(rpaAPIConfig.getRequestTimeout()).setSync(true);
     log.info("{} - RPA Request: {}", Thread.currentThread(), request.toString());
 
+
+    String accessToken=getAccessToken();
+
     var response =
         webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), getAccessToken());
+            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), accessToken);
     log.info("{} - RPA Response: {}", Thread.currentThread(), response.toString());
 
     return "Ok";

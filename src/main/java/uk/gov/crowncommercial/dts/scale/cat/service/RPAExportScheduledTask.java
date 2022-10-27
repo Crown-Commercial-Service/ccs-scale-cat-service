@@ -45,7 +45,10 @@ public class RPAExportScheduledTask {
   private static final String SHEET_NAME = "Buyers_Details";
   private static final String MIMETYPE_XLSX =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  private static final String ACCOUNT_ID = "1039241";
+  private static final String ACCOUNT_ID = "52423";
+  private static final String TIME_ZONE = "Europe/London";
+  private static final String DIVISION = "Central Government";
+  private static final String STATIC_PHONE_NUMBER = "1";
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final EncryptionService encryptionService;
@@ -117,14 +120,17 @@ public class RPAExportScheduledTask {
     style.setFont(font);
     createCell(row, 0, "accountId", style);
     createCell(row, 1, "Username", style);
-    createCell(row, 2, "password", style);
-    createCell(row, 3, "First Name", style);
-    createCell(row, 4, "Last Name", style);
-    createCell(row, 5, "Email", style);
-    createCell(row, 6, "Telephone", style);
-    createCell(row, 7, "Preferred Language", style);
-    createCell(row, 8, "Time Zone", style);
-    createCell(row, 9, "division", style);
+    createCell(row, 2, "First Name", style);
+    createCell(row, 3, "Last Name", style);
+    createCell(row, 4, "Email", style);
+    createCell(row, 5, "Telephone", style);
+    createCell(row, 6, "Preferred Language", style);
+    createCell(row, 7, "Time Zone", style);
+    createCell(row, 8, "password", style);
+    createCell(row, 9, "Department", style);
+    createCell(row, 10, "Division", style);
+    createCell(row, 11, "Role", style);
+    createCell(row, 12, "NHS-sid Profile Number (e.g.sid023339)", style);
 
     writeData(buyerUsers, workbook, jaggaerUsers);
     return workbook;
@@ -153,20 +159,30 @@ public class RPAExportScheduledTask {
     style.setFont(font);
     var rowCount = new AtomicInteger(1);
     buyerUsers.forEach(user -> {
-      var row = sheet.createRow(rowCount.getAndIncrement());
-      var columnCount = 0;
-      createCell(row, columnCount++, ACCOUNT_ID, style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
-      createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
-          style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getName(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getSurName(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber(),
-          style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getLanguage(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getTimezone(), style);
-      createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getDivision(), style);
+      if (jaggaerUserMap.get(user.getUserId()) != null) {
+        var row = sheet.createRow(rowCount.getAndIncrement());
+        var columnCount = 0;
+        var phoneNumber = jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber();
+        if(org.apache.commons.lang3.StringUtils.isBlank(phoneNumber)) {
+          phoneNumber = STATIC_PHONE_NUMBER;
+        }
+        createCell(row, columnCount++, ACCOUNT_ID, style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getName(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getSurName(), style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
+        createCell(row, columnCount++, phoneNumber, style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getLanguage(), style);
+        createCell(row, columnCount++, TIME_ZONE, style);
+        createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
+            style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getBusinessUnit(),
+            style);
+        createCell(row, columnCount++, DIVISION, style);
+        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getRightsProfile(),
+            style);
+        createCell(row, columnCount++, "", style);
+      }
     });
   }
 

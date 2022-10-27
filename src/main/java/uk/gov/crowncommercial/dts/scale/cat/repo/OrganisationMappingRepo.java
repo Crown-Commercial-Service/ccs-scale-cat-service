@@ -22,6 +22,8 @@ public interface OrganisationMappingRepo extends JpaRepository<OrganisationMappi
    */
   Optional<OrganisationMapping> findByExternalOrganisationId(Integer externalOrganisationId);
 
+
+  Set<OrganisationMapping> findByExternalOrganisationIdIn(Set<Integer> organisationIds);
   /**
    * Find by Org/Conclave ID
    *
