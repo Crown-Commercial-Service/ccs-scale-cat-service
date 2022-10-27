@@ -6,7 +6,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.DocumentUploadAPIConfi
 import java.io.EOFException;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.io.IOUtils;
@@ -15,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StopWatch;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -109,8 +112,8 @@ public class DocumentUploadService {
     var documentUpload = DocumentUpload.builder().procurementEvent(event)
         .documentId(docKey.getDocumentId()).externalDocumentId(documentStatus.getId())
         .externalStatus(VirusCheckStatus.PROCESSING).audience(audience)
-        .size(multipartFile.getSize()).documentDescription(documentDescription).mimetype(mimetype)
-        .timestamps(Timestamps.createTimestamps(principal)).build();
+        .size(multipartFile.getSize()).documentDescription(documentDescription)
+        .mimetype(mimetype).timestamps(Timestamps.createTimestamps(principal)).build();
     event.getDocumentUploads().add(documentUpload);
     procurementEventRepo.save(event);
 
@@ -140,7 +143,6 @@ public class DocumentUploadService {
   /**
    * Retrieve the given document from the Tenders document store
    *
-   * @param event
    * @param documentUpload
    * @param principal
    * @return
@@ -155,7 +157,16 @@ public class DocumentUploadService {
     switch (documentUpload.getExternalStatus()) {
       case SAFE:
         // Get document from Tenders S3
-        return getFromTendersS3(tendersS3ObjectKey, documentId, principal);
+        log.info("Getting Document from TenderS3 {} ", documentId);
+
+
+        Instant retrieveDocStart= Instant.now();
+        byte[] tenderDbDoc=getFromTendersS3(tendersS3ObjectKey, documentId, principal);
+        Instant retrieveDocEnd= Instant.now();
+        log.info("retrieveDocument : Total time taken to retrieveDocument service for procID {} : eventId :{} , Timetaken : {}  ",
+                  documentUpload.getProcurementEvent().getProject().getId(),documentUpload.getProcurementEvent().getEventID(),
+                      Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
+        return tenderDbDoc;
 
       case PROCESSING:
         // Invoke processing of remote S3 / throw error if still processing / unsafe?
@@ -289,6 +300,11 @@ public class DocumentUploadService {
   private String tendersS3ObjectKey(final Integer projectId, final String eventId,
       final String documentId) {
     return String.format(TENDERS_S3_OBJECT_KEY_FORMAT, projectId, eventId, documentId);
+  }
+  
+  public List<DocumentUpload> findDocumentByEvent(ProcurementEvent event) {
+    var documents = documentUploadRepo.findByProcurementEvent(event);
+    return documents.stream().toList();
   }
 
 }

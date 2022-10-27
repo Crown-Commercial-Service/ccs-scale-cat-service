@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.Journey;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.JourneyStepState;
@@ -25,6 +26,7 @@ public class JourneysController extends AbstractRestController {
   private final JourneyService journeyService;
 
   @PostMapping
+  @TrackExecutionTime
   public ResponseEntity<StringValueResponse> createJourney(
       @RequestBody @Valid final Journey journey, final JwtAuthenticationToken authentication) {
 
@@ -35,12 +37,14 @@ public class JourneysController extends AbstractRestController {
   }
 
   @GetMapping("/{journey-id}/steps")
+  @TrackExecutionTime
   public Collection<JourneyStepState> getJourneyState(
       @PathVariable("journey-id") final String journeyId) {
     return journeyService.getJourneyState(journeyId);
   }
 
   @PutMapping("/{journey-id}/steps/{step-id}")
+  @TrackExecutionTime
   public StringValueResponse updateJourneyStepState(
       @PathVariable("journey-id") final String journeyId,
       @PathVariable("step-id") final Integer stepId, @RequestBody @Valid final StepState stepState,

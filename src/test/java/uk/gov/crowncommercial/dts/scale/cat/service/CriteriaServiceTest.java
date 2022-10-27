@@ -18,6 +18,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import java.io.InputStream;
@@ -64,6 +66,12 @@ class CriteriaServiceTest {
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @MockBean
+  private DataTemplateProcessor templateProcessor;
+
+  @MockBean
+  private ProcurementEventHelperService eventHelperService;
 
   @Test
   void testPutQuestionOptionDetails_buyer_multiSelect() throws Exception {

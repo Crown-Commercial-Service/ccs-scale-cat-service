@@ -16,6 +16,7 @@ public class ConclaveAPIConfig {
   public static final String KEY_URI_TEMPLATE = "uriTemplate";
 
   private String baseUrl;
+  private String identitiesBaseUrl;
   private String apiKey;
   private String identitiesApiKey;
   private Integer timeoutDuration;

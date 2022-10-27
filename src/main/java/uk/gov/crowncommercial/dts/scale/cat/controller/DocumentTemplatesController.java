@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocumentTemplateService;
@@ -30,6 +31,7 @@ public class DocumentTemplatesController extends AbstractRestController {
   private final DocumentTemplateService documentTemplateService;
 
   @GetMapping
+  @TrackExecutionTime
   public Collection<DocumentSummary> getTemplates(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
@@ -39,6 +41,7 @@ public class DocumentTemplatesController extends AbstractRestController {
   }
 
   @GetMapping(value = "/{templateID}")
+  @TrackExecutionTime
   public ResponseEntity<byte[]> getTemplate(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("templateID") final String templateId,
@@ -57,6 +60,7 @@ public class DocumentTemplatesController extends AbstractRestController {
   }
 
   @GetMapping(value = "/{templateID}/draft")
+  @TrackExecutionTime
   public ResponseEntity<byte[]> getDraftProforma(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("templateID") final String templateId,
