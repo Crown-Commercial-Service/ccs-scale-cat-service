@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -48,6 +49,7 @@ public class RPAExportScheduledTask {
   private static final String ACCOUNT_ID = "52423";
   private static final String TIME_ZONE = "Europe/London";
   private static final String DIVISION = "Central Government";
+  private static final String STATIC_PHONE_NUMBER = "1";
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final EncryptionService encryptionService;
@@ -55,8 +57,9 @@ public class RPAExportScheduledTask {
   private final UserProfileService userProfileService;
   private final AmazonS3 rpaTransferS3Client;
 
-  @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
+//  @Scheduled(cron = "${config.external.s3.rpa.exportSchedule}")
   @Transactional
+  @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.MINUTES)
   public void scheduleSelfServiceBuyers() {
     log.info("Begin scheduled processing of unexported buyer records for RPA");
 
@@ -161,13 +164,16 @@ public class RPAExportScheduledTask {
       if (jaggaerUserMap.get(user.getUserId()) != null) {
         var row = sheet.createRow(rowCount.getAndIncrement());
         var columnCount = 0;
+        var phoneNumber = jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber();
+        if(org.apache.commons.lang3.StringUtils.isBlank(phoneNumber)) {
+          phoneNumber = STATIC_PHONE_NUMBER;
+        }
         createCell(row, columnCount++, ACCOUNT_ID, style);
         createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
         createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getName(), style);
         createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getSurName(), style);
         createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getEmail(), style);
-        createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getMobilePhoneNumber(),
-            style);
+        createCell(row, columnCount++, phoneNumber, style);
         createCell(row, columnCount++, jaggaerUserMap.get(user.getUserId()).getLanguage(), style);
         createCell(row, columnCount++, TIME_ZONE, style);
         createCell(row, columnCount++, encryptionService.decryptPassword(user.getUserPassword()),
