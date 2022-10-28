@@ -255,7 +255,12 @@ public class DocGenService {
         } else {
           value.add(dataReplacement);
         }
-        dataReplacement = value.toString();
+        if(item.getText().contains("based on Binary Y/N") && dataReplacement.contains("No"))
+        {
+          dataReplacement = "";
+        }else {
+          dataReplacement = value.toString();
+        }
       }
 
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
