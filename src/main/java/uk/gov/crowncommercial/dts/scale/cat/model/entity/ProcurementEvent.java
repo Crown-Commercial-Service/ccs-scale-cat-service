@@ -94,6 +94,9 @@ public class ProcurementEvent {
   @Column(name = "procurement_template_payload")
   DataTemplate procurementTemplatePayload;
 
+  @Column(name="template_id")
+  Integer templateId;
+
   @Column(name = "procurement_template_payload", insertable = false, updatable = false)
   String procurementTemplatePayloadRaw;
 

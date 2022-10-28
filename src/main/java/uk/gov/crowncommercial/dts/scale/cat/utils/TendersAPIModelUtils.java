@@ -14,6 +14,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -108,6 +109,8 @@ public class TendersAPIModelUtils {
     eventDetailNonOCDS.setDashboardStatus(getDashboardStatus(rfxSetting,procurementEvent));
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
+    if(null != procurementEvent.getTemplateId())
+      eventDetailNonOCDS.setTemplateGroupId(BigDecimal.valueOf(procurementEvent.getTemplateId()));
 
     // OCDS
     var eventDetailOCDS = new EventDetailOCDS();

@@ -33,3 +33,7 @@ variable "log_level" {
 variable "resolve_buyer_users_by_sso"{
   default = false
 }
+
+variable "eetime_enabled" {
+  default = false
+}

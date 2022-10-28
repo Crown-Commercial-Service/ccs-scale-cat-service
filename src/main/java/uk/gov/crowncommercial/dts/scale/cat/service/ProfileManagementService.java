@@ -7,12 +7,14 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import java.time.Instant;
 import java.util.*;
 
+import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
@@ -584,7 +586,7 @@ public class ProfileManagementService {
           if(Objects.nonNull(subUser.getSsoCodeData())){
 
             Optional<SSOCode> ssoCodeOptional=subUser.getSsoCodeData().getSsoCode().stream().findFirst();
-            if(ssoCodeOptional.isPresent() &&  !Objects.isNull(ssoCodeOptional.get().getSsoUserLogin())){
+            if(ssoCodeOptional.isPresent() &&  !Objects.isNull(ssoCodeOptional.get().getSsoUserLogin()) && !Strings.isNullOrEmpty(subUser.getRightsProfile())){
               uk.gov.crowncommercial.dts.scale.cat.model.generated.User user= new uk.gov.crowncommercial.dts.scale.cat.model.generated.User();
 
               user.setUserId(ssoCodeOptional.get().getSsoUserLogin());
