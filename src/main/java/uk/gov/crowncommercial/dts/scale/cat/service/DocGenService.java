@@ -241,7 +241,7 @@ public class DocGenService {
     while (textNavigation.hasNext()) {
       var item = (TextSelection) textNavigation.nextSelection();
 
-      if (item.getText().contains("Conditional") && !dataReplacement.isBlank()) {
+      if (item.getText().contains("Conditional") && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
         StringJoiner value = new StringJoiner(" ");
         value.add(documentTemplateSource.getConditionalValue() == null ? ""
             : documentTemplateSource.getConditionalValue());
@@ -249,19 +249,23 @@ public class DocGenService {
         //FC-DA related condition
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
-          value.add("There is an existing supplier providing the products and services:");
+          value.add("There is an existing supplier providing the products and services");
         } else if (dataReplacement.contains("No")) {
           value.add("");
         } else {
           value.add(dataReplacement);
         }
-        dataReplacement = value.toString();
+        if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
+          dataReplacement = PLACEHOLDER_UNKNOWN;
+        }else {
+          dataReplacement = value.toString();
+        }
       }
 
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-      if(item.getText().contains("Project_Budget") && dataReplacement.isBlank())
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
