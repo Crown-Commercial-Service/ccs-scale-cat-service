@@ -255,10 +255,7 @@ public class DocGenService {
         } else {
           value.add(dataReplacement);
         }
-        if(item.getText().contains("based on Binary Y/N") && dataReplacement.contains("No"))
-        {
-          dataReplacement = "";
-        }else if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
+        if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
           dataReplacement = PLACEHOLDER_UNKNOWN;
         }else {
           dataReplacement = value.toString();
