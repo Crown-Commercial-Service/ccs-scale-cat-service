@@ -249,7 +249,7 @@ public class DocGenService {
         //FC-DA related condition
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
-          value.add("There is an existing supplier providing the products and services:");
+          value.add("There is an existing supplier providing the products and services");
         } else if (dataReplacement.contains("No")) {
           value.add("");
         } else {
@@ -258,9 +258,6 @@ public class DocGenService {
         if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
           dataReplacement = PLACEHOLDER_UNKNOWN;
         }else {
-          if(item.getText().contains("based on Binary Y/N")) {
-            value.add(dataReplacement);
-          }
           dataReplacement = value.toString();
         }
       }
