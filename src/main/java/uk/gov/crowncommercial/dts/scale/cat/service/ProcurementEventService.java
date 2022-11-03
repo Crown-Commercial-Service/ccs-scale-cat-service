@@ -484,8 +484,10 @@ public class ProcurementEventService {
     // Valid to supply either for an existing event
     if (updateEvent.getAssessmentId() != null
             || updateEvent.getAssessmentSupplierTarget() != null) {
+              //TODO whether supplierTarget Null check required?
       event.setAssessmentSupplierTarget(updateEvent.getAssessmentSupplierTarget());
-      event.setAssessmentId(updateEvent.getAssessmentId());
+      if(null != updateEvent.getAssessmentId())
+        event.setAssessmentId(updateEvent.getAssessmentId());
       updateDB = true;
     }
 
@@ -525,7 +527,8 @@ public class ProcurementEventService {
 
       event.setUpdatedAt(Instant.now());
       event.setUpdatedBy(principal);
-      event.setAssessmentId(returnAssessmentId);
+      if(null != returnAssessmentId)
+        event.setAssessmentId(returnAssessmentId);
       if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
         event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
       }
