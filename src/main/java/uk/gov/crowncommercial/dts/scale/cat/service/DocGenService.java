@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
@@ -273,6 +275,10 @@ public class DocGenService {
       if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
+      }
+      if(item.getText().contains("Project_Budget") && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      {
+         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement)).substring(1);
       }
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
