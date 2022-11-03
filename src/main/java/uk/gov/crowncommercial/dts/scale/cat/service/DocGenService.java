@@ -276,9 +276,9 @@ public class DocGenService {
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
-      if(item.getText().contains("Project_Budget") && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if(item.getText().contains("Project_Budget") && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
-         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement));
+         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement)).substring(1);
       }
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
