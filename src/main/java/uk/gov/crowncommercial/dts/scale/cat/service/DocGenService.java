@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
@@ -194,7 +195,7 @@ public class DocGenService {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
           replaceText(documentTemplateSource,
-              dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN), textODT);
+                  getString(dataReplacement), textODT);
           break;
 
         case DATETIME:
@@ -225,7 +226,11 @@ public class DocGenService {
     }
 
   }
-  
+
+  private static String getString(List<String> dataReplacement) {
+    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN);
+  }
+
   String formatDateorDateAndTime(String dateValue) {
     if (dateValue.length() <= 10) {
       return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
