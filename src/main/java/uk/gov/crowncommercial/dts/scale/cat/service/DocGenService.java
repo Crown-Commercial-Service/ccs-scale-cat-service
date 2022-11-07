@@ -276,7 +276,7 @@ public class DocGenService {
       {
         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1);
       }
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
