@@ -1,19 +1,20 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -165,13 +166,13 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public Set<AssessmentEntity> findAssessmentsForUser(final String userId) {
-    return assessmentRepo.findByTimestampsCreatedBy(userId);
+  public Set<AssessmentProjection> findAssessmentsProjectionForUserWithExternalId(final String userId, Integer externalToolId) {
+    return assessmentRepo.findAssessmentsByCreatedByAndExternalToolId(userId,externalToolId);
   }
 
   @TendersRetryable
-  public Set<GCloudAssessmentEntity> findGcloudAssessmentsForUser(final String userId) {
-    return gcloudAssessmentRepo.findByTimestampsCreatedBy(userId);
+  public Set<AssessmentProjection> findAssessmentsProjectionForUser(final String userId) {
+    return assessmentRepo.findAssessmentsByCreatedBy(userId);
   }
 
   @TendersRetryable
