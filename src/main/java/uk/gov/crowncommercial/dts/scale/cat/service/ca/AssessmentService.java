@@ -24,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.SupplierSubmissionDataRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
@@ -227,51 +228,33 @@ public class AssessmentService {
      */
     @Transactional
     public List<AssessmentSummary> getAssessmentsForUser(final String principal, final Integer externalToolId) {
-        // First get a list of normal assessments
-        Set<AssessmentEntity> assessments = retryableTendersDBDelegate.findAssessmentsForUser(principal);
 
-        // Next get a list of Gcloud assessments
-        Set<GCloudAssessmentEntity> gcloudAssessments = retryableTendersDBDelegate.findGcloudAssessmentsForUser(principal);
+        Set<AssessmentProjection> assessmentProjectionSet;
 
-        // Now if an externalToolId has been provided, filter both lists to only contain entries matching that ID
-        if (externalToolId != null && externalToolId > 0) {
-            if (!gcloudAssessments.isEmpty()) {
-                gcloudAssessments = gcloudAssessments.stream().filter((assessment) -> assessment.getExternalToolId() == externalToolId).collect(Collectors.toSet());
-            }
-
-            if (!assessments.isEmpty()) {
-                assessments = assessments.stream().filter((assessment) -> assessment.getTool().getExternalToolId() == externalToolId.toString()).collect(Collectors.toSet());
-            }
+        if (Objects.nonNull(externalToolId) && externalToolId > 0) {
+            assessmentProjectionSet= retryableTendersDBDelegate.findAssessmentsProjectionForUserWithExternalId(principal,externalToolId);
+        }else{
+            assessmentProjectionSet= retryableTendersDBDelegate.findAssessmentsProjectionForUser(principal);
         }
 
-        // Finally, combine our two lists and return
         List<AssessmentSummary> resultsModel = new ArrayList<>();
 
-        if (!assessments.isEmpty()) {
-            for (AssessmentEntity assessmentResult : assessments) {
+        if (!assessmentProjectionSet.isEmpty()) {
+            assessmentProjectionSet.forEach(assessmentProjection ->{
+
                 AssessmentSummary summaryModel = new AssessmentSummary();
-                summaryModel.setAssessmentId(assessmentResult.getId());
-                summaryModel.setAssessmentName(assessmentResult.getAssessmentName());
-                summaryModel.setExternalToolId(assessmentResult.getTool().getExternalToolId());
-                summaryModel.setStatus(AssessmentStatus.fromValue(assessmentResult.getStatus().toString().toLowerCase()));
+                summaryModel.setAssessmentId(assessmentProjection.getAssessmentId());
+                summaryModel.setAssessmentName(assessmentProjection.getAssessmentName());
+                summaryModel.setExternalToolId(assessmentProjection.getExternalToolId());
+                summaryModel.setStatus(AssessmentStatus.fromValue(assessmentProjection.getStatus().toLowerCase()));
 
                 resultsModel.add(summaryModel);
-            }
-        }
 
-        if (!gcloudAssessments.isEmpty()) {
-            for (GCloudAssessmentEntity gcloudResult : gcloudAssessments) {
-                AssessmentSummary summaryModel = new AssessmentSummary();
-                summaryModel.setAssessmentId(gcloudResult.getId());
-                summaryModel.setAssessmentName(gcloudResult.getAssessmentName());
-                summaryModel.setExternalToolId(gcloudResult.getExternalToolId().toString());
-                summaryModel.setStatus(AssessmentStatus.fromValue(gcloudResult.getStatus().toString().toLowerCase()));
-
-                resultsModel.add(summaryModel);
-            }
+            });
         }
 
         return resultsModel;
+
     }
 
     /**
