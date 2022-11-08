@@ -272,14 +272,15 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»")) && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      {
+        dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1);
+      }
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
-      if(item.getText().contains("Project_Budget") && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
-      {
-         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement)).substring(1);
-      }
+
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
