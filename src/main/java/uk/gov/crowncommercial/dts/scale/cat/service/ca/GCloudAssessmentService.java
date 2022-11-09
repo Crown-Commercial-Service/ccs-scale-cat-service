@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service.ca;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -92,10 +94,12 @@ public class GCloudAssessmentService {
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
 
-                retryableTendersDBDelegate.save(resultEntity);
-
                 return resultEntity;
             }).collect(Collectors.toSet());
+
+            if (CollectionUtils.isNotEmpty(results)) {
+                 retryableTendersDBDelegate.saveAll(results);
+            }
         }
 
         return saveResult;
@@ -146,7 +150,7 @@ public class GCloudAssessmentService {
             retryableTendersDBDelegate.deleteGcloudAssessmentResultsById(assessmentId);
 
             // Finally we can now spool up our results and re-save them
-            for (GCloudResult result : assessment.getResults()) {
+            Set<GCloudAssessmentResult> gCloudAssessmentResultSet= Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result->{
                 GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
 
                 resultEntity.setAssessmentId(assessmentId);
@@ -156,7 +160,12 @@ public class GCloudAssessmentService {
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
 
-                retryableTendersDBDelegate.save(resultEntity);
+                return resultEntity;
+            }).collect(Collectors.toSet());
+
+
+            if (CollectionUtils.isNotEmpty(gCloudAssessmentResultSet)) {
+                retryableTendersDBDelegate.saveAll(gCloudAssessmentResultSet);
             }
         }
     }
@@ -248,7 +257,9 @@ public class GCloudAssessmentService {
      * @param externalToolId
      * @return
      */
-    private boolean isExternalToolIdValidForGcloud(final String externalToolId) {
+
+    @Cacheable(value = "isExternalToolIdValidForGcloud",  key = "{#externalToolId}")
+    protected boolean isExternalToolIdValidForGcloud(final String externalToolId) {
         // Always assume the ID isn't valid until the DB tells us otherwise
         boolean isValid = false;
 
