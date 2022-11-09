@@ -293,6 +293,10 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public List<GCloudAssessmentResult> saveAll(final Set<GCloudAssessmentResult> assessmentResults) {
+    return gCloudAssessmentResultRepo.saveAll(assessmentResults);
+  }
+  @TendersRetryable
   public ProjectUserMapping save(final ProjectUserMapping projectUserMapping) {
     return projectUserMappingRepo.save(projectUserMapping);
   }
