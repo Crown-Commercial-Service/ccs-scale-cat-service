@@ -257,7 +257,7 @@ public class DocGenService {
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
           value.add("There is an existing supplier providing the products and services");
-        } else if (dataReplacement.contains("No")) {
+        } else if (dataReplacement.contains("No") && !dataReplacement.equals(PLACEHOLDER_UNKNOWN)) {
           value.add("");
         } else {
           value.add(dataReplacement);
