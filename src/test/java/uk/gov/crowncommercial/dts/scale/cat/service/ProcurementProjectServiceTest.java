@@ -194,7 +194,7 @@ class ProcurementProjectServiceTest {
     verify(conclaveService).getOrganisation(CONCLAVE_ORG_ID);
 
     var captor = ArgumentCaptor.forClass(ProcurementProject.class);
-    verify(retryableTendersDBDelegate, times(2)).save(captor.capture());
+    verify(retryableTendersDBDelegate, times(1)).save(captor.capture());
     var capturedProcProject = captor.getValue();
     assertEquals(CA_NUMBER, capturedProcProject.getCaNumber());
     assertEquals(LOT_NUMBER, capturedProcProject.getLotNumber());
