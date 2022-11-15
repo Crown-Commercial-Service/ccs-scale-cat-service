@@ -6,7 +6,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEnti
 import java.util.Set;
 
 public interface GCloudAssessmentRepo extends JpaRepository<GCloudAssessmentEntity, Integer> {
-    Set<GCloudAssessmentEntity> findByTimestampsCreatedBy(final String userId);
 
     void deleteAllById(final Integer assessmentId);
 }
