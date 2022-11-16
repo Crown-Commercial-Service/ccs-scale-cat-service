@@ -153,7 +153,7 @@ public class MessageService {
         .broadcast(Boolean.TRUE.equals(nonOCDS.getIsBroadcast()) ? "1" : "0")
         .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
         .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
-        .operatorUser(OperatorUser.builder().code(profile).build());
+        .operatorUser(OperatorUser.builder().loginid(profile).build());
     
     // Adding supplier details
     if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {

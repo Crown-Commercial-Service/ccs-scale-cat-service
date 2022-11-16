@@ -9,6 +9,6 @@ import lombok.Value;
 @Value
 @Builder
 public class OperatorUser {
-
-  private String code;
+  private String loginid;
+  private String login;
 }

@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
@@ -66,6 +67,8 @@ public class SupplierService {
   public static final String SECTION_NAME = "Tender";
   public static final String SECTION_POS = "1";
   public static final String PARAM_POS = "1";
+  private static final String JAGGAER_EVALUATE_ERROR_DESC = "is not in state Technical Evaluation";
+  private static final String JAGGAER_OPEN_ENVELOPE_ERROR_DESC = "ANSWER_NOT_UPDATABLE";
 
 
   /**
@@ -215,6 +218,8 @@ public class SupplierService {
       final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var buyerUser = userService.resolveBuyerUserProfile(profile)
+        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
       scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
@@ -247,11 +252,23 @@ public class SupplierService {
     }
 
     var scoringRequest = ScoringRequest.builder().rfxReferenceCode(procurementEvent.getExternalReferenceId())
-        .operatorUser(OperatorUser.builder().code(profile).build())
+        .operatorUser(OperatorUser.builder().login(profile).build())
         .supplierScoreList(SupplierScoreList.builder().supplierScore(supplierScoresList).build()).build();
     
     log.info("Scoring Request {}", scoringRequest);
-    jaggaerService.createUpdateScores(scoringRequest);
+    var scoreResponse = jaggaerService.createUpdateScores(scoringRequest);
+
+    if (scoreResponse.getReturnMessage().contains(JAGGAER_EVALUATE_ERROR_DESC)) {
+      jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
+          buyerUser.getUserId());
+      jaggaerService.createUpdateScores(scoringRequest);
+    }
+    if (scoreResponse.getReturnMessage().contains(JAGGAER_OPEN_ENVELOPE_ERROR_DESC)) {
+      jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
+          EnvelopeType.TECH);
+      jaggaerService.createUpdateScores(scoringRequest);
+    }
+
     return "Successfully updated scores";
   }
 

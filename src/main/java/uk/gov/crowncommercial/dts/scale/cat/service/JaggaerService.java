@@ -594,7 +594,8 @@ public class JaggaerService {
    *
    * @param scoringRequest
    */
-  public ScoringResponse createUpdateScores(final ScoringRequest scoringRequest) {
+  public ScoringResponse createUpdateScores(
+      ScoringRequest scoringRequest) {
     final var endPoint = jaggaerAPIConfig.getCreatUpdateScores().get(ENDPOINT);
     final var scoreResponse = webclientWrapper.postData(scoringRequest, ScoringResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
