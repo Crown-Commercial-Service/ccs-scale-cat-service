@@ -212,7 +212,12 @@ config:
       preAward:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/preawardRfx
       completeTechnical:
-        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/completetechnical      
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/completetechnical
+      createReplyMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages
+      creatUpdateScores:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/scores
+                  
           
       # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:
