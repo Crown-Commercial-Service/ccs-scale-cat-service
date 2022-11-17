@@ -575,4 +575,31 @@ public class JaggaerService {
     return this.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
             () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
   }
+  
+  /**
+   * Create Reply Message Rfx
+   *
+   * @param messageRequest
+   */
+  public MessageResponse createReplyMessage(final CreateReplyMessage messageRequest) {
+    final var endPoint = jaggaerAPIConfig.getCreateReplyMessage().get(ENDPOINT);
+    final var messageResponse = webclientWrapper.postData(messageRequest, MessageResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+    log.debug("Create-Reply message response: {}", messageResponse);
+    return messageResponse;
+  }
+  
+  /**
+   * Create Update Scores
+   *
+   * @param scoringRequest
+   */
+  public ScoringResponse createUpdateScores(
+      ScoringRequest scoringRequest) {
+    final var endPoint = jaggaerAPIConfig.getCreatUpdateScores().get(ENDPOINT);
+    final var scoreResponse = webclientWrapper.postData(scoringRequest, ScoringResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+    log.debug("Create-update scoring response: {}", scoreResponse);
+    return scoreResponse;
+  }
 }
