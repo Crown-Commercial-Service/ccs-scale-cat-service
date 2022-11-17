@@ -268,6 +268,11 @@ public class SupplierService {
           EnvelopeType.TECH);
       jaggaerService.createUpdateScores(scoringRequest);
     }
+    
+    if (scoringComplete) {
+      jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+      log.info("Successfully updated scores and end evaluation");
+    }
 
     return "Successfully updated scores";
   }
