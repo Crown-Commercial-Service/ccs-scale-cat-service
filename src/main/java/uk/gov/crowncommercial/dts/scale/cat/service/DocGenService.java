@@ -287,7 +287,7 @@ public class DocGenService {
   }
 
   private static boolean isNotBlankAndNumeric(String dataReplacement) {
-    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.matches("-?\\d+");
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches("-?\\d+");
   }
 
   //TODO remove static content and add in app.yaml file
