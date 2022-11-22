@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
@@ -46,7 +49,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 public class DocGenService {
 
   public static final String PLACEHOLDER_ERROR = "";
-  public static final String PLACEHOLDER_UNKNOWN = "Not Applicable";
+  public static final String PLACEHOLDER_UNKNOWN = "Not Specified";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
@@ -194,7 +197,7 @@ public class DocGenService {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
           replaceText(documentTemplateSource,
-              dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN), textODT);
+                  getString(dataReplacement), textODT);
           break;
 
         case DATETIME:
@@ -225,7 +228,11 @@ public class DocGenService {
     }
 
   }
-  
+
+  private static String getString(List<String> dataReplacement) {
+    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN);
+  }
+
   String formatDateorDateAndTime(String dateValue) {
     if (dateValue.length() <= 10) {
       return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
@@ -249,16 +256,13 @@ public class DocGenService {
         //FC-DA related condition
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
-          value.add("There is an existing supplier providing the products and services:");
-        } else if (dataReplacement.contains("No")) {
+          value.add("There is an existing supplier providing the products and services");
+        } else if (dataReplacement.contains("No") && !dataReplacement.equals(PLACEHOLDER_UNKNOWN)) {
           value.add("");
         } else {
           value.add(dataReplacement);
         }
-        if(item.getText().contains("based on Binary Y/N") && dataReplacement.contains("No"))
-        {
-          dataReplacement = "";
-        }else if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
+        if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
           dataReplacement = PLACEHOLDER_UNKNOWN;
         }else {
           dataReplacement = value.toString();
@@ -268,15 +272,24 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»") || item.getText().contains("Conditional Insert Project Term Budget")) && isNotBlankAndNumeric(dataReplacement))
+      {
+        dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
+      }
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
+
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
   }
-  
+
+  private static boolean isNotBlankAndNumeric(String dataReplacement) {
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches("-?\\d+");
+  }
+
   //TODO remove static content and add in app.yaml file
   private String eoiConditionalAndOptionalData(String dataReplacement, String conditionalValue) {
     String conditionlaData = "";

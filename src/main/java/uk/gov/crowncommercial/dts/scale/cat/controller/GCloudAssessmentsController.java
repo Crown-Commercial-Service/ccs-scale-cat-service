@@ -50,6 +50,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
      * Retrieves requested Gcloud assessment
      */
     @GetMapping("/{assessment-id}/gcloud")
+    @TrackExecutionTime
     public GCloudAssessment getGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication) {
         var principal = getPrincipalFromJwt(authentication);
         log.info("getGcloudAssessment invoked on behalf of principal: {}", principal);
