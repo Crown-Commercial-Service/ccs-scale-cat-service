@@ -7,7 +7,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.6.7</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
 	<artifactId>ccs-scale-cat-service</artifactId>
@@ -25,7 +25,7 @@
 		<simple-odf.version>0.9.0</simple-odf.version>
 		<jena-core.version>4.5.0</jena-core.version>
 		<commons-io.version>2.11.0</commons-io.version>
-		<aws-java-sdk-s3.version>1.12.214</aws-java-sdk-s3.version>
+		<aws-java-sdk-s3.version>1.12.348</aws-java-sdk-s3.version>
 		<tika-core.version>2.4.0</tika-core.version>
 		<java-cfenv-boot.version>2.4.0</java-cfenv-boot.version>
 		<notifications-java-client.version>3.17.3-RELEASE</notifications-java-client.version>
