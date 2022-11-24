@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
 import static org.springframework.util.StringUtils.hasText;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.BUYER;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
@@ -172,7 +173,9 @@ public class ProfileManagementService {
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse, null);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      if (!this.isBuyerOrganisationExists(conclaveUserOrg.getIdentifier().getLegalName())) {
+        sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      }
       saveBuyerDetails(conclaveUser.getUserName());
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.size() == 1
@@ -651,6 +654,21 @@ public class ProfileManagementService {
         }
       }
       return null;
+  }
+  
+  //TODO Need to replace getSelfServiceBuyerCompany with correct filter
+  private boolean isBuyerOrganisationExists(String legalName) {
+    try {
+      var selfServiceBuyerCompany = userProfileService.getSelfServiceBuyerCompany();
+      var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().parallelStream()
+          .filter(suser -> suser.getBusinessUnit().equals(legalName)).findFirst();
+      if (subUser.isPresent()) {
+        return true;
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage());
+    }
+    return false;
   }
 
 
