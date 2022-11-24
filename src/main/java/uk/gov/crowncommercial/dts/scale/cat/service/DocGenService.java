@@ -272,6 +272,7 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
+      dataReplacement = dataReplacement.replaceAll("(?<=[,])(?!$)", " ");
       if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»") || item.getText().contains("Conditional Insert Project Term Budget")) && isNotBlankAndNumeric(dataReplacement))
       {
         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
@@ -323,6 +324,9 @@ public class DocGenService {
       }
       if (foundList) {
         list.removeItem(0);
+        if(dataReplacement.isEmpty()) {
+          dataReplacement.add(PLACEHOLDER_UNKNOWN);
+        }
         list.addItems(dataReplacement.toArray(new String[0]));
       }
     }
