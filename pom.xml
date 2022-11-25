@@ -155,15 +155,6 @@
 
 
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>
-			<version>5.7.5</version>
-		</dependency>
-
-		<!--org.springframework.security:spring-security-oauth2-client@5.6.9, @5.7.5
-		org.springframework.security:spring-security-oauth2-client@5.6.9
-		org.springframework.security:spring-security-oauth2-client@5.7.5-->
-		<dependency>
 			<groupId>org.odftoolkit</groupId>
 			<artifactId>simple-odf</artifactId>
 			<version>${simple-odf.version}</version>
