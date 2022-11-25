@@ -158,15 +158,14 @@ public class ProcurementProjectService {
 
       // Adapt save strategy based on org mapping status (new/existing)
       if (organisationMapping.isEmpty()) {
-        procurementProject.setOrganisationMapping(retryableTendersDBDelegate
+        organisationMapping=Optional.of(retryableTendersDBDelegate
                 .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
                         .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
                         .createdAt(Instant.now()).createdBy(principal).build()));
-      } else {
-        procurementProject = retryableTendersDBDelegate.save(procurementProject);
-        procurementProject.setOrganisationMapping(organisationMapping.get());
       }
-      retryableTendersDBDelegate.save(procurementProject);
+
+      procurementProject.setOrganisationMapping(organisationMapping.get());
+      procurementProject=retryableTendersDBDelegate.save(procurementProject);
 
       var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
               new CreateEvent(), null, principal);
