@@ -323,6 +323,9 @@ public class DocGenService {
       }
       if (foundList) {
         list.removeItem(0);
+        if(dataReplacement.isEmpty()) {
+          dataReplacement.add(PLACEHOLDER_UNKNOWN);
+        }
         list.addItems(dataReplacement.toArray(new String[0]));
       }
     }
