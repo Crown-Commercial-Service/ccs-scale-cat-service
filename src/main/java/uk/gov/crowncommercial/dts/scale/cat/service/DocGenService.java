@@ -49,7 +49,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 public class DocGenService {
 
   public static final String PLACEHOLDER_ERROR = "";
-  public static final String PLACEHOLDER_UNKNOWN = "Not Applicable";
+  public static final String PLACEHOLDER_UNKNOWN = "Not Specified";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
@@ -257,7 +257,7 @@ public class DocGenService {
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
           value.add("There is an existing supplier providing the products and services");
-        } else if (dataReplacement.contains("No")) {
+        } else if (dataReplacement.contains("No") && !dataReplacement.equals(PLACEHOLDER_UNKNOWN)) {
           value.add("");
         } else {
           value.add(dataReplacement);
@@ -272,9 +272,9 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-      if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»")) && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»") || item.getText().contains("Conditional Insert Project Term Budget")) && isNotBlankAndNumeric(dataReplacement))
       {
-        dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1);
+        dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
       }
       if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
@@ -285,7 +285,11 @@ public class DocGenService {
       item.replaceWith(dataReplacement);
     }
   }
-  
+
+  private static boolean isNotBlankAndNumeric(String dataReplacement) {
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches("-?\\d+");
+  }
+
   //TODO remove static content and add in app.yaml file
   private String eoiConditionalAndOptionalData(String dataReplacement, String conditionalValue) {
     String conditionlaData = "";
@@ -319,6 +323,9 @@ public class DocGenService {
       }
       if (foundList) {
         list.removeItem(0);
+        if(dataReplacement.isEmpty()) {
+          dataReplacement.add(PLACEHOLDER_UNKNOWN);
+        }
         list.addItems(dataReplacement.toArray(new String[0]));
       }
     }

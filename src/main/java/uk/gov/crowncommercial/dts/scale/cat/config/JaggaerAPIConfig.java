@@ -49,6 +49,8 @@ public class JaggaerAPIConfig {
   private Map<String, String> getAttachment;
   private Map<String, String> publishRfx;
   private Map<String, String> extendRfx;
+  private Map<String, String> createReplyMessage;
+  private Map<String, String> creatUpdateScores;
   private Map<String, String> getMessages;
   private Map<String, String> getMessage;
   private Map<String, String> searchRfxSummary;
