@@ -42,7 +42,7 @@ deploy:
     script: CF_ENVIRONMENT=dev bash ./deploy.sh
     on:
       #branch: develop
-      branch: feature/SCAT-8989-security-fixes
+      branch: feature/SCAT-7806-security-fixes
 
   # INT (SIT)
   - provider: script
