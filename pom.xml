@@ -80,6 +80,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
+			<exclusions>
+			<exclusion>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-http</artifactId>
+			</exclusion></exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
