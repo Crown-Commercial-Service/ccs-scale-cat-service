@@ -41,10 +41,8 @@ deploy:
     skip_cleanup: true
     script: CF_ENVIRONMENT=dev bash ./deploy.sh
     on:
-      #branch: develop
-      branch: feature/SCAT-7806-security-fixes
-      #this needs to be removed
-      
+      branch: develop
+
 
   # INT (SIT)
   - provider: script
