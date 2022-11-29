@@ -34,7 +34,7 @@
 		<snakeyaml.version>1.32</snakeyaml.version>
 		<spring-security-oauth2-client.version>5.7.5</spring-security-oauth2-client.version>
 		<spring-security-web.version>5.7.5</spring-security-web.version>
-		<!--<h2database.version>2.1.214</h2database.version>-->
+		<hsql.version>2.7.1</hsql.version>
 
 	</properties>
 
@@ -80,11 +80,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
-			<exclusions>
-			<exclusion>
-			<groupId>io.projectreactor.netty</groupId>
-			<artifactId>reactor-netty-http</artifactId>
-			</exclusion></exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -157,46 +152,10 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-		<!--<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-			<version>${h2database.version}</version>
-		</dependency>-->
-
 		<dependency>
 			<groupId>org.hsqldb</groupId>
 			<artifactId>hsqldb</artifactId>
-			<version>2.7.1</version>
-		</dependency>
-
-		<dependency>
-			<groupId>io.projectreactor.netty</groupId>
-			<artifactId>reactor-netty-http</artifactId>
-			<version>1.1.0</version>
-			<exclusions>
-				<exclusion>
-					<groupId>io.netty</groupId>
-					<artifactId>netty-codec-http</artifactId>
-				</exclusion>
-
-				<exclusion>
-					<groupId>io.netty</groupId>
-					<artifactId>netty-handler</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-codec-http</artifactId>
-			<version>5.0.0.Alpha2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-handler</artifactId>
-			<version>5.0.0.Alpha2</version>
+			<version>${hsql.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
