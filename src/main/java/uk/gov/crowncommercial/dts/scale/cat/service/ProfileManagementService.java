@@ -158,6 +158,8 @@ public class ProfileManagementService {
     var registerUserResponse = new RegisterUserResponse();
     var createUpdateCompanyDataBuilder = CreateUpdateCompanyRequest.builder();
     var returnRoles = new ArrayList<RegisterUserResponse.RolesEnum>();
+    var sendNotification = false;
+    
     if (conclaveRoles.contains(BUYER) && jaggaerRoles.size() == 1 && jaggaerRoles.contains(BUYER)) {
 
       // CON-1682-AC1&17(buyer): Update Jaggaer Buyer
@@ -170,9 +172,9 @@ public class ProfileManagementService {
 
       // CON-1682-AC2: Create Jaggaer Buyer
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, registerUserResponse, null);
+          createUpdateCompanyDataBuilder, registerUserResponse, null, sendNotification);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      if (!this.isBuyerOrganisationExists(conclaveUserOrg.getIdentifier().getLegalName())) {
+      if (sendNotification) {
         sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
       }
       saveBuyerDetails(conclaveUser.getUserName());
@@ -195,8 +197,9 @@ public class ProfileManagementService {
 
       // CON-1682-AC15: Create Jaggaer Buyer
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE);
-      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+          createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE, sendNotification);
+      if (sendNotification)
+        sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
       saveBuyerDetails(conclaveUser.getUserName());
       
       //SCAT-7580: Create Jaggaer Supplier
@@ -215,8 +218,9 @@ public class ProfileManagementService {
       
       returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE);
-      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+          createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE, sendNotification);
+      if (sendNotification)
+        sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
       saveBuyerDetails(conclaveUser.getUserName());
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.size() == 2
@@ -324,10 +328,10 @@ public class ProfileManagementService {
       final OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveUserContacts,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
-      final RegisterUserResponse registerUserResponse, final String buyerLogin) {
+      final RegisterUserResponse registerUserResponse, final String buyerLogin, boolean sendNotification) {
     createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
         conclaveUserContacts, Optional.empty(), jaggaerAPIConfig.getSelfServiceId(),
-        jaggaerAPIConfig.getDefaultBuyerRightsProfile(), buyerLogin);
+        jaggaerAPIConfig.getDefaultBuyerRightsProfile(), buyerLogin, sendNotification);
 
     log.debug("Creating buyer user: [{}], request: {}", conclaveUser.getUserName(),
         createUpdateCompanyDataBuilder.build());
@@ -401,7 +405,7 @@ public class ProfileManagementService {
       final UserProfileResponseInfo conclaveUser,
       final OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveContacts, final Optional<SubUser> existingSubUser,
-      final String jaggaerOrgId, final String rightsProfile, final String login) {
+      final String jaggaerOrgId, final String rightsProfile, final String login, boolean sendNotif) {
 
     var userPersonalContacts = conclaveService.extractUserPersonalContacts(conclaveContacts);
     var subUsersBuilder = SubUsers.builder();
@@ -417,7 +421,24 @@ public class ProfileManagementService {
       subUsersBuilder.operationCode(OperationCode.CREATE);
       // TODO: This keyword ensures the sub-user's division is set to the super-user's
       // userDivisionId
-      subUserBuilder.division("Division");
+      
+      Pair<CompanyInfo, Optional<SubUser>> buyerOrganisationPair =
+          isBuyerOrganisationExists(conclaveUserOrg.getIdentifier().getLegalName());
+
+      Optional<SubUser> buyerOrganisationExists = buyerOrganisationPair.getSecond();
+
+      if (!buyerOrganisationExists.isPresent()) {
+        sendNotif = true;
+        subUserBuilder.division("Division");
+      } else {
+        subUserBuilder.division(buyerOrganisationExists.get().getDivision());
+        if (buyerOrganisationExists.get().getDivision()
+            .equals(buyerOrganisationPair.getFirst().getUserDivisionCode())) {
+          sendNotif = true;
+        }
+      }
+     
+      subUserBuilder.businessUnit(conclaveUserOrg.getIdentifier().getLegalName());
       subUserBuilder.ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
     }
 
@@ -441,6 +462,17 @@ public class ProfileManagementService {
                         Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
                     .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build()))
                 .build());
+  }
+  
+  private void createUpdateSubUserHelper(
+      final CreateUpdateCompanyRequestBuilder createUpdateCompanyRequestBuilder,
+      final UserProfileResponseInfo conclaveUser,
+      final OrganisationProfileResponseInfo conclaveUserOrg,
+      final UserContactInfoList conclaveContacts, final Optional<SubUser> existingSubUser,
+      final String jaggaerOrgId, final String rightsProfile, final String login) {
+
+    this.createUpdateSubUserHelper(createUpdateCompanyRequestBuilder, conclaveUser, conclaveUserOrg,
+        conclaveContacts, existingSubUser, jaggaerOrgId, rightsProfile, login, false);
   }
 
   private void createUpdateSuperUserHelper(
@@ -680,18 +712,13 @@ public class ProfileManagementService {
       return null;
   }
   
-  //TODO Need to replace getSelfServiceBuyerCompany with correct filter
-  private boolean isBuyerOrganisationExists(String legalName) {
-    try {
-      var selfServiceBuyerCompany = userProfileService.getSelfServiceBuyerCompany();
-      var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().parallelStream()
+  private Pair<CompanyInfo, Optional<SubUser>> isBuyerOrganisationExists(String legalName) {
+    var selfServiceBuyerCompany = userProfileService.getSelfServiceBuyerCompany();
+    Optional<SubUser> subUser = Optional.empty();
+    if (Objects.nonNull(selfServiceBuyerCompany.getReturnSubUser())) {
+      subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().parallelStream()
           .filter(suser -> suser.getBusinessUnit().equals(legalName)).findFirst();
-      if (subUser.isPresent()) {
-        return true;
-      }
-    } catch (Exception e) {
-      log.error(e.getMessage());
     }
-    return false;
+    return Pair.of(selfServiceBuyerCompany.getReturnCompanyInfo(), subUser);
   }
 }
