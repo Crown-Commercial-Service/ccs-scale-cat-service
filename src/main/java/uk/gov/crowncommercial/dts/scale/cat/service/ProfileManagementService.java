@@ -690,8 +690,11 @@ public class ProfileManagementService {
   
   private Pair<CompanyInfo, Optional<SubUser>> isBuyerOrganisationExists(String legalName) {
     var selfServiceBuyerCompany = userProfileService.getSelfServiceBuyerCompany();
-    var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().parallelStream()
-        .filter(suser -> suser.getBusinessUnit().equals(legalName)).findFirst();
+    Optional<SubUser> subUser = Optional.empty();
+    if (Objects.nonNull(selfServiceBuyerCompany.getReturnSubUser())) {
+      subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().parallelStream()
+          .filter(suser -> suser.getBusinessUnit().equals(legalName)).findFirst();
+    }
     return Pair.of(selfServiceBuyerCompany.getReturnCompanyInfo(), subUser);
   }
 

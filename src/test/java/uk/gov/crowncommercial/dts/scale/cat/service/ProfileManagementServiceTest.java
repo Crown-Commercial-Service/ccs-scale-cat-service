@@ -395,6 +395,8 @@ class ProfileManagementServiceTest {
         .thenReturn(CreateUpdateCompanyResponse.builder().bravoId(1234).build());
     when(userProfileService.getSupplierDataByDUNSNumber(any()))
     .thenReturn(Optional.of(ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().bravoId("12345").build()).build()));
+    when(userProfileService.getSelfServiceBuyerCompany())
+    .thenReturn(ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().bravoId("12345").build()).build());
 
     var registerUserResponse = profileManagementService.registerUser(USERID);
 
