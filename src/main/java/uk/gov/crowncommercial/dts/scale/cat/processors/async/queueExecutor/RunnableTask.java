@@ -35,6 +35,7 @@ public class RunnableTask implements Runnable{
             }
         }catch(Throwable t){
             log.error("Error while processing task {} for user {}", consumer.getTaskName(), task.getPrincipal());
+            log.error("Error details", t);
             consumer.onError("UNKNOWN", t);
         }
     }
