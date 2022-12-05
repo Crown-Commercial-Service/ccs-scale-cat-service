@@ -56,12 +56,30 @@ public class DOS6SupplierStore implements SupplierStore {
     }
 
     @Override
+    public List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliers, boolean overWrite, String principal) {
+        return getSupplierStore(event).storeSuppliers(event, suppliers,overWrite, principal);
+    }
+
+    @Override
     public void deleteSupplier(ProcurementEvent event, String organisationId, String principal) {
         getSupplierStore(event).deleteSupplier(event, organisationId, principal);
     }
 
     @Override
     public List<Supplier> getSuppliers(ProcurementEvent event) {
-        return getSupplierStore(event).getSuppliers(event);
+
+        Instant publishDate = event.getPublishDate();
+        if (null != publishDate && publishDate.isBefore(Instant.now())) {
+            log.debug("Choosing database supplier store to retrieve the suppliers");
+            List<Supplier> result = databaseSupplierStore.getSuppliers(event);
+            if(null != result && result.size() > 0){
+                return result;
+            }else{
+                log.debug("No suppliers found in database, retrieve from Jaggaer");
+            }
+        }
+
+        log.debug("Choosing Jaggaer supplier store to retrieve the suppliers");
+        return jaggaerSupplierStore.getSuppliers(event);
     }
 }
