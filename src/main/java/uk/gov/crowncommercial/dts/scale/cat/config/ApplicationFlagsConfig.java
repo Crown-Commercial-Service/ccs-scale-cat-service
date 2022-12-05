@@ -15,4 +15,6 @@ public class ApplicationFlagsConfig {
   private Boolean devMode;
   private Boolean resolveBuyerUsersBySSO;
 
+  private Boolean expAsyncJaggaer = true;
+
 }
