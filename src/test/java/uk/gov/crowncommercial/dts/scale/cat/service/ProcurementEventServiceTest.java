@@ -36,6 +36,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.QueuedAsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DOS6SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.JaggaerSupplierStore;
@@ -115,6 +117,9 @@ class ProcurementEventServiceTest {
 
   @Autowired
   private ProcurementEventService procurementEventService;
+
+  @MockBean
+  private QueuedAsyncExecutor asyncExecutor;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
