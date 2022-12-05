@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.w3c.dom.events.Event;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -29,7 +30,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
 import uk.gov.crowncommercial.dts.scale.cat.processors.TwoStageEventService;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerSupplierEventData;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerSupplierPush;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest.DocumentUploadCallable;
@@ -63,7 +67,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ProcurementEventService {
+public class ProcurementEventService implements EventService {
 
   private static final Integer RFI_FLAG = 0;
   private static final String RFX_TYPE = "STANDARD_ITT";
@@ -113,6 +117,7 @@ public class ProcurementEventService {
   private final AgreementsService agreementsService;
   private final AwardService awardService;
 
+  private final AsyncExecutor asyncExecutor;
   private final SupplierStoreFactory supplierStoreFactory;
   private final EventTransitionService eventTransitionService;
 
@@ -136,6 +141,8 @@ public class ProcurementEventService {
   public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
                                   Boolean downSelectedSuppliers, final String principal) {
     boolean twoStageEvent = false;
+    boolean scheduleSupplierSync = false;
+
     // Get project from tenders DB to obtain Jaggaer project id
     var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
             .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
@@ -198,13 +205,10 @@ public class ProcurementEventService {
       }
     }
 
-
-
-
     if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
-      List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
-
-      var createUpdateRfx = createRfxRequest(project, eventName, principal, suppliers);
+     // List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
+      scheduleSupplierSync = true;
+      var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
 
       var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
               createUpdateRfx.getOperationCode());
@@ -265,6 +269,12 @@ public class ProcurementEventService {
               principal);
     } else {
       procurementEvent = retryableTendersDBDelegate.save(event);
+    }
+
+    if(scheduleSupplierSync){
+      Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
+      JaggaerSupplierEventData  eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
+      asyncExecutor.submit(principal, JaggaerSupplierPush.class, eventData);
     }
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
@@ -384,8 +394,7 @@ public class ProcurementEventService {
             new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
 
     var suppliersList = SuppliersList.builder()
-            .supplier(suppliers != null ? suppliers
-                    : supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber()))
+            .supplier(suppliers)
             .build();
     var rfx = Rfx.builder().rfxSetting(rfxSetting)
             //.rfxAdditionalInfoList(rfxAdditionalInfoList)
