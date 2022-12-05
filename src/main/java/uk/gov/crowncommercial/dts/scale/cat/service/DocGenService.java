@@ -256,7 +256,9 @@ public class DocGenService {
         //FC-DA related condition
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
-          value.add("There is an existing supplier providing the products and services");
+          //TODO Need to find correct condition for this
+//          value.add("There is an existing supplier providing the products and services");
+          value.add("");
         } else if (dataReplacement.contains("No") && !dataReplacement.equals(PLACEHOLDER_UNKNOWN)) {
           value.add("");
         } else {
