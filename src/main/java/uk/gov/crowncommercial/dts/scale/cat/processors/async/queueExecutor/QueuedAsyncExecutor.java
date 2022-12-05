@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 
@@ -20,12 +21,15 @@ import java.lang.annotation.Annotation;
 public class QueuedAsyncExecutor implements AsyncExecutor {
     private final ThreadPoolTaskExecutor taskExecutor;
     private final ApplicationContext ctx;
+    private final ApplicationFlagsConfig applicationFlags;
+
 
     private final ObjectMapper mapper= new ObjectMapper();
 
-    public QueuedAsyncExecutor(@Qualifier("comExecutor") ThreadPoolTaskExecutor executor, ApplicationContext ctx) {
+    public QueuedAsyncExecutor(@Qualifier("comExecutor") ThreadPoolTaskExecutor executor, ApplicationContext ctx, ApplicationFlagsConfig applicationFlags) {
         this.taskExecutor = executor;
         this.ctx = ctx;
+        this.applicationFlags = applicationFlags;
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
     }
 
@@ -40,17 +44,22 @@ public class QueuedAsyncExecutor implements AsyncExecutor {
         return null;
     }
 
-
-    public void submit(String principal, String Runner, Object data) {
-        Task task = new Task(principal, Runner, getClassName(data), data);
-        schedule(task);
+    @Override
+    public <T> void submit(String principal, Class<? extends AsyncConsumer<T>> clazz, T data) {
+        if(applicationFlags.getExpAsyncJaggaer()) {
+            Task task = new Task(principal, getSpringName(clazz), getClassName(data), data);
+            schedule(task);
+        }else{
+            execute(principal, clazz, data);
+        }
     }
 
 
     @Override
-    public <T> void submit(String principal, Class<? extends AsyncConsumer<T>> clazz, T data) {
+    public <T> void execute(String principal, Class<? extends AsyncConsumer<T>> clazz, T data) {
         Task task = new Task(principal, getSpringName(clazz), getClassName(data), data);
-        schedule(task);
+        RunnableTask runnableTask = new RunnableTask(task, ctx);
+        runnableTask.execute();
     }
 
     @SneakyThrows

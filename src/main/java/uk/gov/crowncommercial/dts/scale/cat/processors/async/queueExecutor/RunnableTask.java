@@ -19,6 +19,10 @@ public class RunnableTask implements Runnable{
 
     @Override
     public void run() {
+        execute();
+    }
+
+    public void execute(){
         AsyncConsumer consumer = ctx.getBean(task.getRunner(), AsyncConsumer.class);
         try {
             sleep(500);
