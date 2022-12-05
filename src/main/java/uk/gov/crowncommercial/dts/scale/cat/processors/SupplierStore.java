@@ -11,9 +11,7 @@ public interface SupplierStore {
 
     public EventSuppliers storeSuppliers(ProcurementEvent event, EventSuppliers eventSuppliers, String principal);
 
-    public default List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliers, boolean overWrite, String principal){
-        throw new IllegalArgumentException("This method not implemented");
-    }
+    public List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliers, boolean overWrite, String principal);
 
     public void deleteSupplier(ProcurementEvent event, String organisationId, String principal);
 
