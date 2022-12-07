@@ -1,8 +1,7 @@
-package uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest;
+package uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
