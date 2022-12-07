@@ -34,7 +34,7 @@
 		<snakeyaml.version>1.32</snakeyaml.version>
 		<spring-security-oauth2-client.version>5.7.5</spring-security-oauth2-client.version>
 		<spring-security-web.version>5.7.5</spring-security-web.version>
-		<h2database.version>2.1.214</h2database.version>
+		<hsql.version>2.7.1</hsql.version>
 
 	</properties>
 
@@ -153,10 +153,9 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-			<version>${h2database.version}</version>
+			<groupId>org.hsqldb</groupId>
+			<artifactId>hsqldb</artifactId>
+			<version>${hsql.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
