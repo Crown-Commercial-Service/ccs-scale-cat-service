@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.EventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 
+import javax.transaction.Transactional;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -29,14 +30,15 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
     private final SupplierStoreFactory factory;
 
     @Override
-    public void accept(String principal, JaggaerSupplierEventData data) {
+    @Transactional
+    public String accept(String principal, JaggaerSupplierEventData data) {
         var event = getEvent(data);
         ProcurementProject project = event.getProject(); //dbDelegate.findProcurementProjectById(data.getProjectId()).orElseThrow();
         ProcurementEvent existingEvent = null;
-        List<Supplier> suppliers = null;
+        List<Supplier> suppliers = data.getSuppliers();
 
 
-        if (null != data.getExistingEventId()) {
+        if (null == suppliers && null != data.getExistingEventId()) {
             existingEvent = dbDelegate.findProcurementEventById(data.getExistingEventId()).orElse(null);
             if (null != existingEvent) {
                 suppliers = eventService.getSuppliers(project, existingEvent, data.getEventType(), data.getTwoStageEvent());
@@ -51,8 +53,10 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
             SupplierStore store = factory.getStore(event);
             store.storeSuppliers(event, suppliers, data.getOverWrite(), principal);
             log.info("Successfully pushed {} suppliers to project {}, event {}", suppliers.size(), project.getId(), event.getEventID());
+            return "Pushed " + suppliers.size() + " suppliers to Jaggaer";
         }else{
             log.info("No suppliers are synced to project");
+            return "No suppliers available for Jaggaer push";
         }
     }
 
@@ -73,13 +77,13 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
     }
 
     @Override
-    public void onError(String errorCode, Throwable cause) {
-
+    public boolean canRetry(String errorCode, RetryableException re) {
+        return false;
     }
 
     @Override
-    public boolean canRetry(String errorCode, RetryableException re) {
-        return false;
+    public String getIdentifier(JaggaerSupplierEventData data) {
+        return data.getEventType() + ":" + data.getProjectId() + "/" + data.getEventId();
     }
 
     @Override

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
@@ -11,6 +12,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 
 import java.util.List;
 import java.util.Optional;
@@ -340,6 +343,17 @@ public class RetryableTendersDBDelegate {
   public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,
       final Pageable pageable) {
     return projectUserMappingRepo.findByUserId(userId, pageable);
+  }
+
+
+  @TendersRetryable
+  public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,final String searchType,final String searchTerm,
+                                                                 final Pageable pageable) {
+
+    ProjectSearchSpecification specification= new ProjectSearchSpecification(new ProjectSearchCriteria(searchType,searchTerm,userId));
+
+    Page<ProjectUserMapping> page=projectUserMappingRepo.findAll(specification, pageable);
+    return page.getContent();
   }
 
   @TendersRetryable

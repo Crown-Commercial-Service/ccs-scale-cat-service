@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.service.documentupload.performancetest;
+package uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -6,10 +6,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
-import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 
-import java.util.Map;
 import java.util.concurrent.Callable;
 
 
