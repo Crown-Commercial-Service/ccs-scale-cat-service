@@ -21,10 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
-import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
@@ -36,6 +33,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.QueuedAsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DOS6SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.JaggaerSupplierStore;
@@ -50,6 +49,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+            ExperimentalFlagsConfig.class,
         DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
         ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class,
             SupplierStoreFactory.class, JaggaerSupplierStore.class, DatabaseSupplierStore.class,
@@ -115,6 +115,9 @@ class ProcurementEventServiceTest {
 
   @Autowired
   private ProcurementEventService procurementEventService;
+
+  @MockBean
+  private QueuedAsyncExecutor asyncExecutor;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
