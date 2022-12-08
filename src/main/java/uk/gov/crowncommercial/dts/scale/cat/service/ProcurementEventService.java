@@ -10,10 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.w3c.dom.events.Event;
-import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
-import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -109,6 +106,7 @@ public class ProcurementEventService implements EventService {
 
   // TODO: switch remaining direct Jaggaer calls to use jaggaerService
   private final JaggaerAPIConfig jaggaerAPIConfig;
+  private final ExperimentalFlagsConfig experimentalFlags;
   private final JaggaerService jaggaerService;
   private final ConclaveService conclaveService;
 
@@ -206,7 +204,7 @@ public class ProcurementEventService implements EventService {
     }
 
     if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
-     // List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
+//      List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
       scheduleSupplierSync = true;
       var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
 
@@ -274,7 +272,15 @@ public class ProcurementEventService implements EventService {
     if(scheduleSupplierSync){
       Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
       JaggaerSupplierEventData  eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
-      asyncExecutor.submit(principal, JaggaerSupplierPush.class, eventData);
+      List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
+      if(null != suppliers && suppliers.size() > 0) {
+        if (suppliers.size() > experimentalFlags.getAsyncJaggaerSupplierCountThreshold()) {
+          asyncExecutor.submit(principal, JaggaerSupplierPush.class, eventData, "ProcurementEvent", String.valueOf(procurementEvent.getId()));
+        } else {
+          eventData.setSuppliers(suppliers);
+          asyncExecutor.execute(principal, JaggaerSupplierPush.class, eventData);
+        }
+      }
     }
 
     return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
