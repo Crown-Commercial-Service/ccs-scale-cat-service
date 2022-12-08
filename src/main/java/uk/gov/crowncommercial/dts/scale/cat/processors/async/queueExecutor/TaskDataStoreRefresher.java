@@ -21,14 +21,15 @@ public class TaskDataStoreRefresher {
     private final TaskRepo taskRepo;
     private final QueuedAsyncExecutor asyncExecutor;
     private final ExperimentalFlagsConfig experimentalFlags;
+    private final int WAIT_TIME_MINUTES = 15;
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(fixedDelay = WAIT_TIME_MINUTES * 2 * 60 * 1000, initialDelay = WAIT_TIME_MINUTES * 60 * 1000)
     public void loadOrphanTasksFromDataStore() {
         if(!experimentalFlags.isAsyncOrphanJobsLoader())
             return;
 
         char[] status = {'I', 'S'};
-        Instant checkTime = Instant.now().minus(15, ChronoUnit.MINUTES);
+        Instant checkTime = Instant.now().minus(WAIT_TIME_MINUTES * 2, ChronoUnit.MINUTES);
         List<TaskEntity> orphanTasks = taskRepo.findOrphanTasks("self", status, checkTime, checkTime);
         if(orphanTasks.size() > 0) {
             log.info("Retrieved {} orphan tasks from the database ", orphanTasks.size());
@@ -39,14 +40,14 @@ public class TaskDataStoreRefresher {
 
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(fixedDelay = WAIT_TIME_MINUTES * 60 * 1000)
     public void loadTasksFromDataStore() {
         if(!experimentalFlags.isAsyncMissedJobsLoader())
             return;
 
         char[] status = {'I', 'S'};
-        Instant checkTime = Instant.now().minus(15, ChronoUnit.MINUTES);
-        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn("self", status);
+        Instant checkTime = Instant.now().minus(WAIT_TIME_MINUTES, ChronoUnit.MINUTES);
+        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn("self", status, checkTime, checkTime);
         if (taskEntities.size() > 0) {
             log.info("Retrieved {}  tasks from the database ", taskEntities.size());
             asyncExecutor.loadFromDataStore(taskEntities);
@@ -60,8 +61,8 @@ public class TaskDataStoreRefresher {
             return;
 
         char[] status = {'I', 'S'};
-        Instant checkTime = Instant.now().minus(15, ChronoUnit.MINUTES);
-        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn("self", status);
+        Instant checkTime = Instant.now().minus(WAIT_TIME_MINUTES, ChronoUnit.MINUTES);
+        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn("self", status, checkTime, checkTime);
         if (taskEntities.size() > 0) {
             log.info("loading {} pending tasks from the database ", taskEntities.size());
             asyncExecutor.loadFromDataStore(taskEntities);
@@ -72,7 +73,7 @@ public class TaskDataStoreRefresher {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
-        initFromDataStore();
+//        initFromDataStore();
     }
 
 }
