@@ -22,7 +22,7 @@ public class TaskDataStoreRefresher {
     private final QueuedAsyncExecutor asyncExecutor;
     private final ExperimentalFlagsConfig experimentalFlags;
 
-    @Scheduled(cron = "*/5 * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     public void loadOrphanTasksFromDataStore() {
         if(!experimentalFlags.isAsyncOrphanJobsLoader())
             return;
@@ -39,7 +39,7 @@ public class TaskDataStoreRefresher {
 
     }
 
-    @Scheduled(cron = "*/5 * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     public void loadTasksFromDataStore() {
         if(!experimentalFlags.isAsyncMissedJobsLoader())
             return;
