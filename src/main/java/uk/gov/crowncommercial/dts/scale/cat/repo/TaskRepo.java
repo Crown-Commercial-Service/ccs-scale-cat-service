@@ -12,11 +12,19 @@ import java.util.List;
 @Repository
 public interface TaskRepo  extends JpaRepository<TaskEntity, Long> {
 
-    String query = "select task from TaskEntity task\n" +
+    String orphanJobsQuery = "select task from TaskEntity task\n" +
             " WHERE status in :statusList and node != :node and timestamps.updatedAt < :lastAccessTime and tobeExecutedAt < :scheduleTime";
-    @Query(value = query)
+
+    String delayedJobsQuery = "select task from TaskEntity task\n" +
+            " WHERE status in :statusList and node = :node and timestamps.updatedAt < :lastAccessTime and tobeExecutedAt < :scheduleTime";
+
+
+    @Query(value = orphanJobsQuery)
     List<TaskEntity> findOrphanTasks(@Param("node") String node, @Param("statusList") char[] statusList,
                                      @Param("lastAccessTime")Instant lastAccessTime, @Param("scheduleTime") Instant scheduledAt);
 
-    List<TaskEntity> findByNodeAndStatusIn(String node, char[] statusList);
+
+    @Query(value = delayedJobsQuery)
+    List<TaskEntity> findByNodeAndStatusIn(String node, char[] statusList,
+                                           @Param("lastAccessTime")Instant lastAccessTime, @Param("scheduleTime") Instant scheduledAt);
 }
