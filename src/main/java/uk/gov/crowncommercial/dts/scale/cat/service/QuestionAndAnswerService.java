@@ -68,6 +68,7 @@ public class QuestionAndAnswerService {
     // check the roles of supplier
     var user = conclaveService.getUserProfile(principal);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var conclaveOrg = conclaveService.getOrganisationIdentity(user.get().getOrganisationId());
 
     boolean isSupplier = false;
     
@@ -85,9 +86,12 @@ public class QuestionAndAnswerService {
       var jaggaerSuppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId())
           .getSuppliersList().getSupplier();
 
+      var conclaveOrgId = conclaveOrg.get().getIdentifier().getScheme() + "-"
+          + conclaveOrg.get().getIdentifier().getId();
+      
       // find supplier org-mapping
       var supplierOrgMapping = retryableTendersDBDelegate
-          .findOrganisationMappingByOrganisationId(user.get().getOrganisationId());
+          .findOrganisationMappingByOrganisationId(conclaveOrgId);
       if (supplierOrgMapping.isEmpty()) {
         var errorDesc = String.format("No supplier organisation mappings found in Tenders DB %s",
             supplierOrgMapping);

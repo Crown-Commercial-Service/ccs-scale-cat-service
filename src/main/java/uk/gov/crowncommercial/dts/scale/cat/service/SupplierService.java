@@ -67,8 +67,6 @@ public class SupplierService {
   public static final String SECTION_NAME = "Tender";
   public static final String SECTION_POS = "1";
   public static final String PARAM_POS = "1";
-  private static final String JAGGAER_EVALUATE_ERROR_DESC = "is not in state Technical Evaluation";
-  private static final String JAGGAER_OPEN_ENVELOPE_ERROR_DESC = "ANSWER_NOT_UPDATABLE";
 
 
   /**
@@ -257,15 +255,10 @@ public class SupplierService {
     
     log.info("Scoring Request {}", scoringRequest);
     var scoreResponse = jaggaerService.createUpdateScores(scoringRequest);
-
-    if (scoreResponse.getReturnMessage().contains(JAGGAER_EVALUATE_ERROR_DESC)) {
+    
+    if (scoreResponse.getReturnCode() != 0) {
       jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
           buyerUser.getUserId());
-      jaggaerService.createUpdateScores(scoringRequest);
-    }
-    if (scoreResponse.getReturnMessage().contains(JAGGAER_OPEN_ENVELOPE_ERROR_DESC)) {
-      jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
-          EnvelopeType.TECH);
       jaggaerService.createUpdateScores(scoringRequest);
     }
     
