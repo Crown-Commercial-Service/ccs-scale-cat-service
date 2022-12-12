@@ -408,9 +408,6 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-   /* var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
-        jaggaerUserId, PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));*/
-
 
     var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
                                                       jaggaerUserId,
