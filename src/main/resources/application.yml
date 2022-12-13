@@ -70,7 +70,7 @@ config:
   external:
     jaggaer:
 #      baseUrl: "SET IN ENV"
-      timeoutDuration: 120
+      timeoutDuration: 300
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
