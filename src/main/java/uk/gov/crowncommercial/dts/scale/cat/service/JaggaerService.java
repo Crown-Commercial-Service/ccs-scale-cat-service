@@ -600,6 +600,10 @@ public class JaggaerService {
     final var scoreResponse = webclientWrapper.postData(scoringRequest, ScoringResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.debug("Create-update scoring response: {}", scoreResponse);
+    if (scoreResponse.getReturnCode() != 0
+        || !Constants.OK_MSG.equals(scoreResponse.getReturnMessage())) {
+      log.error(scoreResponse.toString());
+    }
     return scoreResponse;
   }
 }

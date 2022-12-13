@@ -361,15 +361,15 @@ class ProcurementProjectServiceTest {
         .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate
-        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()),any(),any(), any(Pageable.class)))
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));
     //when(jaggaerService.getRfx(event.getExternalEventId())).thenReturn(exportRfxResponse);
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
-        .thenReturn(Arrays.asList(project));
+        .thenReturn(List.of(project));
 
-    var response = procurementProjectService.getProjects(PRINCIPAL);
+    var response = procurementProjectService.getProjects(PRINCIPAL, null, null, "0", "20");
 
     assertNotNull(response);
     assertEquals(1, response.size());
@@ -504,7 +504,7 @@ class ProcurementProjectServiceTest {
         .externalProjectId("Test").procurementEvents(events).build();
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate
-        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()), any(Pageable.class)))
+        .findProjectUserMappingByUserId(eq(JAGGAER_USER.get().getUserId()),any(),any(), any(Pageable.class)))
             .thenReturn(List.of(ProjectUserMapping.builder()
                 .project(ProcurementProject.builder().id(1).procurementEvents(events).build()).id(1)
                 .userId("1234").build()));
@@ -513,7 +513,7 @@ class ProcurementProjectServiceTest {
     when(retryableTendersDBDelegate.findByExternalProjectIdIn(any(Set.class)))
         .thenReturn(Arrays.asList(project));
 
-    var response = procurementProjectService.getProjects(PRINCIPAL);
+    var response = procurementProjectService.getProjects(PRINCIPAL, null, null, "0", "20");
 
     assertNotNull(response);
     assertEquals(1, response.size());
