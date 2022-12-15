@@ -11,5 +11,4 @@ import lombok.Value;
 public class OperatorUser {
   private String loginid;
   private String login;
-  private String code;
 }
