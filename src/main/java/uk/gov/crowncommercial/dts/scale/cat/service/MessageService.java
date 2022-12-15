@@ -17,13 +17,11 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateReplyMessage;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperatorUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -360,9 +358,11 @@ public class MessageService {
   public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
       final Integer procId, final String eventId, final String messageId, final String principal) {
 
-    userProfileService.resolveBuyerUserProfile(principal)
+     userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-    validationService.validateProjectAndEventIds(procId, eventId);
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var updateMessage = jaggaerService.updateMessage(MessageUpdate.builder().messageId(Integer.parseInt(messageId))
+            .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE).operatorUser(OperatorUser.builder().code(principal).build()).build());
     var response = jaggaerService.getMessage(messageId);
 
     return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
