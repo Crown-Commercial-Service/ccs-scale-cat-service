@@ -406,7 +406,7 @@ public class MessageService {
     if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals(message.getDirection())) {
       read = Boolean.FALSE;
     } else {
-      read = message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate);
+      read = !message.getReadingList().getReading().isEmpty();
     }
 
     return new CaTMessage().OCDS(getCaTMessageOCDS(message)).nonOCDS(new CaTMessageNonOCDS()
