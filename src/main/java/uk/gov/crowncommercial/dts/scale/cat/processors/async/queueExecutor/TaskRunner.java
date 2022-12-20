@@ -18,7 +18,7 @@ public class TaskRunner{
     private final ApplicationContext ctx;
     private final TaskEntityService taskEntityService;
 
-    @Transactional
+//    @Transactional
     public void runTask(Task task){
         if(null == task.getId()){
             throw new IllegalArgumentException("Task must be persisted in database before execution");
@@ -31,13 +31,22 @@ public class TaskRunner{
         } catch (RetryableException re) {
             if (consumer.canRetry(re.getErrorCode(), re)) {
                 log.info("Rescheduling the task {} for user {}", consumer.getTaskName(), task.getPrincipal());
+                String response = "Rescheduled. "
+                        + "::"  + consumer.onError(re.getErrorCode(), re.getCause());
+                taskEntityService.markRetry(task, response);
+            }else{
+                markFailure(task, consumer, re.getCause());
             }
         } catch (Throwable t) {
-            log.error("Error while processing task {} for user {}", consumer.getTaskName(), task.getPrincipal());
-            log.error("Error details", t);
-            String response = consumer.onError("UNKNOWN", t);
-            taskEntityService.markFailure(task, response);
+            markFailure(task, consumer, t);
         }
+    }
+
+    private void markFailure(Task task, AsyncConsumer consumer, Throwable t) {
+        log.error("Error while processing task {} for user {}", consumer.getTaskName(), task.getPrincipal());
+        log.error("Error details", t);
+        String response = consumer.onError("UNKNOWN", t);
+        taskEntityService.markFailure(task, response);
     }
 
 

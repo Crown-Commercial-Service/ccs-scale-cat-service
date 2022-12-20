@@ -78,6 +78,15 @@ public class TaskEntityService {
         taskRepo.save(entity);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markRetry(Task task, String response) {
+        TaskEntity entity = getEntity(task);
+        entity.setResponse(response);
+        entity.setStatus(Task.SCHEDULED);
+        update(entity);
+        updateHistory(entity, Task.FAILED, response);
+        taskRepo.save(entity);
+    }
 
     private void update(TaskEntity entity) {
         Timestamps timestamps = entity.getTimestamps();
@@ -96,11 +105,11 @@ public class TaskEntityService {
         }
     }
 
-    private void updateHistory(TaskEntity entity, char completed, String response) {
+    private void updateHistory(TaskEntity entity, char taskExecutionStatus, String response) {
         List<TaskHistoryEntity> historyList = entity.getHistory();
         if (historyList.size() > 0) {
             TaskHistoryEntity history = historyList.get(0);
-            history.setStatus(completed);
+            history.setStatus(taskExecutionStatus);
             history.setResponse(response);
             Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
         } else {
