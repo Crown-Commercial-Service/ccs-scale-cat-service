@@ -276,20 +276,22 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
+   Integer  newProcId=Integer.parseInt(Pattern.quote(String.valueOf(procId)));
+   String  newEventId=Pattern.quote(eventId);
 
     isValidIdentifier(String.valueOf(procId));
     isValidIdentifier(eventId);
 
     StopWatch generateUpdateDocWatch= new StopWatch();
     generateUpdateDocWatch.start();
-       docGenService.generateAndUploadDocuments(procId, eventId);
+       docGenService.generateAndUploadDocuments(newProcId, newEventId);
     generateUpdateDocWatch.stop();
     log.info("publishEvent : Total time taken to generateAndUploadDocuments for procID {} : eventId :{} : Timetaken : {}  ", procId,eventId,generateUpdateDocWatch.getLastTaskTimeMillis());
 
 
     StopWatch publishStopWatch= new StopWatch();
     publishStopWatch.start();
-    procurementEventService.publishEvent(procId, eventId, publishDates, principal);
+    procurementEventService.publishEvent(newProcId, newEventId, publishDates, principal);
     publishStopWatch.stop();
     log.info("publishEvent : Total time taken to publishEvent service for procID {} : eventId :{} , Timetaken : {}  ", procId,eventId,publishStopWatch.getLastTaskTimeMillis());
     return new StringValueResponse("OK");
