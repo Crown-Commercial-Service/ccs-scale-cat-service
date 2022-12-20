@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskHistoryEntity;
@@ -16,6 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TaskEntityService {
     private final TaskRepo taskRepo;
+    private final EnvironmentConfig environmentConfig;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persist(String principal, Task task, String recordType, String recordId, String data) {
@@ -31,7 +33,7 @@ public class TaskEntityService {
         entity.setRecordType(recordType);
         entity.setRecordId(recordId);
         entity.setStatus(Task.SCHEDULED);
-        entity.setNode("self");
+        entity.setNode(environmentConfig.getServiceInstance());
         entity.setTimestamps(Timestamps.createTimestamps(principal));
         taskRepo.save(entity);
         task.setId(entity.getId());
