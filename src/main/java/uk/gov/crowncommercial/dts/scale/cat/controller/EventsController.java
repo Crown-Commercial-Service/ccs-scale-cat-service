@@ -28,6 +28,8 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -274,6 +276,10 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
+
+    isValidIdentifier(String.valueOf(procId));
+    isValidIdentifier(eventId);
+
     StopWatch generateUpdateDocWatch= new StopWatch();
     generateUpdateDocWatch.start();
        docGenService.generateAndUploadDocuments(procId, eventId);
@@ -468,5 +474,30 @@ public class EventsController extends AbstractRestController {
       }
     }
     return zipEntry;
+  }
+
+  public static boolean   isValidIdentifier(String identifier)
+  {
+
+    // Regex to check valid identifier.
+    String regex = "^([a-zA-Z_$][a-zA-Z\\d_$]*)$";
+
+    // Compile the ReGex
+    Pattern p = Pattern.compile(regex);
+
+    // If the identifier is empty
+    // return false
+    if (identifier == null) {
+      return false;
+    }
+
+    // Pattern class contains matcher() method
+    // to find matching between given identifier
+    // and regular expression.
+    Matcher m = p.matcher(identifier);
+
+    // Return if the identifier
+    // matched the ReGex
+    return m.matches();
   }
 }
