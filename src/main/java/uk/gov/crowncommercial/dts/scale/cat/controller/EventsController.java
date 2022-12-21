@@ -35,7 +35,7 @@ import java.util.zip.ZipOutputStream;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
-
+import static uk.gov.crowncommercial.dts.scale.cat.utils.UserInputUtils.*;
 /**
  *
  */
@@ -276,22 +276,17 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-   Integer  newProcId=Integer.parseInt(Pattern.quote(String.valueOf(procId)));
-   String  newEventId=Pattern.quote(eventId);
-
-    isValidIdentifier(String.valueOf(procId));
-    isValidIdentifier(eventId);
 
     StopWatch generateUpdateDocWatch= new StopWatch();
     generateUpdateDocWatch.start();
-       docGenService.generateAndUploadDocuments(newProcId, newEventId);
+       docGenService.generateAndUploadDocuments(sanitiseInputParam(procId), sanitiseInputParam(eventId));
     generateUpdateDocWatch.stop();
     log.info("publishEvent : Total time taken to generateAndUploadDocuments for procID {} : eventId :{} : Timetaken : {}  ", procId,eventId,generateUpdateDocWatch.getLastTaskTimeMillis());
 
 
     StopWatch publishStopWatch= new StopWatch();
     publishStopWatch.start();
-    procurementEventService.publishEvent(newProcId, newEventId, publishDates, principal);
+    procurementEventService.publishEvent(sanitiseInputParam(procId), sanitiseInputParam(eventId), publishDates, principal);
     publishStopWatch.stop();
     log.info("publishEvent : Total time taken to publishEvent service for procID {} : eventId :{} , Timetaken : {}  ", procId,eventId,publishStopWatch.getLastTaskTimeMillis());
     return new StringValueResponse("OK");
@@ -308,7 +303,7 @@ public class EventsController extends AbstractRestController {
 
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
-        procurementEventService.exportDocuments(procId, eventId, principal);
+        procurementEventService.exportDocuments(sanitiseInputParam(procId), sanitiseInputParam(eventId), principal);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
