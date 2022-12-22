@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
@@ -377,7 +378,7 @@ public class DocGenService {
 
             // Check if row number cell, if so increment
             //TODO unused code need to remove
-            if (columnIndex == 0 && "[0-9]+".matches(cellDisplayText)) {
+            if (columnIndex == 0 && "[0-9]+".matches(Pattern.quote(cellDisplayText))) {
               cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
             } else {
               if (isLineRequired) {
