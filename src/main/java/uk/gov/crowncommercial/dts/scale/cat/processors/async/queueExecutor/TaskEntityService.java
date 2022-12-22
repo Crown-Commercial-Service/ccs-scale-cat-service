@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskHistoryEntity;
@@ -16,6 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TaskEntityService {
     private final TaskRepo taskRepo;
+    private final EnvironmentConfig environmentConfig;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persist(String principal, Task task, String recordType, String recordId, String data) {
@@ -31,7 +33,7 @@ public class TaskEntityService {
         entity.setRecordType(recordType);
         entity.setRecordId(recordId);
         entity.setStatus(Task.SCHEDULED);
-        entity.setNode("self");
+        entity.setNode(environmentConfig.getServiceInstance());
         entity.setTimestamps(Timestamps.createTimestamps(principal));
         taskRepo.save(entity);
         task.setId(entity.getId());
@@ -78,6 +80,15 @@ public class TaskEntityService {
         taskRepo.save(entity);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markRetry(Task task, String response) {
+        TaskEntity entity = getEntity(task);
+        entity.setResponse(response);
+        entity.setStatus(Task.SCHEDULED);
+        update(entity);
+        updateHistory(entity, Task.FAILED, response);
+        taskRepo.save(entity);
+    }
 
     private void update(TaskEntity entity) {
         Timestamps timestamps = entity.getTimestamps();
@@ -96,11 +107,11 @@ public class TaskEntityService {
         }
     }
 
-    private void updateHistory(TaskEntity entity, char completed, String response) {
+    private void updateHistory(TaskEntity entity, char taskExecutionStatus, String response) {
         List<TaskHistoryEntity> historyList = entity.getHistory();
         if (historyList.size() > 0) {
             TaskHistoryEntity history = historyList.get(0);
-            history.setStatus(completed);
+            history.setStatus(taskExecutionStatus);
             history.setResponse(response);
             Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
         } else {
