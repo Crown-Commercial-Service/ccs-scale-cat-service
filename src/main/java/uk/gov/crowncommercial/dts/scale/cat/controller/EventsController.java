@@ -28,14 +28,12 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.UserInputUtils.*;
+
 /**
  *
  */
@@ -276,17 +274,16 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-
     StopWatch generateUpdateDocWatch= new StopWatch();
     generateUpdateDocWatch.start();
-       docGenService.generateAndUploadDocuments(sanitiseInputParam(procId), sanitiseInputParam(eventId));
+       docGenService.generateAndUploadDocuments(procId, eventId);
     generateUpdateDocWatch.stop();
     log.info("publishEvent : Total time taken to generateAndUploadDocuments for procID {} : eventId :{} : Timetaken : {}  ", procId,eventId,generateUpdateDocWatch.getLastTaskTimeMillis());
 
 
     StopWatch publishStopWatch= new StopWatch();
     publishStopWatch.start();
-    procurementEventService.publishEvent(sanitiseInputParam(procId), sanitiseInputParam(eventId), publishDates, principal);
+    procurementEventService.publishEvent(procId, eventId, publishDates, principal);
     publishStopWatch.stop();
     log.info("publishEvent : Total time taken to publishEvent service for procID {} : eventId :{} , Timetaken : {}  ", procId,eventId,publishStopWatch.getLastTaskTimeMillis());
     return new StringValueResponse("OK");
@@ -303,7 +300,7 @@ public class EventsController extends AbstractRestController {
 
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
-        procurementEventService.exportDocuments(sanitiseInputParam(procId), sanitiseInputParam(eventId), principal);
+        procurementEventService.exportDocuments(procId, eventId, principal);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
@@ -471,30 +468,5 @@ public class EventsController extends AbstractRestController {
       }
     }
     return zipEntry;
-  }
-
-  public static boolean   isValidIdentifier(String identifier)
-  {
-
-    // Regex to check valid identifier.
-    String regex = "^([a-zA-Z_$][a-zA-Z\\d_$]*)$";
-
-    // Compile the ReGex
-    Pattern p = Pattern.compile(regex);
-
-    // If the identifier is empty
-    // return false
-    if (identifier == null) {
-      return false;
-    }
-
-    // Pattern class contains matcher() method
-    // to find matching between given identifier
-    // and regular expression.
-    Matcher m = p.matcher(identifier);
-
-    // Return if the identifier
-    // matched the ReGex
-    return m.matches();
   }
 }

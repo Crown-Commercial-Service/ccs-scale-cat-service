@@ -24,7 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.service.AwardService;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.UserInputUtils.*;
+
 /**
  * Award Controller which can do award events
  *
@@ -51,7 +51,7 @@ public class AwardController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("createOrComplete award process on behalf of principal: {}", principal, conclaveOrgId);
-    return ResponseEntity.ok(awardService.createOrUpdateAwardRfx(principal, sanitiseInputParam(procId), sanitiseInputParam(eventId),
+    return ResponseEntity.ok(awardService.createOrUpdateAwardRfx(principal, procId, eventId,
         awardState, awardRequest, null));
   }
 
@@ -67,7 +67,7 @@ public class AwardController extends AbstractRestController {
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("updateOrComplete award process invoked on behalf of principal: {}", principal,
         conclaveOrgId);
-    return ResponseEntity.ok(awardService.createOrUpdateAwardRfx(principal, sanitiseInputParam(procId), sanitiseInputParam(eventId),
+    return ResponseEntity.ok(awardService.createOrUpdateAwardRfx(principal, procId, eventId,
         awardState, awardRequest, awardId));
   }
 

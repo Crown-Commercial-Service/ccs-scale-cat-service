@@ -16,9 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocumentTemplateService;
-import uk.gov.crowncommercial.dts.scale.cat.utils.UserInputUtils;
 
-import static uk.gov.crowncommercial.dts.scale.cat.utils.UserInputUtils.*;
 /**
  *
  */
@@ -72,7 +70,7 @@ public class DocumentTemplatesController extends AbstractRestController {
     log.debug("getDraftProforma invoked on behalf of principal: {}", principal);
 
     var documentKey = DocumentKey.fromString(templateId);
-    var docAttachment = documentTemplateService.getDraftDocument(sanitiseInputParam(procId), sanitiseInputParam(eventId), documentKey);
+    var docAttachment = documentTemplateService.getDraftDocument(procId, eventId, documentKey);
 
     return ResponseEntity.ok().contentType(docAttachment.getContentType())
         .header(HttpHeaders.CONTENT_DISPOSITION,
