@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
@@ -289,7 +290,7 @@ public class DocGenService {
   }
 
   private static boolean isNotBlankAndNumeric(String dataReplacement) {
-    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches("-?\\d+");
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches(Pattern.quote("-?\\d+"));
   }
 
   //TODO remove static content and add in app.yaml file
@@ -318,7 +319,7 @@ public class DocGenService {
       var foundList = false;
       for (var li : list.getItems()) {
         if (StringUtils.hasText(li.getTextContent())
-            && li.getTextContent().matches(documentTemplateSource.getPlaceholder())) {
+            && li.getTextContent().matches(Pattern.quote(documentTemplateSource.getPlaceholder()))) {
           foundList = true;
           break;
         }
@@ -377,7 +378,7 @@ public class DocGenService {
 
             // Check if row number cell, if so increment
             //TODO unused code need to remove
-            if (columnIndex == 0 && "[0-9]+".matches(cellDisplayText)) {
+            if (columnIndex == 0 && "[0-9]+".matches(Pattern.quote(cellDisplayText))) {
               cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
             } else {
               if (isLineRequired) {
