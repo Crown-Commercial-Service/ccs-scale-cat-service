@@ -290,7 +290,7 @@ public class DocGenService {
   }
 
   private static boolean isNotBlankAndNumeric(String dataReplacement) {
-    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches("-?\\d+");
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches(Pattern.quote("-?\\d+"));
   }
 
   //TODO remove static content and add in app.yaml file
@@ -319,7 +319,7 @@ public class DocGenService {
       var foundList = false;
       for (var li : list.getItems()) {
         if (StringUtils.hasText(li.getTextContent())
-            && li.getTextContent().matches(documentTemplateSource.getPlaceholder())) {
+            && li.getTextContent().matches(Pattern.quote(documentTemplateSource.getPlaceholder()))) {
           foundList = true;
           break;
         }
