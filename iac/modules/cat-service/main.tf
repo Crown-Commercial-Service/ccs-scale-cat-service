@@ -232,7 +232,7 @@ resource "cloudfoundry_app" "cat_service" {
     # Notifications
     "config.external.notification.api-key": data.aws_ssm_parameter.gov_uk_notify_api_key.value
     "config.external.notification.user-registration.template-id": data.aws_ssm_parameter.gov_uk_notify_user_reg_template_id.value
-    "config.external.notification.user-invalid-duns.template-id": data.aws_ssm_parameter.gov_uk_notify_user_invalid_duns_template_id.value
+    "config.external.notification.user-registration.invalid-duns-template-id": data.aws_ssm_parameter.gov_uk_notify_user_invalid_duns_template_id.value
     "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
   }
   health_check_timeout = var.healthcheck_timeout
