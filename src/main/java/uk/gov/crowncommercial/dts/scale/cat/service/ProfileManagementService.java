@@ -249,7 +249,8 @@ public class ProfileManagementService {
       final List<RegisterUserResponse.RolesEnum> returnRoles, final String supplierLogin) {
     
     // Validate DUNS-Number
-    if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")) {
+    if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")
+        && conclaveUserOrg.getAdditionalIdentifiers() != null) {
       var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
           .filter(dnumber -> dnumber.getScheme().equalsIgnoreCase("US-DUN")).findAny();
       if (validDunsNumber.isPresent()) {
@@ -628,11 +629,7 @@ public class ProfileManagementService {
         "org_scheme", conclaveUserOrg.getIdentifier().getScheme(), "org_number",
         conclaveUserOrg.getIdentifier().getId());
 
-<<<<<<< HEAD
     notificationService.sendEmail(userRegistrationNotificationConfig.getInvalidDunsTemplateId(),
-=======
-    notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
->>>>>>> edfd8854efc669348ee10349d81778142a62571f
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
 
