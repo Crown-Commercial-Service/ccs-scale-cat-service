@@ -628,7 +628,7 @@ public class ProfileManagementService {
         "org_scheme", conclaveUserOrg.getIdentifier().getScheme(), "org_number",
         conclaveUserOrg.getIdentifier().getId());
 
-    notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
+    notificationService.sendEmail(userRegistrationNotificationConfig.getInvalidDunsTemplateId(),
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
 
