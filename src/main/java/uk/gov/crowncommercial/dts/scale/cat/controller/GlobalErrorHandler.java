@@ -90,9 +90,20 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
-  @ResponseStatus(I_AM_A_TEAPOT)
+  @ResponseStatus(CONFLICT)
   @ExceptionHandler({UserRolesConflictException.class})
   public Errors handleUserRolesConflictException(final UserRolesConflictException exception) {
+
+    log.debug("Profile management conflict exception (" + exception.getClass().getName() + "): "
+        + exception.getMessage());
+
+    return tendersAPIModelUtils
+        .buildErrors(Arrays.asList(new ApiError(CONFLICT.toString(), exception.getMessage(), "")));
+  }
+  
+  @ResponseStatus(I_AM_A_TEAPOT)
+  @ExceptionHandler({TeaPotException.class})
+  public Errors handleTeapotException(final TeaPotException exception) {
 
     log.debug("Profile management conflict exception (" + exception.getClass().getName() + "): "
         + exception.getMessage());
