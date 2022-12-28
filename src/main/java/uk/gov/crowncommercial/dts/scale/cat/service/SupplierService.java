@@ -123,84 +123,6 @@ public class SupplierService {
 
   }
 
-  /**
-   * Update supplier score and comments in Jaggaer
-   * 
-   * @param profile
-   * @param projectId
-   * @param eventId
-   * @param scoreAndComments
-   * @return status
-   */
-  @Deprecated
-  public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
-      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments,
-      boolean scoringComplete) {
-    log.info("Calling updateSupplierScoreAndComment for {}", eventId);
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-    var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
-    for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
-      scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
-    }
-
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
-        .stream().map(ScoreAndCommentNonOCDS::getOrganisationId).collect(Collectors.toList()));
-    var appendSupplierList = new StringJoiner(RPA_DELIMITER);
-    var appendScoreList = new StringJoiner(RPA_DELIMITER);
-    var appendCommentList = new StringJoiner(RPA_DELIMITER);
-
-    for (Supplier supplier : validSuppliers.getFirst()) {
-      var orgId = validSuppliers.getSecond().stream()
-          .filter(org -> org.getExternalOrganisationId().equals(supplier.getCompanyData().getId()))
-          .findFirst();
-      if (orgId.isPresent()) {
-        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getOrganisationId());
-        appendSupplierList.add(supplier.getCompanyData().getName());
-        appendScoreList.add(scoreAndCommentNonOCDS.getScore().toString());
-        appendCommentList.add(scoreAndCommentNonOCDS.getComment());
-      }
-    }
-
-    // input details
-    var suppliers = appendSupplierList.toString();
-    var comments = appendCommentList.toString();
-    var scores = appendScoreList.toString();
-
-    log.info("Supplier Names: {}", suppliers);
-    log.info("Supplier comments: {}", comments);
-    log.info("Supplier scores: {}", scores);
-
-    var buyerEncryptedPwd = rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId());
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(buyerEncryptedPwd).ittCode(procurementEvent.getExternalReferenceId())
-        .score(scores).comment(comments).supplierName(suppliers);
-    try {
-      return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-          RPAProcessNameEnum.ASSIGN_SCORE);
-    } catch (JaggaerRPAException je) {
-      // Start evaluation event
-      if (je.getMessage().contains(RPA_EVALUATE_ERROR_DESC)) {
-        jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
-        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-            RPAProcessNameEnum.ASSIGN_SCORE);
-      }
-      // Open envelope event
-      else if (je.getMessage().contains(RPA_OPEN_ENVELOPE_ERROR_DESC)) {
-        jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
-        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-            RPAProcessNameEnum.ASSIGN_SCORE);
-      } else
-        throw je;
-    } finally {
-      if (scoringComplete) {
-        jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
-      }
-    }
-  }
-
 
 
   /**
@@ -270,26 +192,6 @@ public class SupplierService {
     return "Successfully updated scores";
   }
 
-  /**
-   * Calls RPA to Open Envelope
-   * 
-   * @param userEmail
-   * @param password
-   * @param externalReferenceId
-   * @return
-   */
-  public String callOpenEnvelopeAndUpdateSupplier(final String userEmail, final String password,
-      final String externalReferenceId, final RPAProcessInput processInput) {
-    log.info("Calling OpenEnvelope for {}", externalReferenceId);
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(userEmail).password(password)
-        .ittCode(externalReferenceId);
-    rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
-
-    // Update score and comment again after succesfull above calls
-    log.info("Update SupplierScoreAndComment after OpenEnvelope");
-    return rpaGenericService.callRPAMessageAPI(processInput, RPAProcessNameEnum.ASSIGN_SCORE);
-  }
 
   public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId,
       final String eventId) {

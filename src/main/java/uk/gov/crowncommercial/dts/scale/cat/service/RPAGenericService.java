@@ -17,6 +17,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.SupplierNotMatchException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
@@ -39,7 +40,6 @@ public class RPAGenericService {
 
   /**
    * @param procurementEvent
-   * @param nonOCDS
    * @return suppliers as a string
    */
   public Pair<List<Supplier>, Set<OrganisationMapping>> getValidSuppliers(
@@ -74,7 +74,7 @@ public class RPAGenericService {
           String.format("Supplied organisation mappings not matched with actual suppliers '%s'",
               unMatchedSuppliers);
       log.error(errorDesc);
-      throw new JaggaerRPAException(errorDesc);
+      throw new SupplierNotMatchException(errorDesc);
     }
 
     // Comparing the requested organisation ids and event suppliers info
@@ -91,125 +91,6 @@ public class RPAGenericService {
         supplierOrgMappings);
   }
 
-  /**
-   * @param processInputMap
-   * @return rpa status
-   * @throws JsonProcessingException
-   */
-  @SneakyThrows
-  public String callRPAMessageAPI(final RPAProcessInput processInput,
-      final RPAProcessNameEnum processName) {
-    var request = new RPAGenericData();
-    request.setProcessInput(objectMapper.writeValueAsString(processInput))
-        .setProcessName(processName.getValue()).setProfileName(rpaAPIConfig.getProfileName())
-        .setSource(rpaAPIConfig.getSource()).setSourceId(rpaAPIConfig.getSourceId())
-        .setRequestTimeout(rpaAPIConfig.getRequestTimeout()).setSync(true);
-    log.info("RPA Request: {}", request.toString());
-
-    String accessToken=getAccessToken();
-
-
-    var response =
-        webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(),accessToken);
-    log.info("RPA Response: {}", objectMapper.writeValueAsString(response));
-
-    return validateResponse(response);
-
-  }
-
-  /**
-   * @param processInputMap
-   * @return rpa status
-   * @throws JsonProcessingException
-   */
-  @SneakyThrows
-  @Async
-  public String asyncCallRPAMessageAPI(final RPAProcessInput processInput,
-      final RPAProcessNameEnum processName) {
-    var request = new RPAGenericData();
-    request.setProcessInput(objectMapper.writeValueAsString(processInput))
-        .setProcessName(processName.getValue()).setProfileName(rpaAPIConfig.getProfileName())
-        .setSource(rpaAPIConfig.getSource()).setSourceId(rpaAPIConfig.getSourceId())
-        .setRequestTimeout(rpaAPIConfig.getRequestTimeout()).setSync(true);
-    log.info("{} - RPA Request: {}", Thread.currentThread(), request.toString());
-
-
-    String accessToken=getAccessToken();
-
-    var response =
-        webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-            rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), accessToken);
-    log.info("{} - RPA Response: {}", Thread.currentThread(), response.toString());
-
-    return "Ok";
-  }
-
-  /**
-   * Get Access Token by calling RPA access API
-   *
-   * @return accessToken
-   */
-  private String getAccessToken() {
-    var jaggerRPACredentials = new HashMap<String, String>();
-    jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
-    jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
-    var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
-    return webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), uriTemplate);
-  }
-
-  /**
-   * Validate RPA API Response
-   *
-   * @param apiResponse
-   * @return rpa api status
-   */
-  @SneakyThrows
-  private String validateResponse(final RPAAPIResponse apiResponse) {
-    var convertedObject = convertStringToObject(apiResponse.getResponse().getResponse());
-    var maps = (List<Map<String, String>>) convertedObject.get("AutomationOutputData");
-    var responseList = new ArrayList<AutomationOutputData>();
-    for (Map<String, String> map : maps) {
-      var automationData =
-          objectMapper.readValue(objectMapper.writeValueAsString(map), AutomationOutputData.class);
-      responseList.add(automationData);
-    }
-    var automationFilterData = responseList.stream()
-        .filter(e -> e.getAppName().contentEquals("Microbot : API_ResponsePayload")).findFirst();
-    if (automationFilterData.isPresent()) {
-      var automationData = automationFilterData.get();
-      var status = automationData.getCviewDictionary().getStatus();
-      log.info("Status of RPA API call : {} ", status);
-
-      if (automationData.getCviewDictionary().getIsError().contentEquals("True")) {
-        var errorDescription = automationData.getCviewDictionary().getErrorDescription();
-        log.info("Error Description {} ", errorDescription);
-        throw new JaggaerRPAException(errorDescription);
-      }
-      return status;
-    }
-    return "Invalid Response";
-  }
-
-  /**
-   * Convert String to Object
-   *
-   * @param inputString
-   * @return Object
-   */
-  @SneakyThrows
-  private Map<String, Object> convertStringToObject(final String inputString) {
-    return objectMapper.readValue(inputString, new TypeReference<HashMap<String, Object>>() {});
-  }
-
-  public String getBuyerEncryptedPassword(String userId) {
-    var buyerDetails = buyerDetailsRepo.findById(userId);
-    if (buyerDetails.isEmpty()) {
-      throw new JaggaerRPAException("Buyer encrypted password not found");
-    }
-    return buyerDetails.get().getUserPassword();
-  }
 
   public OffsetDateTime handleDSTDate(OffsetDateTime offsetDate, String zoneId) {
     var zonedDateTimeBefore = offsetDate.atZoneSameInstant(ZoneId.of(zoneId));
