@@ -17,6 +17,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.SupplierNotMatchException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
@@ -73,7 +74,7 @@ public class RPAGenericService {
           String.format("Supplied organisation mappings not matched with actual suppliers '%s'",
               unMatchedSuppliers);
       log.error(errorDesc);
-      throw new JaggaerRPAException(errorDesc);
+      throw new SupplierNotMatchException(errorDesc);
     }
 
     // Comparing the requested organisation ids and event suppliers info
