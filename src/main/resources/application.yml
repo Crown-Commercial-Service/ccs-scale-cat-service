@@ -201,6 +201,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}&comp={components}&start={start}
       getMessage:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
+      updateMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages/read
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
       openEnvelope:
