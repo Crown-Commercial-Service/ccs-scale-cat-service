@@ -1489,22 +1489,6 @@ public class ProcurementEventService implements EventService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Calls RPA to Open Envelope
-     *
-     * @param userEmail
-     * @param password
-     * @param externalReferenceId
-     * @return
-     */
-    public void callOpenEnvelope(final String userEmail, final String password,
-                                 final String externalReferenceId, final RPAProcessInput processInput) {
-        log.info("Calling OpenEnvelope for {}", externalReferenceId);
-        // Creating RPA process input string
-        var inputBuilder = RPAProcessInput.builder().userName(userEmail).password(password)
-                .ittCode(externalReferenceId);
-        rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
-    }
 
     private ExportRfxResponse getSingleRfx(final String externalEventId) {
         return jaggaerService.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
