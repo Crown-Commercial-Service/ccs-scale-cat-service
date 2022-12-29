@@ -122,10 +122,10 @@ class TendersControllerTest {
     mockMvc
         .perform(get("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().isIAmATeapot())
+        .andDo(print()).andExpect(status().isConflict())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.errors", hasSize(1)))
-        .andExpect(jsonPath("$.errors[0].status", is("418 I_AM_A_TEAPOT")))
+        .andExpect(jsonPath("$.errors[0].status", is("409 CONFLICT")))
         .andExpect(jsonPath("$.errors[0].title", is(errMsg)))
         .andExpect(jsonPath("$.errors[0].detail", is("")));
   }
