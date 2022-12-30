@@ -52,7 +52,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
  */
 @SpringBootTest(
     classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
-        ApplicationFlagsConfig.class, RPAGenericService.class},
+        ApplicationFlagsConfig.class, SupplierService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties({JaggaerAPIConfig.class, RPAAPIConfig.class})
 @ContextConfiguration(classes = {ObjectMapper.class})

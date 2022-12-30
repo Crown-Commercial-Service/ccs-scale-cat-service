@@ -52,7 +52,8 @@ public class MessageService {
   private final JaggaerService jaggaerService;
   private final UserProfileService userProfileService;
   private final ConclaveService conclaveService;
-  private final RPAGenericService rpaGenericService;
+
+  private final SupplierService supplierService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   private static final String LINK_URI = "/messages/";
@@ -92,7 +93,7 @@ public class MessageService {
       if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
         throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
       }
-      var suppliers = rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
+      var suppliers = supplierService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
           .stream().map(OrganizationReference1::getId).toList());
 
       messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());

@@ -45,7 +45,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = {AwardService.class, RPAGenericService.class},
+@SpringBootTest(classes = {AwardService.class, SupplierService.class},
     webEnvironment = WebEnvironment.NONE)
 @Slf4j
 @EnableConfigurationProperties({RPAAPIConfig.class})

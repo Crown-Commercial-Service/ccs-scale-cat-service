@@ -51,7 +51,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
             ExperimentalFlagsConfig.class,
         DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-        ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class,
+        ApplicationFlagsConfig.class,EventTransitionService.class,
             SupplierStoreFactory.class, JaggaerSupplierStore.class, DatabaseSupplierStore.class,
     DOS6SupplierStore.class},
     webEnvironment = WebEnvironment.NONE)
@@ -185,8 +185,6 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
-  @MockBean
-  private RPAGenericService rpaGenericService;
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
