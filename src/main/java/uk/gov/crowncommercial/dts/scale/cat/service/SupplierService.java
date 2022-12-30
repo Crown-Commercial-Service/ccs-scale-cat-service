@@ -14,18 +14,15 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
@@ -58,7 +55,6 @@ public class SupplierService {
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final JaggaerService jaggaerService;
-  private final RPAGenericService rpaGenericService;
   private static final String RPA_DELIMITER = "~|";
   private static final String RPA_OPEN_ENVELOPE_ERROR_DESC = "Technical button not found";
   private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
@@ -145,7 +141,7 @@ public class SupplierService {
       scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
     }
 
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
+    var validSuppliers = getValidSuppliers(procurementEvent, scoreAndComments
         .stream().map(ScoreAndCommentNonOCDS::getOrganisationId).toList());
     
    var supplierScoresList =  new ArrayList<SupplierScore>();
@@ -219,5 +215,54 @@ public class SupplierService {
       defaultComment = comment.isPresent() ? comment.get() : defaultComment;
     }
     return defaultComment;
+  }
+
+  public Pair<List<Supplier>, Set<OrganisationMapping>> getValidSuppliers(
+          final ProcurementEvent procurementEvent, final List<String> orgIds) {
+    var supplierOrgIds = orgIds.stream().collect(Collectors.toSet());
+    // Retrieve and verify Tenders DB org mappings
+    var supplierOrgMappings =
+            retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
+    if (isEmpty(supplierOrgMappings)) {
+      var errorDesc =
+              String.format("No supplier organisation mappings found in Tenders DB %s", supplierOrgIds);
+      log.error(errorDesc);
+      throw new JaggaerRPAException(errorDesc);
+    }
+
+    // Find all externalOrgIds
+    var supplierExternalIds = supplierOrgMappings.stream()
+            .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
+
+    // Find actual suppliers of project and event
+    var suppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId()).getSuppliersList()
+            .getSupplier();
+
+    // Find all unmatched org ids
+    var unMatchedSuppliers = supplierExternalIds.stream()
+            .filter(orgid -> suppliers.stream()
+                    .noneMatch(supplier -> supplier.getCompanyData().getId().equals(orgid)))
+            .toList();
+
+    if (!isEmpty(unMatchedSuppliers)) {
+      var errorDesc =
+              String.format("Supplied organisation mappings not matched with actual suppliers '%s'",
+                      unMatchedSuppliers);
+      log.error(errorDesc);
+      throw new SupplierNotMatchException(errorDesc);
+    }
+
+    // Comparing the requested organisation ids and event suppliers info
+    var matchedSuppliers = suppliers.stream()
+            .filter(supplier -> supplierExternalIds.stream()
+                    .anyMatch(orgId -> orgId.equals(supplier.getCompanyData().getId())))
+            .toList();
+
+    return Pair.of(
+            matchedSuppliers.stream()
+                    .map(e -> Supplier.builder().companyData(e.getCompanyData())
+                            .id(String.valueOf(e.getCompanyData().getId())).build())
+                    .toList(),
+            supplierOrgMappings);
   }
 }

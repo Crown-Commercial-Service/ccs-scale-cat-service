@@ -113,8 +113,6 @@ public class ProcurementEventService implements EventService {
     private final JaggaerService jaggaerService;
     private final ConclaveService conclaveService;
 
-    private final RPAGenericService rpaGenericService;
-
     private final AgreementsService agreementsService;
     private final AwardService awardService;
 

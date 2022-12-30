@@ -35,10 +35,11 @@ public class AwardService {
 
   private final ValidationService validationService;
   private final UserProfileService userService;
-  private final RPAGenericService rpaGenericService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final JaggaerService jaggaerService;
+
+  private final SupplierService supplierService;
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
@@ -80,7 +81,7 @@ public class AwardService {
     if (award.getSuppliers().size() > 1) {
       throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
     }
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, award.getSuppliers()
+    var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
         .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
     
     //TODO delete once score testing is done 
