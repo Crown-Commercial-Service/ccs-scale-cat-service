@@ -19,7 +19,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TeaPotException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
@@ -200,7 +202,7 @@ public class ProfileManagementService {
       if (sendNotification)
         sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
       
-      throw new UserRolesConflictException(format(ERR_MSG_FMT_NO_ROLES, userId));
+      throw new TeaPotException(format(ERR_MSG_FMT_NO_ROLES, userId));
       // SCAT-7580: Create Jaggaer Supplier
       // Commented as per SCAT-8095 22a
       // createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
@@ -245,6 +247,18 @@ public class ProfileManagementService {
       final UserContactInfoList conclaveUserContacts, final String userId,
       final RegisterUserResponse registerUserResponse,
       final List<RegisterUserResponse.RolesEnum> returnRoles, final String supplierLogin) {
+    
+    // Validate DUNS-Number
+    if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")
+        && conclaveUserOrg.getAdditionalIdentifiers() != null) {
+      var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
+          .filter(dnumber -> dnumber.getScheme().equalsIgnoreCase("US-DUN")).findAny();
+      if (validDunsNumber.isPresent()) {
+        conclaveUserOrg.setIdentifier(validDunsNumber.get());
+      } else {
+        sendSupplierRegistrationInvalidDunsNotification(conclaveUserOrg);
+      }
+    }
 
     // Now searched by org (legal) identifer (SCHEME-ID)
     var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(
@@ -605,6 +619,17 @@ public class ProfileManagementService {
         conclaveUser.getUserName());
 
     notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
+        userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
+  }
+  
+  private void sendSupplierRegistrationInvalidDunsNotification(
+      final OrganisationProfileResponseInfo conclaveUserOrg) {
+
+    var placeholders = Map.of("org_name", conclaveUserOrg.getIdentifier().getLegalName(),
+        "org_scheme", conclaveUserOrg.getIdentifier().getScheme(), "org_number",
+        conclaveUserOrg.getIdentifier().getId());
+
+    notificationService.sendEmail(userRegistrationNotificationConfig.getInvalidDunsTemplateId(),
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
 
