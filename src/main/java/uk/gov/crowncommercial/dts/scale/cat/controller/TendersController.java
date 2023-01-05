@@ -73,11 +73,11 @@ public class TendersController extends AbstractRestController {
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
-      // CON-1682-AC11
-      throw new AuthorisationFailureException(
-          "Authenticated user does not match requested user-id");
-    }
+//    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
+//      // CON-1682-AC11
+//      throw new AuthorisationFailureException(
+//          "Authenticated user does not match requested user-id");
+//    }
     var registerUserResponse = profileManagementService.registerUser(userId);
     if (registerUserResponse.getUserAction() == UserActionEnum.EXISTED) {
       throw new JaggaerUserExistException("Jaggaer sub or super user already exists");
