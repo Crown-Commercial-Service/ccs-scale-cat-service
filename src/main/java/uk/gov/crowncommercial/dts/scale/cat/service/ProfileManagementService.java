@@ -201,12 +201,11 @@ public class ProfileManagementService {
           createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE, sendNotification);
       if (sendNotification)
         sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      saveBuyerDetails(conclaveUser.getUserName());
       
-      throw new TeaPotException(format(ERR_MSG_FMT_NO_ROLES, userId));
-      // SCAT-7580: Create Jaggaer Supplier
-      // Commented as per SCAT-8095 22a
-      // createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-      //   conclaveUserContacts, userId, registerUserResponse, returnRoles, SUPPLIER_LOGIN_UNIQUE_VALUE);
+      //SCAT-7580: Create Jaggaer Supplier
+      createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+          conclaveUserContacts, userId, registerUserResponse, returnRoles, SUPPLIER_LOGIN_UNIQUE_VALUE);
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.size() == 1
         && jaggaerRoles.contains(BUYER)) {
