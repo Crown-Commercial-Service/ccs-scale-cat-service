@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
 import static org.springframework.util.StringUtils.hasText;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.BUYER;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
@@ -18,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TeaPotException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
@@ -63,8 +63,6 @@ public class ProfileManagementService {
   static final String MSG_FMT_SYS_ROLES = "%s user [%s] has roles %s";
   static final String MSG_FMT_BOTH_ROLES = "User [%s] is both buyer AND supplier in Conclave";
   static final Set<String> ISO_COUNTRIES = Set.of(Locale.getISOCountries());
-  static final String BUYER_LOGIN_UNIQUE_VALUE = "buyer";
-  static final String SUPPLIER_LOGIN_UNIQUE_VALUE = "supplier";
 
   private final ConclaveService conclaveService;
   private final ConclaveAPIConfig conclaveAPIConfig;
@@ -160,13 +158,11 @@ public class ProfileManagementService {
     var registerUserResponse = new RegisterUserResponse();
     var createUpdateCompanyDataBuilder = CreateUpdateCompanyRequest.builder();
     var returnRoles = new ArrayList<RegisterUserResponse.RolesEnum>();
-    var sendNotification = false;
-
     if (conclaveRoles.contains(BUYER) && jaggaerRoles.size() == 1 && jaggaerRoles.contains(BUYER)) {
 
       // CON-1682-AC1&17(buyer): Update Jaggaer Buyer
       updateBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, jaggaerUserData.getFirst(), registerUserResponse, null);
+          createUpdateCompanyDataBuilder, jaggaerUserData.getFirst(), registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
 
     } else if (conclaveRoles.size() == 1 && conclaveRoles.contains(BUYER)
@@ -174,11 +170,20 @@ public class ProfileManagementService {
 
       // CON-1682-AC2: Create Jaggaer Buyer
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, registerUserResponse, null, sendNotification);
+          createUpdateCompanyDataBuilder, registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      if (sendNotification)
-        sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
       saveBuyerDetails(conclaveUser.getUserName());
+
+    } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.isEmpty()) {
+
+      // CON-1682-AC15: Create Jaggaer Buyer / return temp error code
+      createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
+          createUpdateCompanyDataBuilder, registerUserResponse);
+      sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
+      saveBuyerDetails(conclaveUser.getUserName());
+
+      throw new LoginDirectorEdgeCaseException("CON1682-AC15: Dual Conclave roles, buyer created");
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.size() == 1
         && jaggaerRoles.contains(SUPPLIER)) {
@@ -186,52 +191,71 @@ public class ProfileManagementService {
       // CON-1682-AC8&17(supplier): Update Jaggaer Supplier
       var jaggaerSupplierData = jaggaerUserData.getSecond().orElseThrow();
       updateSupplier(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, jaggaerSupplierData, registerUserResponse, null);
+          createUpdateCompanyDataBuilder, jaggaerSupplierData, registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.isEmpty()) {
-      //Create Jaggaer Supplier
-      createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-          conclaveUserContacts, userId, registerUserResponse, returnRoles, null);
-      
-    } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.isEmpty()) {
 
-      // CON-1682-AC15: Create Jaggaer Buyer
-      createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE, sendNotification);
-      if (sendNotification)
-        sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
-      saveBuyerDetails(conclaveUser.getUserName());
-      
-      //SCAT-7580: Create Jaggaer Supplier
-      createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-          conclaveUserContacts, userId, registerUserResponse, returnRoles, SUPPLIER_LOGIN_UNIQUE_VALUE);
+      // Validate DUNS-Number
+      if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")
+          && conclaveUserOrg.getAdditionalIdentifiers() != null) {
+        var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
+            .filter(dnumber -> dnumber.getScheme().equalsIgnoreCase("US-DUN")).findAny();
+        if (validDunsNumber.isPresent()) {
+          conclaveUserOrg.setIdentifier(validDunsNumber.get());
+        } else {
+          sendSupplierRegistrationInvalidDunsNotification(conclaveUserOrg);
+        }
+      }
 
-    } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.size() == 1
-        && jaggaerRoles.contains(BUYER)) {
-      
-      returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-          conclaveUserContacts, userId, registerUserResponse, returnRoles, SUPPLIER_LOGIN_UNIQUE_VALUE);
+      // Now searched by org (legal) identifer (SCHEME-ID)
+      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(
+          conclaveService.getOrganisationIdentifer(conclaveUserOrg));
 
-    } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.size() == 1
-        && jaggaerRoles.contains(SUPPLIER)) {
-      
+      if (orgMapping.isPresent()) {
+        var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
+        
+        // CON-1682-AC10: Create Jaggaer Supplier sub-user
+        createUpdateSupplierSubUser(String.valueOf(jaggaerSupplierOrgId), createUpdateCompanyDataBuilder,
+            conclaveUser, conclaveUserOrg, conclaveUserContacts, userId, registerUserResponse);
+
+      } else {
+        // Call Jaggaer to check the supplier super user is exists
+        var superUser =
+            userProfileService.getSupplierDataByDUNSNumber(conclaveUserOrg.getIdentifier().getId());
+        if (superUser.isPresent()) {
+          // Create Jaggaer Supplier sub-user
+          createUpdateSupplierSubUser(superUser.get().getReturnCompanyInfo().getBravoId(),
+              createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg, conclaveUserContacts,
+              userId, registerUserResponse);
+          
+          retryableTendersDBDelegate.save(OrganisationMapping.builder()
+              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .externalOrganisationId(
+                  Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
+              .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
+          
+        } else {
+          // CON-1682-AC9: Supplier is first user in company - create as super-user
+          createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+              conclaveUserContacts, CompanyType.SELLER, Optional.empty());
+          var createUpdateCompanyRequest = createUpdateCompanyDataBuilder.build();
+          log.debug("Creating supplier super-user company: [{}]", createUpdateCompanyRequest);
+
+          var createUpdateCompanyResponse =
+              jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
+
+          retryableTendersDBDelegate.save(OrganisationMapping.builder()
+              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
+              .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
+
+          registerUserResponse.userAction(UserActionEnum.CREATED);
+          registerUserResponse.organisationAction(OrganisationActionEnum.CREATED);
+        }
+      }
       returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
-      createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          createUpdateCompanyDataBuilder, registerUserResponse, BUYER_LOGIN_UNIQUE_VALUE, sendNotification);
-      if (sendNotification)
-        sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
-      saveBuyerDetails(conclaveUser.getUserName());
 
-    } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.size() == 2
-        && jaggaerRoles.containsAll(Set.of(BUYER, SUPPLIER))) {
-      
-      registerUserResponse.setUserAction(UserActionEnum.EXISTED);
-      registerUserResponse.setOrganisationAction(OrganisationActionEnum.EXISTED);
-      returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
-      returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
-      
     } else {
       throw new UserRolesConflictException(format(ERR_MSG_FMT_NO_ROLES, userId));
     }
@@ -240,85 +264,27 @@ public class ProfileManagementService {
     return registerUserResponse;
   }
   
-  private void createSupplier(
-      final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
-      final UserProfileResponseInfo conclaveUser, OrganisationProfileResponseInfo conclaveUserOrg,
-      final UserContactInfoList conclaveUserContacts, final String userId,
-      final RegisterUserResponse registerUserResponse,
-      final List<RegisterUserResponse.RolesEnum> returnRoles, final String supplierLogin) {
-    
-    // Validate DUNS-Number
-    if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")
-        && conclaveUserOrg.getAdditionalIdentifiers() != null) {
-      var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
-          .filter(dnumber -> dnumber.getScheme().equalsIgnoreCase("US-DUN")).findAny();
-      if (validDunsNumber.isPresent()) {
-        conclaveUserOrg.setIdentifier(validDunsNumber.get());
-      } else {
-        sendSupplierRegistrationInvalidDunsNotification(conclaveUserOrg);
-      }
-    }
+  private void sendSupplierRegistrationInvalidDunsNotification(
+      final OrganisationProfileResponseInfo conclaveUserOrg) {
 
-    // Now searched by org (legal) identifer (SCHEME-ID)
-    var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(
-        conclaveService.getOrganisationIdentifer(conclaveUserOrg));
+    var placeholders = Map.of("org_name", conclaveUserOrg.getIdentifier().getLegalName(),
+        "org_scheme", conclaveUserOrg.getIdentifier().getScheme(), "org_number",
+        conclaveUserOrg.getIdentifier().getId());
 
-    if (orgMapping.isPresent()) {
-      var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
-
-      // CON-1682-AC10: Create Jaggaer Supplier sub-user
-      createUpdateSupplierSubUser(String.valueOf(jaggaerSupplierOrgId),
-          createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg, conclaveUserContacts,
-          userId, registerUserResponse, supplierLogin);
-
-    } else {
-      // Call Jaggaer to check the supplier super user is exists
-      var superUser =
-          userProfileService.getSupplierDataByDUNSNumber(conclaveUserOrg.getIdentifier().getId());
-      if (superUser.isPresent()) {
-        // Create Jaggaer Supplier sub-user
-        createUpdateSupplierSubUser(superUser.get().getReturnCompanyInfo().getBravoId(),
-            createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg, conclaveUserContacts,
-            userId, registerUserResponse, supplierLogin);
-
-        retryableTendersDBDelegate.save(OrganisationMapping.builder()
-            .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
-            .externalOrganisationId(
-                Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
-            .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
-
-      } else {
-        // CON-1682-AC9: Supplier is first user in company - create as super-user
-        createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-            conclaveUserContacts, CompanyType.SELLER, Optional.empty());
-        var createUpdateCompanyRequest = createUpdateCompanyDataBuilder.build();
-        log.debug("Creating supplier super-user company: [{}]", createUpdateCompanyRequest);
-
-        var createUpdateCompanyResponse =
-            jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
-
-        retryableTendersDBDelegate.save(OrganisationMapping.builder()
-            .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
-            .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
-            .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
-
-        registerUserResponse.userAction(UserActionEnum.CREATED);
-        registerUserResponse.organisationAction(OrganisationActionEnum.CREATED);
-      }
-    }
-    returnRoles.add(RegisterUserResponse.RolesEnum.SUPPLIER);
+    notificationService.sendEmail(userRegistrationNotificationConfig.getInvalidDunsTemplateId(),
+        userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
   
   private void createUpdateSupplierSubUser(final String jaggaerSupplierOrgId,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
       final UserProfileResponseInfo conclaveUser, OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveUserContacts, final String userId,
-      final RegisterUserResponse registerUserResponse, final String supplierLogin) {
+      final RegisterUserResponse registerUserResponse) {
 
     // CON-1682-AC10: Create Jaggaer Supplier sub-user
     createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
         conclaveUserContacts, Optional.empty(), jaggaerSupplierOrgId,
-        jaggaerAPIConfig.getDefaultSupplierRightsProfile(), supplierLogin);
+        jaggaerAPIConfig.getDefaultSupplierRightsProfile());
     log.debug("Creating supplier sub-user: [{}]", userId);
     jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
     
@@ -330,10 +296,10 @@ public class ProfileManagementService {
       final OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveUserContacts,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
-      final RegisterUserResponse registerUserResponse, final String buyerLogin, boolean sendNotification) {
+      final RegisterUserResponse registerUserResponse) {
     createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
         conclaveUserContacts, Optional.empty(), jaggaerAPIConfig.getSelfServiceId(),
-        jaggaerAPIConfig.getDefaultBuyerRightsProfile(), buyerLogin, sendNotification);
+        jaggaerAPIConfig.getDefaultBuyerRightsProfile());
 
     log.debug("Creating buyer user: [{}], request: {}", conclaveUser.getUserName(),
         createUpdateCompanyDataBuilder.build());
@@ -348,12 +314,11 @@ public class ProfileManagementService {
       final OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveUserContacts,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
-      final Optional<SubUser> jaggaerBuyer, final RegisterUserResponse registerUserResponse,
-      final String buyerLogin) {
+      final Optional<SubUser> jaggaerBuyer, final RegisterUserResponse registerUserResponse) {
 
     createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
         conclaveUserContacts, jaggaerBuyer, jaggaerAPIConfig.getSelfServiceId(),
-        jaggaerAPIConfig.getDefaultBuyerRightsProfile(), buyerLogin);
+        jaggaerAPIConfig.getDefaultBuyerRightsProfile());
 
     log.debug("Updating buyer user: [{}]", conclaveUser.getUserName());
     jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
@@ -368,7 +333,7 @@ public class ProfileManagementService {
       final UserContactInfoList conclaveUserContacts,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
       final ReturnCompanyData jaggaerSupplierData,
-      final RegisterUserResponse registerUserResponse, final String supplierLogin) {
+      final RegisterUserResponse registerUserResponse) {
 
     // Determine whether supplier represented by super or sub user
     if (ssoCodeDataExists(jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData())
@@ -392,7 +357,7 @@ public class ProfileManagementService {
       createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
           conclaveUserContacts, jaggaerSupplierSubUser,
           jaggaerSupplierData.getReturnCompanyInfo().getBravoId(),
-          jaggaerAPIConfig.getDefaultSupplierRightsProfile(), supplierLogin);
+          jaggaerAPIConfig.getDefaultSupplierRightsProfile());
 
       log.debug("Updating supplier sub-user: [{}]", conclaveUser.getUserName());
       jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
@@ -407,7 +372,7 @@ public class ProfileManagementService {
       final UserProfileResponseInfo conclaveUser,
       final OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveContacts, final Optional<SubUser> existingSubUser,
-      final String jaggaerOrgId, final String rightsProfile, final String login, boolean sendNotif) {
+      final String jaggaerOrgId, final String rightsProfile) {
 
     var userPersonalContacts = conclaveService.extractUserPersonalContacts(conclaveContacts);
     var subUsersBuilder = SubUsers.builder();
@@ -423,24 +388,7 @@ public class ProfileManagementService {
       subUsersBuilder.operationCode(OperationCode.CREATE);
       // TODO: This keyword ensures the sub-user's division is set to the super-user's
       // userDivisionId
-      
-      Pair<CompanyInfo, Optional<SubUser>> buyerOrganisationPair =
-          isBuyerOrganisationExists(conclaveUserOrg.getIdentifier().getLegalName());
-
-      Optional<SubUser> buyerOrganisationExists = buyerOrganisationPair.getSecond();
-
-      if (!buyerOrganisationExists.isPresent()) {
-        sendNotif = true;
-        subUserBuilder.division("Division");
-      } else {
-        subUserBuilder.division(buyerOrganisationExists.get().getDivision());
-        if (buyerOrganisationExists.get().getDivision()
-            .equals(buyerOrganisationPair.getFirst().getUserDivisionCode())) {
-          sendNotif = true;
-        }
-      }
-     
-      subUserBuilder.businessUnit(conclaveUserOrg.getIdentifier().getLegalName());
+      subUserBuilder.division("Division");
       subUserBuilder.ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
     }
 
@@ -453,28 +401,13 @@ public class ProfileManagementService {
         .subUsers(
             subUsersBuilder
                 .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
-                    .surName(conclaveUser.getLastName())
-                    .login(login == null ? conclaveUser.getUserName()
-                        : conclaveUser.getUserName() + "-" + login)
+                    .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
                     .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
                     .phoneNumber(
                         Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
                     .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build()))
                 .build());
   }
-
-  private void createUpdateSubUserHelper(
-      final CreateUpdateCompanyRequestBuilder createUpdateCompanyRequestBuilder,
-      final UserProfileResponseInfo conclaveUser,
-      final OrganisationProfileResponseInfo conclaveUserOrg,
-      final UserContactInfoList conclaveContacts, final Optional<SubUser> existingSubUser,
-      final String jaggaerOrgId, final String rightsProfile, final String login) {
-    
-    this.createUpdateSubUserHelper(createUpdateCompanyRequestBuilder, conclaveUser, conclaveUserOrg,
-        conclaveContacts, existingSubUser, jaggaerOrgId, rightsProfile, login, false);
-  }
-  
-  
 
   private void createUpdateSuperUserHelper(
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyRequestBuilder,
@@ -712,13 +645,4 @@ public class ProfileManagementService {
       }
       return null;
   }
-  
-  private Pair<CompanyInfo, Optional<SubUser>> isBuyerOrganisationExists(String legalName) {
-    var selfServiceBuyerCompany = userProfileService.getSelfServiceBuyerCompany();
-    var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().parallelStream()
-        .filter(suser -> suser.getBusinessUnit().equals(legalName)).findFirst();
-    return Pair.of(selfServiceBuyerCompany.getReturnCompanyInfo(), subUser);
-  }
-
-
 }
