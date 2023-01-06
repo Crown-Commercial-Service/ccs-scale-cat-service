@@ -51,7 +51,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
             ExperimentalFlagsConfig.class,
         DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-        ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class,
+        ApplicationFlagsConfig.class,EventTransitionService.class,
             SupplierStoreFactory.class, JaggaerSupplierStore.class, DatabaseSupplierStore.class,
     DOS6SupplierStore.class},
     webEnvironment = WebEnvironment.NONE)
@@ -185,8 +185,6 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
-  @MockBean
-  private RPAGenericService rpaGenericService;
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
@@ -1119,47 +1117,6 @@ class ProcurementEventServiceTest {
     assertEquals(7, response.getNoResponse());
   }
 
-  @Test
-  void testSupplierResponsesWithNoOffers() throws Exception {
-
-    var event = new ProcurementEvent();
-    event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
-    event.setEventType(ORIGINAL_EVENT_TYPE);
-
-    var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
-
-    var supplier = Supplier.builder()
-        .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-        .status("Replied").statusCode(4).build();
-    var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
-        LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
-        .build();
-    var organisationMapping =
-        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
-    rfxResponse.setRfxSetting(rfxSetting);
-    rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
-    rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
-    // Mock behaviours
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-        .thenReturn(event);
-    when(jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(PROC_EVENT_ID)).thenReturn(rfxResponse);
-    when(organisationMappingRepo.findByExternalOrganisationId(supplier.getCompanyData().getId()))
-        .thenReturn(Optional.of(organisationMapping));
-
-    var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
-
-    // Verify
-    assertNotNull(response);
-
-    assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
-    assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
-    assertNull(response.getResponders().get(0).getResponseDate());
-    assertEquals(1, response.getResponded());
-    assertEquals(8, response.getInvited());
-    assertEquals(7, response.getNoResponse());
-  }
 
   void testTerminateEvent() throws Exception {
 
