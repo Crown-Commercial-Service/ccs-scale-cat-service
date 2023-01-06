@@ -90,7 +90,7 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
   }
 
-  @ResponseStatus(I_AM_A_TEAPOT)
+  @ResponseStatus(CONFLICT)
   @ExceptionHandler({UserRolesConflictException.class})
   public Errors handleUserRolesConflictException(final UserRolesConflictException exception) {
 
@@ -98,7 +98,7 @@ public class GlobalErrorHandler implements ErrorController {
         + exception.getMessage());
 
     return tendersAPIModelUtils
-        .buildErrors(Arrays.asList(new ApiError(I_AM_A_TEAPOT.toString(), exception.getMessage(), "")));
+        .buildErrors(Arrays.asList(new ApiError(CONFLICT.toString(), exception.getMessage(), "")));
   }
 
   @ResponseStatus(CONFLICT)
