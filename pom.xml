@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.6</version>
+		<version>2.6.7</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
@@ -17,28 +17,27 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<swagger-parser.version>2.1.9</swagger-parser.version>
+		<swagger-parser.version>2.0.32</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
-		<hibernate-types.version>2.17.1</hibernate-types.version>
+		<hibernate-types.version>2.16.2</hibernate-types.version>
 		<modelmapper.version>2.4.5</modelmapper.version>
 		<simple-odf.version>0.9.0</simple-odf.version>
 		<jena-core.version>4.5.0</jena-core.version>
 		<commons-io.version>2.11.0</commons-io.version>
-		<aws-java-sdk-s3.version>1.12.347</aws-java-sdk-s3.version>
-		<tika-core.version>2.4.1</tika-core.version>
+		<aws-java-sdk-s3.version>1.12.214</aws-java-sdk-s3.version>
+		<tika-core.version>2.4.0</tika-core.version>
 		<java-cfenv-boot.version>2.4.0</java-cfenv-boot.version>
 		<notifications-java-client.version>3.17.3-RELEASE</notifications-java-client.version>
 		<poi-ooxml.version>5.2.2</poi-ooxml.version>
-		<xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-		<snakeyaml.version>1.32</snakeyaml.version>
-		<spring-security-oauth2-client.version>5.7.5</spring-security-oauth2-client.version>
-		<spring-security-web.version>5.7.5</spring-security-web.version>
-		<hsql.version>2.7.1</hsql.version>
-
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>com.intuit.fuzzymatcher</groupId>
+			<artifactId>fuzzy-matcher</artifactId>
+			<version>1.2.0</version>
+		</dependency>
 		<dependency>
 			<groupId>io.pivotal.cfenv</groupId>
 			<artifactId>java-cfenv-boot</artifactId>
@@ -48,12 +47,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-cache</artifactId>
-		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -65,17 +58,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-oauth2-client</artifactId>
-			<exclusions>
-				<exclusion>
-					<groupId>org.springframework.security</groupId>
-					<artifactId>spring-security-oauth2-client</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.springframework.security</groupId>
-					<artifactId>spring-security-web</artifactId>
-				</exclusion>
-			</exclusions>
+		</dependency>
 
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-csv</artifactId>
+			<version>2.13.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -124,23 +112,8 @@
 					<groupId>javax.validation</groupId>
 					<artifactId>validation-api</artifactId>
 				</exclusion>
-				<exclusion>
-					<groupId>org.yaml</groupId>
-					<artifactId>snakeyaml</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.mozilla</groupId>
-					<artifactId>rhino</artifactId>
-				</exclusion>
 			</exclusions>
 		</dependency>
-		<!-- New Dependencies -->
-		<dependency>
-			<groupId>org.yaml</groupId>
-			<artifactId>snakeyaml</artifactId>
-			<version>${snakeyaml.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>com.vladmihalcea</groupId>
 			<artifactId>hibernate-types-52</artifactId>
@@ -153,9 +126,9 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-			<groupId>org.hsqldb</groupId>
-			<artifactId>hsqldb</artifactId>
-			<version>${hsql.version}</version>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -176,10 +149,6 @@
 					<groupId>org.apache.jena</groupId>
 					<artifactId>jena-core</artifactId>
 				</exclusion>
-				<exclusion>
-					<groupId>xerces</groupId>
-					<artifactId>xercesImpl</artifactId>
-				</exclusion>
 			</exclusions>
 		</dependency>
 		<dependency>
@@ -189,11 +158,11 @@
 		</dependency>
 
 		<dependency>
-		    <groupId>uk.gov.service.notify</groupId>
-		    <artifactId>notifications-java-client</artifactId>
-		    <version>${notifications-java-client.version}</version>
+			<groupId>uk.gov.service.notify</groupId>
+			<artifactId>notifications-java-client</artifactId>
+			<version>${notifications-java-client.version}</version>
 		</dependency>
-		
+
 
 		<!-- Snyk recommended -->
 		<dependency>
@@ -223,22 +192,6 @@
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
 			<version>${poi-ooxml.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>xerces</groupId>
-			<artifactId>xercesImpl</artifactId>
-			<version>${xerces.xercesimpl.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-oauth2-client</artifactId>
-			<version>${spring-security-oauth2-client.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-web</artifactId>
-			<version>${spring-security-web.version}</version>
 		</dependency>
 
 		<!-- Test dependencies -->
