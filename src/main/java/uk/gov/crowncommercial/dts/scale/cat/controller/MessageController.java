@@ -46,23 +46,6 @@ public class MessageController extends AbstractRestController {
         .ok(messageService.createOrReplyMessage(principal, procId, eventId, messageRequest));
   }
 
-  @PostMapping("/{threadCount}")
-  @TrackExecutionTime
-  @Deprecated
-  public ResponseEntity<String> asyncCreateAndRespondMessage(
-      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
-      @PathVariable("threadCount") final Integer threadCount,
-      @Valid @RequestBody final Message messageRequest,
-      final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
-    var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-    log.info("createAndRespondMessage invoked on behalf of principal: {}", principal,
-        conclaveOrgId);
-
-    return ResponseEntity.ok(messageService.asyncSendOrRespondMessage(principal, procId, eventId,
-        messageRequest, threadCount));
-  }
 
   @GetMapping
   @TrackExecutionTime
