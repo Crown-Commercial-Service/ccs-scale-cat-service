@@ -100,17 +100,6 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils
         .buildErrors(Arrays.asList(new ApiError(CONFLICT.toString(), exception.getMessage(), "")));
   }
-  
-  @ResponseStatus(I_AM_A_TEAPOT)
-  @ExceptionHandler({TeaPotException.class})
-  public Errors handleTeapotException(final TeaPotException exception) {
-
-    log.debug("Profile management conflict exception (" + exception.getClass().getName() + "): "
-        + exception.getMessage());
-
-    return tendersAPIModelUtils
-        .buildErrors(Arrays.asList(new ApiError(I_AM_A_TEAPOT.toString(), exception.getMessage(), "")));
-  }
 
   @ResponseStatus(CONFLICT)
   @ExceptionHandler({DataConflictException.class})
