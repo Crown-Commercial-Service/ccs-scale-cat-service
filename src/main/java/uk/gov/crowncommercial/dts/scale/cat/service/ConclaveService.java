@@ -164,6 +164,7 @@ public class ConclaveService {
   }
 
   public String getOrganisationIdentifer(final OrganisationProfileResponseInfo org) {
-    return org.getIdentifier().getScheme() + '-' + org.getIdentifier().getId();
+    var schemeName = org.getIdentifier().getScheme().replace("US-DUN", "US-DUNS");
+    return schemeName + '-' + org.getIdentifier().getId();
   }
 }
