@@ -462,6 +462,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setLotId(mapping.getProject().getLotNumber());
     projectPackageSummary.setProjectId(mapping.getProject().getId());
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
+    projectPackageSummary.setSupportId(mapping.getProject().getExternalReferenceId());
 
     EventSummary eventSummary = null;
     RfxSetting rfxSetting = null;
