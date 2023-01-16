@@ -97,9 +97,6 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
             event.getCapabilityAssessmentSuppliers()
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
-
-            event.setRefreshSuppliers(false);
-        
         }
 
 
@@ -121,7 +118,6 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
 
         event.setUpdatedAt(Instant.now());
         event.setUpdatedBy(principal);
-        event.setRefreshSuppliers(false);
         retryableTendersDBDelegate.save(event);
 
         var supplierSelection = event.getCapabilityAssessmentSuppliers().stream()

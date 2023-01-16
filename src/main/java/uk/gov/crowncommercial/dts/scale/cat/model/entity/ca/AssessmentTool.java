@@ -33,10 +33,6 @@ public class AssessmentTool {
   @Column(name = "assessment_tool_descr")
   private String description;
 
-  @Column(name = "downselect_suppliers_ind")
-  private Boolean downSelectSuppliers;
-
-
   @EqualsAndHashCode.Exclude
   @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @OrderBy("dimension_id")

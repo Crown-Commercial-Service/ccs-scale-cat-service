@@ -28,7 +28,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessmen
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
@@ -233,18 +232,11 @@ class ProcurementEventServiceTest {
     var procurementProject = ProcurementProject.builder()
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
-    procurementEvent.setRefreshSuppliers(false);
+
     var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
         .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
-
-    var assessmentTool = AssessmentTool.builder()
-            .id(1).downSelectSuppliers(false).build();
-
-    var assessment= new Assessment();
-    assessment.setAssessmentId(0);
-    assessment.setExternalToolId("1");
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
@@ -264,15 +256,6 @@ class ProcurementEventServiceTest {
       procurementEvent.setOcidPrefix(OCID_PREFIX);
       return procurementEvent;
     });
-
-
-    when(assessmentToolRepo.findByExternalToolId(any())).then(mock -> {
-      return Optional.of(assessmentTool);
-    });
-
-
-    when(assessmentService.getAssessment(
-            0, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
@@ -323,21 +306,12 @@ class ProcurementEventServiceTest {
 
     var procurementProject = ProcurementProject.builder()
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
-
-
     var procurementEvent = ProcurementEvent.builder().build();
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(UPDATED_EVENT_NAME)
         .statusCode(100).publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
-
-    var assessmentTool = AssessmentTool.builder()
-            .id(1).downSelectSuppliers(false).build();
-
-    var assessment= new Assessment();
-    assessment.setAssessmentId(ASSESSMENT_ID);
-    assessment.setExternalToolId("1");
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
@@ -357,23 +331,8 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
-    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
-      procurementProject.setId(PROC_PROJECT_ID);
-      procurementProject.setProjectName(PROJECT_NAME);
-      return Optional.of(procurementProject);
-    });
-
-    when(assessmentToolRepo.findByExternalToolId(any())).then(mock -> {
-      return Optional.of(assessmentTool);
-    });
-
-
-
     when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
         PRINCIPAL)).thenReturn(ASSESSMENT_ID);
-
-    when(assessmentService.getAssessment(
-            ASSESSMENT_ID, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
@@ -980,7 +939,7 @@ class ProcurementEventServiceTest {
     var procurementProject =
         ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
-        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).refreshSuppliers(false).build();
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
 
     var documentUpload1 = DocumentUpload.builder().id(1).externalStatus(VirusCheckStatus.SAFE)
         .documentId("YnV5ZXItMjM3MDU4LW5pY2VwZGYucGRm").mimetype("application/pdf")
@@ -1005,14 +964,10 @@ class ProcurementEventServiceTest {
         .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
-    SuppliersList supplierList= SuppliersList.builder().build();
-    rfxResponse.setSuppliersList(supplierList);
+
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
-    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
-
-
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(documentUploadService.retrieveDocument(documentUpload1, PRINCIPAL))
@@ -1043,7 +998,6 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
-    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
 
