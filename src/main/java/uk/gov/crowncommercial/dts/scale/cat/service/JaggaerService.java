@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -373,6 +374,7 @@ public class JaggaerService {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving messages"));
   }
+  @Async
   public MessageResponse updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
 
