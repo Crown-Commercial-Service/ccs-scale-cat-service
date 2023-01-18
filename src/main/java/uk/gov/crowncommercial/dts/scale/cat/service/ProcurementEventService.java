@@ -268,7 +268,7 @@ public class ProcurementEventService implements EventService {
 
 
         Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
-        if(Objects.isNull(existingEventId)){
+        if(!Objects.isNull(existingEventId)){
             eventBuilder.refreshSuppliers(false);
         }
         var event = eventBuilder.build();
