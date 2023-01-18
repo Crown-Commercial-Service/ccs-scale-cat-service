@@ -279,7 +279,7 @@ public class DocGenService {
       {
         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
       }
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»") || item.getText().contains("«Project_Incumbent_Yes_No_Supplier_Name_Step_22»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
