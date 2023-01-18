@@ -280,8 +280,13 @@ public class ProcurementEventService implements EventService {
             procurementEvent = retryableTendersDBDelegate.save(event);
         }
 
+        Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
+        if(Objects.isNull(existingEventId)){
+            procurementEvent.setRefreshSuppliers(false);
+            procurementEvent = retryableTendersDBDelegate.save(event);
+        }
+
         if (scheduleSupplierSync) {
-            Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
             JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
             List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
             if (null != suppliers && suppliers.size() > 0) {
