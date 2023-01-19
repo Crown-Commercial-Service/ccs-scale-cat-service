@@ -98,7 +98,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
             event.getCapabilityAssessmentSuppliers()
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
 
-            event.setRefreshSuppliers(false);
+
         
         }
 

@@ -631,6 +631,13 @@ class ProcurementEventServiceTest {
     letype.setAssessmentToolId("1");
     letype.setType(UPDATED_EVENT_TYPE_CAP_ASS);
 
+    var assessmentTool = AssessmentTool.builder()
+              .id(1).downSelectSuppliers(false).build();
+
+    var assessment= new Assessment();
+      assessment.setAssessmentId(ASSESSMENT_ID);
+      assessment.setExternalToolId("1");
+
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
@@ -640,6 +647,18 @@ class ProcurementEventServiceTest {
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(agreementsService.getLotEventTypes(any(), any())).thenReturn(Set.of(letype));
+
+      when(assessmentToolRepo.findByExternalToolId(any())).then(mock -> {
+          return Optional.of(assessmentTool);
+      });
+
+
+
+      when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
+              PRINCIPAL)).thenReturn(ASSESSMENT_ID);
+
+      when(assessmentService.getAssessment(
+              ASSESSMENT_ID, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -681,11 +700,24 @@ class ProcurementEventServiceTest {
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
+      var assessmentTool = AssessmentTool.builder()
+              .id(1).downSelectSuppliers(false).build();
+
+      var assessment= new Assessment();
+      assessment.setAssessmentId(ASSESSMENT_ID);
+      assessment.setExternalToolId("1");
+
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+
+      when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
+              PRINCIPAL)).thenReturn(ASSESSMENT_ID);
+
+      when(assessmentService.getAssessment(
+              ASSESSMENT_ID, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
