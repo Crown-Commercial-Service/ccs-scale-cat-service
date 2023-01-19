@@ -266,8 +266,12 @@ public class ProcurementEventService implements EventService {
             setRefreshSuppliersForEvent(eventBuilder, project.getProcurementEvents());
         }
 
-        var event = eventBuilder.build();
 
+        Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
+        if(!Objects.isNull(existingEventId)){
+            eventBuilder.refreshSuppliers(false);
+        }
+        var event = eventBuilder.build();
         ProcurementEvent procurementEvent;
 
         // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
@@ -281,7 +285,6 @@ public class ProcurementEventService implements EventService {
         }
 
         if (scheduleSupplierSync) {
-            Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
             JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
             List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
             if (null != suppliers && suppliers.size() > 0) {
