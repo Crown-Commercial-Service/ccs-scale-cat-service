@@ -304,7 +304,7 @@ public class ProcurementEventService implements EventService {
 
     private void setRefreshSuppliersForEvent(ProcurementEvent.ProcurementEventBuilder eventBuilder, Set<ProcurementEvent> procurementEvents) {
 
-        Optional<ProcurementEvent>  downSelectedProcurementEvent=procurementEvents.stream().filter(event -> !isClosedStatus(event.getTenderStatus())).filter(event->event.getDownSelectedSuppliers()).findFirst();
+        Optional<ProcurementEvent>  downSelectedProcurementEvent=procurementEvents.stream().filter(event -> !isClosedStatus(event.getTenderStatus())).filter(ProcurementEvent::getDownSelectedSuppliers).findFirst();
         if(downSelectedProcurementEvent.isPresent()){
             eventBuilder.refreshSuppliers(false);
         }
@@ -319,6 +319,17 @@ public class ProcurementEventService implements EventService {
             }
         }
     }
+    private void setRefreshSuppliersForEvent(ProcurementEvent  event, Assessment validatedAssessment) {
+        Optional<AssessmentTool> assesmentToolOptional=retryableTendersDBDelegate.findAssessmentToolByExternalToolId(validatedAssessment.getExternalToolId());
+        if(assesmentToolOptional.isPresent()){
+            if(assesmentToolOptional.get().getDownSelectSuppliers()){
+                event.setRefreshSuppliers(false);
+            }
+        }
+    }
+
+
+
 
     public List<Supplier> getSuppliers(ProcurementProject project, ProcurementEvent existingEvent,
                                        String eventTypeValue, boolean twoStageEvent) {
@@ -542,9 +553,22 @@ public class ProcurementEventService implements EventService {
         if (createAssessment) {
             returnAssessmentId = assessmentService.createEmptyAssessment(event.getProject().getCaNumber(),
                     event.getProject().getLotNumber(), updateEvent.getEventType(), principal);
+
+
+            var validatedAssessment = assessmentService.getAssessment(
+                    returnAssessmentId, Boolean.FALSE, Optional.empty());
+
+            setRefreshSuppliersForEvent(event, validatedAssessment);
+
+
         } else if (updateEvent.getAssessmentId() != null) {
             // Return the existing (validated) assessmentId
             returnAssessmentId = updateEvent.getAssessmentId();
+
+            var validatedAssessment = assessmentService.getAssessment(
+                    returnAssessmentId, Boolean.FALSE, Optional.empty());
+
+            setRefreshSuppliersForEvent(event, validatedAssessment);
         }
 
         // Save to Jaggaer
@@ -679,6 +703,11 @@ public class ProcurementEventService implements EventService {
         var event = validationService.validateProjectAndEventIds(procId, eventId);
 
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
+
+        // we are setting refresh suppliers to false
+        event.setRefreshSuppliers(false);
+        retryableTendersDBDelegate.save(event);
+
         return supplierStore.storeSuppliers(event, eventSuppliers, principal);
 //
 //    var supplierOrgIds = eventSuppliers.getSuppliers().stream().map(OrganizationReference1::getId)
