@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 //@SpringBootApplication
 //@EnableJpaRepositories("uk.gov.crowncommercial.dts.scale.cat.*")
 @RequiredArgsConstructor
-public class CompileCSVData implements CommandLineRunner {
+public class CompileCSVData {
 
     private static final String SUPPLIER_DATA_FILE = "/home/ksvraja/supplier_dos6_prod.txt";
 
@@ -50,22 +50,9 @@ public class CompileCSVData implements CommandLineRunner {
 
     private Map<String, String> supplierMap = new HashMap<>();
 
-    public static void main(String[] args) {
-        SpringApplication.run(CompileCSVData.class, args);
-    }
-
     private final SaveService service;
 
     private final EmailTranslator emailTranslator;
-
-    @Override
-
-    public void run(String... args) throws Exception {
-        compileCSV(AGREEMENT + "_completed");
-        compileCSV(AGREEMENT + "_missing");
-    }
-
-
 
     @SneakyThrows
     private void compileCSV(String agreementName) {

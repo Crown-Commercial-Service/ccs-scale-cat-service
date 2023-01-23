@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.csvwriter;
 
 import lombok.SneakyThrows;
+import uk.gov.crowncommercial.dts.scale.cat.csvreader.JaggaerSupplierModel;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.SupplierModel;
 
 import java.io.BufferedWriter;
@@ -9,18 +10,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class SupplierWriter extends AbstractCsvGenerator<SupplierModel> implements Consumer<SupplierModel> {
+public class JaggaerSupplierWriter extends AbstractCsvGenerator<JaggaerSupplierModel> implements Consumer<JaggaerSupplierModel> {
 
-    private static final List<String> columns = Arrays.asList("entityId","houseNumber","bravoId", "ciiMatch", "jaggaerExtCode",
-            "legalName", "tradingName",
-            "supplierName", "jaggaerSupplierName", "similarity", "mappingType", "mappingId");
+    private static final List<String> columns = Arrays.asList("bravoId","extCode","extUniqueCode", "supplierName", "email", "postalAddress");
     private final String filename;
 
     private BufferedWriter writer;
 
-    public SupplierWriter(String baseFolder, String filename) {
+    public JaggaerSupplierWriter(String baseFolder, String filename) {
         super(baseFolder);
         this.filename = filename;
+        initHeader();
     }
 
     @Override
@@ -32,14 +32,13 @@ public class SupplierWriter extends AbstractCsvGenerator<SupplierModel> implemen
     public void initHeader() {
         Path file = getBaseFolder().resolve(filename);
         writer = getWriter(file);
-
         writer.write(getHeader());
         writer.newLine();
     }
 
     @Override
     @SneakyThrows
-    public void accept(SupplierModel model) {
+    public void accept(JaggaerSupplierModel model) {
         writeModel(model, writer);
         writer.flush();
     }

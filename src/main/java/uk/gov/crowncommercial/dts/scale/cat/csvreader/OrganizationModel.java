@@ -7,4 +7,7 @@ public class OrganizationModel {
     private String entityId;
     private String legalName;
     private String tradingName;
+    private String emailAddress;
+
+    private String address;
 }

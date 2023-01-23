@@ -7,11 +7,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import lombok.RequiredArgsConstructor;
 
-@SpringBootApplication
-@RequiredArgsConstructor
-@EnableScheduling
-@EnableAsync
-@EnableCaching
+//@SpringBootApplication
+//@RequiredArgsConstructor
+//@EnableScheduling
+//@EnableAsync
+//@EnableCaching
 public class Application {
 
   public static void main(final String[] args) {

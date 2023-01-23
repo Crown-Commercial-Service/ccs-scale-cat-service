@@ -3,7 +3,6 @@ package uk.gov.crowncommercial.dts.scale.cat.csvreader;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
-import java.util.Date;
 
 @Data
 public class SupplierModel {
@@ -20,7 +19,23 @@ public class SupplierModel {
     private String tradingName;
 
     private String bravoId;
-    private String jaggaerSupplierName;
+    private String jaggaerSupplierName, jaggaerExtCode;
 
     private Double similarity;
+
+    private String mappingType;
+    private String mappingId;
+    private String ciiOrgName;
+    private String ciiCoH;
+    private String fuzzyMatch;
+
+    private String ciiMatch;
+    private String emailAddress;
+
+    private String postalAddress;
+
+    public void setMapping(String type, String id){
+        this.mappingType = type;
+        this.mappingId = id;
+    }
 }

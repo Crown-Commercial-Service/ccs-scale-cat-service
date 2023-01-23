@@ -9,16 +9,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class SupplierWriter extends AbstractCsvGenerator<SupplierModel> implements Consumer<SupplierModel> {
+public class SupplierSuggestionWriter extends AbstractCsvGenerator<SupplierModel> implements Consumer<SupplierModel> {
 
-    private static final List<String> columns = Arrays.asList("entityId","houseNumber","bravoId", "ciiMatch", "jaggaerExtCode",
-            "legalName", "tradingName",
-            "supplierName", "jaggaerSupplierName", "similarity", "mappingType", "mappingId");
+    private static final List<String> columns = Arrays.asList("entityId","houseNumber","bravoId","ciiMatch", "jaggaerExtCode",
+            "legalName", "tradingName","supplierName", "jaggaerSupplierName", "similarity", "mappingType", "mappingId"
+            , "ciiCoH", "ciiOrgName", "fuzzyMatch");
     private final String filename;
 
     private BufferedWriter writer;
 
-    public SupplierWriter(String baseFolder, String filename) {
+    public SupplierSuggestionWriter(String baseFolder, String filename) {
         super(baseFolder);
         this.filename = filename;
     }

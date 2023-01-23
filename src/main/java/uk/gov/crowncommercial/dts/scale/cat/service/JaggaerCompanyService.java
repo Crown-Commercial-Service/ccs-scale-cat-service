@@ -11,11 +11,13 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.DUNS_PLACEHOLDER;
-
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.EXTCODE_PLACEHOLDER;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 @Service
 @RequiredArgsConstructor
 public class JaggaerCompanyService {
@@ -74,6 +76,21 @@ public class JaggaerCompanyService {
         return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
     }
 
+    public Optional<ReturnCompanyData> getSupplierDataByBravoId(final String bravoId) {
+        var getSupplierCompanyByDUNSNumberEndpoint = jaggaerAPIConfig
+                .getGetCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
+                        PRINCIPAL_PLACEHOLDER, bravoId);
+        return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
+    }
+
+    public Optional<ReturnCompanyData> getSupplierDataByExtCode(final String concalveIdentifier) {
+        // Get the supplier org from Jaggaer by the DUNS Number
+        var getSupplierCompanyByDUNSNumberEndpoint = jaggaerAPIConfig
+                .getGetCompanyProfileByExtCode().get(JaggaerAPIConfig.ENDPOINT).replace(
+                        EXTCODE_PLACEHOLDER, concalveIdentifier);
+        return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
+    }
+
     private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {
         var response = ofNullable(
                 jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
@@ -87,6 +104,39 @@ public class JaggaerCompanyService {
             return Optional.of(response.getReturnCompanyData().stream().findFirst().get());
         }
         return Optional.empty();
+    }
+
+    public GetCompanyDataResponse getAllSuppliers() {
+        final String endpoint = "/esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE";
+        GetCompanyDataResponse response = ofNullable(
+                jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
+                        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                        "Unexpected error retrieving Jaggear supplier company data"));
+
+
+
+        if ("0".equals(response.getReturnCode()) && "OK".equals(response.getReturnMessage())
+                && response.getReturnCompanyData() != null) {
+            return response;
+        }
+        return null;
+    }
+
+    public Set<ReturnCompanyData> getAllSuppliers(int start) {
+        final String endpoint = "/esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&start=" + start;
+        var response = ofNullable(
+                jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
+                        .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                        "Unexpected error retrieving Jaggear supplier company data"));
+
+        if ("0".equals(response.getReturnCode()) && "OK".equals(response.getReturnMessage())
+                 && response.getReturnCompanyData() != null) {
+
+            return response.getReturnCompanyData();
+        }
+        return null;
     }
 
     public void populateDetailsEmailUpdate(CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder builder, CompanyInfo info, String emailAddress) {
