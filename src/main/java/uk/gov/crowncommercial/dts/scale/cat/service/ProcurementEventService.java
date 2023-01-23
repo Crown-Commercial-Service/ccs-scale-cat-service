@@ -1492,7 +1492,7 @@ public class ProcurementEventService implements EventService {
 
             var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
                     .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-            jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
+            jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
 
             // get rfx response after Start Evaluation And Open Envelope called
             exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
@@ -1679,6 +1679,12 @@ public class ProcurementEventService implements EventService {
             throw new RuntimeException(e);
         }
     }
-
+    
+    public void startEvaluation(final String profile, final Integer procId, final String eventId) {
+      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+      var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
+          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+      jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
+    }
 
 }
