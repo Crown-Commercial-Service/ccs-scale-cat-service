@@ -60,7 +60,8 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
             }catch(JaggaerApplicationException jae){
                 if(jae.getMessage().contains("Code: [-998]")){
                     throw new RetryableException("-998", jae.getMessage(), jae);
-                }
+                }else
+                    throw jae;
             }
             log.info("Successfully pushed {} suppliers to project {}, event {}", suppliers.size(), project.getId(), event.getEventID());
             return "Pushed " + suppliers.size() + " suppliers to Jaggaer";
