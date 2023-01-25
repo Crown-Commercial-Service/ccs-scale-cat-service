@@ -812,6 +812,8 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
+    when(organisationMappingRepo.findByExternalOrganisationIdIn(Set.of(JAGGAER_SUPPLIER_ID)))
+            .thenReturn(Set.of(orgMapping));
     when(organisationMappingRepo.findByExternalOrganisationId(JAGGAER_SUPPLIER_ID))
         .thenReturn(Optional.of(orgMapping));
 
