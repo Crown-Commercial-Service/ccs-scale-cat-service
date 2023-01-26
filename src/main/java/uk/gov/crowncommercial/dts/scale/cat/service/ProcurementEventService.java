@@ -1492,7 +1492,15 @@ public class ProcurementEventService implements EventService {
 
             var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
                     .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-            jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
+            
+            //SCAT-8514 - Hard fix for DOS
+            if (procurementEvent.getProject().getCaNumber().equals("RM1043.8")) {
+              jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
+                  EnvelopeType.TECH);
+            } else {
+              jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
+                  buyerUser.getUserId());
+            }
 
             // get rfx response after Start Evaluation And Open Envelope called
             exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
