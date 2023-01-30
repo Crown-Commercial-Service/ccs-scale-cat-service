@@ -74,7 +74,7 @@ public class DocumentTemplateService {
    *
    * @param procId
    * @param eventId
-   * @param state
+   * @param eventStage
    * @return a collection of document summaries
    */
   public Collection<DocumentSummary> getTemplatesByEventStage(final Integer procId,
@@ -87,7 +87,8 @@ public class DocumentTemplateService {
   /**
    * Lists the template documents for a given procurement event (by event type).
    *
-   * @param Set<DocumentTemplate>
+   * @param documentTemplates
+   * @param description
    * @return a collection of document summaries
    */
   public Collection<DocumentSummary> getTemplates(final Set<DocumentTemplate> documentTemplates,
@@ -141,7 +142,7 @@ public class DocumentTemplateService {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var documentTemplate = findDocumentTemplate(event, documentKey);
-    var draftDocument = docGenService.generateDocument(event, documentTemplate);
+    var draftDocument = docGenService.generateDocument(event, documentTemplate, Boolean.FALSE);
     var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, event.getEventID(),
         event.getEventType(), documentKey.getFileName());
 
