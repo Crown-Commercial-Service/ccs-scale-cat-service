@@ -268,9 +268,19 @@ public class ProcurementEventService implements EventService {
 
 
         Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
-        if(!Objects.isNull(existingEventId)){
-            eventBuilder.refreshSuppliers(false);
+
+
+        if(!Objects.isNull(existingEventId)  ){
+
+            if(COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEventOptional.get().getEventType()))){
+                eventBuilder.refreshSuppliers(true);
+            }else{
+                eventBuilder.refreshSuppliers(false);
+            }
+
         }
+
+
         var event = eventBuilder.build();
         ProcurementEvent procurementEvent;
 
@@ -335,10 +345,10 @@ public class ProcurementEventService implements EventService {
                                        String eventTypeValue, boolean twoStageEvent) {
 
         if (null != existingEvent) {
-            if (existingEvent.isTendersDBOnly() || twoStageEvent) {
+          //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
                 SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
                 return supplierStore.getSuppliers(existingEvent);
-            }
+          //  }
         }
 
         if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
