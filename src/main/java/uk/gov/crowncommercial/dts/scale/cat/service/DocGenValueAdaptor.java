@@ -11,5 +11,4 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 public interface DocGenValueAdaptor {
 
   List<String> getValue(ProcurementEvent event, ConcurrentMap<String, Object> requestCache);
-
 }
