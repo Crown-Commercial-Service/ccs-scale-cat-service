@@ -203,8 +203,9 @@ public class ProfileManagementService {
       saveBuyerDetails(conclaveUser.getUserName());
       
       //SCAT-7580: Create Jaggaer Supplier
-      createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-          conclaveUserContacts, userId, registerUserResponse, returnRoles, SUPPLIER_LOGIN_UNIQUE_VALUE);
+      // Commented as per SCAT-8095 22a
+//      createSupplier(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+//          conclaveUserContacts, userId, registerUserResponse, returnRoles, SUPPLIER_LOGIN_UNIQUE_VALUE);
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.size() == 1
         && jaggaerRoles.contains(BUYER)) {
@@ -314,12 +315,40 @@ public class ProfileManagementService {
       final RegisterUserResponse registerUserResponse, final String supplierLogin) {
 
     // CON-1682-AC10: Create Jaggaer Supplier sub-user
-    createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-        conclaveUserContacts, Optional.empty(), jaggaerSupplierOrgId,
-        jaggaerAPIConfig.getDefaultSupplierRightsProfile(), supplierLogin);
+    var userPersonalContacts = conclaveService.extractUserPersonalContacts(conclaveUserContacts);
+    var subUsersBuilder = SubUsers.builder();
+    var subUserBuilder = SubUser.builder();
+
+    subUsersBuilder.operationCode(OperationCode.CREATE);
+    // TODO: This keyword ensures the sub-user's division is set to the super-user's
+    // userDivisionId
+    subUserBuilder.division("Division");
+    subUserBuilder.ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
+
+    // TODO - mobilePhoneNumber requires '+' in front of it - include?
+    // TODO - timezone hardcoded
+    // TODO - phone number hardcoded in case of null
+    createUpdateCompanyDataBuilder
+    .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
+        .companyInfo(CompanyInfo.builder().bravoId(jaggaerSupplierOrgId)
+            .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+            .extUniqueCode(conclaveUserOrg.getIdentifier().getId()).build())
+        .build())
+    .subUsers(
+        subUsersBuilder
+            .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
+                .surName(conclaveUser.getLastName())
+                .login(supplierLogin == null ? conclaveUser.getUserName()
+                    : conclaveUser.getUserName() + "-" + supplierLogin)
+                .email(conclaveUser.getUserName()).rightsProfile(jaggaerAPIConfig.getDefaultSupplierRightsProfile())
+                .phoneNumber(
+                    Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
+                .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build()))
+            .build());
+
     log.debug("Creating supplier sub-user: [{}]", userId);
     jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
-    
+
     registerUserResponse.userAction(UserActionEnum.CREATED);
     registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
   }
@@ -414,12 +443,12 @@ public class ProfileManagementService {
     if (existingSubUser.isPresent()) {
 
       subUsersBuilder.operationCode(OperationCode.UPDATE);
-
       var subUser = existingSubUser.orElseThrow();
       subUserBuilder.userId(subUser.getUserId());
+      
     } else {
       subUsersBuilder.operationCode(OperationCode.CREATE);
-      // TODO: This keyword ensures the sub-user's division is set to the super-user's
+      // This keyword ensures the sub-user's division is set to the super-user's
       // userDivisionId
       
       Pair<CompanyInfo, Optional<SubUser>> buyerOrganisationPair =
