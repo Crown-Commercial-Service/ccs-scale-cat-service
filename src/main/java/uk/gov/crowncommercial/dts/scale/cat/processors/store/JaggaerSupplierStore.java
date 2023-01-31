@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.store;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -13,10 +14,7 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 
 import javax.validation.ValidationException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -32,13 +30,23 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         var existingRfx = jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
         var orgs = new ArrayList<OrganizationReference1>();
 
+
+
         if (existingRfx.getSuppliersList().getSupplier() != null) {
+            Set<OrganisationMapping> orgMappings = getOrganisationMappings(existingRfx.getSuppliersList().getSupplier());
+
+            HashMap<Integer, OrganisationMapping> orgMaps = new HashMap<>();
+            for(OrganisationMapping orgMap: orgMappings){
+                orgMaps.put(orgMap.getExternalOrganisationId(), orgMap);
+            }
+
             existingRfx.getSuppliersList().getSupplier().stream().map(s -> {
 
-                var om = retryableTendersDBDelegate
-                        .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId())));
+                OrganisationMapping om = orgMaps.get(s.getCompanyData().getId());
+                if(null == om ){
+                    throw new IllegalArgumentException(
+                            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId()));
+                }
 
                 return new OrganizationReference1().id(String.valueOf(om.getOrganisationId()))
                         .name(s.getCompanyData().getName());
@@ -48,6 +56,7 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         return new EventSuppliers().suppliers(orgs)
                 .justification(event.getSupplierSelectionJustification());
     }
+
 
     @Override
     public EventSuppliers storeSuppliers(ProcurementEvent event, EventSuppliers eventSuppliers, String principal) {
