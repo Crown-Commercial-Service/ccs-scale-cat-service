@@ -268,9 +268,19 @@ public class ProcurementEventService implements EventService {
 
 
         Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
-        if(!Objects.isNull(existingEventId)){
-            eventBuilder.refreshSuppliers(false);
+
+
+        if(!Objects.isNull(existingEventId)  ){
+
+            if(COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEventOptional.get().getEventType()))){
+                eventBuilder.refreshSuppliers(true);
+            }else{
+                eventBuilder.refreshSuppliers(false);
+            }
+
         }
+
+
         var event = eventBuilder.build();
         ProcurementEvent procurementEvent;
 
@@ -335,10 +345,10 @@ public class ProcurementEventService implements EventService {
                                        String eventTypeValue, boolean twoStageEvent) {
 
         if (null != existingEvent) {
-            if (existingEvent.isTendersDBOnly() || twoStageEvent) {
+          //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
                 SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
                 return supplierStore.getSuppliers(existingEvent);
-            }
+          //  }
         }
 
         if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
@@ -1492,7 +1502,15 @@ public class ProcurementEventService implements EventService {
 
             var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
                     .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-            jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
+            
+            //SCAT-8514 - Hard fix for DOS
+            if (procurementEvent.getProject().getCaNumber().equals("RM1043.8")) {
+              jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
+                  EnvelopeType.TECH);
+            } else {
+              jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
+                  buyerUser.getUserId());
+            }
 
             // get rfx response after Start Evaluation And Open Envelope called
             exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
@@ -1679,6 +1697,12 @@ public class ProcurementEventService implements EventService {
             throw new RuntimeException(e);
         }
     }
-
+    
+    public void startEvaluation(final String profile, final Integer procId, final String eventId) {
+      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+      var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
+          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+      jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
+    }
 
 }

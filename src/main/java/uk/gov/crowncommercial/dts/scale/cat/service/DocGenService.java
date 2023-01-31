@@ -68,7 +68,7 @@ public class DocGenService {
         .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
             procurementEvent.getEventType(), procurementEvent.getProject().getCaNumber(),
             procurementEvent.getProject().getLotNumber(), procurementEvent.getTemplateId())) {
-      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
+      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate, Boolean.TRUE),
           documentTemplate);
     }
   }
@@ -76,7 +76,7 @@ public class DocGenService {
   @SneakyThrows
   @Transactional
   public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
-      final DocumentTemplate documentTemplate) {
+      final DocumentTemplate documentTemplate, final boolean isPublish) {
 
     var templateResource =
         documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -88,7 +88,7 @@ public class DocGenService {
 
       var dataReplacement =
           getDataReplacement(procurementEvent, documentTemplateSource, requestCache);
-      replacePlaceholder(documentTemplateSource, dataReplacement, textODT);
+      replacePlaceholder(documentTemplateSource, dataReplacement, textODT, isPublish);
     }
 
     var outputStream = new ByteArrayOutputStream();
@@ -188,7 +188,7 @@ public class DocGenService {
   }
   
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT)
+      final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish)
       throws InvalidNavigationException {
 
     log.debug("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
@@ -198,19 +198,19 @@ public class DocGenService {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
           replaceText(documentTemplateSource,
-                  getString(dataReplacement), textODT);
+                  getString(dataReplacement), textODT, isPublish);
           break;
 
         case DATETIME:
           var formattedDatetime = formatDateorDateAndTime(dataReplacement.get(0));
-          replaceText(documentTemplateSource, formattedDatetime, textODT);
+          replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
           break;
 
         case DURATION:
           var period = Period.parse(dataReplacement.get(0));
           var formattedPeriod =
               String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
-          replaceText(documentTemplateSource, formattedPeriod, textODT);
+          replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
           break;
 
         case TABLE:
@@ -221,11 +221,11 @@ public class DocGenService {
           replaceList(documentTemplateSource, dataReplacement, textODT);
           break;
         default:
-          replaceText(documentTemplateSource, "", textODT);
+          replaceText(documentTemplateSource, "", textODT, isPublish);
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
-      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT);
+      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT, isPublish);
     }
 
   }
@@ -243,7 +243,7 @@ public class DocGenService {
   }
 
   void replaceText(final DocumentTemplateSource documentTemplateSource,
-      String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+      String dataReplacement, final TextDocument textODT, final boolean isPublish) throws InvalidNavigationException {
 
     var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
     while (textNavigation.hasNext()) {
@@ -282,6 +282,10 @@ public class DocGenService {
       if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»") || item.getText().contains("«Project_Incumbent_Yes_No_Supplier_Name_Step_22»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
+      }
+      if(item.getText().equals("«Insert Time, Date, Month, Year of #1»") && !isPublish)
+      {
+        dataReplacement = "";
       }
 
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
@@ -394,7 +398,7 @@ public class DocGenService {
           
           // Replace placeholder ONLY in the cell's display text
           // TODO: Remove OptionsProperty - redundant.
-          cell.setDisplayText(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
+         cell.setStringValue(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
               org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
         }
       }

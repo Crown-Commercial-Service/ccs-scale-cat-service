@@ -176,7 +176,7 @@ class DocumentTemplateServiceTest {
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
         .thenReturn(Optional.of(DOC_TEMPLATE1));
-    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1))
+    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1, Boolean.FALSE))
         .thenReturn(draftProformaOutputStream);
 
     var draftProforma =
