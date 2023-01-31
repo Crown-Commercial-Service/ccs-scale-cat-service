@@ -398,7 +398,7 @@ public class DocGenService {
           
           // Replace placeholder ONLY in the cell's display text
           // TODO: Remove OptionsProperty - redundant.
-          cell.setDisplayText(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
+         cell.setStringValue(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
               org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
         }
       }
