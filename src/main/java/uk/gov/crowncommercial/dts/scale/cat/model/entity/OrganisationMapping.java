@@ -34,8 +34,9 @@ public class OrganisationMapping {
   @Column(name = "external_organisation_id")
   Integer externalOrganisationId;
 
+  @Builder.Default
   @Column(name = "primary_ind")
-  boolean primaryInd;
+  boolean primaryInd = true;
 
   @Column(name = "created_by", updatable = false)
   String createdBy;
