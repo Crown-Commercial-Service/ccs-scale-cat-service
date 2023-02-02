@@ -5,9 +5,6 @@ import org.apache.commons.text.similarity.JaroWinklerDistance;
 public class Util {
 
     private static JaroWinklerDistance winklerDistance = new JaroWinklerDistance();
-    public static void main(String[] args){
-        System.out.println(isCohEqual("6681071", "06681071"));
-    }
 
     public static String getEntityId(String entityCode){
         if(null == entityCode)

@@ -8,8 +8,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import uk.gov.crowncommercial.dts.scale.agreement.model.dto.SupplierDetails;
+import uk.gov.crowncommercial.dts.scale.cat.config.ScriptConfig;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.*;
 import uk.gov.crowncommercial.dts.scale.cat.csvwriter.JaggaerSupplierWriter;
+import uk.gov.crowncommercial.dts.scale.cat.csvwriter.SupplierDetailsWriter;
 import uk.gov.crowncommercial.dts.scale.cat.csvwriter.SupplierSuggestionWriter;
 import uk.gov.crowncommercial.dts.scale.cat.csvwriter.SupplierWriter;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -20,6 +24,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -28,13 +33,16 @@ import java.util.stream.Collectors;
 
 
 @SpringBootApplication
-//@EnableJpaRepositories("uk.gov.crowncommercial.dts.scale.cat.*")
 @RequiredArgsConstructor
 @EnableCaching
 public class DOS6Processor implements CommandLineRunner {
 
     private final JaggaerCompanyService companyService;
     private final JaggaerSupplierDownloader supplierDownloader;
+
+    private final AgreementService supplierService;
+
+    private final ScriptConfig scriptConfig;
     //    private final JaggaerQuerySync querySyncConsumer;
     private Map<String, CiiSingleOrg> ciiOrgSingleMap;
 
@@ -42,11 +50,10 @@ public class DOS6Processor implements CommandLineRunner {
     Map<String, CiiOrg> ciiOrgMap;
 
     Map<String, JaggaerSupplierModel> jaggaerSupplierMap;
-
-    private static final String BASE_FOLDER = "/home/ksvraja/brickendon/org_sync/230123/";
     private static final String BUSINESS_INPUT_FILE = "DOS6_suppliers";
 
     private static final String AGREEMENT_DATA_FILE = "dos6_all";
+    private static final String AGREEMENT_DATA_LOT = "dos6_lot";
     private SupplierSuggestionWriter suggestionsWriter;
 
     private JaroWinklerDistance winklerDistance = new JaroWinklerDistance();
@@ -73,30 +80,56 @@ public class DOS6Processor implements CommandLineRunner {
 
     private final EmailTranslator emailTranslator;
 
-    @Override
+    private String getBaseFolder(){
+        return scriptConfig.getBaseFolder();
+    }
+
+    private String getCurrentFolder(){
+        return scriptConfig.getCurrentFolder();
+    }
 
     public void run(String... args) throws Exception {
 
-        supplierDownloader.downloadSuppliers(BASE_FOLDER, "input/jaggaer_suppliers.csv");
-        jaggaerSupplierMap = supplierDownloader.getSuppliers(BASE_FOLDER, "input/jaggaer_suppliers.csv");
+        initFolder(getCurrentFolder());
+
+        fetchSuppliers(AGREEMENT_DATA_FILE);
+        String currentFolder = getCurrentFolder();
+        supplierDownloader.downloadSuppliers(currentFolder, "input/jaggaer_suppliers.csv");
+        jaggaerSupplierMap = supplierDownloader.getSuppliers(currentFolder, "input/jaggaer_suppliers.csv");
         jaggaerMatcher = new JaggaerMatcher(jaggaerSupplierMap);
         jaggaerMatcher.init();
-        writeDuplicateJaggaerSuppliers(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
-
-        String duns = "769266248";
-        ReturnCompanyData companyData = queryCompanyFromJaggaer("769266248");
+//        writeDuplicateJaggaerSuppliers(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
 
         advancedLocalJaggaerDataSync(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
-        generateLotWiseReport(BASE_FOLDER);
+        generateLotWiseReport();
 
         System.exit(0);
     }
 
+    @SneakyThrows
+    private void initFolder(String currentFolder) {
+        Files.createDirectories(Paths.get(currentFolder));
+    }
+
+    private void fetchSuppliers(String agreeementDataFileName) {
+        writeToFile(supplierService.getSuppliers(), "input/" + agreeementDataFileName + ".csv");
+        writeToFile(supplierService.getSuppliers("1"), "input/" + AGREEMENT_DATA_LOT + "1.csv");
+        writeToFile(supplierService.getSuppliers("2"), "input/" + AGREEMENT_DATA_LOT + "2.csv");
+        writeToFile(supplierService.getSuppliers("3"), "input/" + AGREEMENT_DATA_LOT + "3.csv");
+    }
+
+    private void writeToFile(List<SupplierDetails> suppliers, String filename) {
+        SupplierDetailsWriter detailsWriter = new SupplierDetailsWriter(getCurrentFolder(), filename);
+        detailsWriter.initHeader();
+        suppliers.stream().forEach(detailsWriter);
+        detailsWriter.complete();
+    }
+
     private void writeDuplicateJaggaerSuppliers(String agreeementDataFileName, String businessInputFileName) {
         SupplierCSVReader reader = new SupplierCSVReader();
-        File businessInputFile = Paths.get(BASE_FOLDER, "input", businessInputFileName + ".csv").toFile();
-        File agreementDataFile = Paths.get(BASE_FOLDER, "input", agreeementDataFileName + ".csv").toFile();
-
+        File businessInputFile = Paths.get(getBaseFolder(), "input", businessInputFileName + ".csv").toFile();
+        File agreementDataFile = Paths.get(getCurrentFolder(), "input", agreeementDataFileName + ".csv").toFile();
+        String currentFolder = getCurrentFolder();
         List<SupplierModel> supplierList = new ArrayList<>();
         List<OrganizationModel> orgList = new ArrayList<>();
         reader.parallelRecordProcess(businessInputFile, new Consumer<SupplierModel>(){
@@ -116,7 +149,7 @@ public class DOS6Processor implements CommandLineRunner {
             }
         });
 
-        JaggaerSupplierWriter writer = new JaggaerSupplierWriter(BASE_FOLDER, "dos6_duplicate_suppliers.csv");
+        JaggaerSupplierWriter writer = new JaggaerSupplierWriter(currentFolder, "dos6_duplicate_suppliers.csv");
         writer.initHeader();
 
 
@@ -131,16 +164,17 @@ public class DOS6Processor implements CommandLineRunner {
 
     @SneakyThrows
     private void advancedLocalJaggaerDataSync(String agreeementDataFileName, String businessInputFileName) {
+        String currentFolder = getCurrentFolder();
         SupplierCSVReader reader = new SupplierCSVReader();
 
         ciiOrgMap = getCiiOrgs("cii_orgs");
         ciiOrgSingleMap = getCiiSingleOrgs("cii_single");
 
-        File agreementDataFile = Paths.get(BASE_FOLDER, "input", agreeementDataFileName + ".csv").toFile();
+        File agreementDataFile = Paths.get(currentFolder, "input", agreeementDataFileName + ".csv").toFile();
 
-        File businessInputFile = Paths.get(BASE_FOLDER, "input", businessInputFileName + ".csv").toFile();
+        File businessInputFile = Paths.get(getBaseFolder(), "input", businessInputFileName + ".csv").toFile();
 
-        File errorFile = Paths.get(BASE_FOLDER, businessInputFileName + "_error.txt").toFile();
+        File errorFile = Paths.get(currentFolder, businessInputFileName + "_error.txt").toFile();
         BufferedWriter bw = new BufferedWriter(new FileWriter(errorFile));
 
         Map<String, Integer> orgMappings = new HashMap<>();
@@ -152,11 +186,11 @@ public class DOS6Processor implements CommandLineRunner {
 //        Map<String, Integer> orgMappings = service.listAll().stream()
 //                .collect(Collectors.toMap(OrganisationMapping::getOrganisationId, OrganisationMapping::getExternalOrganisationId));
 
-        SupplierWriter writer = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_completed.csv");
-        SupplierWriter missingWriter = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_missing.csv");
-        SupplierWriter missingJaggaerWriter = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_missing_jaggaer.csv");
-        SupplierWriter missingCASWriter = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_missing_cas.csv");
-        suggestionsWriter = new SupplierSuggestionWriter(BASE_FOLDER, businessInputFileName + "_suggestions.csv");
+        SupplierWriter writer = new SupplierWriter(currentFolder, businessInputFileName + "_completed.csv");
+        SupplierWriter missingWriter = new SupplierWriter(currentFolder, businessInputFileName + "_missing.csv");
+        SupplierWriter missingJaggaerWriter = new SupplierWriter(currentFolder, businessInputFileName + "_missing_jaggaer.csv");
+        SupplierWriter missingCASWriter = new SupplierWriter(currentFolder, businessInputFileName + "_missing_cas.csv");
+        suggestionsWriter = new SupplierSuggestionWriter(currentFolder, businessInputFileName + "_suggestions.csv");
 
         writer.initHeader();
         missingWriter.initHeader();
@@ -175,7 +209,7 @@ public class DOS6Processor implements CommandLineRunner {
         });
 
 
-        SupplierProcessor processor = new SupplierProcessor(BASE_FOLDER, agreeementDataFileName, businessInputFileName,
+        SupplierProcessor processor = new SupplierProcessor(scriptConfig, agreeementDataFileName, businessInputFileName,
                 ciiOrgMap, ciiOrgSingleMap, jaggaerSupplierMap, orgMappings, orgMap, service);
 
         processor.initWriters();
@@ -185,194 +219,6 @@ public class DOS6Processor implements CommandLineRunner {
         Thread.sleep(15 * 1000);
         processor.close();
         Thread.sleep(10 * 1000);
-    }
-
-
-//
-//    private void updateSimilarity(String agreementName) {
-//        SupplierCSVReader reader = new SupplierCSVReader();
-//        File file = Paths.get(BASE_FOLDER, agreementName + "_completed.csv").toFile();
-//        SupplierWriter writer = new SupplierWriter(BASE_FOLDER, agreementName + "_calculated.csv");
-//        writer.initHeader();
-//        reader.processFile(file, new Consumer<SupplierModel>() {
-//            @Override
-//            public void accept(SupplierModel supplierModel) {
-//                supplierModel.setSimilarity(getSimilarity(supplierModel));
-//                writer.accept(supplierModel);
-//            }
-//        });
-//        writer.complete();
-//    }
-
-
-    @SneakyThrows
-    private void advancedSync(String agreeementDataFileName, String businessInputFileName) {
-        SupplierCSVReader reader = new SupplierCSVReader();
-
-        ciiOrgMap = getCiiOrgs("cii_orgs");
-        ciiOrgSingleMap = getCiiSingleOrgs("cii_single");
-
-        File agreementDataFile = Paths.get(BASE_FOLDER, "input", agreeementDataFileName + ".csv").toFile();
-
-        File businessInputFile = Paths.get(BASE_FOLDER, "input", businessInputFileName + ".csv").toFile();
-
-        File errorFile = Paths.get(BASE_FOLDER, businessInputFileName + "_error.txt").toFile();
-        BufferedWriter bw = new BufferedWriter(new FileWriter(errorFile));
-
-        Map<String, Integer> orgMappings = service.listAll().stream()
-                .collect(Collectors.toMap(OrganisationMapping::getOrganisationId, OrganisationMapping::getExternalOrganisationId));
-
-        SupplierWriter writer = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_completed.csv");
-        SupplierWriter missingWriter = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_missing.csv");
-        SupplierWriter missingJaggaerWriter = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_missing_jaggaer.csv");
-        SupplierWriter missingCASWriter = new SupplierWriter(BASE_FOLDER, businessInputFileName + "_missing_cas.csv");
-        suggestionsWriter = new SupplierSuggestionWriter(BASE_FOLDER, businessInputFileName + "_suggestions.csv");
-
-        writer.initHeader();
-        missingWriter.initHeader();
-        missingJaggaerWriter.initHeader();
-        missingCASWriter.initHeader();
-        suggestionsWriter.initHeader();
-
-        AbstractCSVReader<OrganizationModel> orgReader = new OrganisationCSVReader();
-        Map<String, OrganizationModel> orgMap = new HashMap<>();
-
-        orgReader.processFile(agreementDataFile, new Consumer<OrganizationModel>() {
-            @Override
-            public void accept(OrganizationModel organizationModel) {
-                orgMap.put(Util.getEntityId(organizationModel.getEntityId()), organizationModel);
-            }
-        });
-
-
-        reader.parallelRecordProcess(businessInputFile, new Consumer<SupplierModel>() {
-            @Override
-            public void accept(SupplierModel supplierModel) {
-                String duns = supplierModel.getEntityId();
-                if (null == duns) {
-                    try {
-                        bw.write("Invalid DUNS number for supplier " + supplierModel.getSupplierName());
-                        bw.newLine();
-                        bw.flush();
-                        return;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                duns = Util.getEntityId(duns);
-
-                if (orgMap.containsKey(duns)) {
-                    OrganizationModel model = orgMap.get(duns);
-                    supplierModel.setEmailAddress(model.getEmailAddress());
-                }
-
-//                if (orgMappings.containsKey("US-DUNS-" + duns) || orgMappings.containsKey("US-DUN-" + duns)
-//                        || orgMappings.containsKey("GB-COH-" + duns)) {
-//                    supplierModel.setMapping("SYNCED", duns);
-//                    if (!orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId())))
-//                        missingCASWriter.accept(supplierModel);
-//                    else
-//                        writer.accept(supplierModel);
-//                    return;
-//                }
-
-                try {
-                    ReturnCompanyData data = getCompanyData(supplierModel, duns);
-                    if (null != data) {
-                        supplierModel.setJaggaerSupplierName(data.getReturnCompanyInfo().getCompanyName());
-                        supplierModel.setBravoId(data.getReturnCompanyInfo().getBravoId());
-                        supplierModel.setSimilarity(getSimilarity(supplierModel));
-                        supplierModel.setJaggaerExtCode(data.getReturnCompanyInfo().getExtCode() + "/" + data.getReturnCompanyInfo().getExtUniqueCode());
-
-                        if (!orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
-                            if (null == supplierModel.getFuzzyMatch())
-                                missingCASWriter.accept(supplierModel);
-                            else
-                                suggestionsWriter.accept(supplierModel);
-                            return;
-                        } else {
-                            OrganizationModel model = orgMap.get(Util.getEntityId(supplierModel.getEntityId()));
-                            supplierModel.setTradingName(model.getTradingName());
-                            supplierModel.setLegalName(model.getLegalName());
-                            if (null != supplierModel.getFuzzyMatch()) {
-                                suggestionsWriter.accept(supplierModel);
-                                return;
-                            }
-                        }
-
-                        String dunsNumber = "US-DUNS-" + duns;
-                        String dunNumber = "US-DUN-" + duns;
-                        if (orgMappings.containsKey(dunsNumber) || orgMappings.containsKey(dunNumber)) {
-                            writer.accept(supplierModel);
-                            return;
-                        }
-
-                        OrganisationMapping om = service.query(duns);
-
-                        if (null == om) {
-                            try {
-                                // service.save(duns, data);
-                                writer.accept(supplierModel);
-                            } catch (Throwable t) {
-                                bw.write("cas error:" + t.getMessage());
-                                bw.newLine();
-                                bw.write(duns + "/" + supplierModel.getSupplierName());
-                                if (null != om)
-                                    bw.write(" already assigned to " + om.getExternalOrganisationId() + " and");
-                                bw.write(" new assignment to " + data.getReturnCompanyInfo().getBravoId() + "/" + data.getReturnCompanyInfo().getCompanyName());
-                                bw.newLine();
-                                bw.flush();
-                            }
-                        } else {
-                            if (om.getExternalOrganisationId() != Integer.parseInt(data.getReturnCompanyInfo().getBravoId())) {
-                                bw.write("cas error:");
-                                bw.write(duns + "/" + supplierModel.getSupplierName());
-                                bw.write(" already assigned to " + om.getExternalOrganisationId());
-                                bw.write(" and cannot be changed to " + data.getReturnCompanyInfo().getBravoId() + "/" + data.getReturnCompanyInfo().getCompanyName());
-                                bw.newLine();
-                                bw.flush();
-                            } else {
-                                writer.accept(supplierModel);
-                            }
-                        }
-
-                    } else {
-                        if (null != supplierModel.getFuzzyMatch()) {
-                            suggestionsWriter.accept(supplierModel);
-                        } else if (orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
-                            OrganizationModel model = orgMap.get(Util.getEntityId(supplierModel.getEntityId()));
-                            supplierModel.setTradingName(model.getTradingName());
-                            supplierModel.setLegalName(model.getLegalName());
-                            missingJaggaerWriter.accept(supplierModel);
-                        } else
-                            missingWriter.accept(supplierModel);
-                    }
-                } catch (Throwable e) {
-                    System.out.println("Error while processing duns number " + duns + " " + e.getMessage());
-                    try {
-                        bw.write("cas error:");
-                        if (null == duns)
-                            bw.write("empty duns");
-                        else
-                            bw.write(duns);
-                        bw.write(e.getMessage());
-                        bw.newLine();
-                        bw.flush();
-                    } catch (IOException ex) {
-                    }
-                }
-            }
-        });
-
-        Thread.sleep(60 * 1000);
-
-        bw.close();
-        writer.complete();
-        missingCASWriter.complete();
-        missingJaggaerWriter.complete();
-        missingWriter.complete();
-        suggestionsWriter.complete();
-        Thread.sleep(30 * 1000);
     }
 
     private ReturnCompanyData getCompanyData(SupplierModel supplierModel, String duns) {
@@ -530,13 +376,16 @@ public class DOS6Processor implements CommandLineRunner {
     }
 
     @SneakyThrows
-    public void generateLotWiseReport(String baseFolder) {
-        LotWiseReporter reporter = new LotWiseReporter();
-        reporter.GenerateReport(baseFolder, "DOS6_suppliers", "dos6_lot1");
-        reporter.GenerateReport(baseFolder, "DOS6_suppliers", "dos6_lot2");
-        reporter.GenerateReport(baseFolder, "DOS6_suppliers", "dos6_lot3");
+    public void generateLotWiseReport() {
+        String baseFolder = scriptConfig.getBaseFolder();
+        String baseXlsFolder = scriptConfig.getCurrentFolder();
 
-        String baseXlsFolder = baseFolder;
+        LotWiseReporter reporter = new LotWiseReporter();
+        reporter.GenerateReport(baseFolder,baseXlsFolder, "DOS6_suppliers", "dos6_lot1");
+        reporter.GenerateReport(baseFolder,baseXlsFolder, "DOS6_suppliers", "dos6_lot2");
+        reporter.GenerateReport(baseFolder, baseXlsFolder,"DOS6_suppliers", "dos6_lot3");
+
+
 
         generateXLSSheet(baseXlsFolder);
         generateXLSSheet(baseXlsFolder, "dos6_lot1");
@@ -589,7 +438,7 @@ public class DOS6Processor implements CommandLineRunner {
 
     private Map<String, CiiOrg> getCiiOrgs(String filename) {
         CiiOrgReader reader = new CiiOrgReader();
-        File ciiOrgFile = Paths.get(BASE_FOLDER, "input", filename + ".csv").toFile();
+        File ciiOrgFile = Paths.get(scriptConfig.getBaseFolder(), "input", filename + ".csv").toFile();
         Map<String, CiiOrg> result = new HashMap<>();
         reader.processFile(ciiOrgFile, new Consumer<CiiOrg>() {
             @Override
@@ -606,7 +455,7 @@ public class DOS6Processor implements CommandLineRunner {
 
     private Map<String, CiiSingleOrg> getCiiSingleOrgs(String filename) {
         CiiSingleOrgReader reader = new CiiSingleOrgReader();
-        File ciiOrgFile = Paths.get(BASE_FOLDER, "input", filename + ".csv").toFile();
+        File ciiOrgFile = Paths.get(getBaseFolder(), "input", filename + ".csv").toFile();
         Map<String, CiiSingleOrg> result = new HashMap<>();
         reader.processFile(ciiOrgFile, new Consumer<CiiSingleOrg>() {
             @Override

@@ -1,4 +1,6 @@
 spring:
   config:
-    import: classpath:application.yml,classpath:local-env-local-pg.yml
+    import: classpath:application.yml,classpath:local-prod.yml
 
+script:
+  data-folder: /home/ksvraja/brickendon/org_sync/format/

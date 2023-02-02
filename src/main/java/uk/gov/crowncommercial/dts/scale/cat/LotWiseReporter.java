@@ -13,20 +13,13 @@ import java.util.function.Consumer;
 @Component
 public class LotWiseReporter {
 
-    public static void main(String[] args){
-        LotWiseReporter reporter = new LotWiseReporter();
-        reporter.GenerateReport("/home/ksvraja/brickendon/org_sync/221227/", "DOS6_suppliers", "dos6_lot1");
-        reporter.GenerateReport("/home/ksvraja/brickendon/org_sync/221227/", "DOS6_suppliers", "dos6_lot2");
-        reporter.GenerateReport("/home/ksvraja/brickendon/org_sync/221227/", "DOS6_suppliers", "dos6_lot3");
-    }
-
     public void lotwiseReport(String baseFolder, String agreement){
 
     }
 
-    public void GenerateReport(String baseFolder, String agreement, String lotFile){
+    public void GenerateReport(String baseFolder, String currentFolder, String agreement, String lotFile){
 //        File agreementDataFile = Paths.get(baseFolder, "input", agreement + ".csv").toFile();
-        File lotDataFile = Paths.get(baseFolder, "input",lotFile + ".csv").toFile();
+        File lotDataFile = Paths.get(currentFolder, "input",lotFile + ".csv").toFile();
 
         AbstractCSVReader<OrganizationModel> orgReader = new OrganisationCSVReader();
         Map<String, OrganizationModel> orgMap = new HashMap<>();
@@ -39,14 +32,14 @@ public class LotWiseReporter {
         });
 
 
-        doReport(baseFolder, agreement, "completed", lotFile, orgMap);
-        doReport(baseFolder, agreement, "missing", lotFile, orgMap);
-        doReport(baseFolder, agreement, "missing_jaggaer", lotFile, orgMap);
+        doReport(baseFolder, currentFolder, agreement, "completed", lotFile, orgMap);
+        doReport(baseFolder, currentFolder,agreement, "missing", lotFile, orgMap);
+        doReport(baseFolder, currentFolder,agreement, "missing_jaggaer", lotFile, orgMap);
     }
 
-    private void doReport(String baseFolder, String fileName, String action,  String lotFileName, Map<String, OrganizationModel> lotOrganisations) {
-        File dataFile = Paths.get(baseFolder, fileName + "_" + action + ".csv").toFile();
-        SupplierWriter writer = new SupplierWriter(baseFolder + lotFileName,  fileName + "_" + lotFileName + "_" + action + ".csv");
+    private void doReport(String baseFolder, String currentFolder, String fileName, String action,  String lotFileName, Map<String, OrganizationModel> lotOrganisations) {
+        File dataFile = Paths.get(currentFolder, fileName + "_" + action + ".csv").toFile();
+        SupplierWriter writer = new SupplierWriter(currentFolder + lotFileName,  fileName + "_" + lotFileName + "_" + action + ".csv");
 
         writer.initHeader();
         AbstractCSVReader<SupplierModel> supplierReader = new SupplierCSVReader();

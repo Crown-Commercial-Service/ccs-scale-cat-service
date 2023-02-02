@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat;
 
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.config.ScriptConfig;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.*;
 import uk.gov.crowncommercial.dts.scale.cat.csvwriter.SupplierSuggestionWriter;
 import uk.gov.crowncommercial.dts.scale.cat.csvwriter.SupplierWriter;
@@ -17,8 +18,7 @@ import java.util.function.Consumer;
 
 @RequiredArgsConstructor
 public class SupplierProcessor implements Consumer<SupplierModel> {
-
-    private final String baseFolder;
+    private final ScriptConfig scriptConfig;
     private final String agreeementDataFileName;
     private final String businessInputFileName;
     private final Map<String, CiiOrg> ciiOrgMap;
@@ -30,7 +30,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
     private final SaveService service;
     private BufferedWriter bw;
 
-    private SupplierWriter writer;
+    private SupplierWriter mappedWriter;
     private SupplierWriter missingWriter;
     private SupplierWriter missingJaggaerWriter;
     private SupplierWriter missingCASWriter;
@@ -40,23 +40,25 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
     public void initWriters() throws IOException {
         SupplierCSVReader reader = new SupplierCSVReader();
+        String baseFolder = scriptConfig.getBaseFolder();
+        String currentFolder = scriptConfig.getCurrentFolder();
 
-        File agreementDataFile = Paths.get(baseFolder, "input", agreeementDataFileName + ".csv").toFile();
+        File agreementDataFile = Paths.get(currentFolder, "input", agreeementDataFileName + ".csv").toFile();
 
         File businessInputFile = Paths.get(baseFolder, "input", businessInputFileName + ".csv").toFile();
 
-        File errorFile = Paths.get(baseFolder, businessInputFileName + "_error.txt").toFile();
+        File errorFile = Paths.get(currentFolder, businessInputFileName + "_error.txt").toFile();
         bw = new BufferedWriter(new FileWriter(errorFile));
 
-        writer = new SupplierWriter(baseFolder, businessInputFileName + "_completed.csv");
-        missingWriter = new SupplierWriter(baseFolder, businessInputFileName + "_missing.csv");
-        missingJaggaerWriter = new SupplierWriter(baseFolder, businessInputFileName + "_missing_jaggaer.csv");
-        missingCASWriter = new SupplierWriter(baseFolder, businessInputFileName + "_missing_cas.csv");
-        suggestionsWriter = new SupplierSuggestionWriter(baseFolder, businessInputFileName + "_suggestions.csv");
+        mappedWriter = new SupplierWriter(currentFolder, businessInputFileName + "_completed.csv");
+        missingWriter = new SupplierWriter(currentFolder, businessInputFileName + "_missing.csv");
+        missingJaggaerWriter = new SupplierWriter(currentFolder, businessInputFileName + "_missing_jaggaer.csv");
+        missingCASWriter = new SupplierWriter(currentFolder, businessInputFileName + "_missing_cas.csv");
+        suggestionsWriter = new SupplierSuggestionWriter(currentFolder, businessInputFileName + "_suggestions.csv");
 
         jaggaerMatcher = new JaggaerMatcher(jaggaerSupplierMap);
         jaggaerMatcher.init();
-        writer.initHeader();
+        mappedWriter.initHeader();
         missingWriter.initHeader();
         missingJaggaerWriter.initHeader();
         missingCASWriter.initHeader();
@@ -65,7 +67,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
     public void close() throws IOException {
         bw.close();
-        writer.complete();
+        mappedWriter.complete();
         missingCASWriter.complete();
         missingJaggaerWriter.complete();
         missingWriter.complete();
@@ -109,7 +111,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
         try {
             JaggaerSupplierModel data = getCompanyData(supplierModel, duns);
-            if (null != data) {
+            if (null != data && null == supplierModel.getFuzzyMatch()) {
                 supplierModel.setJaggaerSupplierName(data.getSupplierName());
                 supplierModel.setBravoId(data.getBravoId());
                 supplierModel.setSimilarity(getSimilarity(supplierModel));
@@ -118,25 +120,27 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 supplierModel.setJaggaerExtCode(extCode + "/" + extUniqueCode);
 
                 if (!orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
-                    if (null == supplierModel.getFuzzyMatch())
+//                    if (null == supplierModel.getFuzzyMatch())
                         missingCASWriter.accept(supplierModel);
-                    else
-                        suggestionsWriter.accept(supplierModel);
+//                    else
+//                        if(null != supplierModel.getFuzzyMatch())
+//                            suggestionsWriter.accept(supplierModel);
                     return;
                 } else {
                     OrganizationModel model = orgMap.get(Util.getEntityId(supplierModel.getEntityId()));
                     supplierModel.setTradingName(model.getTradingName());
                     supplierModel.setLegalName(model.getLegalName());
                     if (null != supplierModel.getFuzzyMatch()) {
-                        suggestionsWriter.accept(supplierModel);
-                        return;
+//                        missingWriter.accept(supplierModel);
+//                        suggestionsWriter.accept(supplierModel);
+//                        return;
                     }
                 }
 
                 String dunsNumber = "US-DUNS-" + duns;
                 String dunNumber = "US-DUN-" + duns;
                 if (orgMappings.containsKey(dunsNumber) || orgMappings.containsKey(dunNumber)) {
-                    writer.accept(supplierModel);
+                    mappedWriter.accept(supplierModel);
                     return;
                 }
 
@@ -144,8 +148,8 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
                 if (null == om) {
                     try {
-                        // service.save(duns, data);
-                        writer.accept(supplierModel);
+//                        service.save(duns, Integer.parseInt(data.getBravoId()));
+                        mappedWriter.accept(supplierModel);
                     } catch (Throwable t) {
                         bw.write("cas error:" + t.getMessage());
                         bw.newLine();
@@ -165,14 +169,20 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                         bw.newLine();
                         bw.flush();
                     } else {
-                        writer.accept(supplierModel);
+                        mappedWriter.accept(supplierModel);
                     }
                 }
 
             } else {
                 if (null != supplierModel.getFuzzyMatch()) {
+                    if (orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
+                        OrganizationModel model = orgMap.get(Util.getEntityId(supplierModel.getEntityId()));
+                        supplierModel.setTradingName(model.getTradingName());
+                        supplierModel.setLegalName(model.getLegalName());
+                    }
                     suggestionsWriter.accept(supplierModel);
-                } else if (orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
+                } //else
+                if (orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
                     OrganizationModel model = orgMap.get(Util.getEntityId(supplierModel.getEntityId()));
                     supplierModel.setTradingName(model.getTradingName());
                     supplierModel.setLegalName(model.getLegalName());
