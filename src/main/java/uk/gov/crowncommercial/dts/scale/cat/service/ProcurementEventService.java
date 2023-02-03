@@ -345,10 +345,10 @@ public class ProcurementEventService implements EventService {
                                        String eventTypeValue, boolean twoStageEvent) {
 
         if (null != existingEvent) {
-          //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
-                SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
-                return supplierStore.getSuppliers(existingEvent);
-          //  }
+            //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
+            SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
+            return supplierStore.getSuppliers(existingEvent);
+            //  }
         }
 
         if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
@@ -715,7 +715,7 @@ public class ProcurementEventService implements EventService {
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
         // we are setting refresh suppliers to false
-        event.setRefreshSuppliers(false);
+        event.setRefreshSuppliers(overwrite);
         retryableTendersDBDelegate.save(event);
 
         return supplierStore.storeSuppliers(event, eventSuppliers, principal);
@@ -1006,23 +1006,8 @@ public class ProcurementEventService implements EventService {
                     "You cannot publish an event unless it is in a 'planned' state");
         }
 
-        if(procurementEvent.getRefreshSuppliers()){
-
-            var agreementSuppliers=supplierService.getSuppliersForLot(procurementEvent.getProject().getCaNumber(), procurementEvent.getProject().getLotNumber());
-            List<Supplier> jaggaerSuppliers= Objects.nonNull(exportRfxResponse.getSuppliersList())?exportRfxResponse.getSuppliersList().getSupplier():new ArrayList();
-
-            Set<Integer> latestSupplierOrgSet=agreementSuppliers.stream().map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
-            Set<Integer> supplierOrgSet=jaggaerSuppliers.stream().map(supplier -> supplier.getCompanyData().getId()).collect(Collectors.toSet());
-
-            latestSupplierOrgSet.removeAll(supplierOrgSet);
-            // you will have only the new ids after the above step
-
-            if(!latestSupplierOrgSet.isEmpty()){
-              List<OrganisationMapping> newAggrementSuppliers= agreementSuppliers.stream().filter(organisationMapping -> latestSupplierOrgSet.contains(organisationMapping.getExternalOrganisationId())).collect(Collectors.toList());
-
-              EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
-              addSuppliers(procId,eventId,newEventSuppliers,false,principal);
-            }
+        if (procurementEvent.getRefreshSuppliers()) {
+            jaggaerSupplierRefresh(procId, eventId, principal, procurementEvent, exportRfxResponse);
         }
 
         retrieveAndUploadDocuments(principal, procurementEvent);
@@ -1032,16 +1017,47 @@ public class ProcurementEventService implements EventService {
         updateStatusAndDates(principal, procurementEvent);
     }
 
+    public void jaggaerSupplierRefresh(Integer procId, String eventId, String principal, ProcurementEvent procurementEvent, ExportRfxResponse exportRfxResponse) {
+        Set<OrganisationMapping> agreementSuppliers = supplierService.getSuppliersForLot(procurementEvent.getProject().getCaNumber(), procurementEvent.getProject().getLotNumber());
+        List<Supplier> jaggaerSuppliers = Objects.nonNull(exportRfxResponse.getSuppliersList()) ? exportRfxResponse.getSuppliersList().getSupplier() : new ArrayList();
+
+        Set<Integer> agreementSupplierIds = agreementSuppliers.stream().map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
+        Set<Integer> jaggaerSupplierIds = jaggaerSuppliers.stream().map(supplier -> supplier.getCompanyData().getId()).collect(Collectors.toSet());
+
+        boolean agreementHasSuperSet = agreementSupplierIds.containsAll(jaggaerSupplierIds);
+        boolean jaggaerHasSuperSet = jaggaerSupplierIds.containsAll(agreementSupplierIds);
+
+        if (!agreementHasSuperSet || !jaggaerHasSuperSet) {
+            if (agreementHasSuperSet && !jaggaerHasSuperSet) {
+                log.debug("computing extra suppliers from agreement serivce/jaggaer {}/{}", agreementSupplierIds.size(), jaggaerSupplierIds.size());
+                agreementSupplierIds.removeAll(jaggaerSupplierIds);
+                log.debug("{} suppliers are identified to be added in Jaggaer", agreementSupplierIds.size());
+                List<OrganisationMapping> newAggrementSuppliers = agreementSuppliers.stream()
+                        .filter(organisationMapping -> agreementSupplierIds.contains(organisationMapping.getExternalOrganisationId()))
+                        .collect(Collectors.toList());
+
+                EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
+                addSuppliers(procId, eventId, newEventSuppliers, false, principal);
+            } else {
+                log.debug("{} suppliers will be re-pushed to Jaggaer", agreementSuppliers.size());
+                List<OrganisationMapping> newAggrementSuppliers = agreementSuppliers.stream().collect(Collectors.toList());
+                EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
+                addSuppliers(procId, eventId, newEventSuppliers, true, principal);
+            }
+        }else{
+            log.info("No change in suppliers detected, suppliers will not be refreshed in Jaggaer {}/{}", agreementSuppliers.size(), jaggaerSuppliers.size());
+        }
+    }
+
     private EventSuppliers createNewEventSuppliers(List<OrganisationMapping> newAggrementSuppliers) {
 
-        List<OrganizationReference1> eventSuppliersOrgs= newAggrementSuppliers.stream().map(organisationMapping -> {
-
-            OrganizationReference1 organizationReference1= new OrganizationReference1();
+        List<OrganizationReference1> eventSuppliersOrgs = newAggrementSuppliers.stream().map(organisationMapping -> {
+            OrganizationReference1 organizationReference1 = new OrganizationReference1();
             organizationReference1.setId(organisationMapping.getOrganisationId());
             return organizationReference1;
         }).collect(Collectors.toList());
 
-        EventSuppliers eventSuppliers= new EventSuppliers();
+        EventSuppliers eventSuppliers = new EventSuppliers();
 
         eventSuppliers.setSuppliers(eventSuppliersOrgs);
         eventSuppliers.setOverwriteSuppliers(false);
@@ -1502,14 +1518,14 @@ public class ProcurementEventService implements EventService {
 
             var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
                     .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-            
+
             //SCAT-8514 - Hard fix for DOS
             if (procurementEvent.getProject().getCaNumber().equals("RM1043.8")) {
-              jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
-                  EnvelopeType.TECH);
+                jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
+                        EnvelopeType.TECH);
             } else {
-              jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
-                  buyerUser.getUserId());
+                jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
+                        buyerUser.getUserId());
             }
 
             // get rfx response after Start Evaluation And Open Envelope called
@@ -1609,9 +1625,9 @@ public class ProcurementEventService implements EventService {
     }
 
     private ExportRfxResponse getRfxWithSuppliers(final String externalEventId) {
-        ExportRfxResponse exportRfxResponse=jaggaerService.getRfxWithSuppliers(externalEventId);
+        ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliers(externalEventId);
 
-        if(Objects.isNull(exportRfxResponse)){
+        if (Objects.isNull(exportRfxResponse)) {
             throw new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId));
         }
         return exportRfxResponse;
@@ -1697,12 +1713,12 @@ public class ProcurementEventService implements EventService {
             throw new RuntimeException(e);
         }
     }
-    
+
     public void startEvaluation(final String profile, final Integer procId, final String eventId) {
-      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-      var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
-          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-      jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
+        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
+                .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+        jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
     }
 
 }
