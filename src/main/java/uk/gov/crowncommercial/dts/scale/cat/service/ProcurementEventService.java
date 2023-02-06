@@ -449,15 +449,11 @@ public class ProcurementEventService implements EventService {
                                 Arrays.asList(new AdditionalInfoValue(project.getLotNumber()))))
                         .build();
 
-        var rfxAdditionalInfoList =
-                new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
-
-        var suppliersList = SuppliersList.builder()
-                .supplier(suppliers)
-                .build();
+        var suppliersList = SuppliersList.builder().supplier(suppliers).build();
         var rfx = Rfx.builder().rfxSetting(rfxSetting)
-                //.rfxAdditionalInfoList(rfxAdditionalInfoList)
-                .suppliersList(suppliersList).build();
+            .rfxAdditionalInfoList(new RfxAdditionalInfoList(
+                Arrays.asList(additionalInfoFramework, additionalInfoLot)))
+            .suppliersList(suppliersList).build();
 
         return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
     }
