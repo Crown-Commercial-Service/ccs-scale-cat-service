@@ -194,6 +194,8 @@ public class ProfileManagementService {
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.isEmpty()) {
 
+      var primaryOrgId = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
+      
       // Validate DUNS-Number
       if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")) {
         var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
@@ -206,8 +208,7 @@ public class ProfileManagementService {
       }
 
       // Now searched by org (legal) identifer (SCHEME-ID)
-      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(
-          conclaveService.getOrganisationIdentifer(conclaveUserOrg));
+      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(primaryOrgId);
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
@@ -227,7 +228,7 @@ public class ProfileManagementService {
               userId, registerUserResponse);
           
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
-              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .organisationId(primaryOrgId)
               .externalOrganisationId(
                   Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
@@ -243,7 +244,7 @@ public class ProfileManagementService {
               jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
 
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
-              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .organisationId(primaryOrgId)
               .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
 
@@ -383,7 +384,10 @@ public class ProfileManagementService {
     // TODO - phone number hardcoded in case of null
     createUpdateCompanyRequestBuilder
         .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
-            .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId).build()).build())
+            .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId)
+                .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+                .extUniqueCode(conclaveUserOrg.getIdentifier().getId()).build())
+            .build())
         .subUsers(
             subUsersBuilder
                 .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
