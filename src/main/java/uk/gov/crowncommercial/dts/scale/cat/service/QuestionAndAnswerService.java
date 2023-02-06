@@ -7,12 +7,14 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
@@ -68,6 +70,7 @@ public class QuestionAndAnswerService {
     // check the roles of supplier
     var user = conclaveService.getUserProfile(principal);
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var conclaveOrg = conclaveService.getOrganisationIdentity(user.get().getOrganisationId());
 
     boolean isSupplier = false;
     
@@ -84,13 +87,20 @@ public class QuestionAndAnswerService {
       // get all suppliers for this event in jaggaer
       var jaggaerSuppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId())
           .getSuppliersList().getSupplier();
+      
+      var identifier = conclaveOrg.get().getIdentifier();
 
+      // As per PPG all scheme names are using US-DUN
+      var scheme =
+          identifier.getScheme().equalsIgnoreCase("US-DUN") ? "US-DUNS" : identifier.getScheme();
+      var conclaveOrgId = scheme + "-" + identifier.getId();
+      
       // find supplier org-mapping
       var supplierOrgMapping = retryableTendersDBDelegate
-          .findOrganisationMappingByOrganisationId(user.get().getOrganisationId());
+          .findOrganisationMappingByOrganisationId(conclaveOrgId);
       if (supplierOrgMapping.isEmpty()) {
         var errorDesc = String.format("No supplier organisation mappings found in Tenders DB %s",
-            supplierOrgMapping);
+            conclaveOrgId);
         log.error(errorDesc);
         throw new ResourceNotFoundException(errorDesc);
       }

@@ -1,19 +1,23 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -165,13 +169,13 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public Set<AssessmentEntity> findAssessmentsForUser(final String userId) {
-    return assessmentRepo.findByTimestampsCreatedBy(userId);
+  public Set<AssessmentProjection> findAssessmentsProjectionForUserWithExternalId(final String userId, Integer externalToolId) {
+    return assessmentRepo.findAssessmentsByCreatedByAndExternalToolId(userId,externalToolId);
   }
 
   @TendersRetryable
-  public Set<GCloudAssessmentEntity> findGcloudAssessmentsForUser(final String userId) {
-    return gcloudAssessmentRepo.findByTimestampsCreatedBy(userId);
+  public Set<AssessmentProjection> findAssessmentsProjectionForUser(final String userId) {
+    return assessmentRepo.findAssessmentsByCreatedBy(userId);
   }
 
   @TendersRetryable
@@ -292,6 +296,10 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public List<GCloudAssessmentResult> saveAll(final Set<GCloudAssessmentResult> assessmentResults) {
+    return gCloudAssessmentResultRepo.saveAll(assessmentResults);
+  }
+  @TendersRetryable
   public ProjectUserMapping save(final ProjectUserMapping projectUserMapping) {
     return projectUserMappingRepo.save(projectUserMapping);
   }
@@ -335,6 +343,17 @@ public class RetryableTendersDBDelegate {
   public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,
       final Pageable pageable) {
     return projectUserMappingRepo.findByUserId(userId, pageable);
+  }
+
+
+  @TendersRetryable
+  public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,final String searchType,final String searchTerm,
+                                                                 final Pageable pageable) {
+
+    ProjectSearchSpecification specification= new ProjectSearchSpecification(new ProjectSearchCriteria(searchType,searchTerm,userId));
+
+    Page<ProjectUserMapping> page=projectUserMappingRepo.findAll(specification, pageable);
+    return page.getContent();
   }
 
   @TendersRetryable

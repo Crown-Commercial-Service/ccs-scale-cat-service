@@ -13,14 +13,16 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.ObjectUtils;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -38,6 +40,7 @@ public class MessageService {
   private static final DateTimeFormatter DATE_TIME_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000+00:00");
   private static final String RPA_DELIMETER = "~|";
+  private static final String OBJECT_TYPE = "RFQ";
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
@@ -49,12 +52,14 @@ public class MessageService {
   private final JaggaerService jaggaerService;
   private final UserProfileService userProfileService;
   private final ConclaveService conclaveService;
-  private final RPAGenericService rpaGenericService;
+
+  private final SupplierService supplierService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   private static final String LINK_URI = "/messages/";
   private static final int RECORDS_PER_REQUEST = 100;
 
+  
   /**
    * Which sends outbound message to all suppliers and single supplier. And also responds supplier
    * messages
@@ -66,126 +71,47 @@ public class MessageService {
    * @return
    * @throws JsonProcessingException
    */
-  public String sendOrRespondMessage(final String profile, final Integer projectId,
+  public String createOrReplyMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
-    
+
     String messageClassification = nonOCDS.getClassification().getValue();
     if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
       messageClassification = "";
     }
 
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
-        .ittCode(procurementEvent.getExternalReferenceId())
-        .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
-        .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
-        .messageClassification(messageClassification).senderName("")
-        .supplierName("").messageReceivedDate("");
+    var messageRequest = CreateReplyMessage.builder().body(ocds.getDescription())
+        .broadcast(Boolean.TRUE.equals(nonOCDS.getIsBroadcast()) ? "1" : "0")
+        .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
+        .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
+        .operatorUser(OperatorUser.builder().loginid(profile).build());
+    
+    // Adding supplier details
+    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
+      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
+        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
+      }
+      var suppliers = supplierService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
+          .stream().map(OrganizationReference1::getId).toList());
 
+      messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
+    }
+    
     // To reply the message
     if (nonOCDS.getParentId() != null) {
       var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
       if (messageDetails == null) {
         throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
       }
-      var messageRecievedDate = rpaGenericService
-          .handleDSTDate(messageDetails.getReceiveDate(), buyerUser.getTimezoneCode())
-          .format(DATE_TIME_FORMATTER);
-      log.info("MessageRecievedDate: {}", messageRecievedDate);
-      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
-          .senderName(messageDetails.getSender().getName());
+      messageRequest.parentMessageId(String.valueOf(messageDetails.getMessageId()));
     }
 
-    // Adding supplier details
-    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
-      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
-        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
-      }
-      var suppliers =
-          rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
-              .map(OrganizationReference1::getId).collect(Collectors.toList()));
-      var supplierJoiner = new StringJoiner(RPA_DELIMETER);
-      suppliers.getFirst().forEach(supplier -> {
-        supplierJoiner.add(supplier.getCompanyData().getName());
-      });
-      var supplierString = supplierJoiner.toString();
-      log.info("Suppliers list: {}", supplierString);
-      inputBuilder.supplierName(supplierString);
-    }
-    return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-        RPAProcessNameEnum.BUYER_MESSAGING);
+    return jaggaerService.createReplyMessage(messageRequest.build()).getMessageId().toString();
+
   }
 
-  /**
-   * Which sends outbound message to all suppliers and single supplier. And also responds supplier
-   * messages
-   *
-   * @param profile
-   * @param projectId
-   * @param eventId
-   * @param message {@link Message}
-   * @return
-   * @throws JsonProcessingException
-   */
-  public String asyncSendOrRespondMessage(final String profile, final Integer projectId,
-      final String eventId, final Message message, Integer threadCount) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-    var ocds = message.getOCDS();
-    var nonOCDS = message.getNonOCDS();
-
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
-        .ittCode(procurementEvent.getExternalReferenceId())
-        .broadcastMessage(nonOCDS.getIsBroadcast() ? "Yes" : "No").messagingAction(CREATE_MESSAGE)
-        .messageSubject(ocds.getTitle()).messageBody(ocds.getDescription())
-        .messageClassification(nonOCDS.getClassification().getValue()).senderName("")
-        .supplierName("").messageReceivedDate("");
-
-    // To reply the message
-    if (nonOCDS.getParentId() != null) {
-      var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
-      if (messageDetails == null) {
-        throw new JaggaerRPAException("ParentId not found: " + nonOCDS.getParentId());
-      }
-      var messageRecievedDate = rpaGenericService
-          .handleDSTDate(messageDetails.getReceiveDate(), buyerUser.getTimezoneCode())
-          .format(DATE_TIME_FORMATTER);
-      log.info("MessageRecievedDate: {}", messageRecievedDate);
-      inputBuilder.messagingAction(RESPOND_MESSAGE).messageReceivedDate(messageRecievedDate)
-          .senderName(messageDetails.getSender().getName());
-    }
-
-    // Adding supplier details
-    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
-      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
-        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
-      }
-      var suppliers =
-          rpaGenericService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList().stream()
-              .map(OrganizationReference1::getId).collect(Collectors.toList()));
-      var supplierJoiner = new StringJoiner(RPA_DELIMETER);
-      suppliers.getFirst().stream().forEach(supplier -> {
-        supplierJoiner.add(supplier.getCompanyData().getName());
-      });
-      var supplierString = supplierJoiner.toString();
-      log.info("Suppliers list: {}", supplierString);
-      inputBuilder.supplierName(supplierString);
-    }
-
-    IntStream.range(0, threadCount).forEach(thread -> rpaGenericService
-        .asyncCallRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.BUYER_MESSAGING));
-
-    return "Ok";
-  }
 
   /**
    * Returns a list of message summary at the event level.
@@ -302,9 +228,11 @@ public class MessageService {
   public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
       final Integer procId, final String eventId, final String messageId, final String principal) {
 
-    userProfileService.resolveBuyerUserProfile(principal)
+     userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-    validationService.validateProjectAndEventIds(procId, eventId);
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var updateMessage = jaggaerService.updateMessage(MessageUpdate.builder().messageId(Integer.parseInt(messageId))
+            .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE).operatorUser(OperatorUser.builder().loginid(principal).build()).build());
     var response = jaggaerService.getMessage(messageId);
 
     return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
@@ -348,7 +276,8 @@ public class MessageService {
     if (CaTMessageNonOCDS.DirectionEnum.SENT.getValue().equals(message.getDirection())) {
       read = Boolean.FALSE;
     } else {
-      read = message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate);
+
+      read = !ObjectUtils.isEmpty(message.getReadingList()) && !message.getReadingList().getReading().isEmpty();
     }
 
     return new CaTMessage().OCDS(getCaTMessageOCDS(message)).nonOCDS(new CaTMessageNonOCDS()

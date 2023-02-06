@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.store;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -13,10 +14,7 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 
 import javax.validation.ValidationException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -32,13 +30,23 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         var existingRfx = jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
         var orgs = new ArrayList<OrganizationReference1>();
 
+
+
         if (existingRfx.getSuppliersList().getSupplier() != null) {
+            Set<OrganisationMapping> orgMappings = getOrganisationMappings(existingRfx.getSuppliersList().getSupplier());
+
+            HashMap<Integer, OrganisationMapping> orgMaps = new HashMap<>();
+            for(OrganisationMapping orgMap: orgMappings){
+                orgMaps.put(orgMap.getExternalOrganisationId(), orgMap);
+            }
+
             existingRfx.getSuppliersList().getSupplier().stream().map(s -> {
 
-                var om = retryableTendersDBDelegate
-                        .findOrganisationMappingByExternalOrganisationId(s.getCompanyData().getId())
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId())));
+                OrganisationMapping om = orgMaps.get(s.getCompanyData().getId());
+                if(null == om ){
+                    throw new IllegalArgumentException(
+                            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId()));
+                }
 
                 return new OrganizationReference1().id(String.valueOf(om.getOrganisationId()))
                         .name(s.getCompanyData().getName());
@@ -48,6 +56,7 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         return new EventSuppliers().suppliers(orgs)
                 .justification(event.getSupplierSelectionJustification());
     }
+
 
     @Override
     public EventSuppliers storeSuppliers(ProcurementEvent event, EventSuppliers eventSuppliers, String principal) {
@@ -61,9 +70,22 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
 
         boolean overwrite = Boolean.TRUE.equals(eventSuppliers.getOverwriteSuppliers());
-        addSuppliersToJaggaer(event, supplierOrgMappings, overwrite);
+        addSuppliersToJaggaer(event, supplierOrgMappings, overwrite, principal);
 
         return eventSuppliers;
+    }
+
+    @Override
+    public List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliersList, boolean overWrite, String principal) {
+        OperationCode operationCode = overWrite ? OperationCode.UPDATE_RESET : OperationCode.CREATEUPDATE;
+
+        // Build Rfx and update
+        var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
+                .rfxReferenceCode(event.getExternalReferenceId()).build();
+        var rfx = Rfx.builder().rfxSetting(rfxSetting)
+                .suppliersList(SuppliersList.builder().supplier(suppliersList).build()).build();
+        jaggaerService.createUpdateRfx(rfx, operationCode);
+        return suppliersList;
     }
 
     @Override
@@ -101,25 +123,12 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
     }
 
     private void addSuppliersToJaggaer(final ProcurementEvent event,
-                                       final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite) {
-
-        OperationCode operationCode;
-        if (overwrite) {
-            operationCode = OperationCode.UPDATE_RESET;
-        } else {
-            operationCode = OperationCode.CREATEUPDATE;
-        }
-
-        var suppliersList = supplierOrgMappings.stream().map(org -> {
+                                       final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite, String principal) {
+        List<Supplier> suppliersList = supplierOrgMappings.stream().map(org -> {
             var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
             return Supplier.builder().companyData(companyData).build();
         }).collect(Collectors.toList());
 
-        // Build Rfx and update
-        var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-                .rfxReferenceCode(event.getExternalReferenceId()).build();
-        var rfx = Rfx.builder().rfxSetting(rfxSetting)
-                .suppliersList(SuppliersList.builder().supplier(suppliersList).build()).build();
-        jaggaerService.createUpdateRfx(rfx, operationCode);
+        storeSuppliers(event, suppliersList, overwrite, principal);
     }
 }

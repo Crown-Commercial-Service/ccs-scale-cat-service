@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
@@ -10,6 +12,8 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
@@ -46,7 +50,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 public class DocGenService {
 
   public static final String PLACEHOLDER_ERROR = "";
-  public static final String PLACEHOLDER_UNKNOWN = "Not Applicable";
+  public static final String PLACEHOLDER_UNKNOWN = "Not Specified";
   static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   static final String PERIOD_FMT = "%d years, %d months, %d days";
@@ -64,7 +68,7 @@ public class DocGenService {
         .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
             procurementEvent.getEventType(), procurementEvent.getProject().getCaNumber(),
             procurementEvent.getProject().getLotNumber(), procurementEvent.getTemplateId())) {
-      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
+      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate, Boolean.TRUE),
           documentTemplate);
     }
   }
@@ -72,7 +76,7 @@ public class DocGenService {
   @SneakyThrows
   @Transactional
   public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
-      final DocumentTemplate documentTemplate) {
+      final DocumentTemplate documentTemplate, final boolean isPublish) {
 
     var templateResource =
         documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -84,7 +88,7 @@ public class DocGenService {
 
       var dataReplacement =
           getDataReplacement(procurementEvent, documentTemplateSource, requestCache);
-      replacePlaceholder(documentTemplateSource, dataReplacement, textODT);
+      replacePlaceholder(documentTemplateSource, dataReplacement, textODT, isPublish);
     }
 
     var outputStream = new ByteArrayOutputStream();
@@ -184,7 +188,7 @@ public class DocGenService {
   }
   
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT)
+      final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish)
       throws InvalidNavigationException {
 
     log.debug("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
@@ -194,19 +198,19 @@ public class DocGenService {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
           replaceText(documentTemplateSource,
-              dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN), textODT);
+                  getString(dataReplacement), textODT, isPublish);
           break;
 
         case DATETIME:
           var formattedDatetime = formatDateorDateAndTime(dataReplacement.get(0));
-          replaceText(documentTemplateSource, formattedDatetime, textODT);
+          replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
           break;
 
         case DURATION:
           var period = Period.parse(dataReplacement.get(0));
           var formattedPeriod =
               String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
-          replaceText(documentTemplateSource, formattedPeriod, textODT);
+          replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
           break;
 
         case TABLE:
@@ -217,15 +221,19 @@ public class DocGenService {
           replaceList(documentTemplateSource, dataReplacement, textODT);
           break;
         default:
-          replaceText(documentTemplateSource, "", textODT);
+          replaceText(documentTemplateSource, "", textODT, isPublish);
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
-      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT);
+      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT, isPublish);
     }
 
   }
-  
+
+  private static String getString(List<String> dataReplacement) {
+    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN);
+  }
+
   String formatDateorDateAndTime(String dateValue) {
     if (dateValue.length() <= 10) {
       return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
@@ -235,7 +243,7 @@ public class DocGenService {
   }
 
   void replaceText(final DocumentTemplateSource documentTemplateSource,
-      String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+      String dataReplacement, final TextDocument textODT, final boolean isPublish) throws InvalidNavigationException {
 
     var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
     while (textNavigation.hasNext()) {
@@ -249,8 +257,10 @@ public class DocGenService {
         //FC-DA related condition
         //TODO Should move to seperate method
         if (dataReplacement.contains("Yes")) {
-          value.add("There is an existing supplier providing the products and services");
-        } else if (dataReplacement.contains("No")) {
+          //TODO Need to find correct condition for this
+//          value.add("There is an existing supplier providing the products and services");
+          value.add("");
+        } else if (dataReplacement.contains("No") && !dataReplacement.equals(PLACEHOLDER_UNKNOWN)) {
           value.add("");
         } else {
           value.add(dataReplacement);
@@ -265,15 +275,28 @@ public class DocGenService {
       dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
           documentTemplateSource.getConditionalValue() == null ? ""
               : documentTemplateSource.getConditionalValue());
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»") || item.getText().contains("Conditional Insert Project Term Budget")) && isNotBlankAndNumeric(dataReplacement))
+      {
+        dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
+      }
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»") || item.getText().contains("«Project_Incumbent_Yes_No_Supplier_Name_Step_22»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
       }
+      if(item.getText().equals("«Insert Time, Date, Month, Year of #1»") && !isPublish)
+      {
+        dataReplacement = "";
+      }
+
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
       item.replaceWith(dataReplacement);
     }
   }
-  
+
+  private static boolean isNotBlankAndNumeric(String dataReplacement) {
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches(Pattern.quote("-?\\d+"));
+  }
+
   //TODO remove static content and add in app.yaml file
   private String eoiConditionalAndOptionalData(String dataReplacement, String conditionalValue) {
     String conditionlaData = "";
@@ -300,13 +323,16 @@ public class DocGenService {
       var foundList = false;
       for (var li : list.getItems()) {
         if (StringUtils.hasText(li.getTextContent())
-            && li.getTextContent().matches(documentTemplateSource.getPlaceholder())) {
+            && li.getTextContent().matches(Pattern.quote(documentTemplateSource.getPlaceholder()))) {
           foundList = true;
           break;
         }
       }
       if (foundList) {
         list.removeItem(0);
+        if(dataReplacement.isEmpty()) {
+          dataReplacement.add(PLACEHOLDER_UNKNOWN);
+        }
         list.addItems(dataReplacement.toArray(new String[0]));
       }
     }
@@ -356,7 +382,7 @@ public class DocGenService {
 
             // Check if row number cell, if so increment
             //TODO unused code need to remove
-            if (columnIndex == 0 && "[0-9]+".matches(cellDisplayText)) {
+            if (columnIndex == 0 && "[0-9]+".matches(Pattern.quote(cellDisplayText))) {
               cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
             } else {
               if (isLineRequired) {
@@ -372,7 +398,7 @@ public class DocGenService {
           
           // Replace placeholder ONLY in the cell's display text
           // TODO: Remove OptionsProperty - redundant.
-          cell.setDisplayText(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
+         cell.setStringValue(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
               org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
         }
       }

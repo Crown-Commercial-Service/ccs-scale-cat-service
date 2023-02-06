@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.StringUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
@@ -157,7 +156,6 @@ public class ProfileManagementService {
     var registerUserResponse = new RegisterUserResponse();
     var createUpdateCompanyDataBuilder = CreateUpdateCompanyRequest.builder();
     var returnRoles = new ArrayList<RegisterUserResponse.RolesEnum>();
-
     if (conclaveRoles.contains(BUYER) && jaggaerRoles.size() == 1 && jaggaerRoles.contains(BUYER)) {
 
       // CON-1682-AC1&17(buyer): Update Jaggaer Buyer
@@ -196,9 +194,21 @@ public class ProfileManagementService {
 
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.isEmpty()) {
 
+      var primaryOrgId = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
+      
+      // Validate DUNS-Number
+      if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")) {
+        var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
+            .filter(dnumber -> dnumber.getScheme().equalsIgnoreCase("US-DUN")).findAny();
+        if (validDunsNumber.isPresent()) {
+          conclaveUserOrg.setIdentifier(validDunsNumber.get());
+        } else {
+          sendSupplierRegistrationInvalidDunsNotification(conclaveUserOrg);
+        }
+      }
+
       // Now searched by org (legal) identifer (SCHEME-ID)
-      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(
-          conclaveService.getOrganisationIdentifer(conclaveUserOrg));
+      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(primaryOrgId);
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
@@ -218,7 +228,7 @@ public class ProfileManagementService {
               userId, registerUserResponse);
           
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
-              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .organisationId(primaryOrgId)
               .externalOrganisationId(
                   Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
@@ -234,7 +244,7 @@ public class ProfileManagementService {
               jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
 
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
-              .organisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+              .organisationId(primaryOrgId)
               .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
 
@@ -343,7 +353,7 @@ public class ProfileManagementService {
     registerUserResponse.userAction(UserActionEnum.EXISTED);
     registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
   }
-
+  
   private void createUpdateSubUserHelper(
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyRequestBuilder,
       final UserProfileResponseInfo conclaveUser,
@@ -374,7 +384,10 @@ public class ProfileManagementService {
     // TODO - phone number hardcoded in case of null
     createUpdateCompanyRequestBuilder
         .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
-            .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId).build()).build())
+            .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId)
+                .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+                .extUniqueCode(conclaveUserOrg.getIdentifier().getId()).build())
+            .build())
         .subUsers(
             subUsersBuilder
                 .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
@@ -530,6 +543,17 @@ public class ProfileManagementService {
     notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
+  
+  private void sendSupplierRegistrationInvalidDunsNotification(
+      final OrganisationProfileResponseInfo conclaveUserOrg) {
+
+    var placeholders = Map.of("org_name", conclaveUserOrg.getIdentifier().getLegalName(),
+        "org_scheme", conclaveUserOrg.getIdentifier().getScheme(), "org_number",
+        conclaveUserOrg.getIdentifier().getId());
+
+    notificationService.sendEmail(userRegistrationNotificationConfig.getInvalidDunsTemplateId(),
+        userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
+  }
 
   private BuyerUserDetails saveBuyerDetails(final String profile) {
     var userProfile = userProfileService.resolveBuyerUserProfile(profile)
@@ -611,6 +635,4 @@ public class ProfileManagementService {
       }
       return null;
   }
-
-
 }

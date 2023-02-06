@@ -15,5 +15,6 @@ public class UserRegistrationNotificationConfig {
 
   private String templateId;
   private String targetEmail;
+  private String invalidDunsTemplateId;
 
 }

@@ -26,13 +26,18 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
 
+
+  //search-type=projectName&search-term=My%20search%20term&page=1&page-size=20'
   @GetMapping
   @TrackExecutionTime
-  public Collection<ProjectPackageSummary> getProjects(
+  public Collection<ProjectPackageSummary> getProjects(@RequestParam(name = "search-type", required = false) final String searchType,
+                                                       @RequestParam(name = "search-term", required = false) final String searchTerm,
+                                                       @RequestParam(name = "page", defaultValue ="0", required = false) final String page,
+                                                       @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjects invoked on behalf of principal: {}", principal);
-    return procurementProjectService.getProjects(principal);
+    return procurementProjectService.getProjects(principal, searchType, searchTerm, page, pageSize);
   }
 
   @PostMapping("/agreements")

@@ -23,8 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 import javax.transaction.Transactional;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,8 +30,6 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
-
-import javax.transaction.Transactional;
 
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
@@ -158,15 +154,14 @@ public class ProcurementProjectService {
 
       // Adapt save strategy based on org mapping status (new/existing)
       if (organisationMapping.isEmpty()) {
-        procurementProject.setOrganisationMapping(retryableTendersDBDelegate
+        organisationMapping=Optional.of(retryableTendersDBDelegate
                 .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
                         .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
                         .createdAt(Instant.now()).createdBy(principal).build()));
-      } else {
-        procurementProject = retryableTendersDBDelegate.save(procurementProject);
-        procurementProject.setOrganisationMapping(organisationMapping.get());
       }
-      retryableTendersDBDelegate.save(procurementProject);
+
+      procurementProject.setOrganisationMapping(organisationMapping.get());
+      procurementProject=retryableTendersDBDelegate.save(procurementProject);
 
       var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
               new CreateEvent(), null, principal);
@@ -397,10 +392,15 @@ public class ProcurementProjectService {
   /**
    * Get Projects
    *
-   * @return Collection of projects
    * @param principal
+   * @param searchType
+   * @param searchTerm
+   * @param page
+   * @param pageSize
+   * @return Collection of projects
    */
-  public Collection<ProjectPackageSummary> getProjects(final String principal) {
+  public Collection<ProjectPackageSummary> getProjects(final String principal, final String searchType,final String searchTerm,
+                                                       String page, String pageSize) {
 
     log.debug("Get projects for user: " + principal);
 
@@ -408,8 +408,12 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
+
     var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
-        jaggaerUserId, PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
+                                                      jaggaerUserId,
+                                                      searchType,
+                                                      searchTerm,
+                                                      PageRequest.of(Objects.nonNull(page)?Integer.valueOf(page):0, Objects.nonNull(pageSize)?Integer.valueOf(pageSize):20, Sort.by("timestamps.createdAt").descending()));
 
     if (!CollectionUtils.isEmpty(projectUserMappings)) {
       var externalEventIdsAllProjects = projectUserMappings.stream()
@@ -458,6 +462,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setLotId(mapping.getProject().getLotNumber());
     projectPackageSummary.setProjectId(mapping.getProject().getId());
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
+    projectPackageSummary.setSupportId(mapping.getProject().getExternalReferenceId());
 
     EventSummary eventSummary = null;
     RfxSetting rfxSetting = null;

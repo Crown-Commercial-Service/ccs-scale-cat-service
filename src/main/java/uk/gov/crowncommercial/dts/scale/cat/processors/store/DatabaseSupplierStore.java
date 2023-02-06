@@ -70,6 +70,26 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         return eventSuppliers;
     }
 
+    @Override
+    public List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliers, boolean overWrite, String principal) {
+        Set<OrganisationMapping> supplierOrgMappings = getOrganisationMappings(suppliers);
+
+        log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
+                event.getEventType());
+
+        if(event.isTendersDBOnly()) {
+            var assessment =
+                    assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE, Optional.empty());
+            var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
+                    .map(DimensionRequirement::getWeighting).reduce(0, Integer::sum);
+            if (dimensionWeightingCheck != 100) {
+                throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
+            }
+        }
+        addSuppliersToTendersDB(event, supplierOrgMappings, overWrite, principal);
+        return suppliers;
+    }
+
     private ProcurementEvent addSuppliersToTendersDB(final ProcurementEvent event,
                                                      final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite,
                                                      final String principal) {
@@ -77,6 +97,9 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
             event.getCapabilityAssessmentSuppliers()
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
+
+
+        
         }
 
 
@@ -98,6 +121,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
 
         event.setUpdatedAt(Instant.now());
         event.setUpdatedBy(principal);
+        event.setRefreshSuppliers(false);
         retryableTendersDBDelegate.save(event);
 
         var supplierSelection = event.getCapabilityAssessmentSuppliers().stream()
