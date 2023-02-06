@@ -60,19 +60,16 @@ public abstract class AbstractSupplierStore implements SupplierStore {
 
         // Validate suppliers exist in Organisation Mapping Table
         if (supplierOrgMappings.size() != supplierOrgs.size()) {
-
-            var missingSuppliers = new ArrayList<String>();
-            supplierOrgs.stream().forEach(externalOrgId -> {
-                if (supplierOrgMappings.parallelStream()
-                        .filter(som -> som.getOrganisationId().equals(externalOrgId)).findFirst().isEmpty()) {
-                    missingSuppliers.add(String.valueOf(externalOrgId));
+            for(OrganisationMapping supplier:supplierOrgMappings){
+                if(supplierOrgs.contains(supplier.getExternalOrganisationId())){
+                    supplierOrgs.remove(supplier.getExternalOrganisationId());
                 }
-            });
+            }
 
-            if (!missingSuppliers.isEmpty()) {
+            if (!supplierOrgs.isEmpty()) {
                 throw new ResourceNotFoundException(String.format(
-                        "The following suppliers are not present in the Organisation Mappings, so unable to add them: %s",
-                        missingSuppliers));
+                        "The following Jaggaer suppliers are not present in the Organisation Mappings, so unable to add them: BravoIds: %s",
+                        supplierOrgs));
             }
         }
         return supplierOrgMappings;

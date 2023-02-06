@@ -374,6 +374,7 @@ public class JaggaerService {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving messages"));
   }
+  
   @Async
   public MessageResponse updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
