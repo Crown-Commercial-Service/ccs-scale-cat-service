@@ -20,6 +20,8 @@ import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Map;
+import static java.util.Map.entry;
 
 @RequiredArgsConstructor
 @Component("JaggaerSupplierPush")
@@ -51,13 +53,15 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
         }
 
         if(null != suppliers) {
+            Map<String, String> options = Map.ofEntries(entry("store", "jaggaer"));
             SupplierStore store = factory.getStore(event);
             try {
-                store.storeSuppliers(event, suppliers, data.getOverWrite(), principal);
+                store.storeSuppliers(event, suppliers, data.getOverWrite(), principal, options);
             }catch(JaggaerApplicationException jae){
                 if(jae.getMessage().contains("Code: [-998]")){
                     throw new RetryableException("-998", jae.getMessage(), jae);
-                }
+                }else
+                    throw jae;
             }
             log.info("Successfully pushed {} suppliers to project {}, event {}", suppliers.size(), project.getId(), event.getEventID());
             return "Pushed " + suppliers.size() + " suppliers to Jaggaer";

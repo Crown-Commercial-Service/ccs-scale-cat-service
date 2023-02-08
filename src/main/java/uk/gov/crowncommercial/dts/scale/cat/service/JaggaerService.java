@@ -374,6 +374,13 @@ public class JaggaerService {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving messages"));
   }
+  
+  /**
+   * Read Message
+   *
+   * @param event
+   * @param jaggaerUserId
+   */
   @Async
   public MessageResponse updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
