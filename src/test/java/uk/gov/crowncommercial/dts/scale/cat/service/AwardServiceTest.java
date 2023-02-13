@@ -165,7 +165,7 @@ class AwardServiceTest {
     // Mock behaviours
     when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
     when(retryableTendersDBDelegate
-        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
+        .findOrganisationMappingByCasOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
             .thenReturn(Set.of(ORG_MAPPING_1));
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
