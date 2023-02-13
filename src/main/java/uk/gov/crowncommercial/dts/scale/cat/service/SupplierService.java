@@ -108,7 +108,7 @@ public class SupplierService {
 
     // Retrieve and verify Tenders DB org mappings
     var supplierOrgMappings =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
+        retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
     if (isEmpty(supplierOrgMappings)) {
       log.warn("No supplier org mappings found in Tenders DB for CA: '{}', Lot: '{}'", agreementId,
           lotId);
@@ -151,7 +151,7 @@ public class SupplierService {
           .filter(org -> org.getExternalOrganisationId().equals(Integer.valueOf(supplier.getId())))
           .findFirst();
       if (orgId.isPresent()) {
-        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getOrganisationId());
+        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getCasOrganisationId());
         var supplierScore = SupplierScore.builder()
             .supplierIdentification(SupplierIdentification.builder().id(supplier.getId()).build())
             .scoringTechEnvelope(ScoringTechEnvelope.builder().sectionList(SectionList.builder()
@@ -200,7 +200,7 @@ public class SupplierService {
             .organisationId(retryableTendersDBDelegate
                 .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
                 .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
-                .getOrganisationId())
+                .getCasOrganisationId())
             .score(e.getTechPoints()).comment(
                 extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
         .toList();
@@ -222,7 +222,7 @@ public class SupplierService {
     var supplierOrgIds = orgIds.stream().collect(Collectors.toSet());
     // Retrieve and verify Tenders DB org mappings
     var supplierOrgMappings =
-            retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
+            retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
     if (isEmpty(supplierOrgMappings)) {
       var errorDesc =
               String.format("No supplier organisation mappings found in Tenders DB %s", supplierOrgIds);

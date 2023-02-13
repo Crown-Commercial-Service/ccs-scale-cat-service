@@ -221,7 +221,7 @@ public class AwardService {
 
     // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
     return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
-        .addSuppliersItem(new OrganizationReference1().id(supplier.getOrganisationId()))
+        .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
         .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
             ? AwardState.AWARD
             : AwardState.PRE_AWARD);

@@ -807,6 +807,7 @@ class ProcurementEventServiceTest {
     var orgMapping = new OrganisationMapping();
     orgMapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     orgMapping.setOrganisationId(SUPPLIER_ID);
+    orgMapping.setCasOrganisationId(SUPPLIER_ID);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
@@ -846,7 +847,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+    when(organisationMappingRepo.findByCasOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
@@ -888,7 +889,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+    when(organisationMappingRepo.findByCasOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
     when(assessmentService.getAssessment(ASSESSMENT_ID, Boolean.FALSE, Optional.empty()))
         .thenReturn(assessment);
@@ -923,7 +924,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationId(SUPPLIER_ID))
+    when(organisationMappingRepo.findByCasOrganisationId(SUPPLIER_ID))
         .thenReturn(Optional.of(mapping));
     when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
 
@@ -1172,7 +1173,9 @@ class ProcurementEventServiceTest {
         LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
         .build();
     var organisationMapping =
-        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684804")
+                .casOrganisationId("GB-COH-05684804")
+                .build();
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
     rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
@@ -1937,10 +1940,14 @@ class ProcurementEventServiceTest {
         .build();
 
     var organisationMapping =
-        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684804")
+                .casOrganisationId("GB-COH-05684804")
+                .build();
 
     var organisationMappingSecondSupplier =
-        OrganisationMapping.builder().organisationId("GB-COH-05684805").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684805")
+                .casOrganisationId("GB-COH-05684805")
+                .build();
 
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
