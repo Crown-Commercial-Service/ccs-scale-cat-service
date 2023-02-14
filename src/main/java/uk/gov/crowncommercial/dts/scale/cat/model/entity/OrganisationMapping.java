@@ -23,10 +23,16 @@ public class OrganisationMapping {
   Integer id;
 
   /**
-   * The Org service ID
+   * The Org ID on PPG
    */
   @Column(name = "organisation_id")
   String organisationId;
+
+  /**
+   * The Org Id on CAS service
+   */
+  @Column(name = "cas_organisation_id")
+  String casOrganisationId;
 
   /**
    * The sales platform ID
