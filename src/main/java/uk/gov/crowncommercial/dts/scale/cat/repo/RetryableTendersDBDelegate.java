@@ -114,6 +114,19 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Set<OrganisationMapping> findOrganisationMappingByCasOrganisationIdIn(
+          final Set<String> organisationIds) {
+    return organisationMappingRepo.findByCasOrganisationIdIn(organisationIds);
+  }
+
+  @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByOrganisationId", key = "#organisationId")
+  public Optional<OrganisationMapping> findOrganisationMappingByCasOrganisationId(
+          final String organisationId) {
+    return organisationMappingRepo.findByCasOrganisationId(organisationId);
+  }
+
+  @TendersRetryable
   public JourneyEntity save(final JourneyEntity journey) {
     return journeyRepo.save(journey);
   }
