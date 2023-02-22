@@ -151,21 +151,27 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 //                        service.save(duns, Integer.parseInt(data.getBravoId()));
                         mappedWriter.accept(supplierModel);
                     } catch (Throwable t) {
-                        bw.write("cas error:" + t.getMessage());
-                        bw.newLine();
-                        bw.write(duns + "/" + supplierModel.getSupplierName());
-                        if (null != om)
-                            bw.write(" already assigned to " + om.getExternalOrganisationId() + " and");
-                        bw.write(" new assignment to " + data.getBravoId() + "/" + data.getSupplierName());
+                        bw.write(duns + "," +  "," + data.getBravoId() + ","
+                                + data.getExtUniqueCode() +"," + data.getExtCode()+ "," + supplierModel.getCiiMatch()
+                        + "," + supplierModel.getLegalName());
+//                        bw.write("cas error:" + t.getMessage());
+//                        bw.newLine();
+//                        bw.write(duns + "/" + supplierModel.getSupplierName());
+//                        if (null != om)
+//                            bw.write(" already assigned to " + om.getExternalOrganisationId() + " and");
+//                        bw.write(" new assignment to " + data.getBravoId() + "/" + data.getSupplierName());
                         bw.newLine();
                         bw.flush();
                     }
                 } else {
                     if (om.getExternalOrganisationId() != Integer.parseInt(data.getBravoId())) {
-                        bw.write("cas error:");
-                        bw.write(duns + "/" + supplierModel.getSupplierName());
-                        bw.write(" already assigned to " + om.getExternalOrganisationId());
-                        bw.write(" and cannot be changed to " + data.getBravoId() + "/" + data.getSupplierName());
+                        bw.write(duns + "," + om.getExternalOrganisationId() + "," + data.getBravoId() + "," +
+                                data.getExtUniqueCode() +"," + data.getExtCode() + "," + supplierModel.getCiiMatch());
+
+//                        bw.write("cas error:");
+//                        bw.write(duns + "/" + supplierModel.getSupplierName());
+//                        bw.write(" already assigned to " + om.getExternalOrganisationId());
+//                        bw.write(" and cannot be changed to " + data.getBravoId() + "/" + data.getSupplierName());
                         bw.newLine();
                         bw.flush();
                     } else {
