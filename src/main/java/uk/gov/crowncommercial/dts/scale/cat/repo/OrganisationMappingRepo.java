@@ -32,4 +32,7 @@ public interface OrganisationMappingRepo extends JpaRepository<OrganisationMappi
    */
   Optional<OrganisationMapping> findByOrganisationId(String organisationId);
 
+
+  OrganisationMapping findByCasOrganisationId(String organisationId);
+
 }

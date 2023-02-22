@@ -28,11 +28,17 @@ public class OrganisationMapping {
   @Column(name = "organisation_id")
   String organisationId;
 
+  @Column(name = "cas_organisation_id")
+  String casOrganisationId;
   /**
    * The sales platform ID
    */
   @Column(name = "external_organisation_id")
   Integer externalOrganisationId;
+
+  @Builder.Default
+  @Column(name = "primary_ind")
+  boolean primaryInd = true;
 
   @Column(name = "created_by", updatable = false)
   String createdBy;
