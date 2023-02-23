@@ -83,12 +83,11 @@ public class DocGenService {
 
     final var textODT = TextDocument.loadDocument(templateResource.getInputStream());
     final var requestCache = new ConcurrentHashMap<String, Object>();
-
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
 
       var dataReplacement =
           getDataReplacement(procurementEvent, documentTemplateSource, requestCache);
-      replacePlaceholder(documentTemplateSource, dataReplacement, textODT, isPublish);
+      replacePlaceholder(documentTemplateSource, dataReplacement, textODT, procurementEvent.getPublishDate()==null ? isPublish : Boolean.TRUE);
     }
 
     var outputStream = new ByteArrayOutputStream();
