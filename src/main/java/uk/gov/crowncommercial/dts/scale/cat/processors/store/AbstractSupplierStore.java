@@ -25,7 +25,7 @@ public abstract class AbstractSupplierStore implements SupplierStore {
                 .collect(Collectors.toSet());
 
         var supplierOrgMappings =
-                retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
+                retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
 
         // Validate suppliers exist in Organisation Mapping Table
         if (supplierOrgMappings.size() != eventSuppliers.getSuppliers().size()) {
@@ -33,7 +33,7 @@ public abstract class AbstractSupplierStore implements SupplierStore {
             var missingSuppliers = new ArrayList<String>();
             eventSuppliers.getSuppliers().stream().forEach(or -> {
                 if (supplierOrgMappings.parallelStream()
-                        .filter(som -> som.getOrganisationId().equals(or.getId())).findFirst().isEmpty()) {
+                        .filter(som -> som.getCasOrganisationId().equals(or.getId())).findFirst().isEmpty()) {
                     missingSuppliers.add(or.getId());
                 }
             });
@@ -83,7 +83,7 @@ public abstract class AbstractSupplierStore implements SupplierStore {
 
 
     protected OrganisationMapping getSupplierOrgMapping(String organisationId) {
-        return retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
+        return retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(organisationId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, organisationId)));
     }
