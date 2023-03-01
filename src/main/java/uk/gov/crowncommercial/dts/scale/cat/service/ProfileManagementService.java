@@ -208,7 +208,14 @@ public class ProfileManagementService {
       }
 
       // Now searched by org (legal) identifer (SCHEME-ID)
-      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(primaryOrgId);
+      var orgMapping =
+          retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(primaryOrgId);
+
+      // Now searched by Cas Organisation Id
+      if (orgMapping.isEmpty()) {
+        orgMapping =
+            retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(primaryOrgId);
+      }
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
