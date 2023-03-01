@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -13,12 +14,15 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Release;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -96,5 +100,14 @@ public class TendersController extends AbstractRestController {
    log.info("getAllUsers for on behalf of principal: {} ", principal);
    // We are not retrieving org users based on organisationId
    return profileManagementService.getOrgUsers(principal);
+  }
+
+  @GetMapping("/projects/deltas")
+  @TrackExecutionTime
+  public List<Release> getProjectsDelta(
+          @RequestParam(name = "lastSuccessRun", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final Date lastSuccessRun) {
+
+      log.info("getProjectsDelta for on behalf of principal: TBD ");
+      return Collections.emptyList();
   }
 }
