@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import java.util.Arrays;
 import java.util.stream.Stream;
-
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,8 +10,14 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.auth.Authorities;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthFilter;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthManager;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyDetailsProvider;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ConfigPropertiesApiKeyDetailsProvider;
 
 /**
  * OAuth2 / JWT web security configuration
@@ -28,9 +33,9 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
   // TODO: Verify and move to SSM
   private static final String[] CAT_ROLES =
-      new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
+      new String[] { Authorities.CAT_USER_ROLE, Authorities.CAT_ADMINISTRATOR_ROLE, Authorities.ACCESS_CAT_ROLE };
 
-  private static final String[] LD_ROLES = new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER"};
+  private static final String[] LD_ROLES = new String[] { Authorities.JAEGGER_BUYER_ROLE, Authorities.JAEGGER_SUPPLIER_ROLE };
 
   private static final String[] LD_AND_CAT_ROLES = ArrayUtils.addAll(CAT_ROLES, LD_ROLES);
 
@@ -39,9 +44,14 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
     log.info("Configuring resource server...");
 
-    // @formatter:off
-    http.authorizeRequests(authz ->
+	// @formatter:off
+    http.addFilterBefore(apiKeyFilter(), BearerTokenAuthenticationFilter.class)
+    	.authorizeRequests(authz ->
       authz
+        // TODO (pillingworth, 2023-03-01) better to apply at method/class level using RolesAllowed annotation than applying globally with wildcards?
+        .antMatchers("/tenders/projects/salesforce").hasAuthority(Authorities.ESOURCING_ROLE)
+        .antMatchers("/tenders/projects/deltas").hasAuthority(Authorities.ESOURCING_ROLE)
+        .antMatchers("/tenders/projects/*/events/*/termination").hasAuthority(Authorities.ESOURCING_ROLE)
         .antMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
@@ -63,7 +73,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
-    log.info("Configuring custom JwtAuthenticationConverter to read CAT roles..");
+    log.info("Configuring custom JwtAuthenticationConverter to read CAT roles.");
 
     var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
@@ -71,9 +81,24 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
     var jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 
     return jwtAuthenticationConverter;
   }
 
+  @Bean
+  ApiKeyAuthFilter apiKeyFilter() {
+    ApiKeyAuthFilter filter = new ApiKeyAuthFilter(apiKeyConfig().getHeader());
+    filter.setAuthenticationManager(new ApiKeyAuthManager(apiKeyDetailsProvider()));
+      return filter;
+	}
+	
+    @Bean
+    ApiKeyDetailsProvider apiKeyDetailsProvider() {
+      return new ConfigPropertiesApiKeyDetailsProvider(apiKeyConfig());
+    }
+
+    @Bean
+    ApiKeyConfig apiKeyConfig() {
+      return new ApiKeyConfig();
+    }
 }
