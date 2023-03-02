@@ -358,7 +358,7 @@ public class ProcurementEventService implements EventService {
                     .collect(Collectors.toSet());
 
             return retryableTendersDBDelegate
-                    .findOrganisationMappingByOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+                    .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
                         var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
                         return Supplier.builder().companyData(companyData).build();
                     }).collect(Collectors.toList());
@@ -449,15 +449,11 @@ public class ProcurementEventService implements EventService {
                                 Arrays.asList(new AdditionalInfoValue(project.getLotNumber()))))
                         .build();
 
-        var rfxAdditionalInfoList =
-                new RfxAdditionalInfoList(Arrays.asList(additionalInfoFramework, additionalInfoLot));
-
-        var suppliersList = SuppliersList.builder()
-                .supplier(suppliers)
-                .build();
+        var suppliersList = SuppliersList.builder().supplier(suppliers).build();
         var rfx = Rfx.builder().rfxSetting(rfxSetting)
-                //.rfxAdditionalInfoList(rfxAdditionalInfoList)
-                .suppliersList(suppliersList).build();
+            .rfxAdditionalInfoList(new RfxAdditionalInfoList(
+                Arrays.asList(additionalInfoFramework, additionalInfoLot)))
+            .suppliersList(suppliersList).build();
 
         return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
     }
@@ -877,7 +873,7 @@ public class ProcurementEventService implements EventService {
                         String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplier.getCompanyData().getId())));
 
         return new Responders()
-                .supplier(new OrganizationReference1().id(organisationMapping.getOrganisationId())
+                .supplier(new OrganizationReference1().id(organisationMapping.getCasOrganisationId())
                         .name(supplier.getCompanyData().getName()))
                 .responseState(!RESPONSE_STATES.contains(supplier.getStatus().trim())
                         ? supplier.getStatusCode() == -2 ? Responders.ResponseStateEnum.DECLINED : Responders.ResponseStateEnum.SUBMITTED
@@ -1055,7 +1051,7 @@ public class ProcurementEventService implements EventService {
         List<OrganizationReference1> eventSuppliersOrgs= newAggrementSuppliers.stream().map(organisationMapping -> {
 
             OrganizationReference1 organizationReference1= new OrganizationReference1();
-            organizationReference1.setId(organisationMapping.getOrganisationId());
+            organizationReference1.setId(organisationMapping.getCasOrganisationId());
             return organizationReference1;
         }).collect(Collectors.toList());
 
@@ -1251,12 +1247,12 @@ public class ProcurementEventService implements EventService {
 //
 //    var suppliers = event.getCapabilityAssessmentSuppliers().stream().map(s -> {
 //      var orgIdentity =
-//          conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getOrganisationId());
+//          conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getCasOrganisationId());
 //
-//      var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getOrganisationId());
+//      var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getCasOrganisationId());
 //      orgIdentity.ifPresentOrElse(or -> orgRef.name(or.getIdentifier().getLegalName()),
 //          () -> log.warn(String.format(ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE,
-//              s.getOrganisationMapping().getOrganisationId())));
+//              s.getOrganisationMapping().getCasOrganisationId())));
 //      return orgRef;
 //    }).collect(Collectors.toList());
 //    return new EventSuppliers().suppliers(suppliers)
@@ -1282,7 +1278,7 @@ public class ProcurementEventService implements EventService {
                         .orElseThrow(() -> new IllegalArgumentException(
                                 String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId())));
 
-                return new OrganizationReference1().id(String.valueOf(om.getOrganisationId()))
+                return new OrganizationReference1().id(String.valueOf(om.getCasOrganisationId()))
                         .name(s.getCompanyData().getName());
             }).forEachOrdered(orgs::add);
         }
@@ -1495,7 +1491,7 @@ public class ProcurementEventService implements EventService {
 
         // Determine Jaggaer supplier id
         var supplierOrganisationMapping =
-                retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(supplierId)
+                retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(supplierId)
                         .orElseThrow(() -> new IllegalArgumentException(
                                 String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, supplierId)));
 

@@ -319,7 +319,7 @@ public class MessageService {
           .orElseThrow(() -> new ResourceNotFoundException(
               String.format(ERR_MSG_FMT_ORG_MAPPING_MISSING, message.getSender().getId())));
 
-      author = new CaTMessageOCDSAllOfAuthor().id(supplierOrgMapping.getOrganisationId())
+      author = new CaTMessageOCDSAllOfAuthor().id(supplierOrgMapping.getCasOrganisationId())
           .name(message.getSender().getName());
     } else {
       var jaggaerUser = userProfileService
