@@ -218,11 +218,15 @@ public class ProfileManagementService {
       }
 
       if (orgMapping.isPresent()) {
-        var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
-        
+        var exOrgMapping = orgMapping.get();
+        var jaggaerSupplierOrgId = exOrgMapping.getExternalOrganisationId();
         // CON-1682-AC10: Create Jaggaer Supplier sub-user
         createUpdateSupplierSubUser(String.valueOf(jaggaerSupplierOrgId), createUpdateCompanyDataBuilder,
             conclaveUser, conclaveUserOrg, conclaveUserContacts, userId, registerUserResponse);
+        
+        // Save org-mapping with CasOrganisationId if subuser update additional identifier 
+        exOrgMapping.setCasOrganisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg));
+        retryableTendersDBDelegate.save(exOrgMapping);
 
       } else {
         // Call Jaggaer to check the supplier super user is exists
@@ -236,6 +240,7 @@ public class ProfileManagementService {
           
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
               .organisationId(primaryOrgId)
+              .casOrganisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg)) 
               .externalOrganisationId(
                   Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
@@ -252,6 +257,7 @@ public class ProfileManagementService {
 
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
               .organisationId(primaryOrgId)
+              .casOrganisationId(conclaveService.getOrganisationIdentifer(conclaveUserOrg)) 
               .externalOrganisationId(createUpdateCompanyResponse.getBravoId())
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
 
