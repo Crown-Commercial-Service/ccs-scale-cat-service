@@ -12,7 +12,7 @@ cache:
     - "$HOME/.m2"
 branches:
   only:
-    - "/^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$/"
+    - "/^(feature|bugfix)\\/(SCC|SCAT|CON|CAS|EI)-[0-9]+.*$/"
     - "/^(release)\\/.*$/"
     - "/^snyk-(upgrade|fix)-[a-z0-9]+$/"
     - develop
