@@ -94,6 +94,10 @@ public class ProcurementEventService implements EventService {
     public static final String CONTRACT_DETAILS_NOT_FOUND = "Contract details not found";
     private static final String ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
             "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
+    
+    //Added by RoweIT for Tenders API integration
+    private static final String ADDITIONAL_INFO_PROCUREMENT_ROUTE = "Procurement Route";  
+    private static final String ADDITIONAL_INFO_PROCUREMENT_ROUTE_TYPE = "5";  
 
     private final UserProfileService userProfileService;
     private final CriteriaService criteriaService;
@@ -1718,5 +1722,125 @@ public class ProcurementEventService implements EventService {
           .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
       jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
     }
+    
+    /**
+     * Create Jaggaer request object.
+     */
+    public CreateUpdateRfx createSalesforceRfxRequest(final ProcurementProject project, final SalesforceProjectTender projectTender,
+                                             final String principal) {
+
+      // Fetch Jaggaer ID and Buyer company ID from Jaggaer config
+      var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
+      //var jaggaerBuyerCompanyId = "51435";	// TODO: this is 'Crown Commercial Service'
+      var jaggaerUserId="110659";			// TODO: this is peter.simpson@roweit.co.uk
+
+      var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
+      @SuppressWarnings("unused")
+  	  var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
+      
+      log.debug("findByRfxShortDescription() {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+
+       //RfxTemplateMapping rfxTemplateMapping = rfxTemplateMapping.findByRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+      
+      // ** start of imported code
+      //log.debug("rfxTemplateMapping.get().getRfxReferenceCode() {}", rfxTemplateMapping);
+      Optional<RfxTemplateMapping> rfxTemplateMapping = retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+      log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
+
+      String rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();
+      log.debug("rfxTemplateReferenceCode {}", rfxTemplateReferenceCode);
+
+      String rfxProcurementRoute = projectTender.getRfx().getProcurementRoute();
+      
+      @SuppressWarnings("unused")
+  	  String rfxProcurementRouteType = "";
+
+      // TODO: where should these be implemented?
+      var openMarketTemplateId = jaggaerAPIConfig.getApiDefaults().get("open-market-template-id");
+      var staTemplateId = jaggaerAPIConfig.getApiDefaults().get("sta-template-id");
+      
+      // 
+//      if (rfxProcurementRoute.equalsIgnoreCase("Open Market")) {
+//        rfxTemplateReferenceCode = openMarketTemplateId;
+//        rfxProcurementRouteType = "5";
+//      } else if (rfxProcurementRoute.equalsIgnoreCase("Single Tender Action")) {
+//        rfxTemplateReferenceCode = staTemplateId;
+//      } else {
+//        if (projectTender.getRfx().getTemplateReferenceCode() != null){
+//          rfxTemplateReferenceCode = projectTender.getRfx().getTemplateReferenceCode();
+//        }
+//      }
+      
+      var additionalInfoProcurementRoute = AdditionalInfo.builder()
+      		.name(ADDITIONAL_INFO_PROCUREMENT_ROUTE)
+      		.type(ADDITIONAL_INFO_PROCUREMENT_ROUTE_TYPE)
+      		.visibleToSupplier(0)
+              .label(ADDITIONAL_INFO_PROCUREMENT_ROUTE)
+              .labelLocale(ADDITIONAL_INFO_LOCALE)
+              .values(
+                      new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(rfxProcurementRoute))))
+              .build();
+
+
+//      var additionalInfoFramework = AdditionalInfo.builder().name(ADDITIONAL_INFO_FRAMEWORK_NAME)
+//              .label(ADDITIONAL_INFO_FRAMEWORK_NAME).labelLocale(ADDITIONAL_INFO_LOCALE)
+//              .values(
+//                      new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getFrameworkRMNumber()))))
+//              .build();
+//
+//      var additionalInfoLot =
+//              AdditionalInfo.builder().name(ADDITIONAL_INFO_LOT_NUMBER).label(ADDITIONAL_INFO_LOT_NUMBER)
+//                      .labelLocale(ADDITIONAL_INFO_LOCALE).values(new AdditionalInfoValues(
+//                              Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getFrameworkLotNumber()))))
+//                      .build();
+
+      var rfxAdditionalInfoList =
+              new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute));
+      			//new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute, additionalInfoFramework, additionalInfoLot));
+
+      String rfxType = "";
+      Integer rfiFlag = 0;
+      
+      if (projectTender.getRfx().getRfiFlag() != null && projectTender.getRfx().getRfiFlag().equals("1"))
+      {
+      	rfxType = "STANDARD_PQQ";
+      	rfiFlag = 1;
+      } else {
+      	rfxType = "STANDARD_ITT";
+      }
+      
+      var rfxSetting =
+              RfxSetting.builder()
+  					.shortDescription(projectTender.getRfx().getShortDescription())
+  					.longDescription(projectTender.getRfx().getShortDescription())
+              		.rfiFlag(rfiFlag)
+              		.value(Integer.valueOf(projectTender.getRfx().getValue()))
+      				//.templateReferenceCode(rfxTemplateReferenceCode)	// TODO: is this correct ?
+      				.tenderReferenceCode(project.getExternalReferenceId())
+                      .buyerCompany(buyerCompany)
+                      //.ownerUser(ownerUser)
+                      .rfxType(rfxType)
+              		.qualEnvStatus(Integer.valueOf(projectTender.getRfx().getQualEnvStatus()))                    
+              		.techEnvStatus(Integer.valueOf(projectTender.getRfx().getTechEnvStatus()))                    
+              		.commEnvStatus(Integer.valueOf(projectTender.getRfx().getCommEnvStatus()))
+              		//.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
+              		//.rankingStrategy(projectTender.getRfx().getRankingStrategy())
+              		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
+              		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
+              		.build();  
+      
+      log.debug("rfxSetting {}", rfxSetting);
+      log.debug("rfxAdditionalInfoList {}", rfxAdditionalInfoList);
+
+
+      var rfx = Rfx.builder()
+      		.rfxSetting(rfxSetting)
+              .rfxAdditionalInfoList(rfxAdditionalInfoList)
+              .build();
+      
+      return new CreateUpdateRfx(OperationCode.CREATE, rfx);
+    }
+    
+    
 
 }
