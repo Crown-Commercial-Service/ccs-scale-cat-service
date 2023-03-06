@@ -59,6 +59,7 @@ public class JaggaerAPIConfig {
   private Map<String, String> award;
   private Map<String, String> preAward;
   private Map<String, String> completeTechnical;
+  private Map<String, String> apiDefaults;			// Added by RoweIT for Tenders API integration
 
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;

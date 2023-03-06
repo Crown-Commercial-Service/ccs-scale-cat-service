@@ -16,5 +16,8 @@ public class Tender {
   ProjectOwner projectOwner;
   String sourceTemplateReferenceCode;
   String tenderStatusLabel;
-
+  
+  //Added by RoweIT for Tenders API integration
+  String projectType;	// e.g. "CCS_PROJ" - TODO: is this property the 'tenderStatusLabel' above?
+  AdditionalInfoList additionalInfo;
 }

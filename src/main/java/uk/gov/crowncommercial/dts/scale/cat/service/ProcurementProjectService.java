@@ -42,6 +42,10 @@ import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.ge
 @Slf4j
 public class ProcurementProjectService {
 
+  // TODO: move to appropriate location - Added by RoweIT
+  private static final String ADDITIONAL_INFO_PROCUREMENT_REFERENCE = "Procurement Reference";
+  private static final String ADDITIONAL_INFO_LOCALE = "en_GB";
+	  
   // TODO: Migrate these to use the JaggaerService wrapper as time allows
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
@@ -678,4 +682,197 @@ public class ProcurementProjectService {
               });
     }
   }
+  
+  /**
+   *
+   * EI-74 Add SalesForce endpoint to CAT service
+   * 
+   * Create Jaggaer project and ITT for details received from SalesForce
+   *
+   * @param SalesforceProjectTender
+   * @param principal
+   * @param conclaveOrgId
+   * @return Salesforce Project Tender 200
+   */
+  public SalesforceProjectTender200Response createFromSalesforceDetails(final SalesforceProjectTender projectTender, 
+		  																final String principal) {
+
+	  // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
+
+	  // TODO: remove vars and calls to conclave
+	  var conclaveOrgId = jaggaerAPIConfig.getApiDefaults().get("conclave-org-id");
+	  var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
+	  var jaggaerUserId = jaggaerAPIConfig.getApiDefaults().get("jaggaer-user-id");
+	  //var jaggaerUserId="110659";			// TODO: this is peter.simpson@roweit.co.uk
+	
+	  var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
+	          .orElseThrow(() -> new AuthorisationFailureException(
+	                  "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
+
+	  log.debug("conclaveUserOrg: {}", conclaveUserOrg);
+	
+	  //var projectTitle = getProjectTitle(projectTender, conclaveUserOrg.getIdentifier().getLegalName());
+	
+	  var additionalInfoProcurementReference = AdditionalInfo.builder().name(ADDITIONAL_INFO_PROCUREMENT_REFERENCE)
+	          .label(ADDITIONAL_INFO_PROCUREMENT_REFERENCE).labelLocale(ADDITIONAL_INFO_LOCALE)
+	          .values(
+	                  new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(projectTender.getProcurementReference()))))
+	          .build();
+	   
+	  log.debug("Additional info: {}", additionalInfoProcurementReference.toString());
+	  
+	  var AdditionalInfoList =
+	          new AdditionalInfoList(Arrays.asList(additionalInfoProcurementReference));
+	
+
+      Tender tender;
+      var operationCode = OperationCode.CREATEUPDATE;
+ 
+      if (projectTender.getTenderReferenceCode().isEmpty()) {
+ 
+    	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+
+          tender = Tender.builder().title(projectTender.getSubject())
+        		  //.tenderReferenceCode(projectTender.getTenderReferenceCode())
+        		  //.projectType("CCS_PROJ") 			//	TODO: Default?
+                  .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
+                  //.projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
+                  .sourceTemplateReferenceCode("project_609")
+                  .additionalInfo(AdditionalInfoList)
+                  .build();	// TODO: template reference code lookup
+          		  //original
+          		  //.sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+    	  
+      } else {
+    	  //tender.setSourceTemplateReferenceCode(defaultSourceTemplateReferenceCode);
+    	  
+          tender = Tender.builder().title(projectTender.getSubject())
+        		  .tenderReferenceCode(projectTender.getTenderReferenceCode())
+        		  .projectType("CCS_PROJ") 			//	TODO: Default?
+                  .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
+                  //.projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
+                  .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
+                  .sourceTemplateReferenceCode("project_609")
+                  .additionalInfo(AdditionalInfoList)
+                  .build();	// TODO: template reference code lookup
+          		  //original
+          		  //.sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+      }
+      
+      log.debug("Project build - tender: {}",tender.toString());
+
+      var projectBuilder = Project.builder().tender(tender);
+
+      // By default, adding the division is disabled
+      if (Boolean.TRUE.equals(jaggaerAPIConfig.getAddDivisionToProjectTeam())) {
+        var userDivision = User.builder().code("DIVISION").build();
+        var projectTeam = ProjectTeam.builder().user(Collections.singleton(userDivision)).build();
+        projectBuilder.projectTeam(projectTeam);
+      }
+      
+      log.debug("Project to create: {}", projectBuilder.toString());
+
+      var createUpdateProject =
+              new CreateUpdateProject(operationCode, projectBuilder.build());
+      
+      log.debug("Project to create/update: {}", createUpdateProject.toString());
+
+      /*
+       * Call Jaggaer endpoint to create project
+       */
+      var createProjectResponse =
+              ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                      .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                      .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                      .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                              "Unexpected error creating project"));
+
+      if (createProjectResponse.getReturnCode() != 0
+              || !"OK".equals(createProjectResponse.getReturnMessage())) {
+        throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
+                createProjectResponse.getReturnMessage());
+      }
+      log.info("Created project: {}", createProjectResponse);
+
+      var procurementProject = ProcurementProject.builder()
+              // .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
+              .caNumber(projectTender.getRfx().getFrameworkRMNumber()).lotNumber(projectTender.getRfx().getFrameworkLotNumber())
+              .externalProjectId(createProjectResponse.getTenderCode())
+              .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+              .projectName(projectTender.getSubject()).createdBy(principal).createdAt(Instant.now())
+              .updatedBy(principal).updatedAt(Instant.now()).build();
+
+
+      log.debug("Procurement project: {}", procurementProject.toString());
+
+      /*
+       * Get existing buyer user org mapping or create as part of procurement project persistence.
+       * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
+       * self-service company).
+       */
+	  var organisationIdentifier = jaggaerAPIConfig.getApiDefaults().get("cas-org-id");
+      //var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
+	  
+	  log.debug("organisationIdentifier: {}", organisationIdentifier);
+      
+	  var organisationMapping =
+              retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+	  log.debug("organisationMapping: {}", organisationMapping);
+
+      // Adapt save strategy based on org mapping status (new/existing)
+      if (organisationMapping.isEmpty()) {
+        organisationMapping=Optional.of(retryableTendersDBDelegate
+                .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
+                        .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+                        .createdAt(Instant.now()).createdBy(principal).build()));
+      }
+	  log.debug("organisationMapping-2: {}", organisationMapping);
+
+      procurementProject.setOrganisationMapping(organisationMapping.get());
+      procurementProject=retryableTendersDBDelegate.save(procurementProject);
+	  log.debug("procurementProject: {}", procurementProject);
+
+      
+      // TODO: does the creation of a RFx for the new project represent an 'event' that needs to be recorded
+      //var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
+              //new CreateEvent(), null, principal);
+      
+      // Create RFx for new project
+      var newRfx = procurementEventService.createSalesforceRfxRequest(procurementProject, projectTender, principal);
+      log.info("Rfx to create: {}", newRfx);
+
+      // Call to Jaggaer to create project
+      var createRfxResponse =
+              ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+                      .bodyValue(newRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
+                      .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                      .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                              "Unexpected error creating Rfx"));
+
+      if (createRfxResponse.getReturnCode() != 0
+              || !"OK".equals(createRfxResponse.getReturnMessage())) {
+        throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
+                createRfxResponse.getReturnMessage());
+      }
+      
+      log.info("Created Rfx: {}", createRfxResponse);
+
+      
+      // add current user to project
+      //addProjectUserMapping(jaggaerUserId, procurementProject, principal);
+
+//      return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
+//              procurementProject.getId(), eventSummary.getId(), projectTender.getSubject(),
+//              conclaveUserOrg.getIdentifier().getLegalName());
+//    } else {
+//      throw new AuthorisationFailureException("A lot is required for this commercial agreement.");
+//    }
+//      
+    return tendersAPIModelUtils.buildSalesforceProjectTender200Response(
+    			createRfxResponse.getRfxId(),
+    			createRfxResponse.getRfxReferenceCode());  
+  
+  }
+
+  
 }

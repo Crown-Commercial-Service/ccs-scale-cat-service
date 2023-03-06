@@ -246,4 +246,18 @@ public class TendersAPIModelUtils {
     return null!=offsetDateTime?offsetDateTime.toInstant():null;
 
   }
+  
+  // Added by RoweIT for Tenders API work
+  public SalesforceProjectTender200Response buildSalesforceProjectTender200Response(
+		  final String tenderReferenceCode, final String rfxReferenceCode) {
+	    
+	  var SalesforceProjectTender200Response = new SalesforceProjectTender200Response();
+	    
+	    SalesforceProjectTender200Response.setTenderReferenceCode(tenderReferenceCode);;
+	    SalesforceProjectTender200Response.setRfxReferenceCode(rfxReferenceCode);;
+	    
+	    return SalesforceProjectTender200Response;
+	  }
+  
+  
 }
