@@ -70,7 +70,7 @@ public class JaggaerCreateSync implements Consumer<SupplierContactModel> {
 
         if (null != companyData) {
             String bravoId = companyData.getReturnCompanyInfo().getBravoId();
-            service.save(model.getEntityId(), companyData);
+            service.save(model.getEntityId(), companyData, null);
 
             System.out.println(model.getEntityId() + ","
                     + companyData.getReturnCompanyInfo().getBizEmail() + ","
@@ -94,7 +94,7 @@ public class JaggaerCreateSync implements Consumer<SupplierContactModel> {
             finally {
                 writeJaggaerLock.release();
             }
-            service.save(model.getEntityId(), response.getBravoId());
+            service.save(model.getEntityId(), response.getBravoId(), null);
             System.out.println(model.getEntityId() + ","
                     + model.getEmailAddress() + ","
                     + response.getBravoId() + ",\"" +

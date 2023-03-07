@@ -7,7 +7,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.repo.OrganisationMappingRepo;
 
 import javax.transaction.Transactional;
-import javax.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.List;
 
@@ -17,8 +16,8 @@ public class SaveService {
     private final OrganisationMappingRepo repo;
 
     @Transactional
-    public void save(String dunsNumber, ReturnCompanyData data) {
-        save(dunsNumber, Integer.parseInt(data.getReturnCompanyInfo().getBravoId()));
+    public void save(String dunsNumber, ReturnCompanyData data, String ciiCoh) {
+        save(dunsNumber, Integer.parseInt(data.getReturnCompanyInfo().getBravoId()), ciiCoh);
     }
 
     public OrganisationMapping query(String dunsNumber) {
@@ -45,26 +44,21 @@ public class SaveService {
     }
 
     @Transactional
-    public void save(String dunsNumber, Integer externalOrgId) {
+    public void save(String dunsNumber, Integer externalOrgId, String ciiIdentifier) {
         String orgId = "US-DUNS-" + dunsNumber;
+        if(null == ciiIdentifier)
+            ciiIdentifier = orgId;
         System.out.println("Saving orgId:" + orgId);
         OrganisationMapping om = repo.findByExternalOrganisationId(externalOrgId).orElse(null);
 
         if (null != om) {
-            if (null == om.getCasOrganisationId()) {
-                om.setCasOrganisationId(orgId);
-            } else if (null != om.getOrganisationId()
-                    && om.getOrganisationId().equalsIgnoreCase(om.getCasOrganisationId())
-                && !sameEntityCode(om.getCasOrganisationId(), orgId)) {
-                om.setCasOrganisationId(orgId);
-            } else if (om.getCasOrganisationId().equalsIgnoreCase(orgId))
-                return;
-            else {
-                throw new RuntimeException("different orgId between jaggaer Mapped in database :" + om.getOrganisationId() + " and jaggaer queried:" + dunsNumber
-                        + " for the jaggaerId " + externalOrgId);
-            }
+            updateCasOrgId(dunsNumber, externalOrgId, orgId, om);
         } else {
-            om = repo.findByOrganisationId(orgId).orElse(null);
+            om = repo.findByOrganisationId(ciiIdentifier).orElse(null);
+            if(null == om && !ciiIdentifier.equalsIgnoreCase(orgId))
+                om = repo.findByOrganisationId(orgId).orElse(null);
+            updateCasOrgId(dunsNumber, externalOrgId, orgId, om);
+
             if(null == om)
                 om = repo.findByCasOrganisationId(orgId);
         }
@@ -84,6 +78,22 @@ public class SaveService {
                         + " for the orgid " + om.getOrganisationId());
             }
         }
+    }
+
+    private boolean updateCasOrgId(String dunsNumber, Integer externalOrgId, String orgId, OrganisationMapping om) {
+        if (null == om.getCasOrganisationId()) {
+            om.setCasOrganisationId(orgId);
+        } else if (null != om.getOrganisationId()
+                && om.getOrganisationId().equalsIgnoreCase(om.getCasOrganisationId())
+            && !sameEntityCode(om.getCasOrganisationId(), orgId)) {
+            om.setCasOrganisationId(orgId);
+        } else if (om.getCasOrganisationId().equalsIgnoreCase(orgId))
+            return true;
+        else {
+            throw new RuntimeException("different orgId between jaggaer Mapped in database :" + om.getOrganisationId() + " and jaggaer queried:" + dunsNumber
+                    + " for the jaggaerId " + externalOrgId);
+        }
+        return false;
     }
 
     private boolean sameEntityCode(String casOrganisationId, String dunsNumber) {

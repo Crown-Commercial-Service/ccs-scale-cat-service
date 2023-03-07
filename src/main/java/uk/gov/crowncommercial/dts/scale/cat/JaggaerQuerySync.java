@@ -69,7 +69,7 @@ public class JaggaerQuerySync implements Consumer<SupplierContactModel> {
 
         if (null != companyData) {
             String bravoId = companyData.getReturnCompanyInfo().getBravoId();
-            service.save(model.getEntityId(), companyData);
+            service.save(model.getEntityId(), companyData, null);
 
             System.out.println(model.getEntityId() + ","
                     + companyData.getReturnCompanyInfo().getBizEmail() + ","
