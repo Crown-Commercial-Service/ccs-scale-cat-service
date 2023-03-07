@@ -17,14 +17,20 @@ public class Util {
     }
 
     private static String prefix(String entityCode, int i) {
-        return ("000000000" + entityCode).substring(entityCode.length());
+        switch (i) {
+            case 9:
+                return ("000000000" + entityCode).substring(entityCode.length());
+            case 8:
+                return ("00000000" + entityCode).substring(entityCode.length());
+            default:
+                return entityCode;
+        }
     }
 
     public static boolean isCohEqual(String houseNumber, String coh) {
         if(null == houseNumber || null == coh)
             return false;
-        return ((houseNumber.length() == 7 && coh.equalsIgnoreCase("0" + houseNumber))
-                    || coh.equalsIgnoreCase(houseNumber));
+        return getCoHId (houseNumber).equalsIgnoreCase(getCoHId(coh));
 
     }
 
@@ -47,5 +53,15 @@ public class Util {
         if (sourceName.equalsIgnoreCase(targetName))
             return 1d;
         return winklerDistance.apply(sourceName, targetName);
+    }
+
+    public static String getCoHId(String cohId) {
+        if(null == cohId)
+            return null;
+        if(cohId.length() >= 8){
+            return cohId;
+        }
+        else
+            return prefix(cohId, 8);
     }
 }
