@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import uk.gov.crowncommercial.dts.scale.cat.config.ScriptConfig;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.*;
 import uk.gov.crowncommercial.dts.scale.cat.csvwriter.SupplierSuggestionWriter;
@@ -17,6 +18,7 @@ import java.util.function.Consumer;
 
 
 @RequiredArgsConstructor
+@Log4j2
 public class SupplierProcessor implements Consumer<SupplierModel> {
     private final ScriptConfig scriptConfig;
     private final String agreeementDataFileName;
@@ -132,6 +134,28 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 String dunNumber = "US-DUN-" + duns;
                 if (orgMappings.containsKey(dunsNumber) || orgMappings.containsKey(dunNumber)) {
                     mappedWriter.accept(supplierModel);
+                    try{
+                        if(null != supplierModel.getCiiCoH() && supplierModel.getCiiMatch().equalsIgnoreCase("yes/CoH")){
+
+                            String coh = Util.getCoHId(supplierModel.getCiiCoH());
+                            service.save(duns, Integer.parseInt(data.getBravoId()), "GB-COH-" + coh);
+
+                        }else if(null != supplierModel.getHouseNumber()){
+                            String coh = supplierModel.getHouseNumber();
+                            if(null != coh && coh.length() < 9){
+                                coh = "GB-COH-" + Util.getCoHId(supplierModel.getHouseNumber());
+                            }else
+                                coh = dunNumber;
+                             service.getByOrgIds(Integer.parseInt(data.getBravoId()), coh, dunsNumber);
+                        }
+                    }catch(Throwable t){
+                        bw.write(duns + "," +  "," + data.getBravoId() + ","
+                                + data.getExtUniqueCode() +"," + data.getExtCode()+ "," + supplierModel.getCiiMatch()
+                                + "," + supplierModel.getCiiCoH()
+                                + "," + supplierModel.getLegalName() + "," + t.getMessage());
+                        bw.newLine();
+                        bw.flush();
+                    }
                     return;
                 }
 
@@ -139,12 +163,27 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
                 if (null == om) {
                     try {
-                        service.save(duns, Integer.parseInt(data.getBravoId()), "GB-COH-" + supplierModel.getCiiCoH());
+                        String ciiCoH = supplierModel.getCiiCoH();
+                        if(null != ciiCoH && supplierModel.getCiiMatch().equalsIgnoreCase("yes/CoH")){
+                            String coh = Util.getCoHId(supplierModel.getCiiCoH());
+                            service.save(duns, Integer.parseInt(data.getBravoId()), "GB-COH-" + coh);
+                        }else {
+                            String coh = supplierModel.getHouseNumber();
+                            if(null != coh && coh.length() < 9){
+                                coh = Util.getCoHId(supplierModel.getHouseNumber());
+                            }else
+                                coh = null;
+                            if(null != coh)
+                                service.save(duns, Integer.parseInt(data.getBravoId()), "GB-COH-" + coh);
+                            else
+                                service.save(duns, Integer.parseInt(data.getBravoId()), null);
+                        }
                         mappedWriter.accept(supplierModel);
                     } catch (Throwable t) {
                         bw.write(duns + "," +  "," + data.getBravoId() + ","
                                 + data.getExtUniqueCode() +"," + data.getExtCode()+ "," + supplierModel.getCiiMatch()
-                        + "," + supplierModel.getLegalName());
+                                + "," + supplierModel.getCiiCoH()
+                        + "," + supplierModel.getLegalName()+ "," + t.getMessage());
                         bw.newLine();
                         bw.flush();
                     }
@@ -195,7 +234,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
     private void processCiiMatch(SupplierModel supplierModel) {
         String duns = supplierModel.getEntityId();
-        String coh = supplierModel.getHouseNumber();
+        String coh = Util.getCoHId(supplierModel.getHouseNumber());
 
         {
             CiiOrg org = ciiOrgMap.get(duns);
@@ -215,11 +254,13 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 matchedCiiOrg = ciiOrg;
                 supplierModel.setCiiMatch("yes/DUNS");
                 supplierModel.setCiiOrgName(ciiOrg.getOrgName());
+                supplierModel.setCiiCoH(ciiCoH);
                 return;
             }else if(Util.isCohEqual(coh, ciiCoH)){
                 matchedCiiOrg = ciiOrg;
                 supplierModel.setCiiMatch("yes/CoH");
                 supplierModel.setCiiOrgName(ciiOrg.getOrgName());
+                supplierModel.setCiiCoH(ciiCoH);
                 return;
             }
         }
@@ -396,7 +437,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
             supplierModel.setCiiCoH(currentMappedCoH);
             supplierModel.setCiiOrgName(currentMappedOrgName);
             supplierModel.setFuzzyMatch("yes");
-            System.out.println("supplier '" + target + "' is matched with " + currentMappedOrgName + " max similarity " + currentSimilarity);
+            log.trace("supplier '" + target + "' is matched with " + currentMappedOrgName + " max similarity " + currentSimilarity);
             return currentMappedCoH;
         }
 //        if(currentSimilarity != 0d){

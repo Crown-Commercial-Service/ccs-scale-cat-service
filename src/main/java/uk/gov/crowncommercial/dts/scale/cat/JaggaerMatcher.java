@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.JaggaerSupplierModel;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.OrganizationModel;
 import uk.gov.crowncommercial.dts.scale.cat.csvreader.SupplierModel;
@@ -8,6 +9,7 @@ import uk.gov.crowncommercial.dts.scale.cat.csvreader.SupplierModel;
 import java.util.*;
 
 @RequiredArgsConstructor
+@Log4j2
 public class JaggaerMatcher {
     private final Map<String, JaggaerSupplierModel> jaggaerSupplierMap;
     private String[] common_domains = {"gmail.com", "googlemail.com", "yahoo.com", "live.com", "live.co.uk"
@@ -182,7 +184,7 @@ public class JaggaerMatcher {
         if (src.trim().equalsIgnoreCase(tgt.trim())) {
             return true;
         }
-        System.out.println("domain not matching for " + supplierModel.getSupplierName() + "/" + jaggaerSupplierModel.getSupplierName() + " jaggaer Email:" + emailJaggaer + " supplier Email:" + emailSupplier);
+        log.trace("domain not matching for " + supplierModel.getSupplierName() + "/" + jaggaerSupplierModel.getSupplierName() + " jaggaer Email:" + emailJaggaer + " supplier Email:" + emailSupplier);
         return false;
     }
 
