@@ -157,7 +157,7 @@ public class CliInvoker implements CommandLineRunner {
 
                         if(null == om) {
                             try {
-                                service.save(duns, data);
+                                service.save(duns, data, null);
                                 writer.accept(supplierModel);
                             }catch(Throwable t){
                                 bw.write("cas error:" + t.getMessage());
@@ -265,7 +265,7 @@ public class CliInvoker implements CommandLineRunner {
                     try {
                         ReturnCompanyData data = queryCompanyFromJaggaer(duns);
                         if (null != data) {
-                            service.save(duns, data);
+                            service.save(duns, data, null);
                             bc.write(duns);
                             bc.write("-");
                             bc.write(data.getReturnCompanyInfo().getBravoId());

@@ -120,21 +120,12 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 supplierModel.setJaggaerExtCode(extCode + "/" + extUniqueCode);
 
                 if (!orgMap.containsKey(Util.getEntityId(supplierModel.getEntityId()))) {
-//                    if (null == supplierModel.getFuzzyMatch())
-                        missingCASWriter.accept(supplierModel);
-//                    else
-//                        if(null != supplierModel.getFuzzyMatch())
-//                            suggestionsWriter.accept(supplierModel);
+                    missingCASWriter.accept(supplierModel);
                     return;
                 } else {
                     OrganizationModel model = orgMap.get(Util.getEntityId(supplierModel.getEntityId()));
                     supplierModel.setTradingName(model.getTradingName());
                     supplierModel.setLegalName(model.getLegalName());
-                    if (null != supplierModel.getFuzzyMatch()) {
-//                        missingWriter.accept(supplierModel);
-//                        suggestionsWriter.accept(supplierModel);
-//                        return;
-                    }
                 }
 
                 String dunsNumber = "US-DUNS-" + duns;
@@ -148,18 +139,12 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
                 if (null == om) {
                     try {
-//                        service.save(duns, Integer.parseInt(data.getBravoId()));
+                        service.save(duns, Integer.parseInt(data.getBravoId()), "GB-COH-" + supplierModel.getCiiCoH());
                         mappedWriter.accept(supplierModel);
                     } catch (Throwable t) {
                         bw.write(duns + "," +  "," + data.getBravoId() + ","
                                 + data.getExtUniqueCode() +"," + data.getExtCode()+ "," + supplierModel.getCiiMatch()
                         + "," + supplierModel.getLegalName());
-//                        bw.write("cas error:" + t.getMessage());
-//                        bw.newLine();
-//                        bw.write(duns + "/" + supplierModel.getSupplierName());
-//                        if (null != om)
-//                            bw.write(" already assigned to " + om.getExternalOrganisationId() + " and");
-//                        bw.write(" new assignment to " + data.getBravoId() + "/" + data.getSupplierName());
                         bw.newLine();
                         bw.flush();
                     }
@@ -168,10 +153,6 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                         bw.write(duns + "," + om.getExternalOrganisationId() + "," + data.getBravoId() + "," +
                                 data.getExtUniqueCode() +"," + data.getExtCode() + "," + supplierModel.getCiiMatch());
 
-//                        bw.write("cas error:");
-//                        bw.write(duns + "/" + supplierModel.getSupplierName());
-//                        bw.write(" already assigned to " + om.getExternalOrganisationId());
-//                        bw.write(" and cannot be changed to " + data.getBravoId() + "/" + data.getSupplierName());
                         bw.newLine();
                         bw.flush();
                     } else {

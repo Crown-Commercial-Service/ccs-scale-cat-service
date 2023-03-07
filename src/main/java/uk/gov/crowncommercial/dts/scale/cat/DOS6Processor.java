@@ -179,8 +179,9 @@ public class DOS6Processor implements CommandLineRunner {
 
         Map<String, Integer> orgMappings = new HashMap<>();
         for(OrganisationMapping om : service.listAll()){
-            String key = Util.getEntityId(om.getOrganisationId());
-            orgMappings.put(key, om.getExternalOrganisationId());
+            String key = Util.getEntityId(om.getCasOrganisationId());
+            if(om.isPrimaryInd())
+                orgMappings.put(key, om.getExternalOrganisationId());
         }
 
 //        Map<String, Integer> orgMappings = service.listAll().stream()

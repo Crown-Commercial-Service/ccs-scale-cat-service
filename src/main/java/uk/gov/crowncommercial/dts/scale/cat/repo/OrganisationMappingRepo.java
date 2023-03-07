@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 
@@ -30,9 +32,13 @@ public interface OrganisationMappingRepo extends JpaRepository<OrganisationMappi
    * @param organisationId
    * @return optional org mapping
    */
-  Optional<OrganisationMapping> findByOrganisationId(String organisationId);
+  @Query("select om from  OrganisationMapping om " +
+          " where om.primaryInd is true and organisationId = :organisationId ")
+  Optional<OrganisationMapping> findByOrganisationId(@Param("organisationId") String organisationId);
 
 
-  OrganisationMapping findByCasOrganisationId(String organisationId);
+  @Query("select om from  OrganisationMapping om " +
+          " where om.primaryInd is true and casOrganisationId = :casOrganisationId ")
+  OrganisationMapping findByCasOrganisationId(@Param("casOrganisationId") String organisationId);
 
 }
