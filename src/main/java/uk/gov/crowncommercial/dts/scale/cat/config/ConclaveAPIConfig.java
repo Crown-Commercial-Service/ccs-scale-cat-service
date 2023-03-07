@@ -21,6 +21,7 @@ public class ConclaveAPIConfig {
   private String identitiesApiKey;
   private Integer timeoutDuration;
   private String buyerRoleKey;
+  private String catUserRoleKey;
   private String supplierRoleKey;
   private Map<String, String> getUser;
   private Map<String, String> getUserContacts;

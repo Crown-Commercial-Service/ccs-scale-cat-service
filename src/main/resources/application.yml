@@ -267,6 +267,7 @@ config:
       timeoutDuration: 10
       # Role keys are incorrectly spelt in Conclave
       buyerRoleKey: JAEGGER_BUYER
+      catUserRoleKey: CAT_USER
       supplierRoleKey: JAEGGER_SUPPLIER      
       getUser:
         uriTemplate: /user-profiles?user-id={user-id}
