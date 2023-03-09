@@ -8,7 +8,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
@@ -130,21 +129,6 @@ public class ProjectsController extends AbstractRestController {
     log.info("deleteTeamMember invoked on behalf of principal: {}", principal);
     procurementProjectService.deleteTeamMember(procId, userId, principal);
     return Constants.OK_MSG;
-  }
-  
-  @PostMapping("/salesforce")
-  @TrackExecutionTime
-
-  public SalesforceProjectTender200Response createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender,
-		  final ApiKeyAuthToken authentication) {
-	  
-	  String principal = (String) authentication.getPrincipal();
-	  
-	  log.debug("createProcurementCase() with principal -> {}", principal);
-
-	 // 
-	 return procurementProjectService.createFromSalesforceDetails(projectTender,principal);
-	    
   }
 
 }

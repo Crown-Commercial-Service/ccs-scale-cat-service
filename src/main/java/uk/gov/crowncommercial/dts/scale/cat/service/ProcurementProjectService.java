@@ -697,22 +697,17 @@ public class ProcurementProjectService {
   public SalesforceProjectTender200Response createFromSalesforceDetails(final SalesforceProjectTender projectTender, 
 		  																final String principal) {
 
-	  // Fetch Jaggaer user ID and Buyer company ID from Jaggaer profile based on OIDC login id
-
-	  // TODO: remove vars and calls to conclave
-	  var conclaveOrgId = jaggaerAPIConfig.getApiDefaults().get("conclave-org-id");
+	  // Fetch Jaggaer user ID and Buyer company ID from Jaggaer config
 	  var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
-	  var jaggaerUserId = jaggaerAPIConfig.getApiDefaults().get("jaggaer-user-id");
-	  //var jaggaerUserId="110659";			// TODO: this is peter.simpson@roweit.co.uk
-	
-	  var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
-	          .orElseThrow(() -> new AuthorisationFailureException(
-	                  "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
-
-	  log.debug("conclaveUserOrg: {}", conclaveUserOrg);
-	
-	  //var projectTitle = getProjectTitle(projectTender, conclaveUserOrg.getIdentifier().getLegalName());
-	
+	  //var jaggaerUserId = jaggaerAPIConfig.getApiDefaults().get("jaggaer-user-id");
+	  
+	  // default project type
+	  var projectType = jaggaerAPIConfig.getApiDefaults().get("project-type");
+	  
+  	  // get projectOwner from the Rfx ownerUser
+	  var projectOwner = ProjectOwner.builder().login(projectTender.getRfx().getOwnerUserLogin()).build();
+	  
+	  // create Additional Info list
 	  var additionalInfoProcurementReference = AdditionalInfo.builder().name(ADDITIONAL_INFO_PROCUREMENT_REFERENCE)
 	          .label(ADDITIONAL_INFO_PROCUREMENT_REFERENCE).labelLocale(ADDITIONAL_INFO_LOCALE)
 	          .values(
@@ -724,7 +719,7 @@ public class ProcurementProjectService {
 	  var AdditionalInfoList =
 	          new AdditionalInfoList(Arrays.asList(additionalInfoProcurementReference));
 	
-
+	  // initiate Tender details
       Tender tender;
       var operationCode = OperationCode.CREATEUPDATE;
  
@@ -732,31 +727,25 @@ public class ProcurementProjectService {
  
     	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
 
+    	  // set sourceTemplateReferenceCode
           tender = Tender.builder().title(projectTender.getSubject())
-        		  //.tenderReferenceCode(projectTender.getTenderReferenceCode())
-        		  //.projectType("CCS_PROJ") 			//	TODO: Default?
                   .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
-                  //.projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
-                  .sourceTemplateReferenceCode("project_609")
+                  .sourceTemplateReferenceCode(jaggaerAPIConfig.getApiDefaults().get("source-template-reference-code"))
                   .additionalInfo(AdditionalInfoList)
-                  .build();	// TODO: template reference code lookup
-          		  //original
-          		  //.sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+                  .projectOwner(projectOwner)
+                  .build();
     	  
       } else {
-    	  //tender.setSourceTemplateReferenceCode(defaultSourceTemplateReferenceCode);
-    	  
-          tender = Tender.builder().title(projectTender.getSubject())
+
+    	  // set tenderReferenceCode
+    	  // set projectType
+    	  tender = Tender.builder().title(projectTender.getSubject())
         		  .tenderReferenceCode(projectTender.getTenderReferenceCode())
-        		  .projectType("CCS_PROJ") 			//	TODO: Default?
+        		  .projectType(projectType) 		
                   .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
-                  //.projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
-                  .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
-                  .sourceTemplateReferenceCode("project_609")
                   .additionalInfo(AdditionalInfoList)
-                  .build();	// TODO: template reference code lookup
-          		  //original
-          		  //.sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+                  .projectOwner(projectOwner)
+                  .build();	
       }
       
       log.debug("Project build - tender: {}",tender.toString());
@@ -796,7 +785,8 @@ public class ProcurementProjectService {
 
       var procurementProject = ProcurementProject.builder()
               // .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
-              .caNumber(projectTender.getRfx().getFrameworkRMNumber()).lotNumber(projectTender.getRfx().getFrameworkLotNumber())
+              .caNumber(projectTender.getRfx().getFrameworkRMNumber())
+              .lotNumber(projectTender.getRfx().getFrameworkLotNumber())
               .externalProjectId(createProjectResponse.getTenderCode())
               .externalReferenceId(createProjectResponse.getTenderReferenceCode())
               .projectName(projectTender.getSubject()).createdBy(principal).createdAt(Instant.now())
@@ -831,17 +821,12 @@ public class ProcurementProjectService {
       procurementProject.setOrganisationMapping(organisationMapping.get());
       procurementProject=retryableTendersDBDelegate.save(procurementProject);
 	  log.debug("procurementProject: {}", procurementProject);
-
-      
-      // TODO: does the creation of a RFx for the new project represent an 'event' that needs to be recorded
-      //var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
-              //new CreateEvent(), null, principal);
-      
+    
       // Create RFx for new project
       var newRfx = procurementEventService.createSalesforceRfxRequest(procurementProject, projectTender, principal);
       log.info("Rfx to create: {}", newRfx);
 
-      // Call to Jaggaer to create project
+      // Call to Jaggaer to create rfx
       var createRfxResponse =
               ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
                       .bodyValue(newRfx).retrieve().bodyToMono(CreateUpdateRfxResponse.class)
@@ -868,7 +853,8 @@ public class ProcurementProjectService {
 //      throw new AuthorisationFailureException("A lot is required for this commercial agreement.");
 //    }
 //      
-    return tendersAPIModelUtils.buildSalesforceProjectTender200Response(
+    
+      return tendersAPIModelUtils.buildSalesforceProjectTender200Response(
     			createRfxResponse.getRfxId(),
     			createRfxResponse.getRfxReferenceCode());  
   

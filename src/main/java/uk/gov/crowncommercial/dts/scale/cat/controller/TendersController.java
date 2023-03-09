@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
@@ -15,15 +17,20 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Release;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender200Response;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+
+import javax.validation.Valid;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.apache.commons.lang3.StringUtils.trim;
@@ -38,6 +45,7 @@ import static org.apache.commons.lang3.StringUtils.trim;
 public class TendersController extends AbstractRestController {
 
   private final ProfileManagementService profileManagementService;
+  private final ProcurementProjectService procurementProjectService;
 
   @GetMapping("/event-types")
   @TrackExecutionTime
@@ -100,6 +108,21 @@ public class TendersController extends AbstractRestController {
    log.info("getAllUsers for on behalf of principal: {} ", principal);
    // We are not retrieving org users based on organisationId
    return profileManagementService.getOrgUsers(principal);
+  }
+  
+  @PostMapping("/projects/salesforce")
+  @TrackExecutionTime
+
+  public SalesforceProjectTender200Response createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender,
+		  final ApiKeyAuthToken authentication) {
+	  
+	  String principal = (String) authentication.getPrincipal();
+	  
+	  log.debug("createProcurementCase() with principal -> {}", principal);
+
+	 // 
+	 return procurementProjectService.createFromSalesforceDetails(projectTender,principal);
+	    
   }
 
   @GetMapping("/projects/deltas")

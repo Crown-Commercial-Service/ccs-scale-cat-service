@@ -1724,42 +1724,44 @@ public class ProcurementEventService implements EventService {
     }
     
     /**
-     * Create Jaggaer request object.
-     */
+    *
+    * EI-74 Add SalesForce endpoint to CAT service
+    * 
+    * Create Jaggaer Rfx from SalesForce request
+    *
+    * @param ProcurementProject
+    * @param SalesforceProjectTender
+    * @param principal
+    * @return CreateUpdateRfx
+    */
     public CreateUpdateRfx createSalesforceRfxRequest(final ProcurementProject project, final SalesforceProjectTender projectTender,
                                              final String principal) {
 
       // Fetch Jaggaer ID and Buyer company ID from Jaggaer config
       var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
-      //var jaggaerBuyerCompanyId = "51435";	// TODO: this is 'Crown Commercial Service'
-      var jaggaerUserId="110659";			// TODO: this is peter.simpson@roweit.co.uk
 
       var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
-      @SuppressWarnings("unused")
-  	  var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
-      
-      log.debug("findByRfxShortDescription() {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+  	  var ownerUser = OwnerUser.builder().login(projectTender.getRfx().getOwnerUserLogin()).build();
 
-       //RfxTemplateMapping rfxTemplateMapping = rfxTemplateMapping.findByRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
-      
-      // ** start of imported code
-      //log.debug("rfxTemplateMapping.get().getRfxReferenceCode() {}", rfxTemplateMapping);
-      Optional<RfxTemplateMapping> rfxTemplateMapping = retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+      // Retrieve template reference code from rfx_template_mapping table
+	  log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+	  //log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getShortDescription());
+
+      Optional<RfxTemplateMapping> rfxTemplateMapping = 
+       		  	//retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getShortDescription());
+         		retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
       log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
 
       String rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();
       log.debug("rfxTemplateReferenceCode {}", rfxTemplateReferenceCode);
 
-      String rfxProcurementRoute = projectTender.getRfx().getProcurementRoute();
-      
-      @SuppressWarnings("unused")
-  	  String rfxProcurementRouteType = "";
+      // Original logic - Template Reference Code now looked-up in mapping table
+//      var openMarketTemplateId = jaggaerAPIConfig.getApiDefaults().get("open-market-template-id");
+//      var staTemplateId = jaggaerAPIConfig.getApiDefaults().get("sta-template-id");      
 
-      // TODO: where should these be implemented?
-      var openMarketTemplateId = jaggaerAPIConfig.getApiDefaults().get("open-market-template-id");
-      var staTemplateId = jaggaerAPIConfig.getApiDefaults().get("sta-template-id");
-      
-      // 
+//      String rfxProcurementRoute = projectTender.getRfx().getProcurementRoute();
+//  	  String rfxProcurementRouteType = "";
+
 //      if (rfxProcurementRoute.equalsIgnoreCase("Open Market")) {
 //        rfxTemplateReferenceCode = openMarketTemplateId;
 //        rfxProcurementRouteType = "5";
@@ -1778,25 +1780,25 @@ public class ProcurementEventService implements EventService {
               .label(ADDITIONAL_INFO_PROCUREMENT_ROUTE)
               .labelLocale(ADDITIONAL_INFO_LOCALE)
               .values(
-                      new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(rfxProcurementRoute))))
+                      new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getProcurementRoute()))))
               .build();
 
 
-//      var additionalInfoFramework = AdditionalInfo.builder().name(ADDITIONAL_INFO_FRAMEWORK_NAME)
-//              .label(ADDITIONAL_INFO_FRAMEWORK_NAME).labelLocale(ADDITIONAL_INFO_LOCALE)
-//              .values(
-//                      new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getFrameworkRMNumber()))))
-//              .build();
-//
-//      var additionalInfoLot =
-//              AdditionalInfo.builder().name(ADDITIONAL_INFO_LOT_NUMBER).label(ADDITIONAL_INFO_LOT_NUMBER)
-//                      .labelLocale(ADDITIONAL_INFO_LOCALE).values(new AdditionalInfoValues(
-//                              Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getFrameworkLotNumber()))))
-//                      .build();
+      var additionalInfoFramework = AdditionalInfo.builder().name(ADDITIONAL_INFO_FRAMEWORK_NAME)
+              .label(ADDITIONAL_INFO_FRAMEWORK_NAME).labelLocale(ADDITIONAL_INFO_LOCALE)
+              .values(
+                      new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getFrameworkRMNumber()))))
+              .build();
+
+      var additionalInfoLot =
+              AdditionalInfo.builder().name(ADDITIONAL_INFO_LOT_NUMBER).label(ADDITIONAL_INFO_LOT_NUMBER)
+                      .labelLocale(ADDITIONAL_INFO_LOCALE).values(new AdditionalInfoValues(
+                              Arrays.asList(new AdditionalInfoValue(projectTender.getRfx().getFrameworkLotNumber()))))
+                      .build();
 
       var rfxAdditionalInfoList =
-              new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute));
-      			//new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute, additionalInfoFramework, additionalInfoLot));
+              //new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute));
+      			new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute, additionalInfoFramework, additionalInfoLot));
 
       String rfxType = "";
       Integer rfiFlag = 0;
@@ -1815,16 +1817,16 @@ public class ProcurementEventService implements EventService {
   					.longDescription(projectTender.getRfx().getShortDescription())
               		.rfiFlag(rfiFlag)
               		.value(Integer.valueOf(projectTender.getRfx().getValue()))
-      				//.templateReferenceCode(rfxTemplateReferenceCode)	// TODO: is this correct ?
+      				.templateReferenceCode(rfxTemplateReferenceCode)
       				.tenderReferenceCode(project.getExternalReferenceId())
-                      .buyerCompany(buyerCompany)
-                      //.ownerUser(ownerUser)
-                      .rfxType(rfxType)
+                    .buyerCompany(buyerCompany)
+                    .ownerUser(ownerUser)
+                    .rfxType(rfxType)
               		.qualEnvStatus(Integer.valueOf(projectTender.getRfx().getQualEnvStatus()))                    
               		.techEnvStatus(Integer.valueOf(projectTender.getRfx().getTechEnvStatus()))                    
               		.commEnvStatus(Integer.valueOf(projectTender.getRfx().getCommEnvStatus()))
-              		//.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
-              		//.rankingStrategy(projectTender.getRfx().getRankingStrategy())
+              		.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
+              		.rankingStrategy(projectTender.getRfx().getRankingStrategy())
               		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
               		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
               		.build();  
