@@ -1,6 +1,6 @@
 <configuration>
 	<springProperty name="ROLLBAR_ACCESS_TOKEN"
-		source="config.rollbar.accessToken" />
+		source="config.rollbar.access-token" />
 	<springProperty name="ROLLBAR_ENVIRONMENT"
 		source="config.rollbar.environment" />
 
