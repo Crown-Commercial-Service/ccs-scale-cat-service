@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
@@ -19,6 +20,8 @@ import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Map;
+import static java.util.Map.entry;
 
 @RequiredArgsConstructor
 @Component("JaggaerSupplierPush")
@@ -50,8 +53,16 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
         }
 
         if(null != suppliers) {
+            Map<String, String> options = Map.ofEntries(entry("store", "jaggaer"));
             SupplierStore store = factory.getStore(event);
-            store.storeSuppliers(event, suppliers, data.getOverWrite(), principal);
+            try {
+                store.storeSuppliers(event, suppliers, data.getOverWrite(), principal, options);
+            }catch(JaggaerApplicationException jae){
+                if(jae.getMessage().contains("Code: [-998]")){
+                    throw new RetryableException("-998", jae.getMessage(), jae);
+                }else
+                    throw jae;
+            }
             log.info("Successfully pushed {} suppliers to project {}, event {}", suppliers.size(), project.getId(), event.getEventID());
             return "Pushed " + suppliers.size() + " suppliers to Jaggaer";
         }else{
@@ -78,7 +89,7 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
 
     @Override
     public boolean canRetry(String errorCode, RetryableException re) {
-        return false;
+        return re.getErrorCode().equals("-998");
     }
 
     @Override

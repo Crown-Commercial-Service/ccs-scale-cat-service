@@ -23,16 +23,26 @@ public class OrganisationMapping {
   Integer id;
 
   /**
-   * The Org service ID
+   * The Org ID on PPG
    */
   @Column(name = "organisation_id")
   String organisationId;
+
+  /**
+   * The Org Id on CAS service
+   */
+  @Column(name = "cas_organisation_id")
+  String casOrganisationId;
 
   /**
    * The sales platform ID
    */
   @Column(name = "external_organisation_id")
   Integer externalOrganisationId;
+
+  @Builder.Default
+  @Column(name = "primary_ind")
+  boolean primaryInd = true;
 
   @Column(name = "created_by", updatable = false)
   String createdBy;
