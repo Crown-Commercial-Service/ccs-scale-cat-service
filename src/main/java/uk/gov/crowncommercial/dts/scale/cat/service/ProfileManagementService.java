@@ -208,7 +208,14 @@ public class ProfileManagementService {
       }
 
       // Now searched by org (legal) identifer (SCHEME-ID)
-      var orgMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(primaryOrgId);
+      var orgMapping =
+          retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(primaryOrgId);
+
+      // Now searched by Cas Organisation Id
+      if (orgMapping.isEmpty()) {
+        orgMapping =
+            retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(primaryOrgId);
+      }
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
@@ -445,6 +452,7 @@ public class ProfileManagementService {
   private void populateConclaveRoles(final Set<RolesEnum> conclaveRoles,
       final UserProfileResponseInfo conclaveUser) {
     var conclaveBuyerSupplierRoleKeys = Map.of(conclaveAPIConfig.getBuyerRoleKey(), BUYER,
+        conclaveAPIConfig.getCatUserRoleKey(), BUYER,
         conclaveAPIConfig.getSupplierRoleKey(), SUPPLIER);
 
     conclaveUser.getDetail().getRolePermissionInfo().stream().map(RolePermissionInfo::getRoleKey)
