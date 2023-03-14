@@ -95,7 +95,7 @@ deploy:
     on:
       branch: release/prd      
 
-# WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments
+# WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments.
 env:
   global:
     # ACCESS_KEY_ID
