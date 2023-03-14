@@ -187,7 +187,6 @@ public class SupplierService {
     }
     
     retryableTendersDBDelegate.updateEventDate(procurementEvent, profile);
-    
     return "Successfully updated scores";
   }
 
