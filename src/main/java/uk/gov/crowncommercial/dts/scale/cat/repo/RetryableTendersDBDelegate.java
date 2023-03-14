@@ -14,7 +14,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
-
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -403,6 +403,12 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<ContractDetails> findByEventId(final Integer eventId) {
     return contractDetailsRepo.findByEventId(eventId);
+  }
+  
+  public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
+    procurementEvent.setUpdatedBy(profile);
+    procurementEvent.setUpdatedAt(Instant.now());
+    this.save(procurementEvent);
   }
 
   /**

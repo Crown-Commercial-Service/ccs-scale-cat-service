@@ -263,6 +263,13 @@
 			<artifactId>junit-jupiter-params</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/com.rollbar/rollbar-logback -->
+		<dependency>
+			<groupId>com.rollbar</groupId>
+			<artifactId>rollbar-logback</artifactId>
+			<version>1.9.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
