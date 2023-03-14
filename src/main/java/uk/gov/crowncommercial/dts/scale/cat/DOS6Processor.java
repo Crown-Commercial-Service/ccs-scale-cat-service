@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.text.similarity.JaroWinklerDistance;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 @SpringBootApplication
 @RequiredArgsConstructor
 @EnableCaching
+@Log4j2
 public class DOS6Processor implements CommandLineRunner {
 
     private final JaggaerCompanyService companyService;
@@ -339,7 +341,7 @@ public class DOS6Processor implements CommandLineRunner {
             supplierModel.setCiiCoH(currentMappedCoH);
             supplierModel.setCiiOrgName(currentMappedOrgName);
             supplierModel.setFuzzyMatch("yes");
-            System.out.println("supplier '" + target + "' is matched with " + currentMappedOrgName + " max similarity " + currentSimilarity);
+            log.trace("supplier '" + target + "' is matched with " + currentMappedOrgName + " max similarity " + currentSimilarity);
             return currentMappedCoH;
         }
 //        if(currentSimilarity != 0d){
