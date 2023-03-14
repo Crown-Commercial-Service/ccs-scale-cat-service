@@ -131,8 +131,11 @@ class SupplierServiceTest {
   @BeforeAll
   static void beforeClass() {
     ORG_MAPPING_1.setOrganisationId(SUPPLIER_ORG_ID_1);
+    ORG_MAPPING_1.setCasOrganisationId(SUPPLIER_ORG_ID_1);
     ORG_MAPPING_1.setExternalOrganisationId(EXT_ORG_ID_1);
+
     ORG_MAPPING_2.setOrganisationId(SUPPLIER_ORG_ID_2);
+    ORG_MAPPING_2.setCasOrganisationId(SUPPLIER_ORG_ID_2);
     ORG_MAPPING_2.setExternalOrganisationId(EXT_ORG_ID_2);
   }
 
@@ -142,7 +145,7 @@ class SupplierServiceTest {
         .thenReturn(Set.of(LOT_SUPPLIER_1, LOT_SUPPLIER_2));
 
     when(retryableTendersDBDelegate
-        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
+        .findOrganisationMappingByCasOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of(ORG_MAPPING_1, ORG_MAPPING_2));
 
     var suppliers = supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
@@ -150,7 +153,7 @@ class SupplierServiceTest {
     assertEquals(Set.of(EXT_SUPPLIER_1, EXT_SUPPLIER_2), Set.copyOf(suppliers));
 
     verify(agreementsService).getLotSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
-    verify(retryableTendersDBDelegate).findOrganisationMappingByOrganisationIdIn(anySet());
+    verify(retryableTendersDBDelegate).findOrganisationMappingByCasOrganisationIdIn(anySet());
   }
 
   @Test
@@ -170,7 +173,7 @@ class SupplierServiceTest {
         .thenReturn(Set.of(LOT_SUPPLIER_1, LOT_SUPPLIER_2));
 
     when(retryableTendersDBDelegate
-        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
+        .findOrganisationMappingByCasOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1, SUPPLIER_ORG_ID_2)))
             .thenReturn(Set.of());
 
     var suppliers = supplierService.resolveSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
@@ -178,7 +181,7 @@ class SupplierServiceTest {
     assertEquals(Set.of(), Set.copyOf(suppliers));
 
     verify(agreementsService).getLotSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
-    verify(retryableTendersDBDelegate).findOrganisationMappingByOrganisationIdIn(anySet());
+    verify(retryableTendersDBDelegate).findOrganisationMappingByCasOrganisationIdIn(anySet());
   }
 
 

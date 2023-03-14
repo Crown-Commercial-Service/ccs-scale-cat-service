@@ -48,7 +48,7 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
                             String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, s.getCompanyData().getId()));
                 }
 
-                return new OrganizationReference1().id(String.valueOf(om.getOrganisationId()))
+                return new OrganizationReference1().id(String.valueOf(om.getCasOrganisationId()))
                         .name(s.getCompanyData().getName());
             }).forEachOrdered(orgs::add);
         }

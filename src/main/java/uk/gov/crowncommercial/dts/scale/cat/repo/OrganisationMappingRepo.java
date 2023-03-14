@@ -37,4 +37,12 @@ public interface OrganisationMappingRepo extends JpaRepository<OrganisationMappi
           " where om.primaryInd is true and organisationId = :organisationId ")
   Optional<OrganisationMapping> findByOrganisationId(@Param("organisationId") String organisationId);
 
+  @Query("select om from  OrganisationMapping om " +
+          " where om.primaryInd is true and casOrganisationId = :casOrganisationId ")
+  Optional<OrganisationMapping> findByCasOrganisationId(@Param("casOrganisationId") String casOrganisationId);
+
+  @Query("select om from  OrganisationMapping om " +
+          " where om.primaryInd is true and om.casOrganisationId in (:casOrganisationIds) " )
+  Set<OrganisationMapping> findByCasOrganisationIdIn(@Param("casOrganisationIds")Set<String> casOrganisationIds);
+
 }
