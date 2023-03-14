@@ -97,6 +97,9 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
             event.getCapabilityAssessmentSuppliers()
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
+
+
+        
         }
 
 
@@ -118,6 +121,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
 
         event.setUpdatedAt(Instant.now());
         event.setUpdatedBy(principal);
+        event.setRefreshSuppliers(false);
         retryableTendersDBDelegate.save(event);
 
         var supplierSelection = event.getCapabilityAssessmentSuppliers().stream()
@@ -133,7 +137,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
                 .map(OrganizationReference1::getId).collect(Collectors.toSet());
 
         return retryableTendersDBDelegate
-                .findOrganisationMappingByOrganisationIdIn(supplierOrgIds).stream().map(org -> {
+                .findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds).stream().map(org -> {
                     var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
                     return Supplier.builder().companyData(companyData).build();
                 }).collect(Collectors.toList());
@@ -146,7 +150,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
             var orgIdentity =
                     conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getOrganisationId());
 
-            var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getOrganisationId());
+            var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getCasOrganisationId());
             orgIdentity.ifPresentOrElse(or -> orgRef.name(or.getIdentifier().getLegalName()),
                     () -> log.warn(String.format(ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE,
                             s.getOrganisationMapping().getOrganisationId())));

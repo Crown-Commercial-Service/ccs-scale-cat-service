@@ -33,6 +33,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService.UserContactPoints;
+import uk.gov.service.notify.NotificationClient;
+import uk.gov.service.notify.NotificationClientException;
+import uk.gov.service.notify.SendEmailResponse;
 
 /**
  *
@@ -61,6 +64,7 @@ class ProfileManagementServiceTest {
   private static final OrganisationProfileResponseInfo ORG = new OrganisationProfileResponseInfo()
       .detail(new OrganisationDetail().organisationId(ORG_SYS_ID))
       .identifier(new OrganisationIdentifier().scheme("GB-COH").id(ORG_IDENTIFIER))
+      .addAdditionalIdentifiersItem(new OrganisationIdentifier().scheme("US-DUN").id(ORG_IDENTIFIER))
       .address(new OrganisationAddressResponse().countryCode(COUNTRY_CODE));
 
   @MockBean
@@ -92,7 +96,7 @@ class ProfileManagementServiceTest {
 
   @MockBean
   private EncryptionService encryptionService;
-
+  
   /*
    * CON-1680-AC1(a)
    */
@@ -377,7 +381,7 @@ class ProfileManagementServiceTest {
    * CON-1682-AC17 (Supplier update)
    */
   @Test
-  void testRegisterUserUpdateJaggaerSupplierSubUser() {
+  void testRegisterUserUpdateJaggaerSupplierSubUser() throws NotificationClientException {
 
     var userProfileResponseInfo =
         new UserProfileResponseInfo().organisationId(ORG_SYS_ID).userName(USERID)
@@ -395,9 +399,7 @@ class ProfileManagementServiceTest {
         .thenReturn(CreateUpdateCompanyResponse.builder().bravoId(1234).build());
     when(userProfileService.getSupplierDataByDUNSNumber(any()))
     .thenReturn(Optional.of(ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().bravoId("12345").build()).build()));
-    when(userProfileService.getSelfServiceBuyerCompany())
-    .thenReturn(ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().bravoId("12345").build()).build());
-
+    
     var registerUserResponse = profileManagementService.registerUser(USERID);
 
     assertEquals(RegisterUserResponse.UserActionEnum.CREATED, registerUserResponse.getUserAction());

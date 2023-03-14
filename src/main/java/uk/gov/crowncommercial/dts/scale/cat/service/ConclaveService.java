@@ -93,13 +93,15 @@ public class ConclaveService {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
 
+    var sanitisedOrgId = orgId.replace("US-DUNS", "US-DUN");
+
     try {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
-              conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, orgId);
+              conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, sanitisedOrgId);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new ConclaveApplicationException(
-          "Unexpected error retrieving org profile from Conclave for org ID: " + orgId);
+          "Unexpected error retrieving org profile from Conclave for org ID: " + sanitisedOrgId);
     }
   }
 
@@ -164,6 +166,7 @@ public class ConclaveService {
   }
 
   public String getOrganisationIdentifer(final OrganisationProfileResponseInfo org) {
-    return org.getIdentifier().getScheme() + '-' + org.getIdentifier().getId();
+    var schemeName = org.getIdentifier().getScheme().replace("US-DUN", "US-DUNS");
+    return schemeName + '-' + org.getIdentifier().getId();
   }
 }

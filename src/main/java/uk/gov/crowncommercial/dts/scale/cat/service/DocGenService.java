@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
@@ -67,7 +68,7 @@ public class DocGenService {
         .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
             procurementEvent.getEventType(), procurementEvent.getProject().getCaNumber(),
             procurementEvent.getProject().getLotNumber(), procurementEvent.getTemplateId())) {
-      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate),
+      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate, Boolean.TRUE),
           documentTemplate);
     }
   }
@@ -75,19 +76,18 @@ public class DocGenService {
   @SneakyThrows
   @Transactional
   public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
-      final DocumentTemplate documentTemplate) {
+      final DocumentTemplate documentTemplate, final boolean isPublish) {
 
     var templateResource =
         documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
 
     final var textODT = TextDocument.loadDocument(templateResource.getInputStream());
     final var requestCache = new ConcurrentHashMap<String, Object>();
-
     for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
 
       var dataReplacement =
           getDataReplacement(procurementEvent, documentTemplateSource, requestCache);
-      replacePlaceholder(documentTemplateSource, dataReplacement, textODT);
+      replacePlaceholder(documentTemplateSource, dataReplacement, textODT, procurementEvent.getPublishDate()==null ? isPublish : Boolean.TRUE);
     }
 
     var outputStream = new ByteArrayOutputStream();
@@ -187,7 +187,7 @@ public class DocGenService {
   }
   
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT)
+      final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish)
       throws InvalidNavigationException {
 
     log.debug("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
@@ -197,19 +197,19 @@ public class DocGenService {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
           replaceText(documentTemplateSource,
-                  getString(dataReplacement), textODT);
+                  dataReplacement!= null ? getString(dataReplacement) : PLACEHOLDER_UNKNOWN, textODT, isPublish);
           break;
 
         case DATETIME:
           var formattedDatetime = formatDateorDateAndTime(dataReplacement.get(0));
-          replaceText(documentTemplateSource, formattedDatetime, textODT);
+          replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
           break;
 
         case DURATION:
           var period = Period.parse(dataReplacement.get(0));
           var formattedPeriod =
               String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
-          replaceText(documentTemplateSource, formattedPeriod, textODT);
+          replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
           break;
 
         case TABLE:
@@ -220,17 +220,17 @@ public class DocGenService {
           replaceList(documentTemplateSource, dataReplacement, textODT);
           break;
         default:
-          replaceText(documentTemplateSource, "", textODT);
+          replaceText(documentTemplateSource, "", textODT, isPublish);
       }
     } catch (Exception ex) {
       log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
-      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT);
+      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT, isPublish);
     }
 
   }
 
   private static String getString(List<String> dataReplacement) {
-    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN);
+    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().filter(value -> value!=null).findFirst().orElse(PLACEHOLDER_UNKNOWN);
   }
 
   String formatDateorDateAndTime(String dateValue) {
@@ -242,7 +242,7 @@ public class DocGenService {
   }
 
   void replaceText(final DocumentTemplateSource documentTemplateSource,
-      String dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+      String dataReplacement, final TextDocument textODT, final boolean isPublish) throws InvalidNavigationException {
 
     var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
     while (textNavigation.hasNext()) {
@@ -278,9 +278,13 @@ public class DocGenService {
       {
         dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
       }
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
+      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»") || item.getText().contains("«Project_Incumbent_Yes_No_Supplier_Name_Step_22»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
       {
          dataReplacement = PLACEHOLDER_UNKNOWN;
+      }
+      if(item.getText().equals("«Insert Time, Date, Month, Year of #1»") && !isPublish)
+      {
+        dataReplacement = "";
       }
 
       log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
@@ -289,7 +293,7 @@ public class DocGenService {
   }
 
   private static boolean isNotBlankAndNumeric(String dataReplacement) {
-    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches("-?\\d+");
+    return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches(Pattern.quote("-?\\d+"));
   }
 
   //TODO remove static content and add in app.yaml file
@@ -318,7 +322,7 @@ public class DocGenService {
       var foundList = false;
       for (var li : list.getItems()) {
         if (StringUtils.hasText(li.getTextContent())
-            && li.getTextContent().matches(documentTemplateSource.getPlaceholder())) {
+            && li.getTextContent().matches(Pattern.quote(documentTemplateSource.getPlaceholder()))) {
           foundList = true;
           break;
         }
@@ -377,7 +381,7 @@ public class DocGenService {
 
             // Check if row number cell, if so increment
             //TODO unused code need to remove
-            if (columnIndex == 0 && "[0-9]+".matches(cellDisplayText)) {
+            if (columnIndex == 0 && "[0-9]+".matches(Pattern.quote(cellDisplayText))) {
               cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
             } else {
               if (isLineRequired) {
@@ -393,7 +397,7 @@ public class DocGenService {
           
           // Replace placeholder ONLY in the cell's display text
           // TODO: Remove OptionsProperty - redundant.
-          cell.setDisplayText(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
+         cell.setStringValue(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
               org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
         }
       }

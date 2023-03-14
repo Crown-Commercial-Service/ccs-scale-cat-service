@@ -175,6 +175,7 @@ public class ValidationService {
     }
   }
 
+  @Deprecated
   public void validateProjectDuration(final List<QuestionNonOCDSOptions> optionList) {
 
     if (!CollectionUtils.isEmpty(optionList) && optionList.size() == 1) {

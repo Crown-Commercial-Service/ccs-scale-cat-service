@@ -62,7 +62,7 @@ public class ProjectSearchSpecification implements Specification<ProjectUserMapp
             }
         }
     }
-      return criteriaBuilder.and(predicates.toArray(new Predicate[predicates.size()]));
+    return criteriaBuilder.and(predicates.toArray(new Predicate[predicates.size()]));
   }
 
   private void buildEventSupportIdCriteria(
@@ -70,13 +70,20 @@ public class ProjectSearchSpecification implements Specification<ProjectUserMapp
       List<Predicate> predicates,
       Join<ProcurementEvent, ProcurementProject> event) {
 
-    if (isLikeCondition()) {
-      predicates.add(
-          criteriaBuilder.like(
-              event.get(SEARCH_KEY_EXTERNAL_REFERENCE_ID),
-              convertToLikeString(projectSearchCriteria.getSearchTerm())));
-    } else {
-      predicates.add(criteriaBuilder.equal(event.get(SEARCH_KEY_EXTERNAL_REFERENCE_ID), projectSearchCriteria.getSearchTerm()));
+    if(isSearchTermValid(projectSearchCriteria.getSearchTerm())){
+
+      String sanitizedSearchTerm=projectSearchCriteria.getSearchTerm().trim();
+      if (isLikeCondition(sanitizedSearchTerm)) {
+            predicates.add(
+              criteriaBuilder.like(criteriaBuilder.upper(
+                                                   event.get(SEARCH_KEY_EXTERNAL_REFERENCE_ID)),
+                                                   convertToLikeString(sanitizedSearchTerm)));
+          } else {
+           predicates.add(criteriaBuilder.equal(criteriaBuilder.upper(
+                                                  event.get(SEARCH_KEY_EXTERNAL_REFERENCE_ID)),
+                                                  sanitizedSearchTerm.toUpperCase()));
+      }
+
     }
   }
 
@@ -85,15 +92,25 @@ public class ProjectSearchSpecification implements Specification<ProjectUserMapp
           List<Predicate> predicates,
           Join<ProcurementEvent, ProcurementProject> event) {
 
-    if (isLikeCondition()) {
-      predicates.add(
-              criteriaBuilder.like(
-                      event.get(SEARCH_KEY_EVENT_ID).as(String.class),
-                      convertToLikeString(projectSearchCriteria.getSearchTerm())));
-    } else {
-      predicates.add(criteriaBuilder.equal(event.get(SEARCH_KEY_EVENT_ID), projectSearchCriteria.getSearchTerm()));
+    if(isSearchTermValid(projectSearchCriteria.getSearchTerm())){
+
+      String sanitizedSearchTerm=projectSearchCriteria.getSearchTerm().trim();
+
+      if (isLikeCondition(sanitizedSearchTerm)) {
+        predicates.add(
+                criteriaBuilder.like(criteriaBuilder.upper(
+                                        event.get(SEARCH_KEY_EVENT_ID).as(String.class)),
+                                        convertToLikeString(sanitizedSearchTerm)));
+
+      } else {
+        predicates.add(
+                criteriaBuilder.equal(criteriaBuilder.upper(
+                                        event.get(SEARCH_KEY_EVENT_ID)),
+                                        sanitizedSearchTerm.toUpperCase()));
+      }
     }
   }
+
 
 
 
@@ -101,37 +118,45 @@ public class ProjectSearchSpecification implements Specification<ProjectUserMapp
       CriteriaBuilder criteriaBuilder,
       List<Predicate> predicates,
       Join<ProcurementProject, ProjectUserMapping> project) {
-    if (isLikeCondition()) {
-      predicates.add(
-          criteriaBuilder.like(
-              project.get(SEARCH_KEY_PROJECT_NAME),
-              convertToLikeString(projectSearchCriteria.getSearchTerm())));
 
-    } else {
-      predicates.add(
-          criteriaBuilder.equal(
-              project.get(SEARCH_KEY_PROJECT_NAME), projectSearchCriteria.getSearchTerm()));
+    if(isSearchTermValid(projectSearchCriteria.getSearchTerm())){
+
+      String sanitizedSearchTerm=projectSearchCriteria.getSearchTerm().trim();
+      if (isLikeCondition(sanitizedSearchTerm)) {
+        predicates.add(
+            criteriaBuilder.like(criteriaBuilder.upper(project.get(SEARCH_KEY_PROJECT_NAME)),
+                convertToLikeString(sanitizedSearchTerm)));
+
+       } else {
+        predicates.add(
+            criteriaBuilder.equal(criteriaBuilder.upper(project.get(SEARCH_KEY_PROJECT_NAME)),sanitizedSearchTerm.toUpperCase()));
+      }
     }
   }
 
-  private boolean isLikeCondition() {
-    return (Objects.nonNull(projectSearchCriteria.getSearchTerm())
-        && (StringUtils.startsWith(projectSearchCriteria.getSearchTerm(), "*")
-            || StringUtils.endsWith(projectSearchCriteria.getSearchTerm(), "*")));
+  private boolean isLikeCondition(String searchTerm) {
+    return (Objects.nonNull(searchTerm)
+        && (StringUtils.startsWith(searchTerm, "*")
+            || StringUtils.endsWith(searchTerm, "*")));
   }
 
   private String convertToLikeString(String searchTerm) {
 
-    if (StringUtils.isNoneEmpty(searchTerm)) {
+    if (StringUtils.isNotEmpty(searchTerm)) {
 
       if(StringUtils.startsWith(projectSearchCriteria.getSearchTerm(), "*") && StringUtils.endsWith(projectSearchCriteria.getSearchTerm(), "*")){
-        return "%" + projectSearchCriteria.getSearchTerm().replaceAll("\\*", "") + "%";
+        return "%" + projectSearchCriteria.getSearchTerm().toUpperCase().replaceAll("\\*", "") + "%";
       }else if(StringUtils.startsWith(projectSearchCriteria.getSearchTerm(), "*")){
-        return "%" + projectSearchCriteria.getSearchTerm().replaceAll("\\*", "");
+        return "%" + projectSearchCriteria.getSearchTerm().toUpperCase().replaceAll("\\*", "");
       }else if (StringUtils.endsWith(projectSearchCriteria.getSearchTerm(), "*")){
-        return projectSearchCriteria.getSearchTerm().replaceAll("\\*", "") + "%";
+        return projectSearchCriteria.getSearchTerm().toUpperCase().replaceAll("\\*", "") + "%";
       }
     }
     return StringUtils.EMPTY;
+  }
+
+  private boolean isSearchTermValid(String searchTerm) {
+    return StringUtils.isNotEmpty(searchTerm)
+            && StringUtils.isNotEmpty(searchTerm.trim());
   }
 }

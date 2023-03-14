@@ -11,15 +11,15 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: DEBUG
-    # org.eclipse.jetty.client: DEBUG
-
 
 spring:
   jpa:
     open-in-view: false
     database: postgresql
     show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
     hibernate:
       ddl-auto: validate
   datasource:
@@ -36,6 +36,9 @@ server:
     path: "/error"
 
 config:
+#  rollbar:
+#    accessToken:
+#    environment:
   ocds:
     authority: ocds
     ocid-prefix: pfhb7i
@@ -70,7 +73,7 @@ config:
   external:
     jaggaer:
 #      baseUrl: "SET IN ENV"
-      timeoutDuration: 120
+      timeoutDuration: 300
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
@@ -201,6 +204,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}&comp={components}&start={start}
       getMessage:
         endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
+      updateMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages/read
       startEvaluation:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
       openEnvelope:
@@ -265,6 +270,7 @@ config:
       timeoutDuration: 10
       # Role keys are incorrectly spelt in Conclave
       buyerRoleKey: JAEGGER_BUYER
+      catUserRoleKey: CAT_USER
       supplierRoleKey: JAEGGER_SUPPLIER      
       getUser:
         uriTemplate: /user-profiles?user-id={user-id}

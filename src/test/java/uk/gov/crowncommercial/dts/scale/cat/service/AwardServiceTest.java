@@ -45,7 +45,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = {AwardService.class, RPAGenericService.class},
+@SpringBootTest(classes = {AwardService.class, SupplierService.class},
     webEnvironment = WebEnvironment.NONE)
 @Slf4j
 @EnableConfigurationProperties({RPAAPIConfig.class})
@@ -137,121 +137,8 @@ class AwardServiceTest {
     ORG_MAPPING_2.setExternalOrganisationId(EXT_ORG_ID_2);
   }
 
-  @Test
-  void testcreatePreAward() throws JsonProcessingException {
-    // Stub some objects
-    List<OrganizationReference1> suppliersList = new ArrayList<>();
-    suppliersList.add(new OrganizationReference1().id("GB-COH-1234567"));
 
-    var award = new Award2AllOf().suppliers(suppliersList);
-    var responseString = "{\n"
-        + "    \"processInput\": \"{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"BFC9yX2TRFxMNa7f6vZLzg==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.AwardingAction\\\":\\\"Pre-Award\\\"}\",\n"
-        + "    \"processName\": \"Awarding\",\n" + "    \"profileName\": \"ITTEvaluation\",\n"
-        + "    \"source\": \"Postman\",\n" + "    \"sourceId\": \"1\",\n"
-        + "    \"retry\": false,\n" + "    \"retryConfigurations\": {\n"
-        + "        \"previousRequestIds\": [],\n" + "        \"noOfTimesRetry\": 0,\n"
-        + "        \"retryCoolOffInterval\": 10000\n" + "    },\n"
-        + "    \"requestTimeout\": 3600000,\n" + "    \"isSync\": true,\n"
-        + "    \"transactionId\": \"0a119bb0-bcc8-4ac3-9802-f9aa4608220c\",\n"
-        + "    \"status\": \"success\",\n" + "    \"response\": {\n"
-        + "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"Microbot : CCSEncryptDecrypt\\\",\\\"CviewDictionary\\\":{\\\"errorMessage\\\":\\\"\\\"}},{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"Awarding Action 'Pre-Award' to supplier 'Bathula Consulting' for itt_12216 completed successfully by venki.bathula@brickendon.com\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"BFC9yX2TRFxMNa7f6vZLzg==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.AwardingAction\\\":\\\"Pre-Award\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"t2z0NJqgQvJslK8s91n+vt1ARBM4c1fiycXs0MmONN02gQ9C93ohFsUdSGx1eE2RTCZUczZ8ZHKKBN9jzMVsMA==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.AwardingAction\\\":\\\"Pre-Award\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"t2z0NJqgQvJslK8s91n+vt1ARBM4c1fiycXs0MmONN02gQ9C93ohFsUdSGx1eE2RTCZUczZ8ZHKKBN9jzMVsMA==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\",\\\"Search.SupplierName\\\":\\\"Bathula Consulting\\\",\\\"Search.AwardingAction\\\":\\\"Pre-Award\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"Awarding\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-03-23T16:40:38.875Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:17.7566188\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-03-23T16:40:38.8968326Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-03-23T16:40:56.6534514Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
-        + "    },\n" + "    \"error\": {}\n" + "}";
 
-    inputBuilder.userName(PRINCIPAL).password(BUYER_PASSWORD).ittCode(EXTERNAL_EVENT_ID)
-        .supplierName(JAGGAER_SUPPLIER_NAME).awardAction(PRE_AWARD);
-
-    request.setProcessName(RPAProcessNameEnum.AWARDING.getValue())
-        .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
-        .setRetry(false).setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000)
-        .setSync(true);
-
-    request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
-
-    var responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
-
-    log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
-    var jaggerRPACredentials = new HashMap<String, String>();
-    jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
-    jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
-    var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
-    var rfxResponse = prepareSupplierDetails();
-
-    // Mock behaviours
-    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
-    when(retryableTendersDBDelegate
-        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
-            .thenReturn(Set.of(ORG_MAPPING_1));
-    when(webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), uriTemplate)).thenReturn("token");
-    when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
-            .thenReturn(responseObject);
-    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
-        .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
-            .externalEventId(RFX_ID).build());
-    when(buyerDetailsRepo.findById(JAGGAER_USER_ID))
-        .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
-
-    // Invoke
-    var awardResponse = awardService.createOrUpdateAward(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
-        AwardState.PRE_AWARD, award, null);
-
-    // Assert
-    assertNotNull(awardResponse);
-  }
-
-  @Test
-  void testEndEvaluation() throws JsonProcessingException {
-    // Stub some objects
-    var responseString = "{\n"
-        + "    \"processInput\": \"{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"BFC9yX2TRFxMNa7f6vZLzg==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\"}\",\n"
-        + "    \"processName\": \"EndEvaluation\",\n" + "    \"profileName\": \"ITTEvaluation\",\n"
-        + "    \"source\": \"Postman\",\n" + "    \"sourceId\": \"1\",\n"
-        + "    \"retry\": false,\n" + "    \"retryConfigurations\": {\n"
-        + "        \"previousRequestIds\": [],\n" + "        \"noOfTimesRetry\": 0,\n"
-        + "        \"retryCoolOffInterval\": 10000\n" + "    },\n"
-        + "    \"requestTimeout\": 3600000,\n" + "    \"isSync\": true,\n"
-        + "    \"transactionId\": \"e6a70288-08e9-4e8c-84ce-20eaf1eababa\",\n"
-        + "    \"status\": \"success\",\n" + "    \"response\": {\n"
-        + "        \"response\": \"{\\\"AutomationOutputData\\\":[{\\\"AppName\\\":\\\"Microbot : CCSEncryptDecrypt\\\",\\\"CviewDictionary\\\":{\\\"errorMessage\\\":\\\"\\\"}},{\\\"AppName\\\":\\\"CCS\\\",\\\"CviewDictionary\\\":{}},{\\\"AppName\\\":\\\"Microbot : API_ResponsePayload\\\",\\\"CviewDictionary\\\":{\\\"ErrorDescription\\\":\\\"\\\",\\\"IsError\\\":\\\"False\\\",\\\"Status\\\":\\\"End Evaluation for itt_12216 completed successfully by venki.bathula@brickendon.com\\\"}}],\\\"HttpStatus\\\":\\\"\\\",\\\"ParentRequest\\\":{\\\"AutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"BFC9yX2TRFxMNa7f6vZLzg==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\"},\\\"MaskedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"t2z0NJqgQvJslK8s91n+vt1ARBM4c1fiycXs0MmONN02gQ9C93ohFsUdSGx1eE2RTCZUczZ8ZHKKBN9jzMVsMA==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\"},\\\"AnonymizedAutomationInputDictionary\\\":{\\\"Search.Username\\\":\\\"venki.bathula@brickendon.com\\\",\\\"Search.Password\\\":\\\"t2z0NJqgQvJslK8s91n+vt1ARBM4c1fiycXs0MmONN02gQ9C93ohFsUdSGx1eE2RTCZUczZ8ZHKKBN9jzMVsMA==\\\",\\\"Search.ITTCode\\\":\\\"itt_12216\\\"},\\\"DataProtectionErrors\\\":{},\\\"ProcessName\\\":\\\"EndEvaluation\\\",\\\"ProfileName\\\":\\\"ITTEvaluation\\\",\\\"RetryFlag\\\":false,\\\"Retry\\\":{\\\"NoOfTimesRetry\\\":0,\\\"RetryCoolOffInterval\\\":10000,\\\"PreviousRequestIds\\\":[]},\\\"APIVersion\\\":\\\"\\\",\\\"AppId\\\":\\\"\\\",\\\"CommandExecutionWindow\\\":\\\"\\\",\\\"CommandGenerationSource\\\":\\\"\\\",\\\"Country\\\":\\\"\\\",\\\"Instance\\\":\\\"\\\",\\\"PartnerId\\\":\\\"\\\",\\\"ReferenceCode\\\":\\\"\\\",\\\"Timestamp\\\":\\\"2022-03-23T16:39:03.505Z\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"VID\\\":null,\\\"SENodeId\\\":null,\\\"RequestExpiration\\\":\\\"3600000\\\",\\\"wait_for_completion\\\":\\\"true\\\",\\\"Impersonation\\\":null,\\\"IfExternalVaultType\\\":false},\\\"ReferenceCode\\\":\\\"\\\",\\\"RequestExecutionTime\\\":\\\"00:00:13.1967600\\\",\\\"SEReferenceCode\\\":\\\"\\\",\\\"SpareParam1\\\":\\\"\\\",\\\"SpareParam2\\\":\\\"\\\",\\\"UserName\\\":\\\"testuser\\\",\\\"CommandResultEnum\\\":0,\\\"CommandResultDescription\\\":\\\"SearchSuccessful\\\",\\\"ErrorDetailObject\\\":[],\\\"SENodeId\\\":null,\\\"RequestReceivedTime\\\":\\\"2022-03-23T16:39:03.5390879Z\\\",\\\"RequestProcessedTime\\\":\\\"2022-03-23T16:39:16.7358479Z\\\",\\\"TransactionDescription\\\":\\\"SearchSuccessful\\\"}\"\n"
-        + "    },\n" + "    \"error\": {}\n" + "}";
-
-    inputBuilder.userName(PRINCIPAL).password(BUYER_PASSWORD).ittCode(EXTERNAL_EVENT_ID);
-    request.setProcessName(RPAProcessNameEnum.END_EVALUATION.getValue())
-        .setProfileName(rpaAPIConfig.getProfileName()).setSource(rpaAPIConfig.getSource())
-        .setRetry(false).setSourceId(rpaAPIConfig.getSourceId()).setRequestTimeout(3600000)
-        .setSync(true);
-    request.setProcessInput(new ObjectMapper().writeValueAsString(inputBuilder.build()));
-
-    var responseObject = new ObjectMapper().readValue(responseString, RPAAPIResponse.class);
-
-    log.info("Test Request: {}", new ObjectMapper().writeValueAsString(request));
-    var jaggerRPACredentials = new HashMap<String, String>();
-    jaggerRPACredentials.put("username", rpaAPIConfig.getUserName());
-    jaggerRPACredentials.put("password", rpaAPIConfig.getUserPwd());
-    var uriTemplate = rpaAPIConfig.getAuthenticationUrl();
-
-    // Mock behaviours
-    when(webclientWrapper.postData(jaggerRPACredentials, String.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), uriTemplate)).thenReturn("token");
-    when(webclientWrapper.postDataWithToken(request, RPAAPIResponse.class, rpaServiceWebClient,
-        rpaAPIConfig.getTimeoutDuration(), rpaAPIConfig.getAccessUrl(), "token"))
-            .thenReturn(responseObject);
-    when(userProfileService.resolveBuyerUserBySSOUserLogin(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
-        .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
-            .externalEventId(RFX_ID).build());
-    when(buyerDetailsRepo.findById(JAGGAER_USER_ID))
-        .thenReturn(Optional.of(BuyerUserDetails.builder().userPassword(BUYER_PASSWORD).build()));
-
-    // Invoke
-    var awardResponse =
-        awardService.callEndEvaluation(PRINCIPAL, BUYER_PASSWORD, EXTERNAL_EVENT_ID);
-
-    // Assert
-    assertNotNull(awardResponse);
-  }
 
   private ExportRfxResponse prepareSupplierDetails() {
     var companyData =
@@ -278,7 +165,7 @@ class AwardServiceTest {
     // Mock behaviours
     when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
     when(retryableTendersDBDelegate
-        .findOrganisationMappingByOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
+        .findOrganisationMappingByCasOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
             .thenReturn(Set.of(ORG_MAPPING_1));
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))

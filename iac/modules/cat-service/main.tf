@@ -164,8 +164,21 @@ data "aws_ssm_parameter" "gov_uk_notify_user_reg_template_id" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/template-id"
 }
 
+data "aws_ssm_parameter" "gov_uk_notify_user_invalid_duns_template_id" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/invalid-duns-template-id"
+}
+
 data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/target-email"
+}
+
+# RollBar Logs
+data "aws_ssm_parameter" "rollbar_access_token" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-access-token"
+}
+
+data "aws_ssm_parameter" "rollbar_environment" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-environment"
 }
 
 resource "cloudfoundry_app" "cat_service" {
@@ -228,7 +241,13 @@ resource "cloudfoundry_app" "cat_service" {
     # Notifications
     "config.external.notification.api-key": data.aws_ssm_parameter.gov_uk_notify_api_key.value
     "config.external.notification.user-registration.template-id": data.aws_ssm_parameter.gov_uk_notify_user_reg_template_id.value
+    "config.external.notification.user-registration.invalid-duns-template-id": data.aws_ssm_parameter.gov_uk_notify_user_invalid_duns_template_id.value
     "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
+    
+    # Rollbar Logs
+    "config.rollbar.access-token": data.aws_ssm_parameter.rollbar_access_token.value
+    "config.rollbar.environment": data.aws_ssm_parameter.rollbar_environment.value
+    
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"

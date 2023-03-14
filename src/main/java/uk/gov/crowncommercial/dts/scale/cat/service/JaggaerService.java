@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -22,6 +23,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -372,7 +374,16 @@ public class JaggaerService {
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving messages"));
   }
+ @Async
+  public MessageResponse updateMessage(final MessageUpdate messageUpdate) {
+    final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
 
+    return ofNullable(jaggaerWebClient.put().uri(updateMessageUrl).body(Mono.just(messageUpdate), MessageUpdate.class).retrieve()
+            .bodyToMono(MessageResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving messages"));
+  }
   /**
    * Start Evaluation Rfx
    *
@@ -600,6 +611,10 @@ public class JaggaerService {
     final var scoreResponse = webclientWrapper.postData(scoringRequest, ScoringResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.debug("Create-update scoring response: {}", scoreResponse);
+    if (scoreResponse.getReturnCode() != 0
+        || !Constants.OK_MSG.equals(scoreResponse.getReturnMessage())) {
+      log.error(scoreResponse.toString());
+    }
     return scoreResponse;
   }
 }

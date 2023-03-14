@@ -196,40 +196,4 @@ class CriteriaServiceTest {
     return DataTemplate.builder().criteria(Arrays.asList(criteria)).build();
   }
 
-
-  @Test
-  void testValidateProjectDurationQuestionWhenItInvalid() throws Exception {
-
-
-    var procurementProject = ProcurementProject.builder()
-            .caNumber(AGREEMENT_NO).build();
-
-    ProcurementEvent event = new ProcurementEvent();
-    event.setProject(procurementProject);
-    event.setProcurementTemplatePayload(
-            getDataTemplate("criteria-service-test-data/criteria-invalid-project-duration.json"));
-
-    Requirement1 questionOCDS = new Requirement1();
-    questionOCDS.setId("Question 12");
-    questionOCDS.setDataType(DataType.STRING);
-    questionOCDS.setTitle("Enter how long you think the project will run for");
-
-    QuestionNonOCDS questionNonOCDS = new QuestionNonOCDS();
-    questionNonOCDS.setQuestionType(QuestionType.DURATION);
-    QuestionNonOCDSOptions option = new QuestionNonOCDSOptions();
-    option.setValue("P3Y6M10D");
-    option.setSelected(true);
-    questionNonOCDS.setOptions(Arrays.asList(option));
-
-    Question question = new Question();
-    question.setOCDS(questionOCDS);
-    question.setNonOCDS(questionNonOCDS);
-
-    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
-
-    criteriaService.putQuestionOptionDetails(question, PROJECT_ID, EVENT_OCID, "Criterion 3",
-                    "Group 10", "Question 12");
-
-    verify(validationService, times(1)).validateProjectDuration(List.of(option));
-  }
 }

@@ -14,18 +14,15 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
@@ -58,7 +55,6 @@ public class SupplierService {
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final JaggaerService jaggaerService;
-  private final RPAGenericService rpaGenericService;
   private static final String RPA_DELIMITER = "~|";
   private static final String RPA_OPEN_ENVELOPE_ERROR_DESC = "Technical button not found";
   private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
@@ -67,8 +63,6 @@ public class SupplierService {
   public static final String SECTION_NAME = "Tender";
   public static final String SECTION_POS = "1";
   public static final String PARAM_POS = "1";
-  private static final String JAGGAER_EVALUATE_ERROR_DESC = "is not in state Technical Evaluation";
-  private static final String JAGGAER_OPEN_ENVELOPE_ERROR_DESC = "ANSWER_NOT_UPDATABLE";
 
 
   /**
@@ -114,7 +108,7 @@ public class SupplierService {
 
     // Retrieve and verify Tenders DB org mappings
     var supplierOrgMappings =
-        retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
+        retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
     if (isEmpty(supplierOrgMappings)) {
       log.warn("No supplier org mappings found in Tenders DB for CA: '{}', Lot: '{}'", agreementId,
           lotId);
@@ -123,84 +117,6 @@ public class SupplierService {
 
     return supplierOrgMappings;
 
-  }
-
-  /**
-   * Update supplier score and comments in Jaggaer
-   * 
-   * @param profile
-   * @param projectId
-   * @param eventId
-   * @param scoreAndComments
-   * @return status
-   */
-  @Deprecated
-  public String updateSupplierScoreAndComment(final String profile, final Integer projectId,
-      final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments,
-      boolean scoringComplete) {
-    log.info("Calling updateSupplierScoreAndComment for {}", eventId);
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-    var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
-    for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
-      scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
-    }
-
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
-        .stream().map(ScoreAndCommentNonOCDS::getOrganisationId).collect(Collectors.toList()));
-    var appendSupplierList = new StringJoiner(RPA_DELIMITER);
-    var appendScoreList = new StringJoiner(RPA_DELIMITER);
-    var appendCommentList = new StringJoiner(RPA_DELIMITER);
-
-    for (Supplier supplier : validSuppliers.getFirst()) {
-      var orgId = validSuppliers.getSecond().stream()
-          .filter(org -> org.getExternalOrganisationId().equals(supplier.getCompanyData().getId()))
-          .findFirst();
-      if (orgId.isPresent()) {
-        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getOrganisationId());
-        appendSupplierList.add(supplier.getCompanyData().getName());
-        appendScoreList.add(scoreAndCommentNonOCDS.getScore().toString());
-        appendCommentList.add(scoreAndCommentNonOCDS.getComment());
-      }
-    }
-
-    // input details
-    var suppliers = appendSupplierList.toString();
-    var comments = appendCommentList.toString();
-    var scores = appendScoreList.toString();
-
-    log.info("Supplier Names: {}", suppliers);
-    log.info("Supplier comments: {}", comments);
-    log.info("Supplier scores: {}", scores);
-
-    var buyerEncryptedPwd = rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId());
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(buyerEncryptedPwd).ittCode(procurementEvent.getExternalReferenceId())
-        .score(scores).comment(comments).supplierName(suppliers);
-    try {
-      return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-          RPAProcessNameEnum.ASSIGN_SCORE);
-    } catch (JaggaerRPAException je) {
-      // Start evaluation event
-      if (je.getMessage().contains(RPA_EVALUATE_ERROR_DESC)) {
-        jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent, buyerUser.getUserId());
-        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-            RPAProcessNameEnum.ASSIGN_SCORE);
-      }
-      // Open envelope event
-      else if (je.getMessage().contains(RPA_OPEN_ENVELOPE_ERROR_DESC)) {
-        jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(), EnvelopeType.TECH);
-        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-            RPAProcessNameEnum.ASSIGN_SCORE);
-      } else
-        throw je;
-    } finally {
-      if (scoringComplete) {
-        jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
-      }
-    }
   }
 
 
@@ -225,7 +141,7 @@ public class SupplierService {
       scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
     }
 
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, scoreAndComments
+    var validSuppliers = getValidSuppliers(procurementEvent, scoreAndComments
         .stream().map(ScoreAndCommentNonOCDS::getOrganisationId).toList());
     
    var supplierScoresList =  new ArrayList<SupplierScore>();
@@ -235,7 +151,7 @@ public class SupplierService {
           .filter(org -> org.getExternalOrganisationId().equals(Integer.valueOf(supplier.getId())))
           .findFirst();
       if (orgId.isPresent()) {
-        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getOrganisationId());
+        var scoreAndCommentNonOCDS = scoreAndCommentMap.get(orgId.get().getCasOrganisationId());
         var supplierScore = SupplierScore.builder()
             .supplierIdentification(SupplierIdentification.builder().id(supplier.getId()).build())
             .scoringTechEnvelope(ScoringTechEnvelope.builder().sectionList(SectionList.builder()
@@ -257,15 +173,10 @@ public class SupplierService {
     
     log.info("Scoring Request {}", scoringRequest);
     var scoreResponse = jaggaerService.createUpdateScores(scoringRequest);
-
-    if (scoreResponse.getReturnMessage().contains(JAGGAER_EVALUATE_ERROR_DESC)) {
+    
+    if (scoreResponse.getReturnCode() != 0) {
       jaggaerService.startEvaluationAndOpenEnvelope(procurementEvent,
           buyerUser.getUserId());
-      jaggaerService.createUpdateScores(scoringRequest);
-    }
-    if (scoreResponse.getReturnMessage().contains(JAGGAER_OPEN_ENVELOPE_ERROR_DESC)) {
-      jaggaerService.openEnvelope(procurementEvent, buyerUser.getUserId(),
-          EnvelopeType.TECH);
       jaggaerService.createUpdateScores(scoringRequest);
     }
     
@@ -277,26 +188,6 @@ public class SupplierService {
     return "Successfully updated scores";
   }
 
-  /**
-   * Calls RPA to Open Envelope
-   * 
-   * @param userEmail
-   * @param password
-   * @param externalReferenceId
-   * @return
-   */
-  public String callOpenEnvelopeAndUpdateSupplier(final String userEmail, final String password,
-      final String externalReferenceId, final RPAProcessInput processInput) {
-    log.info("Calling OpenEnvelope for {}", externalReferenceId);
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(userEmail).password(password)
-        .ittCode(externalReferenceId);
-    rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.OPEN_ENVELOPE);
-
-    // Update score and comment again after succesfull above calls
-    log.info("Update SupplierScoreAndComment after OpenEnvelope");
-    return rpaGenericService.callRPAMessageAPI(processInput, RPAProcessNameEnum.ASSIGN_SCORE);
-  }
 
   public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId,
       final String eventId) {
@@ -309,7 +200,7 @@ public class SupplierService {
             .organisationId(retryableTendersDBDelegate
                 .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
                 .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
-                .getOrganisationId())
+                .getCasOrganisationId())
             .score(e.getTechPoints()).comment(
                 extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
         .toList();
@@ -324,5 +215,54 @@ public class SupplierService {
       defaultComment = comment.isPresent() ? comment.get() : defaultComment;
     }
     return defaultComment;
+  }
+
+  public Pair<List<Supplier>, Set<OrganisationMapping>> getValidSuppliers(
+          final ProcurementEvent procurementEvent, final List<String> orgIds) {
+    var supplierOrgIds = orgIds.stream().collect(Collectors.toSet());
+    // Retrieve and verify Tenders DB org mappings
+    var supplierOrgMappings =
+            retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
+    if (isEmpty(supplierOrgMappings)) {
+      var errorDesc =
+              String.format("No supplier organisation mappings found in Tenders DB %s", supplierOrgIds);
+      log.error(errorDesc);
+      throw new JaggaerRPAException(errorDesc);
+    }
+
+    // Find all externalOrgIds
+    var supplierExternalIds = supplierOrgMappings.stream()
+            .map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
+
+    // Find actual suppliers of project and event
+    var suppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId()).getSuppliersList()
+            .getSupplier();
+
+    // Find all unmatched org ids
+    var unMatchedSuppliers = supplierExternalIds.stream()
+            .filter(orgid -> suppliers.stream()
+                    .noneMatch(supplier -> supplier.getCompanyData().getId().equals(orgid)))
+            .toList();
+
+    if (!isEmpty(unMatchedSuppliers)) {
+      var errorDesc =
+              String.format("Supplied organisation mappings not matched with actual suppliers '%s'",
+                      unMatchedSuppliers);
+      log.error(errorDesc);
+      throw new SupplierNotMatchException(errorDesc);
+    }
+
+    // Comparing the requested organisation ids and event suppliers info
+    var matchedSuppliers = suppliers.stream()
+            .filter(supplier -> supplierExternalIds.stream()
+                    .anyMatch(orgId -> orgId.equals(supplier.getCompanyData().getId())))
+            .toList();
+
+    return Pair.of(
+            matchedSuppliers.stream()
+                    .map(e -> Supplier.builder().companyData(e.getCompanyData())
+                            .id(String.valueOf(e.getCompanyData().getId())).build())
+                    .toList(),
+            supplierOrgMappings);
   }
 }
