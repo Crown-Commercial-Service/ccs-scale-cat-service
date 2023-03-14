@@ -164,6 +164,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 if (null == om) {
                     try {
                         String ciiCoH = supplierModel.getCiiCoH();
+                        mappedWriter.accept(supplierModel);
                         if(null != ciiCoH && supplierModel.getCiiMatch().equalsIgnoreCase("yes/CoH")){
                             String coh = Util.getCoHId(supplierModel.getCiiCoH());
                             service.save(duns, Integer.parseInt(data.getBravoId()), "GB-COH-" + coh);
@@ -178,7 +179,6 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                             else
                                 service.save(duns, Integer.parseInt(data.getBravoId()), null);
                         }
-                        mappedWriter.accept(supplierModel);
                     } catch (Throwable t) {
                         bw.write(duns + "," +  "," + data.getBravoId() + ","
                                 + data.getExtUniqueCode() +"," + data.getExtCode()+ "," + supplierModel.getCiiMatch()

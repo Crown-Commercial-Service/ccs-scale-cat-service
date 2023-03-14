@@ -90,7 +90,7 @@ public class SaveService {
         if (oms.size() > 1) {
             String bravoIds = "";
             for(OrganisationMapping om : oms){
-                bravoIds = bravoIds + om.getExternalOrganisationId() + ",";
+                bravoIds = bravoIds + om.getExternalOrganisationId() + ";";
             }
             bravoIds = bravoIds.substring(0, bravoIds.length()-1);
             throw new RuntimeException("more than one Jaggaer id(" + bravoIds + ")  found for :" + ciiIdentifier + "/" + orgId);
