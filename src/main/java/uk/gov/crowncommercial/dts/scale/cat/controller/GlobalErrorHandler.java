@@ -115,7 +115,7 @@ public class GlobalErrorHandler implements ErrorController {
   @ExceptionHandler({ResourceNotFoundException.class})
   public Errors handleResourceNotFoundException(final ResourceNotFoundException exception) {
 
-    log.info("Resource not found: {}", exception.getMessage());
+    log.error("Resource not found: {}", exception.getMessage());
 
     return tendersAPIModelUtils.buildDefaultErrors(NOT_FOUND.toString(),
         Constants.ERR_MSG_RESOURCE_NOT_FOUND, exception.getMessage());
