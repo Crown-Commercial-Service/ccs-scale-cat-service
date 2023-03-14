@@ -136,6 +136,12 @@ public class SupplierService {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+    
+    if (scoringComplete) {
+      jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
+      return "Successfully completed scores";
+    }
+    
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
       scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
@@ -180,11 +186,8 @@ public class SupplierService {
       jaggaerService.createUpdateScores(scoringRequest);
     }
     
-    if (scoringComplete) {
-      jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
-      log.info("Successfully updated scores and end evaluation");
-    }
-
+    retryableTendersDBDelegate.updateEventDate(procurementEvent, profile);
+    
     return "Successfully updated scores";
   }
 

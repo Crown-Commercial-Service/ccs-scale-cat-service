@@ -452,6 +452,7 @@ public class ProfileManagementService {
   private void populateConclaveRoles(final Set<RolesEnum> conclaveRoles,
       final UserProfileResponseInfo conclaveUser) {
     var conclaveBuyerSupplierRoleKeys = Map.of(conclaveAPIConfig.getBuyerRoleKey(), BUYER,
+        conclaveAPIConfig.getCatUserRoleKey(), BUYER,
         conclaveAPIConfig.getSupplierRoleKey(), SUPPLIER);
 
     conclaveUser.getDetail().getRolePermissionInfo().stream().map(RolePermissionInfo::getRoleKey)

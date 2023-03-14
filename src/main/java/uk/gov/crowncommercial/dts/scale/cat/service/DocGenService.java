@@ -197,7 +197,7 @@ public class DocGenService {
       switch (documentTemplateSource.getTargetType()) {
         case SIMPLE:
           replaceText(documentTemplateSource,
-                  getString(dataReplacement), textODT, isPublish);
+                  dataReplacement!= null ? getString(dataReplacement) : PLACEHOLDER_UNKNOWN, textODT, isPublish);
           break;
 
         case DATETIME:
@@ -230,7 +230,7 @@ public class DocGenService {
   }
 
   private static String getString(List<String> dataReplacement) {
-    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().findFirst().orElse(PLACEHOLDER_UNKNOWN);
+    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().filter(value -> value!=null).findFirst().orElse(PLACEHOLDER_UNKNOWN);
   }
 
   String formatDateorDateAndTime(String dateValue) {

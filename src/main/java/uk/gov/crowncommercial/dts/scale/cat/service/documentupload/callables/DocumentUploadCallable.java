@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StopWatch;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -37,8 +38,13 @@ public class DocumentUploadCallable implements Callable<Boolean> {
 
         var docKey=DocumentKey.fromString(documentUpload.getDocumentId());
         try{
-        jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
+            StopWatch publishStopWatch= new StopWatch();
+            publishStopWatch.start();
+            jaggaerService.eventUploadDocument(procurementEvent, docKey.getFileName(),
                 documentUpload.getDocumentDescription(), documentUpload.getAudience(), multipartFile);
+            publishStopWatch.stop();
+            log.info("publishEvent : Total time taken to Upload Document for procID {} : eventId :{} , Timetaken : {}  ", procurementEvent.getProject().getId(),procurementEvent.getEventID(),publishStopWatch.getLastTaskTimeMillis());
+
         }catch(Exception e){
             return false;
         }
