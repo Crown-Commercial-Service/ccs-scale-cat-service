@@ -172,6 +172,11 @@ data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/gov-uk-notify/user-registration/target-email"
 }
 
+# ESourcing/API Gateway authn/authz
+data "aws_ssm_parameter" "auth_api_key" {
+  name = "/cat/${var.environment}/auth/api-key"
+}
+
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
@@ -234,6 +239,9 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.notification.user-registration.template-id": data.aws_ssm_parameter.gov_uk_notify_user_reg_template_id.value
     "config.external.notification.user-registration.invalid-duns-template-id": data.aws_ssm_parameter.gov_uk_notify_user_invalid_duns_template_id.value
     "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
+    
+    # ESourcing
+    "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"
