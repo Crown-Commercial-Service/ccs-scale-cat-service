@@ -37,7 +37,7 @@ deploy:
       all_branches: true
       condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-(upgrade|fix)-[a-z0-9]+$"
 
-  # SBX3 - modify CF_ENVIRONMENT as required.
+  # SBX3 - modify CF_ENVIRONMENT as required
   - provider: script
     skip_cleanup: true
     script: CF_ENVIRONMENT=sbx3 bash ./deploy.sh
