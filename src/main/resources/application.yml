@@ -11,15 +11,15 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: DEBUG
-    # org.eclipse.jetty.client: DEBUG
-
 
 spring:
   jpa:
     open-in-view: false
     database: postgresql
     show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
     hibernate:
       ddl-auto: validate
   datasource:
@@ -36,6 +36,9 @@ server:
     path: "/error"
 
 config:
+#  rollbar:
+#    accessToken:
+#    environment:
   ocds:
     authority: ocds
     ocid-prefix: pfhb7i
@@ -272,6 +275,7 @@ config:
       timeoutDuration: 10
       # Role keys are incorrectly spelt in Conclave
       buyerRoleKey: JAEGGER_BUYER
+      catUserRoleKey: CAT_USER
       supplierRoleKey: JAEGGER_SUPPLIER      
       getUser:
         uriTemplate: /user-profiles?user-id={user-id}

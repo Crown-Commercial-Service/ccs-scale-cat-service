@@ -175,6 +175,14 @@ data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
 # ESourcing/API Gateway authn/authz
 data "aws_ssm_parameter" "auth_api_key" {
   name = "/cat/${var.environment}/auth/api-key"
+
+# RollBar Logs
+data "aws_ssm_parameter" "rollbar_access_token" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-access-token"
+}
+
+data "aws_ssm_parameter" "rollbar_environment" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-environment"
 }
 
 resource "cloudfoundry_app" "cat_service" {
@@ -242,6 +250,11 @@ resource "cloudfoundry_app" "cat_service" {
     
     # ESourcing
     "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key
+
+    # Rollbar Logs
+    "config.rollbar.access-token": data.aws_ssm_parameter.rollbar_access_token.value
+    "config.rollbar.environment": data.aws_ssm_parameter.rollbar_environment.value
+    
   }
   health_check_timeout = var.healthcheck_timeout
   health_check_type    = "port"

@@ -55,3 +55,9 @@ The main environments are provisioned automatically via Travis CI. Merges to key
 
 * other environments TBD (these mappings may change as we evolve the process as more environments come online)
 * feature branches can be deployed to specific sandboxes by making minor changes in the `travis.yml` file (follow instructions)
+
+## SBX3 provision with Travis
+
+This environment can be specifically provisioned automatically via Travis CI, by using the below branch
+
+- `sbx3feature.*` branch -> sbx3
