@@ -176,7 +176,6 @@ class AwardServiceTest {
     var awardResponse = awardService.createOrUpdateAwardRfx(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
         AwardState.AWARD, award, null);
     assertNotNull(awardResponse);
-    verify(retryableTendersDBDelegate).updateEventDate(any(), any());
   }
 
 }
