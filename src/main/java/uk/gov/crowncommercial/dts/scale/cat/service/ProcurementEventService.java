@@ -1140,6 +1140,7 @@ public class ProcurementEventService implements EventService {
 
             if (Objects.nonNull(eventSummary)) {
                 eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
+                eventSummary.setLastUpdated(OffsetDateTime.ofInstant(event.getUpdatedAt(),ZoneId.systemDefault()));
             }
             updateTenderPeriod(event, rfxSetting, eventSummary);
             return eventSummary;
