@@ -17,9 +17,6 @@ spring:
     open-in-view: false
     database: postgresql
     show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
     hibernate:
       ddl-auto: validate
   datasource:

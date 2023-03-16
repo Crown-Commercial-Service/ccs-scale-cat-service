@@ -185,8 +185,6 @@ public class SupplierService {
           buyerUser.getUserId());
       jaggaerService.createUpdateScores(scoringRequest);
     }
-    
-    retryableTendersDBDelegate.updateEventDate(procurementEvent, profile);
     return "Successfully updated scores";
   }
 
