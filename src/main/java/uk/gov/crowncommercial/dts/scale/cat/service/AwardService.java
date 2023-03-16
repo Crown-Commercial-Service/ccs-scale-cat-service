@@ -45,6 +45,11 @@ public class AwardService {
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
   public static final String AWARDS_TO_MUTLIPLE_SUPPLIERS =
       "Awards to multiple suppliers is not currently supported";
+  private static final String PRE_AWARD = "Pre-Award";
+  private static final String EDIT_PRE_AWARD = "Edit Pre-Awarding";
+  private static final String AWARD = "Award";
+  private static final String RPA_END_EVALUATION_ERROR_DESC =
+      "Awarding action dropdown button not found";
   static final String AWARDED_TEMPLATE_DESCRIPTION = "Awarded Templates";
   static final String UN_SUCCESSFUL_TEMPLATE_DESCRIPTION = "UnSuccessful Supplier Templates";
   static final String ORDER_FORM_TEMPLATE_DESCRIPTION = "Order Form Templates";
@@ -79,14 +84,11 @@ public class AwardService {
     var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
         .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
     
-    var awardOrPreAwardRfxResponse = jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
+    return jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
         validSuppliers.getFirst().stream().findFirst()
             .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getCompanyData()
             .getId().toString(),
         awardState);
-    log.debug("Successfully {}", awardState.getValue());
-    retryableTendersDBDelegate.updateEventDate(procurementEvent, principal);
-    return awardOrPreAwardRfxResponse;
   }
 
 
