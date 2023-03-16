@@ -23,6 +23,8 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 import javax.transaction.Transactional;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -417,18 +419,18 @@ public class ProcurementProjectService {
                                                       jaggaerUserId,
                                                       searchType,
                                                       searchTerm,
-                                                      PageRequest.of(Objects.nonNull(page)?Integer.valueOf(page):0, Objects.nonNull(pageSize)?Integer.valueOf(pageSize):20, Sort.by("timestamps.createdAt").descending()));
+                                                      PageRequest.of(Objects.nonNull(page)?Integer.valueOf(page):0, Objects.nonNull(pageSize)?Integer.valueOf(pageSize):20, Sort.by("project.procurementEvents.updatedAt").descending()));
 
     if (!CollectionUtils.isEmpty(projectUserMappings)) {
       var externalEventIdsAllProjects = projectUserMappings.stream()
           .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
           .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
-
       var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
-
+      
       return projectUserMappings.stream()
           .map(pum -> convertProjectToProjectPackageSummary(pum, projectUserRfxs))
-          .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
+          .filter(Optional::isPresent).map(Optional::get)
+          .collect(Collectors.toSet());
     }
     return Collections.emptyList();
   }
@@ -515,6 +517,7 @@ public class ProcurementProjectService {
 
     if(null != eventSummary) {
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
+      eventSummary.setLastUpdated(OffsetDateTime.ofInstant(dbEvent.getUpdatedAt(),ZoneId.systemDefault()));
       projectPackageSummary.activeEvent(eventSummary);
     }
 

@@ -361,6 +361,7 @@ class ProcurementProjectServiceTest {
     event.setOcdsAuthorityName("ocds");
     event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
+    event.setUpdatedAt(Instant.now());
 
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
@@ -504,6 +505,7 @@ class ProcurementProjectServiceTest {
     event.setOcdsAuthorityName("ocds");
     event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
+    event.setUpdatedAt(Instant.now());
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
 

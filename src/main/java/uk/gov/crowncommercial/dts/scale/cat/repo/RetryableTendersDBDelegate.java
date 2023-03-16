@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpec
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo; // Added by RoweIT for Tenders API
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -411,6 +412,12 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<RfxTemplateMapping> findRfxTemplateMappingRfxShortDescription(final String rfxShortDescription) {
     return rfxTemplateMappingRepo.findByRfxShortDescription(rfxShortDescription);
+  }
+    
+  public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
+    procurementEvent.setUpdatedBy(profile);
+    procurementEvent.setUpdatedAt(Instant.now());
+    this.save(procurementEvent);
   }
 
   /**

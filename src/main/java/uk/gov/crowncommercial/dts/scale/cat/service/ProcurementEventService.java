@@ -1653,6 +1653,8 @@ public class ProcurementEventService implements EventService {
         var event = validationService.validateProjectAndEventIds(procId, eventId);
         awardService.getAwardOrPreAwardDetails(procId, eventId, AwardState.AWARD);
         event.setTenderStatus(COMPLETE_STATUS);
+        event.setUpdatedBy(principal);
+        event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
         var contractDetails =
                 ContractDetails.builder().awardId(request.getAwardID()).contractStatus(request.getStatus())

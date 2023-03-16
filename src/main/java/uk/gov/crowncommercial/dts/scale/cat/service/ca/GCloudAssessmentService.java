@@ -184,9 +184,6 @@ public class GCloudAssessmentService {
 
         // Now build the results
         Set<GCloudAssessmentResult> results = retryableTendersDBDelegate.findGcloudResultsByAssessmentId(assessmentId);
-        if (results.isEmpty()) {
-            throw new ResourceNotFoundException(format(ERR_MSG_FMT_ASSESSMENT_RESULTS_NOT_FOUND, assessmentId));
-        }
 
         ArrayList<GCloudResult> resultsList = new ArrayList<>();
 
