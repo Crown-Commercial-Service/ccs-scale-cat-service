@@ -84,8 +84,6 @@ public class AwardService {
     var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
         .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
     
-    //TODO delete once score testing is done 
-    jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
     return jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
         validSuppliers.getFirst().stream().findFirst()
             .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getCompanyData()
