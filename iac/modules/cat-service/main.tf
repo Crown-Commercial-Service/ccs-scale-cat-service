@@ -250,7 +250,7 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
     
     # ESourcing
-    "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key
+    "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key.value
 
     # Rollbar Logs
     "config.rollbar.access-token": data.aws_ssm_parameter.rollbar_access_token.value
