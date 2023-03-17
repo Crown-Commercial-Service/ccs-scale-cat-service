@@ -175,6 +175,7 @@ data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
 # ESourcing/API Gateway authn/authz
 data "aws_ssm_parameter" "auth_api_key" {
   name = "/cat/${var.environment}/auth/api-key"
+}
 
 # RollBar Logs
 data "aws_ssm_parameter" "rollbar_access_token" {
