@@ -10,10 +10,13 @@ import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxTemplateMapping;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo; // Added by RoweIT for Tenders API
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +49,7 @@ public class RetryableTendersDBDelegate {
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
+  private final RfxTemplateMappingRepo rfxTemplateMappingRepo;	//Added by RoweIT for Tenders API integration
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -405,6 +409,11 @@ public class RetryableTendersDBDelegate {
     return contractDetailsRepo.findByEventId(eventId);
   }
   
+  @TendersRetryable
+  public Optional<RfxTemplateMapping> findRfxTemplateMappingRfxShortDescription(final String rfxShortDescription) {
+    return rfxTemplateMappingRepo.findByRfxShortDescription(rfxShortDescription);
+  }
+    
   public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
     procurementEvent.setUpdatedBy(profile);
     procurementEvent.setUpdatedAt(Instant.now());

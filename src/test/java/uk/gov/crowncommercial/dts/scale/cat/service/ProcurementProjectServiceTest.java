@@ -40,9 +40,13 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender200Response;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceRfx;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -69,6 +73,7 @@ class ProcurementProjectServiceTest {
   private static final String TENDER_REF_CODE = "project_0001";
   private static final String CA_NUMBER = "RM1234";
   private static final String LOT_NUMBER = "Lot1a";
+  private static final String SHORT_DESCRIPTION = "Project for Provision of Face Masks";
   private static final String PROJ_NAME = CA_NUMBER + '-' + LOT_NUMBER + '-' + CONCLAVE_ORG_NAME;
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final String EVENT_NAME = "Test Event";
@@ -84,7 +89,7 @@ class ProcurementProjectServiceTest {
       Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
   private static final CompanyInfo BUYER_COMPANY_INFO =
       CompanyInfo.builder().bravoId(JAGGAER_BUYER_COMPANY_ID).build();
-
+ 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient jaggaerWebClient;
 
@@ -110,14 +115,20 @@ class ProcurementProjectServiceTest {
   private AgreementsService agreementsService;
 
   @MockBean
+  private SalesforceProjectTender200Response salesforceProjectTender200Response;
+
+  @MockBean
   private EventTransitionService eventTransitionService;
+  
+  @MockBean
+  private RfxTemplateMappingRepo rfxTemplateMappingRepo;
+
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
   @Autowired
   private ProcurementProjectService procurementProjectService;
-
 
 
   @MockBean
@@ -523,5 +534,5 @@ class ProcurementProjectServiceTest {
         response.stream().findFirst().get().getActiveEvent().getDashboardStatus());
 
   }
-
+  
 }

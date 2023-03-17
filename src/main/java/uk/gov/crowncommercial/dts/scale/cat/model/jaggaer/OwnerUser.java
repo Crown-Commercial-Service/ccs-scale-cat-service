@@ -10,4 +10,7 @@ import lombok.extern.jackson.Jacksonized;
 public class OwnerUser {
 
   String id;
+  
+  String login; // Added by RoweIT EI-74 /salesforce endpoint
+  
 }

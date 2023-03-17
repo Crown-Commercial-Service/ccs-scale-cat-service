@@ -7,6 +7,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,9 +20,12 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.CannotCreateTransactionException;
 import uk.gov.crowncommercial.dts.scale.cat.config.RetryConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxTemplateMapping;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
 
 /**
  *
@@ -94,6 +100,10 @@ class RetryableTendersDBDelegateTest {
   
   @MockBean
   private ContractDetailsRepo contractDetailsRepo;
+  
+  @MockBean
+  private RfxTemplateMappingRepo rfxTemplateMappingRepo;
+  
 
   @Test
   void testRetrySuccess() {

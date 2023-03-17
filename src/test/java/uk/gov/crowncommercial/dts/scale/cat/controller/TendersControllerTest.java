@@ -33,6 +33,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.Role
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -54,6 +55,9 @@ class TendersControllerTest {
   private ProfileManagementService profileManagementService;
   private JwtRequestPostProcessor validCATJwtReqPostProcessor;
   private JwtRequestPostProcessor validLDJwtReqPostProcessor;
+
+  @MockBean
+  private ProcurementProjectService procurementProjectService;
 
   @BeforeEach
   void beforeEach() {
