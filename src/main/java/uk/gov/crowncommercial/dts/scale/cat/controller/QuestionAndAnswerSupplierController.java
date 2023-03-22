@@ -19,7 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
  *
  */
 @RestController
-@RequestMapping(path = "/tenders/supplier/{supplier-email}/projects/{proc-id}/events/{event-id}/q-and-a",
+@RequestMapping(path = "/tenders/supplier/projects/{proc-id}/events/{event-id}/q-and-a",
     produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
@@ -31,11 +31,10 @@ public class QuestionAndAnswerSupplierController extends AbstractRestController 
   @GetMapping
   @TrackExecutionTime
   public ResponseEntity<QandAWithProjectDetails> getQuestionAdnAnswers(
-      @PathVariable("supplier-email") final String supplierEmail,
       @PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId) {
-    log.info("getQuestionAdnAnswersForSupplier invoked on behalf of principal: {}", supplierEmail);
+    log.info("getQuestionAdnAnswersForSupplier invoked");
     return ResponseEntity
-        .ok(questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(procId, eventId, supplierEmail));
+        .ok(questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(procId, eventId));
   }
 }
