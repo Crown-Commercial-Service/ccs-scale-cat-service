@@ -127,6 +127,60 @@ public class QuestionAndAnswerService {
     response.setQandA(covertedQandAList);
     return response;
   }
+  
+  //CAS-1066
+  public QandAWithProjectDetails getQuestionAndAnswerForSupplierByEvent(final Integer projectId,
+      final String eventId, final String principal) {
+
+    // check the roles of supplier
+    var user = conclaveService.getUserProfile(principal).orElseThrow(
+        () -> new ResourceNotFoundException("User not found in conclave: " + principal));
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var conclaveOrg = conclaveService.getOrganisationIdentity(user.getOrganisationId());
+
+    // get all suppliers for this event in jaggaer
+    var jaggaerSuppliers = jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId())
+        .getSuppliersList().getSupplier();
+
+    var identifier = conclaveOrg.get().getIdentifier();
+
+    // As per PPG all scheme names are using US-DUN
+    var scheme =
+        identifier.getScheme().equalsIgnoreCase("US-DUN") ? "US-DUNS" : identifier.getScheme();
+    var conclaveOrgId = scheme + "-" + identifier.getId();
+
+    // find supplier org-mapping
+    var supplierOrgMapping =
+        retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(conclaveOrgId);
+    if (supplierOrgMapping.isEmpty()) {
+      var errorDesc = String.format(
+          "No supplier organisation mappings found in Tenders DB %s for supplier QandA request",
+          conclaveOrgId);
+      log.error(errorDesc);
+      throw new ResourceNotFoundException(errorDesc);
+    }
+
+    // Validate supplier
+    boolean validSupplier = jaggaerSuppliers.stream().anyMatch(js -> js.getCompanyData().getId()
+        .equals(supplierOrgMapping.get().getExternalOrganisationId()));
+    if (!validSupplier) {
+      throw new AuthorisationFailureException("Supplier not authorised to access this resource");
+    }
+
+    var covertedQandAList =
+        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+    var agreementNo = procurementEvent.getProject().getCaNumber();
+    var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+    var lotDetails =
+        agreementsService.getLotDetails(agreementNo, procurementEvent.getProject().getLotNumber());
+    var response = new QandAWithProjectDetails().agreementId(agreementNo)
+        .projectId(procurementEvent.getProject().getId())
+        .projectName(procurementEvent.getProject().getProjectName())
+        .agreementName(agreementDetails.getName())
+        .lotId(procurementEvent.getProject().getLotNumber()).lotName(lotDetails.getName());
+    response.setQandA(covertedQandAList);
+    return response;
+  }
 
   private QandA convertQandA(QuestionAndAnswer questionAndAnswer) {
     return new QandA().id(BigDecimal.valueOf(questionAndAnswer.getId()))
