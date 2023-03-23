@@ -185,7 +185,6 @@ public class SupplierService {
           buyerUser.getUserId());
       jaggaerService.createUpdateScores(scoringRequest);
     }
-    
     return "Successfully updated scores";
   }
 

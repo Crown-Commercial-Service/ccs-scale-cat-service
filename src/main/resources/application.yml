@@ -11,9 +11,6 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: DEBUG
-    # org.eclipse.jetty.client: DEBUG
-
 
 spring:
   jpa:
@@ -36,6 +33,9 @@ server:
     path: "/error"
 
 config:
+#  rollbar:
+#    accessToken:
+#    environment:
   ocds:
     authority: ocds
     ocid-prefix: pfhb7i
