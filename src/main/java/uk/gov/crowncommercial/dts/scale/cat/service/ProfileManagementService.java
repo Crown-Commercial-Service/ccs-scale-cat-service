@@ -90,7 +90,7 @@ public class ProfileManagementService {
     var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
 
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
         .orElseThrow(() -> new ResourceNotFoundException(
             format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 
@@ -131,7 +131,7 @@ public class ProfileManagementService {
     Assert.hasLength(userId, "userId must not be empty");
     var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
         .orElseThrow(() -> new ResourceNotFoundException(
             format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 
@@ -601,7 +601,7 @@ public class ProfileManagementService {
 
     var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
             () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
             .orElseThrow(() -> new ResourceNotFoundException(
                     format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 
