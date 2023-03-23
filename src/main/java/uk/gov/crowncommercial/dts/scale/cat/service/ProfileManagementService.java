@@ -20,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationC
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.GroupAccessRole;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
@@ -458,6 +459,12 @@ public class ProfileManagementService {
     conclaveUser.getDetail().getRolePermissionInfo().stream().map(RolePermissionInfo::getRoleKey)
         .filter(conclaveBuyerSupplierRoleKeys::containsKey)
         .forEach(rk -> conclaveRoles.add(conclaveBuyerSupplierRoleKeys.get(rk)));
+    
+    //CAS-1048
+    if (Objects.nonNull(conclaveUser.getDetail().getUserGroups()))
+      conclaveUser.getDetail().getUserGroups().stream().map(GroupAccessRole::getAccessRole)
+          .filter(conclaveBuyerSupplierRoleKeys::containsKey)
+          .forEach(rk -> conclaveRoles.add(conclaveBuyerSupplierRoleKeys.get(rk)));
   }
 
   private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> populateJaggaerRoles(
