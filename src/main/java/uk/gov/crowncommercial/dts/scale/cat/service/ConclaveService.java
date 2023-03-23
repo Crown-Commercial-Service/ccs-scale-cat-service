@@ -97,7 +97,7 @@ public class ConclaveService {
 
     try {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
-              conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, sanitisedOrgId);
+              conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, sanitisedOrgId);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new ConclaveApplicationException(
