@@ -244,6 +244,9 @@ public class TendersAPIModelUtils {
 
   public static Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
     return null!=offsetDateTime?offsetDateTime.toInstant():null;
-
+  }
+  
+  public static OffsetDateTime getOffsetDateTimeFromInstant(Instant instant) {
+    return null != instant ? OffsetDateTime.ofInstant(instant, ZoneId.systemDefault()) : null;
   }
 }
