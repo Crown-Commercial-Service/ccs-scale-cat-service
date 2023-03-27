@@ -386,6 +386,10 @@ public class ProfileManagementService {
       subUserBuilder.division("Division");
       subUserBuilder.ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
     }
+    
+    var conclaveRoles = new HashSet<RolesEnum>();
+    populateConclaveRoles(conclaveRoles, conclaveUser);
+    var isBuyer = conclaveRoles.contains(RolesEnum.BUYER);
 
     // TODO - mobilePhoneNumber requires '+' in front of it - include?
     // TODO - timezone hardcoded
@@ -393,8 +397,8 @@ public class ProfileManagementService {
     createUpdateCompanyRequestBuilder
         .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
             .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId)
-                .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
-                .extUniqueCode(conclaveUserOrg.getIdentifier().getId()).build())
+                .extCode(isBuyer ? null : conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+                .extUniqueCode(isBuyer ? null : conclaveUserOrg.getIdentifier().getId()).build())
             .build())
         .subUsers(
             subUsersBuilder
