@@ -131,7 +131,7 @@ class TendersControllerTest {
   }
 
   @Test
-  void putUser_200_UserAlreadyExists() throws Exception {
+  void putUser_500_InternalServerError() throws Exception {
     when(profileManagementService.registerUser(PRINCIPAL)).thenReturn(new RegisterUserResponse()
         .userAction(UserActionEnum.EXISTED).organisationAction(OrganisationActionEnum.EXISTED)
         .roles(List.of(
@@ -139,10 +139,12 @@ class TendersControllerTest {
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().is2xxSuccessful())
+        .andDo(print()).andExpect(status().isInternalServerError())
         .andExpect(content().contentType(APPLICATION_JSON))
-            .andExpect(jsonPath("$.roles", hasSize(1)))
-            .andExpect(jsonPath("$.userAction", is("existed")));
+            .andExpect(jsonPath("$.errors", hasSize(1)))
+            .andExpect(jsonPath("$.errors[0].status", is("500 INTERNAL_SERVER_ERROR")))
+            .andExpect(jsonPath("$.errors[0].title", is("Jaggaer User Exist Scenario")))
+            .andExpect(jsonPath("$.errors[0].detail", is("Jaggaer sub or super user already exists")));
   }
 
   @Test
