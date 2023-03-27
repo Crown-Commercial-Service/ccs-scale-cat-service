@@ -43,6 +43,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     http.authorizeRequests(authz ->
       authz
         .antMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/tenders/supplier/**").permitAll()
         .antMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
