@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import java.util.Arrays;
 import java.util.stream.Stream;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.CsrfConfig
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationFilter;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.auth.Authorities;
@@ -51,7 +53,8 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
         // TODO (pillingworth, 2023-03-01) better to apply at method/class level using RolesAllowed annotation than applying globally with wildcards?
         .antMatchers("/tenders/projects/salesforce").hasAuthority(Authorities.ESOURCING_ROLE)
         .antMatchers("/tenders/projects/deltas").hasAuthority(Authorities.ESOURCING_ROLE)
-        .antMatchers("/tenders/projects/*/events/*/termination").hasAuthority(Authorities.ESOURCING_ROLE)
+        .antMatchers("/tenders/projects/*/events/*/termination").hasAnyAuthority(
+        		ArrayUtils.addAll(CAT_ROLES, Authorities.ESOURCING_ROLE))
         .antMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)

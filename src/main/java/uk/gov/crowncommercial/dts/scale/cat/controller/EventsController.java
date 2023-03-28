@@ -6,12 +6,17 @@ import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.util.StopWatch;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
@@ -25,6 +30,7 @@ import javax.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.Principal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +60,8 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
   private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
+
+  private final JaggaerAPIConfig jaggaerAPIConfig;
 
   @GetMapping
   @TrackExecutionTime
@@ -356,9 +364,21 @@ public class EventsController extends AbstractRestController {
   public StringValueResponse terminateEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @RequestBody @Valid final TerminationEvent type,
-      final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
+      final Principal authPrincipal) {
+	  
+	var principal = "";
+	if (authPrincipal instanceof JwtAuthenticationToken) {
+		log.info("terminateEvent invoked with JwtAuthenticationToken");		
+	    principal = getPrincipalFromJwt((JwtAuthenticationToken) authPrincipal);
+	} else {
+		if (authPrincipal instanceof ApiKeyAuthToken) {
+			log.info("terminateEvent invoked with ApiKeyAuthToken");					
+		    principal = jaggaerAPIConfig.getApiDefaults().get("default-user-name");
+		} else {
+			return new StringValueResponse("Authentication mechanism not supported");
+		}
+	}
+	
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
 
     eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, true);

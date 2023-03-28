@@ -89,6 +89,7 @@ config:
         source-template-reference-code: project_609
         open-market-template-id: itt_747
         sta-template-id: itt_746
+        default-user-name: peter.simpson@roweit.co.uk  # TODO: need to apply Salesforce/CCS default user
         buyer-company-id: 51435             # TODO: this ID is CCS
         conclave-org-id: 669821636384259971 # TODO: this ID is CCS
         jaggaer-user-id: 110659             # TODO: this ID is peter.simpson@roweit.co.uk
