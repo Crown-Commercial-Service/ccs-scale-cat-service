@@ -36,11 +36,17 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import uk.gov.crowncommercial.dts.scale.cat.auth.Authorities;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyDetails;
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyDetailsProvider;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -60,6 +66,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class EventsControllerTest {
 
   private static final String EVENTS_PATH = "/tenders/projects/{procID}/events";
+  private static final String TERMINATION_PATH = "/tenders/projects/{procID}/events/{eventID}/termination";
   private static final String MESSAGES_PATH = "messages";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
@@ -105,7 +112,10 @@ class EventsControllerTest {
 
   @MockBean
   private EventSummary eventSummary;
-
+  
+  @MockBean
+  private ApiKeyDetailsProvider apiKeyDetailsProvider;
+  
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 
   @BeforeEach
@@ -358,4 +368,58 @@ class EventsControllerTest {
     verify(procurementEventService, times(1)).getSupplierResponses(PROC_PROJECT_ID, EVENT_ID);
 
   }
+  
+  @Test
+  void terminateEvent_401_Unauthorised() throws Exception {
+    mockMvc
+        .perform(post(TERMINATION_PATH, PROC_PROJECT_ID,EVENT_ID).accept(APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createEvent)))
+        .andDo(print()).andExpect(status().isUnauthorized())
+        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer")))
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("401 UNAUTHORIZED")))
+        .andExpect(jsonPath("$.errors[0].title", is("Missing, expired or invalid access token")));
+  }
+
+  @Test
+  void terminateEvent_403_Forbidden_JWT() throws Exception {
+    var invalidJwtReqPostProcessor =
+        jwt().authorities(new SimpleGrantedAuthority("OTHER")).jwt(jwt -> jwt.subject(PRINCIPAL));
+
+    mockMvc
+        .perform(post(TERMINATION_PATH, PROC_PROJECT_ID, EVENT_ID).with(invalidJwtReqPostProcessor)
+            .accept(APPLICATION_JSON).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createEvent)))
+        .andDo(print()).andExpect(status().isForbidden())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN"))).andExpect(
+            jsonPath("$.errors[0].title", is("Access to the requested resource is forbidden")));
+  }
+  
+  @Test
+  void terminateEvent_403_Forbidden_APIKEY() throws Exception {
+
+    // provide a valid key but the key deosn't provide the required authorities for this end point
+    String key = "jgkepi7df-890g7s-8g7usidfgpoid7yf";
+    when(apiKeyDetailsProvider.findDetailsByKey(key)).thenReturn(Optional
+        .of(ApiKeyDetails.builder().key(key)
+            .authorities(AuthorityUtils.commaSeparatedStringToAuthorityList("OTHER"))
+        .build()));
+    
+    mockMvc
+        .perform(post(TERMINATION_PATH, PROC_PROJECT_ID, EVENT_ID)
+        	.header("x-api-key", key).accept(APPLICATION_JSON).contentType(APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createEvent)))
+        .andDo(print()).andExpect(status().isForbidden())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.errors", hasSize(1)))
+        .andExpect(jsonPath("$.errors[0].status", is("403 FORBIDDEN"))).andExpect(
+            jsonPath("$.errors[0].title", is("Access to the requested resource is forbidden")));
+    
+
+  }
+
 }
