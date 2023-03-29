@@ -24,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
@@ -62,6 +63,7 @@ public class EventsController extends AbstractRestController {
   private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
+  private final TendersAPIModelUtils tendersAPIModelUtils;
 
   @GetMapping
   @TrackExecutionTime
@@ -370,13 +372,9 @@ public class EventsController extends AbstractRestController {
 	if (authPrincipal instanceof JwtAuthenticationToken) {
 		log.info("terminateEvent invoked with JwtAuthenticationToken");		
 	    principal = getPrincipalFromJwt((JwtAuthenticationToken) authPrincipal);
-	} else {
-		if (authPrincipal instanceof ApiKeyAuthToken) {
+	} else if (authPrincipal instanceof ApiKeyAuthToken) {
 			log.info("terminateEvent invoked with ApiKeyAuthToken");					
-		    principal = jaggaerAPIConfig.getApiDefaults().get("default-user-name");
-		} else {
-			return new StringValueResponse("Authentication mechanism not supported");
-		}
+		    principal = tendersAPIModelUtils.getPrincipalFromApiKey((ApiKeyAuthToken) authPrincipal);
 	}
 	
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
