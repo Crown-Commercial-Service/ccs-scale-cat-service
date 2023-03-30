@@ -76,6 +76,7 @@ public class ProfileManagementService {
   private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
   private final BuyerUserDetailsRepo buyerDetailsRepo;
   private final EncryptionService encryptionService;
+  private final TenderDBSupplierLinkService supplierLinkService;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the

@@ -97,6 +97,9 @@ class ProfileManagementServiceTest {
   @MockBean
   private EncryptionService encryptionService;
   
+  @MockBean
+  private TenderDBSupplierLinkService supplierLinkService;
+  
   /*
    * CON-1680-AC1(a)
    */
