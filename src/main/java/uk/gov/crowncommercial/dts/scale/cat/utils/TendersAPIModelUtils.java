@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -259,5 +261,8 @@ public class TendersAPIModelUtils {
 	    return SalesforceProjectTender200Response;
 	  }
   
+  public String getPrincipalFromApiKey(final ApiKeyAuthToken apiKeyAuthToken) {
+	  return jaggaerAPIConfig.getEsourcing().get("principal-email");
+  }
   
 }
