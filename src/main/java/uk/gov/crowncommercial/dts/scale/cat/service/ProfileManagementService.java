@@ -6,7 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
-
+import java.util.stream.Stream;
 import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
@@ -20,6 +20,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationC
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
+import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
+import uk.gov.crowncommercial.dts.scale.cat.model.SupplierLink;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.GroupAccessRole;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
@@ -38,6 +40,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Coordinating service for Conclave / Jaggaer Org and User profile operations
@@ -73,6 +76,7 @@ public class ProfileManagementService {
   private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
   private final BuyerUserDetailsRepo buyerDetailsRepo;
   private final EncryptionService encryptionService;
+  private final TenderDBSupplierLinkService supplierLinkService;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the
@@ -216,6 +220,25 @@ public class ProfileManagementService {
       if (orgMapping.isEmpty()) {
         orgMapping =
             retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(primaryOrgId);
+      }
+      
+      // Now searched by Supplier mapping table CAS-665
+      if (orgMapping.isEmpty()) {
+        try {
+          var schemeType = TendersAPIModelUtils.validateSchemeType()
+              .get(conclaveUserOrg.getIdentifier().getScheme());
+          var supplierLink =
+              supplierLinkService.get(schemeType, conclaveUserOrg.getIdentifier().getId());
+          if (Objects.nonNull(supplierLink)) {
+            // populate org-mapping table
+            orgMapping = Optional.of(retryableTendersDBDelegate.save(OrganisationMapping.builder()
+                .organisationId(primaryOrgId).externalOrganisationId(supplierLink.getBravoId())
+                .casOrganisationId(primaryOrgId).createdAt(Instant.now()).createdBy("SupplierLink")
+                .build()));
+          }
+        } catch (Exception e) {
+          log.error("Error while seraching supplier mapping table", e);
+        }
       }
 
       if (orgMapping.isPresent()) {
