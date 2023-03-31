@@ -89,15 +89,15 @@ public class ConclaveService {
    * @return
    */
   @Cacheable(value = "getOrganisation", key = "#orgId")
-  public Optional<OrganisationProfileResponseInfo> getOrganisation(final String orgId) {
+  public Optional<OrganisationProfileResponseInfo> getOrganisationProfile(final String orgId) {
 
-    final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
+    final var templateURI = conclaveAPIConfig.getGetOrganisation().get(KEY_URI_TEMPLATE);
 
     var sanitisedOrgId = orgId.replace("US-DUNS", "US-DUN");
 
     try {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
-              conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, sanitisedOrgId);
+              conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, sanitisedOrgId);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new ConclaveApplicationException(

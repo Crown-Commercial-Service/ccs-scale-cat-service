@@ -99,7 +99,7 @@ public class ProcurementProjectService {
               .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
       var jaggaerBuyerCompanyId = userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
-      var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
+      var conclaveUserOrg = conclaveService.getOrganisationIdentity(conclaveOrgId)
               .orElseThrow(() -> new AuthorisationFailureException(
                       "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
 

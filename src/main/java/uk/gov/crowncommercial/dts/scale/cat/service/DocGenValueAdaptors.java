@@ -184,7 +184,7 @@ public class DocGenValueAdaptors {
               .orElseThrow(() -> new TendersDBDataException(
                   "Project [" + event.getProject().getId() + "] has no org mapping"))
               .getOrganisationId();
-          return conclaveService.getOrganisation(projectOrgId)
+          return conclaveService.getOrganisationIdentity(projectOrgId)
               .orElseThrow(() -> new TendersDBDataException(
                   "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
         });
