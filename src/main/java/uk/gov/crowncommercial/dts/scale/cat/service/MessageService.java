@@ -328,7 +328,7 @@ public class MessageService {
               String.format("Jaggaer user not found for %s", message.getSenderUser().getId())));
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getEmail())
           .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
-      var conclaveOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+      var conclaveOrg = conclaveService.getOrganisationIdentity(conclaveUser.getOrganisationId())
           .orElseThrow(() -> new ResourceNotFoundException(
               format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
       author = new CaTMessageOCDSAllOfAuthor().name(conclaveOrg.getIdentifier().getLegalName())
