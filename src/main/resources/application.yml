@@ -201,6 +201,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
       getCompanyProfileByBravoID:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID=={{PRINCIPAL}}
+      getRfxByLastUpdateDateList:  
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=lastUpdateDate=ge="{lastUpdateDate}";buyerCompanyId=={buyerCompanyId}&comp={components}
 
       # This is far more performant for summary-level only data
       searchRfxSummary:
