@@ -29,7 +29,6 @@ public class RfxSetting {
   String status;
   Integer statusCode;
   
-  // @JsonFormat added by RoweIT for Jaggaer interface 
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXX")
   OffsetDateTime lastUpdate;
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXX")
@@ -37,7 +36,6 @@ public class RfxSetting {
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXX")
   OffsetDateTime closeDate;
   
-  //Added by PS (RoweIT) for creating SalesforceRfx
   Integer value;
   Integer qualEnvStatus;
   Integer techEnvStatus;

@@ -1739,41 +1739,20 @@ public class ProcurementEventService implements EventService {
     public CreateUpdateRfx createSalesforceRfxRequest(final ProcurementProject project, final SalesforceProjectTender projectTender,
                                              final String principal) {
 
-      // Fetch Jaggaer ID and Buyer company ID from Jaggaer config
-      var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
-
-      var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
+      // Fetch Jaggaer ID and Buyer company ID from Jaggaer config     
   	  var ownerUser = OwnerUser.builder().login(projectTender.getRfx().getOwnerUserLogin()).build();
+      var jaggaerBuyerCompanyId =  jaggaerAPIConfig.getAssistedProcurementId();
+      var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
 
       // Retrieve template reference code from rfx_template_mapping table
 	  log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
-	  //log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getShortDescription());
 
       Optional<RfxTemplateMapping> rfxTemplateMapping = 
-       		  	//retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getShortDescription());
          		retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
       log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
 
       String rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();
       log.debug("rfxTemplateReferenceCode {}", rfxTemplateReferenceCode);
-
-      // Original logic - Template Reference Code now looked-up in mapping table
-//      var openMarketTemplateId = jaggaerAPIConfig.getApiDefaults().get("open-market-template-id");
-//      var staTemplateId = jaggaerAPIConfig.getApiDefaults().get("sta-template-id");      
-
-//      String rfxProcurementRoute = projectTender.getRfx().getProcurementRoute();
-//  	  String rfxProcurementRouteType = "";
-
-//      if (rfxProcurementRoute.equalsIgnoreCase("Open Market")) {
-//        rfxTemplateReferenceCode = openMarketTemplateId;
-//        rfxProcurementRouteType = "5";
-//      } else if (rfxProcurementRoute.equalsIgnoreCase("Single Tender Action")) {
-//        rfxTemplateReferenceCode = staTemplateId;
-//      } else {
-//        if (projectTender.getRfx().getTemplateReferenceCode() != null){
-//          rfxTemplateReferenceCode = projectTender.getRfx().getTemplateReferenceCode();
-//        }
-//      }
       
       var additionalInfoProcurementRoute = AdditionalInfo.builder()
       		.name(ADDITIONAL_INFO_PROCUREMENT_ROUTE)
@@ -1799,7 +1778,6 @@ public class ProcurementEventService implements EventService {
                       .build();
 
       var rfxAdditionalInfoList =
-              //new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute));
       			new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute, additionalInfoFramework, additionalInfoLot));
 
       String rfxType = "";
