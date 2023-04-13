@@ -6,7 +6,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
-
+import java.util.stream.Stream;
 import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
@@ -20,6 +20,9 @@ import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationC
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
+import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
+import uk.gov.crowncommercial.dts.scale.cat.model.SupplierLink;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.GroupAccessRole;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
@@ -37,6 +40,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Coordinating service for Conclave / Jaggaer Org and User profile operations
@@ -72,6 +76,7 @@ public class ProfileManagementService {
   private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
   private final BuyerUserDetailsRepo buyerDetailsRepo;
   private final EncryptionService encryptionService;
+  private final TenderDBSupplierLinkService supplierLinkService;
 
   /**
    * Gets a user's roles (buyer or supplier) from both the ID management system (Conclave) and the
@@ -90,7 +95,7 @@ public class ProfileManagementService {
     var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
 
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
         .orElseThrow(() -> new ResourceNotFoundException(
             format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 
@@ -131,7 +136,7 @@ public class ProfileManagementService {
     Assert.hasLength(userId, "userId must not be empty");
     var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
         () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
         .orElseThrow(() -> new ResourceNotFoundException(
             format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 
@@ -215,6 +220,25 @@ public class ProfileManagementService {
       if (orgMapping.isEmpty()) {
         orgMapping =
                 retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(primaryOrgId);
+      }
+      
+      // Now searched by Supplier mapping table CAS-665
+      if (orgMapping.isEmpty()) {
+        try {
+          var schemeType = TendersAPIModelUtils.validateSchemeType()
+              .get(conclaveUserOrg.getIdentifier().getScheme());
+          var supplierLink =
+              supplierLinkService.get(schemeType, conclaveUserOrg.getIdentifier().getId());
+          if (Objects.nonNull(supplierLink)) {
+            // populate org-mapping table
+            orgMapping = Optional.of(retryableTendersDBDelegate.save(OrganisationMapping.builder()
+                .organisationId(primaryOrgId).externalOrganisationId(supplierLink.getBravoId())
+                .casOrganisationId(primaryOrgId).createdAt(Instant.now()).createdBy("SupplierLink")
+                .build()));
+          }
+        } catch (Exception e) {
+          log.error("Error while seraching supplier mapping table", e);
+        }
       }
 
       if (orgMapping.isPresent()) {
@@ -385,6 +409,10 @@ public class ProfileManagementService {
       subUserBuilder.division("Division");
       subUserBuilder.ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
     }
+    
+    var conclaveRoles = new HashSet<RolesEnum>();
+    populateConclaveRoles(conclaveRoles, conclaveUser);
+    var isBuyer = conclaveRoles.contains(RolesEnum.BUYER);
 
     // TODO - mobilePhoneNumber requires '+' in front of it - include?
     // TODO - timezone hardcoded
@@ -392,8 +420,8 @@ public class ProfileManagementService {
     createUpdateCompanyRequestBuilder
         .company(CreateUpdateCompany.builder().operationCode(OperationCode.UPDATE)
             .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId)
-                .extCode(conclaveService.getOrganisationIdentifer(conclaveUserOrg))
-                .extUniqueCode(conclaveUserOrg.getIdentifier().getId()).build())
+                .extCode(isBuyer ? null : conclaveService.getOrganisationIdentifer(conclaveUserOrg))
+                .extUniqueCode(isBuyer ? null : conclaveUserOrg.getIdentifier().getId()).build())
             .build())
         .subUsers(
             subUsersBuilder
@@ -452,11 +480,18 @@ public class ProfileManagementService {
   private void populateConclaveRoles(final Set<RolesEnum> conclaveRoles,
       final UserProfileResponseInfo conclaveUser) {
     var conclaveBuyerSupplierRoleKeys = Map.of(conclaveAPIConfig.getBuyerRoleKey(), BUYER,
+        conclaveAPIConfig.getCatUserRoleKey(), BUYER,
         conclaveAPIConfig.getSupplierRoleKey(), SUPPLIER);
 
     conclaveUser.getDetail().getRolePermissionInfo().stream().map(RolePermissionInfo::getRoleKey)
         .filter(conclaveBuyerSupplierRoleKeys::containsKey)
         .forEach(rk -> conclaveRoles.add(conclaveBuyerSupplierRoleKeys.get(rk)));
+    
+    //CAS-1048
+    if (Objects.nonNull(conclaveUser.getDetail().getUserGroups()))
+      conclaveUser.getDetail().getUserGroups().stream().map(GroupAccessRole::getAccessRole)
+          .filter(conclaveBuyerSupplierRoleKeys::containsKey)
+          .forEach(rk -> conclaveRoles.add(conclaveBuyerSupplierRoleKeys.get(rk)));
   }
 
   private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> populateJaggaerRoles(
@@ -600,7 +635,7 @@ public class ProfileManagementService {
 
     var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
             () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
-    var conclaveUserOrg = conclaveService.getOrganisation(conclaveUser.getOrganisationId())
+    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
             .orElseThrow(() -> new ResourceNotFoundException(
                     format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
 

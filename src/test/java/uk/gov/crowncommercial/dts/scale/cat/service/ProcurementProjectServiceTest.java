@@ -154,7 +154,7 @@ class ProcurementProjectServiceTest {
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
 
-    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+    when(conclaveService.getOrganisationIdentity(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
             .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
                 .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
@@ -191,7 +191,7 @@ class ProcurementProjectServiceTest {
     // Verify
     verify(userProfileService).resolveBuyerUserProfile(PRINCIPAL);
     verify(userProfileService).resolveBuyerUserCompany(PRINCIPAL);
-    verify(conclaveService).getOrganisation(CONCLAVE_ORG_ID);
+    verify(conclaveService).getOrganisationIdentity(CONCLAVE_ORG_ID);
 
     var captor = ArgumentCaptor.forClass(ProcurementProject.class);
     verify(retryableTendersDBDelegate, times(1)).save(captor.capture());
@@ -215,7 +215,7 @@ class ProcurementProjectServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+    when(conclaveService.getOrganisationIdentity(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
             .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
                 .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
@@ -350,6 +350,7 @@ class ProcurementProjectServiceTest {
     event.setOcdsAuthorityName("ocds");
     event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
+    event.setUpdatedAt(Instant.now());
 
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
@@ -493,6 +494,7 @@ class ProcurementProjectServiceTest {
     event.setOcdsAuthorityName("ocds");
     event.setOcidPrefix("pfhb7i");
     event.setTenderStatus("planned");
+    event.setUpdatedAt(Instant.now());
     Set<ProcurementEvent> events = new HashSet<>();
     events.add(event);
 

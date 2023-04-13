@@ -97,6 +97,9 @@ class ProfileManagementServiceTest {
   @MockBean
   private EncryptionService encryptionService;
   
+  @MockBean
+  private TenderDBSupplierLinkService supplierLinkService;
+  
   /*
    * CON-1680-AC1(a)
    */
@@ -108,7 +111,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
         .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
 
@@ -129,7 +132,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID)).thenReturn(Optional.empty())
         .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
 
@@ -152,7 +155,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
         .thenReturn(Optional.of(ReturnCompanyData.builder()
@@ -186,7 +189,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
 
     var ex = assertThrows(ResourceNotFoundException.class,
         () -> profileManagementService.getUserRoles(USERID));
@@ -205,7 +208,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
         .thenReturn(Optional.of(SubUser.builder().
                 ssoCodeData(SSOCodeData.builder().ssoCode(Set.of(SSOCode.builder().ssoUserLogin(USERID).build())).build()).build()));
@@ -230,7 +233,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
         .thenReturn(Optional.of(ReturnCompanyData.builder()
@@ -256,7 +259,7 @@ class ProfileManagementServiceTest {
             List.of(ROLE_PERMISSION_INFO_BUYER, ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
         .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
@@ -282,7 +285,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
         .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
     when(conclaveService.extractUserPersonalContacts(any()))
@@ -307,7 +310,7 @@ class ProfileManagementServiceTest {
                 List.of(ROLE_PERMISSION_INFO_BUYER, ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
         .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
     when(conclaveService.extractUserPersonalContacts(any()))
@@ -332,7 +335,7 @@ class ProfileManagementServiceTest {
                 List.of(ROLE_PERMISSION_INFO_BUYER, ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
         .thenReturn(Optional.of(ReturnCompanyData.builder()
@@ -361,7 +364,7 @@ class ProfileManagementServiceTest {
                 List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
         .thenReturn(Optional.empty());
@@ -389,7 +392,7 @@ class ProfileManagementServiceTest {
                 List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
         .thenReturn(Optional.empty());
@@ -416,7 +419,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_SUPPLIER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveBuyerUserBySSOUserLogin(USERID))
         .thenReturn(Optional.of(SubUser.builder().ssoCodeData(SSO_CODE_DATA).build()));
@@ -440,7 +443,7 @@ class ProfileManagementServiceTest {
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
     when(conclaveService.getUserProfile(USERID)).thenReturn(Optional.of(userProfileResponseInfo));
-    when(conclaveService.getOrganisation(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
+    when(conclaveService.getOrganisationProfile(ORG_SYS_ID)).thenReturn(Optional.of(ORG));
     when(conclaveService.getOrganisationIdentifer(ORG)).thenReturn(ORG_IDENTIFIER);
     when(userProfileService.resolveSupplierData(USERID, ORG_IDENTIFIER))
         .thenReturn(Optional.of(ReturnCompanyData.builder()

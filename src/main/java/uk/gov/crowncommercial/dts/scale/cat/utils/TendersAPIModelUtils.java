@@ -8,6 +8,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -244,6 +245,18 @@ public class TendersAPIModelUtils {
 
   public static Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
     return null!=offsetDateTime?offsetDateTime.toInstant():null;
-
+  }
+  
+  public static OffsetDateTime getOffsetDateTimeFromInstant(Instant instant) {
+    return null != instant ? OffsetDateTime.ofInstant(instant, ZoneId.systemDefault()) : null;
+  }
+  
+  public static Map<String, SchemeType> validateSchemeType() {
+    var schemeMapping = new HashMap<String, SchemeType>();
+    schemeMapping.put("US-DUN", SchemeType.DUNS);
+    schemeMapping.put("GB-COH", SchemeType.COH);
+    schemeMapping.put("VAT", SchemeType.VAT);
+    schemeMapping.put("NHS", SchemeType.NHS);
+    return schemeMapping;
   }
 }
