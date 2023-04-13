@@ -82,5 +82,5 @@ public class Constants {
   public static final String COMPLETE_STATUS = "COMPLETE";
 
   public static final List<String> CLOSED_STATUS_LIST = Arrays.asList(CLOSED_STATUS.toLowerCase(), TerminationType.CANCELLED.getValue(),TerminationType.WITHDRAWN.getValue(),
-          TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS);
+          TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS.toLowerCase());
 }
