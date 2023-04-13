@@ -33,6 +33,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.Role
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -55,6 +56,10 @@ class TendersControllerTest {
   private ProfileManagementService profileManagementService;
   private JwtRequestPostProcessor validCATJwtReqPostProcessor;
   private JwtRequestPostProcessor validLDJwtReqPostProcessor;
+  private JaggaerAPIConfig jaggaerAPIConfig;
+
+  @MockBean
+  private ProcurementEventService procurementEventService;
 
   @MockBean
   private ProcurementProjectService procurementProjectService;
@@ -140,6 +145,7 @@ class TendersControllerTest {
         .userAction(UserActionEnum.EXISTED).organisationAction(OrganisationActionEnum.EXISTED)
         .roles(List.of(
             uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.BUYER)));
+    
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -98,6 +99,40 @@ public class ProcurementEventService implements EventService {
     //Added by RoweIT for Tenders API integration
     private static final String ADDITIONAL_INFO_PROCUREMENT_ROUTE = "Procurement Route";  
     private static final String ADDITIONAL_INFO_PROCUREMENT_ROUTE_TYPE = "5";  
+    
+    // Jaggaer tender status values
+    private static final String JAGGAER_STATUS_TO_BE_PUBLISHED = "To Be Published";
+    private static final String JAGGAER_STATUS_RUNNING = "Running";
+    private static final String JAGGAER_STATUS_TO_BE_EVALUATED = "To Be Evaluated";
+    private static final String JAGGAER_STATUS_TECHNICAL_EVALUATION = "Technical Evaluation";
+    private static final String JAGGAER_STATUS_COMMERCIAL_EVALUATION = "Commercial Evaluation";
+    private static final String JAGGAER_STATUS_FINAL_EVALUATION = "Final Evaluation";
+    private static final String JAGGAER_STATUS_CLOSED = "Closed";
+    private static final String JAGGAER_STATUS_FINAL_EVALUATION_PRE_AWARDED = "Final Evaluation - Pre-Awarded";
+    private static final String JAGGAER_STATUS_AWARDED = "Awarded";
+    private static final String JAGGAER_STATUS_AWARDED_TO_OFFLINE_RESPONSE = "Awarded to Offline Response";
+    private static final String JAGGAER_STATUS_NOT_AWARDED = "Not Awarded";
+    private static final String JAGGAER_STATUS_ROUND_CREATED_IN_NEW_RFQ = "Round Created in New RFQ";
+    private static final String JAGGAER_STATUS_SUSPENDED = "Suspended";
+    private static final String JAGGAER_STATUS_ENDED = "Ended";
+
+    
+    // Jaggaer tender status codes
+	private static final String JAGGAER_STATUS_CODE_TO_BE_PUBLISHED = "0";
+	private static final String JAGGAER_STATUS_CODE_RUNNING = "300";
+	private static final String JAGGAER_STATUS_CODE_TO_BE_EVALUATED = "400";
+	private static final String JAGGAER_STATUS_CODE_TECHNICAL_EVALUATION = "800";
+    private static final String JAGGAER_STATUS_CODE_COMMERCIAL_EVALUATION = "900";
+    private static final String JAGGAER_STATUS_CODE_FINAL_EVALUATION = "950";
+    private static final String JAGGAER_STATUS_CODE_CLOSED = "1200";
+    private static final String JAGGAER_STATUS_CODE_FINAL_EVALUATION_PRE_AWARDED = "975";
+    private static final String JAGGAER_STATUS_CODE_AWARDED = "500";
+    private static final String JAGGAER_STATUS_CODE_AWARDED_TO_OFFLINE_RESPONSE = "50";
+    private static final String JAGGAER_STATUS_CODE_NOT_AWARDED = "700";
+    private static final String JAGGAER_STATUS_CODE_ROUND_CREATED_IN_NEW_RFQ = "1800";
+    private static final String JAGGAER_STATUS_CODE_SUSPENDED = "1100";
+    private static final String JAGGAER_STATUS_CODE_ENDED = "1500";
+
 
     private final UserProfileService userProfileService;
     private final CriteriaService criteriaService;
@@ -1823,6 +1858,196 @@ public class ProcurementEventService implements EventService {
       return new CreateUpdateRfx(OperationCode.CREATE, rfx);
     }
     
+    /**
+    *
+    * EI-97 Add deltas endpoint to CAT service
+    * 
+    * Get Jaggaer project deltas from last update request
+    *
+    * @paramProcurementProject
+    * @paramSalesforceProjectTender
+    * @paramprincipal
+    * @returnCreateUpdateRfx
+    */
+    public List<Release> getProjectUpdatesByLastUpdateDate(@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final Date lastSuccessRun, 
+    									final String buyerCompanyId) {
+
+    	List<Release> updateList = jaggaerService.getRfxByLastUpdateDate(lastSuccessRun,buyerCompanyId).stream()
+    									.map(e -> {
+    										// Release
+    										Release r = new Release();
+    										
+    										r.setOcid(ocdsConfig.getAuthority() + '-' + ocdsConfig.getOcidPrefix() + '-' + e.getRfxSetting().getRfxReferenceCode());
+    										r.setId(e.getRfxSetting().getRfxReferenceCode());
+    										r.setDate(e.getRfxSetting().getPublishDate());
+    										
+    										OcdsTenderStatus ocdsStateMapping =getOcdsStateMapping(e.getRfxSetting().getStatusCode().toString(),
+    																					e.getRfxSetting().getStatus(),
+    																					null);
+    										r.setTag(ocdsStateMapping.getReleaseTag());
+    										r.setInitiationType(InitiationType.TENDER);
+    										
+    										// Tender1
+    										Tender1 t = new Tender1();
+    										t.setDescription(e.getRfxSetting().getShortDescription());
+    										t.setId(e.getRfxSetting().getRfxId());
+    										t.setStatus(ocdsStateMapping.getTenderStatus());
+    										Period1 tp = new Period1();
+    										tp.setEndDate(e.getRfxSetting().getCloseDate());
+    										t.setTenderPeriod(tp);
+    										r.setTender(t);
+    										
+    										// Planning / Milestone / Status & Type
+    										Planning1 p = new Planning1();
+    										Milestone1 m = new Milestone1();
+    										m.setStatus(ocdsStateMapping.getMilestoneStatus());
+    										m.setType(ocdsStateMapping.getMilestoneType());
+    										List<Milestone1> l = new ArrayList<Milestone1>();
+    										l.add(m);
+    										p.setMilestones(l);
+    										r.setPlanning(p);
+    										
+    										return r;    										
+    									})
+    									.collect(Collectors.toList());
+    	
+    	return updateList;
+
+    }
     
+    /**
+    *
+    * EI-97 Add deltas endpoint to CAT service
+    * 
+    * Get tender status OCDS mapping values
+    * 
+    * see doc "ES-States-MappingJaggaertoOCDStoSaleforce-220323-1058.pdf"
+    *
+    * @paramstatusCode
+    * @paramstatus
+    * @paramtenderPeriodEndDate
+    * @returnOcdsTenderStatus
+    */
+    private OcdsTenderStatus getOcdsStateMapping(final String statusCode, final String status, final Date tenderPeriodEndDate) {
+    	
+    	if (( status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_PUBLISHED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_PUBLISHED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.PLANNED)
+    				.releaseTag(ReleaseTag.PLANNING)
+    				.milestoneStatus(MilestoneStatus.SCHEDULED)
+    				.milestoneType(MilestoneType.PREPROCUREMENT)
+    				.build();    				
+    	}
+
+    	// TODO: Today < "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_RUNNING) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_RUNNING))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+    	// TODO: Today >= "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_EVALUATED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_EVALUATED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+    	// TODO: Today >= "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_TECHNICAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TECHNICAL_EVALUATION))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+    	// TODO: Today >= "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_COMMERCIAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_COMMERCIAL_EVALUATION))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_FINAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_FINAL_EVALUATION))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.COMPLETE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_CLOSED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_CLOSED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.UNSUCCESSFUL)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_FINAL_EVALUATION_PRE_AWARDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_FINAL_EVALUATION_PRE_AWARDED))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.PENDING)
+    				.releaseTag(ReleaseTag.AWARD)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_AWARDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_AWARDED))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.AWARD)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_AWARDED_TO_OFFLINE_RESPONSE) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_AWARDED_TO_OFFLINE_RESPONSE))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.AWARD)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_NOT_AWARDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_NOT_AWARDED))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.CANCELLED)
+    				.releaseTag(ReleaseTag.TENDERCANCELLATION)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_ROUND_CREATED_IN_NEW_RFQ) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_ROUND_CREATED_IN_NEW_RFQ))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.CANCELLED)
+    				.releaseTag(ReleaseTag.IMPLEMENTATION)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_SUSPENDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_SUSPENDED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.WITHDRAWN)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_ENDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_ENDED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.CANCELLED)
+    				.build();    				
+    	}
+
+		// no status determined
+		return OcdsTenderStatus.builder().build();
+    	
+    }
 
 }

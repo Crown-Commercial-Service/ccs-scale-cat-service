@@ -23,6 +23,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTen
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
 import java.util.Arrays;
@@ -47,6 +48,7 @@ public class TendersController extends AbstractRestController {
 
   private final ProfileManagementService profileManagementService;
   private final ProcurementProjectService procurementProjectService;
+  private final ProcurementEventService procurementEventService;
   private final JaggaerAPIConfig jaggaerAPIConfig;
 
   @GetMapping("/event-types")
@@ -124,10 +126,10 @@ public class TendersController extends AbstractRestController {
 
   @GetMapping("/projects/deltas")
   @TrackExecutionTime
-  public List<Release> getProjectsDelta(
-          @RequestParam(name = "lastSuccessRun", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final Date lastSuccessRun) {
-
-      log.info("getProjectsDelta for on behalf of principal: TBD ");
-      return Collections.emptyList();
+  public List<Release> getProjectsDeltas(
+          @RequestParam(name = "lastSuccessRun", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final Date lastSuccessRun,
+          final ApiKeyAuthToken authentication) {
+      
+      return procurementEventService.getProjectUpdatesByLastUpdateDate(lastSuccessRun, jaggaerAPIConfig.getAssistedProcurementId() );
   }
 }

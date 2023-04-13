@@ -67,6 +67,10 @@ data "aws_ssm_parameter" "jaggaer_esourcing_principal_email" {
   name = "/cat/${var.environment}/jaggaer_esourcing_principal_email"
 }
 
+data "aws_ssm_parameter" "jaggaer_assisted_procurement_id" {
+  name = "/cat/${var.environment}/jaggaer-assisted-procurement-id"
+}
+
 # Auth server / CII
 data "aws_ssm_parameter" "auth_server_jwk_set_uri" {
   name = "/cat/${var.environment}/auth-server-jwk-set-uri"
@@ -257,6 +261,7 @@ resource "cloudfoundry_app" "cat_service" {
     # ESourcing
     "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key.value
     "config.external.jaggaer.esourcing.principal-email" : data.aws_ssm_parameter.jaggaer_esourcing_principal_email.value
+    "config.external.jaggaer.assisted-procurement-id" : data.aws_ssm_parameter.jaggaer_assisted_procurement_id.value
 
     # Rollbar Logs
     "config.rollbar.access-token": data.aws_ssm_parameter.rollbar_access_token.value
