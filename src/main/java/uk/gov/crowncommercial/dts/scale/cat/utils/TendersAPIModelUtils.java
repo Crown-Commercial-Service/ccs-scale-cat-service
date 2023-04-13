@@ -249,16 +249,18 @@ public class TendersAPIModelUtils {
 
   }
   
-  // Added by RoweIT for Tenders API work
   public SalesforceProjectTender200Response buildSalesforceProjectTender200Response(
-		  final String tenderReferenceCode, final String rfxReferenceCode) {
+		  final String tenderReferenceCode, final String rfxReferenceCode,
+		  final String eventId, final Integer procurementId) {
 	    
-	  var SalesforceProjectTender200Response = new SalesforceProjectTender200Response();
+	  var salesforceProjectTender200Response = new SalesforceProjectTender200Response();
 	    
-	    SalesforceProjectTender200Response.setTenderReferenceCode(tenderReferenceCode);;
-	    SalesforceProjectTender200Response.setRfxReferenceCode(rfxReferenceCode);;
+	  salesforceProjectTender200Response.setTenderReferenceCode(tenderReferenceCode);
+	  salesforceProjectTender200Response.setRfxReferenceCode(rfxReferenceCode);
+	  salesforceProjectTender200Response.setEventId(eventId);
+	  salesforceProjectTender200Response.setProcurementID(procurementId);
 	    
-	    return SalesforceProjectTender200Response;
+	    return salesforceProjectTender200Response;
 	  }
   
   public String getPrincipalFromApiKey(final ApiKeyAuthToken apiKeyAuthToken) {

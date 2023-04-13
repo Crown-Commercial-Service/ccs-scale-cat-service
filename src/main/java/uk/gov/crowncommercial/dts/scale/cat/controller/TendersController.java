@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 
 import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
@@ -46,6 +47,7 @@ public class TendersController extends AbstractRestController {
 
   private final ProfileManagementService profileManagementService;
   private final ProcurementProjectService procurementProjectService;
+  private final JaggaerAPIConfig jaggaerAPIConfig;
 
   @GetMapping("/event-types")
   @TrackExecutionTime
@@ -113,15 +115,10 @@ public class TendersController extends AbstractRestController {
   @PostMapping("/projects/salesforce")
   @TrackExecutionTime
 
-  public SalesforceProjectTender200Response createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender,
-		  final ApiKeyAuthToken authentication) {
+  public SalesforceProjectTender200Response createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender) {
 	  
-	  String principal = (String) authentication.getPrincipal();
-	  
-	  log.debug("createProcurementCase() with principal -> {}", principal);
-
-	 // 
-	 return procurementProjectService.createFromSalesforceDetails(projectTender,principal);
+      log.info("createProcurementCase() called");
+      return procurementProjectService.createFromSalesforceDetails(projectTender); 
 	    
   }
 
