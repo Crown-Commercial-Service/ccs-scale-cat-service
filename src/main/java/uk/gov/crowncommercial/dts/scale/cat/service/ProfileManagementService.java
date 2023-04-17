@@ -359,9 +359,7 @@ public class ProfileManagementService {
             .getSsoCodeData().getSsoCode().stream().findFirst().orElseThrow().getSsoUserLogin())) {
 
       // CON-1682-AC8: Update supplier super-user
-      createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-          conclaveUserContacts, CompanyType.SELLER,
-          Optional.of(jaggaerSupplierData.getReturnCompanyInfo()));
+      superUserBuild(conclaveUser, conclaveUserOrg, conclaveUserContacts, createUpdateCompanyDataBuilder, jaggaerSupplierData);
       log.debug("Updating supplier super-user company: [{}]", conclaveUser.getUserName());
       jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
     } else {
@@ -372,9 +370,7 @@ public class ProfileManagementService {
                   .stream().findFirst().orElseThrow().getSsoUserLogin()))
           .findFirst();
       if(ssoCodeDataExists(jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData())) {
-        createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-                conclaveUserContacts, CompanyType.SELLER,
-                Optional.of(jaggaerSupplierData.getReturnCompanyInfo()));
+        superUserBuild(conclaveUser, conclaveUserOrg, conclaveUserContacts, createUpdateCompanyDataBuilder, jaggaerSupplierData);
       }
       // CON-1682-AC16: Update supplier sub-user
       createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
@@ -388,6 +384,12 @@ public class ProfileManagementService {
     }
     registerUserResponse.userAction(UserActionEnum.EXISTED);
     registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
+  }
+
+  private void superUserBuild(UserProfileResponseInfo conclaveUser, OrganisationProfileResponseInfo conclaveUserOrg, UserContactInfoList conclaveUserContacts, CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder, ReturnCompanyData jaggaerSupplierData) {
+    createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+            conclaveUserContacts, CompanyType.SELLER,
+            Optional.of(jaggaerSupplierData.getReturnCompanyInfo()));
   }
 
   private void createUpdateSubUserHelper(
