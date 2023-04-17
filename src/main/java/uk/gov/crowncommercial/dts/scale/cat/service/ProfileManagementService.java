@@ -200,7 +200,7 @@ public class ProfileManagementService {
     } else if (conclaveRoles.contains(SUPPLIER) && jaggaerRoles.isEmpty()) {
 
       var primaryOrgId = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
-      
+
       // Validate DUNS-Number
       if (!conclaveUserOrg.getIdentifier().getScheme().equalsIgnoreCase("US-DUN")) {
         var validDunsNumber = conclaveUserOrg.getAdditionalIdentifiers().stream()
@@ -221,7 +221,7 @@ public class ProfileManagementService {
         orgMapping =
                 retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(primaryOrgId);
       }
-      
+
       // Now searched by Supplier mapping table CAS-665
       if (orgMapping.isEmpty()) {
         try {
@@ -243,7 +243,7 @@ public class ProfileManagementService {
 
       if (orgMapping.isPresent()) {
         var jaggaerSupplierOrgId = orgMapping.get().getExternalOrganisationId();
-        
+
         // CON-1682-AC10: Create Jaggaer Supplier sub-user
         createUpdateSupplierSubUser(String.valueOf(jaggaerSupplierOrgId), createUpdateCompanyDataBuilder,
             conclaveUser, conclaveUserOrg, conclaveUserContacts, userId, registerUserResponse);
@@ -257,13 +257,13 @@ public class ProfileManagementService {
           createUpdateSupplierSubUser(superUser.get().getReturnCompanyInfo().getBravoId(),
               createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg, conclaveUserContacts,
               userId, registerUserResponse);
-          
+
           retryableTendersDBDelegate.save(OrganisationMapping.builder()
               .organisationId(primaryOrgId)
               .externalOrganisationId(
                   Integer.parseInt(superUser.get().getReturnCompanyInfo().getBravoId()))
               .createdAt(Instant.now()).createdBy(conclaveUser.getUserName()).build());
-          
+
         } else {
           // CON-1682-AC9: Supplier is first user in company - create as super-user
           createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
@@ -292,7 +292,7 @@ public class ProfileManagementService {
     registerUserResponse.roles(returnRoles);
     return registerUserResponse;
   }
-  
+
   private void createUpdateSupplierSubUser(final String jaggaerSupplierOrgId,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
       final UserProfileResponseInfo conclaveUser, OrganisationProfileResponseInfo conclaveUserOrg,
@@ -305,7 +305,7 @@ public class ProfileManagementService {
         jaggaerAPIConfig.getDefaultSupplierRightsProfile());
     log.debug("Creating supplier sub-user: [{}]", userId);
     jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
-    
+
     registerUserResponse.userAction(UserActionEnum.CREATED);
     registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
   }
@@ -384,7 +384,7 @@ public class ProfileManagementService {
     registerUserResponse.userAction(UserActionEnum.EXISTED);
     registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
   }
-  
+
   private void createUpdateSubUserHelper(
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyRequestBuilder,
       final UserProfileResponseInfo conclaveUser,
@@ -409,7 +409,7 @@ public class ProfileManagementService {
       subUserBuilder.division("Division");
       subUserBuilder.ssoCodeData(buildSSOCodeData(conclaveUser.getUserName()));
     }
-    
+
     var conclaveRoles = new HashSet<RolesEnum>();
     populateConclaveRoles(conclaveRoles, conclaveUser);
     var isBuyer = conclaveRoles.contains(RolesEnum.BUYER);
@@ -422,22 +422,16 @@ public class ProfileManagementService {
             .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId)
                 .extCode(isBuyer ? null : conclaveService.getOrganisationIdentifer(conclaveUserOrg))
                 .extUniqueCode(isBuyer ? null : conclaveUserOrg.getIdentifier().getId()).build())
-            .build());
-
-        if(!existingSubUser.isPresent())
-          createUpdateCompanyRequestBuilder.subUsers(
+            .build())
+        .subUsers(
             subUsersBuilder
-                .subUsers(Set.of(getBuildSubUser(conclaveUser, rightsProfile, userPersonalContacts, subUserBuilder)))
+                .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
+                    .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
+                    .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
+                    .phoneNumber(
+                        Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
+                    .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build()))
                 .build());
-  }
-
-  private static SubUser getBuildSubUser(UserProfileResponseInfo conclaveUser, String rightsProfile, ConclaveService.UserContactPoints userPersonalContacts, SubUser.SubUserBuilder subUserBuilder) {
-    return subUserBuilder.name(conclaveUser.getFirstName())
-            .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
-            .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
-            .phoneNumber(
-                    Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
-            .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build();
   }
 
   private void createUpdateSuperUserHelper(
@@ -492,7 +486,7 @@ public class ProfileManagementService {
     conclaveUser.getDetail().getRolePermissionInfo().stream().map(RolePermissionInfo::getRoleKey)
         .filter(conclaveBuyerSupplierRoleKeys::containsKey)
         .forEach(rk -> conclaveRoles.add(conclaveBuyerSupplierRoleKeys.get(rk)));
-    
+
     //CAS-1048
     if (Objects.nonNull(conclaveUser.getDetail().getUserGroups()))
       conclaveUser.getDetail().getUserGroups().stream().map(GroupAccessRole::getAccessRole)
@@ -591,7 +585,7 @@ public class ProfileManagementService {
     notificationService.sendEmail(userRegistrationNotificationConfig.getTemplateId(),
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
   }
-  
+
   private void sendSupplierRegistrationInvalidDunsNotification(
       final OrganisationProfileResponseInfo conclaveUserOrg) {
 
