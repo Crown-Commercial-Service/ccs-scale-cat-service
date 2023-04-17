@@ -62,6 +62,7 @@ public class JaggaerAPIConfig {
   private Map<String, String> preAward;
   private Map<String, String> completeTechnical;
   private Map<String, String> apiDefaults;
+  private Map<String, String> esourcing;
 
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;
