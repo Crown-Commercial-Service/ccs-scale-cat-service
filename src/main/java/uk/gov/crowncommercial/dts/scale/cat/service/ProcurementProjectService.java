@@ -703,11 +703,8 @@ public class ProcurementProjectService {
    */
   public SalesforceProjectTender200Response createFromSalesforceDetails(final SalesforceProjectTender projectTender) {
 
-	  //String principal = projectTender.getRfx().getOwnerUserLogin();
-	  String principal = "peter.simpson@roweit.co.uk";
-	  var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
-              .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
-              .getUserId();
+	  String principal = projectTender.getRfx().getOwnerUserLogin();
+
       var jaggaerBuyerCompanyId = jaggaerAPIConfig.getAssistedProcurementId();
 	  
       var projectType = jaggaerAPIConfig.getApiDefaults().get("project-type");
@@ -784,7 +781,7 @@ public class ProcurementProjectService {
 
       log.info("Procurement project: {}", procurementProject.toString());
 
-	  var organisationIdentifier = jaggaerAPIConfig.getApiDefaults().get("cas-org-id");
+	  var organisationIdentifier = jaggaerAPIConfig.getAssistedProcurementOrgId();
 	  log.info("organisationIdentifier: {}", organisationIdentifier);
       
 	  var organisationMapping =

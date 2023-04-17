@@ -24,6 +24,7 @@ public class JaggaerAPIConfig {
   private String headerValueInvalidContentType;
   private String selfServiceId;
   private String assistedProcurementId;
+  private String assistedProcurementOrgId;
   private String defaultBuyerRightsProfile;
   private String defaultSupplierRightsProfile;
   private Integer timeoutDuration;
@@ -61,8 +62,8 @@ public class JaggaerAPIConfig {
   private Map<String, String> preAward;
   private Map<String, String> completeTechnical;
   private Map<String, String> apiDefaults;
-  private Map<String, String> esourcing;
   private Map<String, String> getRfxByLastUpdateDateList;
+
 
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;
