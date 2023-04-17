@@ -54,6 +54,10 @@ data "aws_ssm_parameter" "jaggaer_self_service_id" {
   name = "/cat/${var.environment}/jaggaer-self-service-id"
 }
 
+data "aws_ssm_parameter" "jaggaer_assisted_procurement_org_id" {
+  name = "/cat/${var.environment}/jaggaer-assisted-procurement-org-id"
+}
+
 data "aws_ssm_parameter" "jaggaer_itt_template_id" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/jaggaer-itt-template-id"
 }
@@ -175,6 +179,7 @@ data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
 # ESourcing/API Gateway authn/authz
 data "aws_ssm_parameter" "auth_api_key" {
   name = "/cat/${var.environment}/auth/api-key"
+}
 
 # RollBar Logs
 data "aws_ssm_parameter" "rollbar_access_token" {
@@ -207,6 +212,7 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.jaggaer.self-service-id" : data.aws_ssm_parameter.jaggaer_self_service_id.value
     "config.external.jaggaer.createRfx.templateId" : data.aws_ssm_parameter.jaggaer_itt_template_id.value
     "config.external.jaggaer.createProject.templateId" : data.aws_ssm_parameter.jaggaer_project_template_id.value
+    "config.external.jaggaer.assisted-procurement-org-id" : data.aws_ssm_parameter.jaggaer_assisted_procurement_org_id.value
     
     # Auth server / CII
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
@@ -249,6 +255,7 @@ resource "cloudfoundry_app" "cat_service" {
     "config.external.notification.user-registration.target-email": data.aws_ssm_parameter.gov_uk_notify_user_reg_target_email.value
     
     # ESourcing
+    "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key
     "config.auth.apikey.key": data.aws_ssm_parameter.auth_api_key
 
     # Rollbar Logs
