@@ -422,16 +422,22 @@ public class ProfileManagementService {
             .companyInfo(CompanyInfo.builder().bravoId(jaggaerOrgId)
                 .extCode(isBuyer ? null : conclaveService.getOrganisationIdentifer(conclaveUserOrg))
                 .extUniqueCode(isBuyer ? null : conclaveUserOrg.getIdentifier().getId()).build())
-            .build())
-        .subUsers(
+            .build());
+
+        if(!existingSubUser.isPresent())
+          createUpdateCompanyRequestBuilder.subUsers(
             subUsersBuilder
-                .subUsers(Set.of(subUserBuilder.name(conclaveUser.getFirstName())
-                    .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
-                    .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
-                    .phoneNumber(
-                        Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
-                    .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build()))
+                .subUsers(Set.of(getBuildSubUser(conclaveUser, rightsProfile, userPersonalContacts, subUserBuilder)))
                 .build());
+  }
+
+  private static SubUser getBuildSubUser(UserProfileResponseInfo conclaveUser, String rightsProfile, ConclaveService.UserContactPoints userPersonalContacts, SubUser.SubUserBuilder subUserBuilder) {
+    return subUserBuilder.name(conclaveUser.getFirstName())
+            .surName(conclaveUser.getLastName()).login(conclaveUser.getUserName())
+            .email(conclaveUser.getUserName()).rightsProfile(rightsProfile)
+            .phoneNumber(
+                    Optional.ofNullable(userPersonalContacts.getPhone()).orElse("07123456789"))
+            .language("en_GB").timezoneCode("Europe/London").timezone("UTC").build();
   }
 
   private void createUpdateSuperUserHelper(
