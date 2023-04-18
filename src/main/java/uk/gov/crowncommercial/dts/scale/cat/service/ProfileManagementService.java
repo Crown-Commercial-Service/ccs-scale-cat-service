@@ -370,11 +370,10 @@ public class ProfileManagementService {
               && Objects.equals(conclaveUser.getUserName(), subUser.getSsoCodeData().getSsoCode()
                   .stream().findFirst().orElseThrow().getSsoUserLogin()))
           .findFirst();
-      if(ssoCodeDataExists(jaggaerSupplierData.getReturnCompanyInfo().getSsoCodeData())) {
         createUpdateSuperUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
                 conclaveUserContacts, CompanyType.SELLER,
                 Optional.of(jaggaerSupplierData.getReturnCompanyInfo()));
-      }
+
       // CON-1682-AC16: Update supplier sub-user
       createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
           conclaveUserContacts, jaggaerSupplierSubUser,
