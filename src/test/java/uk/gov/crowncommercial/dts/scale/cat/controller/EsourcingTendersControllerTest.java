@@ -37,7 +37,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceRfx;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RfxTemplateMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;

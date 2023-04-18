@@ -1779,11 +1779,11 @@ public class ProcurementEventService implements EventService {
       var jaggaerBuyerCompanyId =  jaggaerAPIConfig.getAssistedProcurementId();
       var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
 
-      // Retrieve template reference code from rfx_template_mapping table
-	  log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
-
+	  log.debug("call findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber() with arg {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
       Optional<RfxTemplateMapping> rfxTemplateMapping = 
-         		retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+         		retryableTendersDBDelegate.findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber(
+         										projectTender.getRfx().getFrameworkRMNumber(), 
+         										projectTender.getRfx().getFrameworkLotNumber());
       log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
 
       String rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();

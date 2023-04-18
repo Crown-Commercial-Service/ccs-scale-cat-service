@@ -13,7 +13,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@FieldDefaults(level = AccessLevel.PUBLIC)
 @EqualsAndHashCode
 public class RfxTemplateMapping {
 
@@ -28,4 +28,25 @@ public class RfxTemplateMapping {
   @Column(name = "rfx_short_description")
   String rfxShortDescription;
 
+  @Column(name = "commercial_agreement_number")
+  String commercialAgreementNumber;
+
+  @Column(name = "lot_number")
+  String lotNumber;
+  
+  public void templateMapping(String rfxReferenceCode, String rfxShortDescription, String commercialAgreementNumber, String lotNumber) {
+	  this.rfxReferenceCode=rfxReferenceCode;
+	  this.rfxShortDescription=rfxShortDescription;
+	  this.commercialAgreementNumber= commercialAgreementNumber;
+	  this.lotNumber=lotNumber;
+  }
+
+  @Override
+  public String toString() {
+	  return "Rfx Template Mapping [rfxReferenceCode=" + rfxReferenceCode + ", rfxShortDescription=" + 
+  rfxShortDescription + ", commercialAgreementNumber=" + commercialAgreementNumber + ", lotNumber=" + lotNumber;
+	 
+  }
+  
+  
 }

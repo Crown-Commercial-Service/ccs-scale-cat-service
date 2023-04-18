@@ -62,7 +62,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxTemplateMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RfxTemplateMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**

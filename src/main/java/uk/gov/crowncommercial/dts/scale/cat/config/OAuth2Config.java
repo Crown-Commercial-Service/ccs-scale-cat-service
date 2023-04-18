@@ -51,6 +51,7 @@ public class OAuth2Config extends WebSecurityConfigurerAdapter {
     	.authorizeRequests(authz ->
       authz
         // TODO (pillingworth, 2023-03-01) better to apply at method/class level using RolesAllowed annotation than applying globally with wildcards?
+        .antMatchers("/tenders/projects/rfxtemplatemapping/**").hasAuthority(Authorities.ESOURCING_ROLE)
         .antMatchers("/tenders/projects/salesforce").hasAuthority(Authorities.ESOURCING_ROLE)
         .antMatchers("/tenders/projects/deltas").hasAuthority(Authorities.ESOURCING_ROLE)
         .antMatchers("/tenders/projects/*/events/*/termination").hasAnyAuthority(

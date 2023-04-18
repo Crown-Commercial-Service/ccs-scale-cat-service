@@ -3,11 +3,13 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import uk.gov.crowncommercial.dts.scale.cat.auth.apikey.ApiKeyAuthToken;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -17,12 +19,16 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxTemplateMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Release;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.SalesforceProjectTender200Response;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+import uk.gov.crowncommercial.dts.scale.cat.service.csvfileutils.ResponseMessage;
+import uk.gov.crowncommercial.dts.scale.cat.service.csvfileutils.RfxTemplateMappingCSVService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.CSVFileUtils;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 
@@ -50,6 +56,9 @@ public class TendersController extends AbstractRestController {
   private final ProcurementProjectService procurementProjectService;
   private final ProcurementEventService procurementEventService;
   private final JaggaerAPIConfig jaggaerAPIConfig;
+  
+  @Autowired
+  RfxTemplateMappingCSVService fileService;
 
   @GetMapping("/event-types")
   @TrackExecutionTime
@@ -132,4 +141,47 @@ public class TendersController extends AbstractRestController {
       
       return procurementEventService.getProjectUpdatesByLastUpdateDate(lastSuccessRun, jaggaerAPIConfig.getAssistedProcurementId() );
   }
+  
+  @GetMapping("/projects/rfxtemplatemapping/mappings")
+  @TrackExecutionTime
+  public ResponseEntity<List<RfxTemplateMapping>> getAllTemplateMappings(final ApiKeyAuthToken authentication) {
+    try {
+      List<RfxTemplateMapping> mappings = fileService.getAllTemplateMappings();
+      log.info("mappings: {}",mappings);
+
+      if (mappings.isEmpty()) {
+          log.info("mappings.IsEmpty() = TRUE");
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+      }
+
+      log.info("mappings: {}",mappings);
+
+      return new ResponseEntity<>(mappings, HttpStatus.OK);
+    } catch (Exception e) {
+      return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  
+  @PostMapping("/projects/rfxtemplatemapping/upload")
+  @TrackExecutionTime
+  public ResponseEntity<ResponseMessage> uploadFile(@RequestParam("file") MultipartFile file,final ApiKeyAuthToken authentication) {
+    String message = "";
+
+    if (CSVFileUtils.hasCSVFormat(file)) {
+      try {
+        fileService.save(file);
+
+        message = "Uploaded the file successfully: " + file.getOriginalFilename();
+        return ResponseEntity.status(HttpStatus.OK).body(new ResponseMessage(message));
+      } catch (Exception e) {
+        message = "Could not upload the file: " + file.getOriginalFilename() + "!";
+        return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(new ResponseMessage(message));
+      }
+    }
+
+    message = "Please upload a csv file!";
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseMessage(message));
+  }
+
+
 }

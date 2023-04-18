@@ -41,7 +41,6 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierSto
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.JaggaerSupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;

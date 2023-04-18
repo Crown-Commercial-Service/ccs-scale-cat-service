@@ -25,7 +25,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxTemplateMapping;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
 
 /**
  *
