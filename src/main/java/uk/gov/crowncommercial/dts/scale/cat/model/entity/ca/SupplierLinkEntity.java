@@ -13,6 +13,7 @@ import javax.persistence.*;
 public class SupplierLinkEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "supplier_link_id")
     private Integer supplierLinkId;
     @Column(name = "ppg_id")
     private String ppgId;
