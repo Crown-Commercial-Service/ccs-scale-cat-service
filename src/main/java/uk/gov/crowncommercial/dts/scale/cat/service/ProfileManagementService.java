@@ -380,10 +380,8 @@ public class ProfileManagementService {
           conclaveUserContacts, jaggaerSupplierSubUser,
           jaggaerSupplierData.getReturnCompanyInfo().getBravoId(),
           jaggaerAPIConfig.getDefaultSupplierRightsProfile());
-
       log.debug("Updating supplier sub-user: [{}]", conclaveUser.getUserName());
       jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
-
     }
     registerUserResponse.userAction(UserActionEnum.EXISTED);
     registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
