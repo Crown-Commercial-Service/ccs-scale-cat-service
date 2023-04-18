@@ -44,6 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.service.WebclientWrapper;
+import uk.gov.crowncommercial.dts.scale.cat.service.csvfileutils.RfxTemplateMappingCSVService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -84,6 +85,9 @@ class EsourcingTendersControllerTest {
   
   @MockBean
   private RfxTemplateMappingRepo rfxTemplateMappingRepo;
+  
+  @MockBean
+  private RfxTemplateMappingCSVService rfxTemplateMappingCSVService;
 
   @MockBean
   private WebclientWrapper webclientWrapper;

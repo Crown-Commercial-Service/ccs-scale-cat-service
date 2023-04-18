@@ -36,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+import uk.gov.crowncommercial.dts.scale.cat.service.csvfileutils.RfxTemplateMappingCSVService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -63,6 +64,10 @@ class TendersControllerTest {
 
   @MockBean
   private ProcurementProjectService procurementProjectService;
+  
+  @MockBean
+  private RfxTemplateMappingCSVService rfxTemplateMappingCSVService;
+
 
   @BeforeEach
   void beforeEach() {
