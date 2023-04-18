@@ -29,6 +29,7 @@
 		<logger name="uk.gov.crowncommercial.dts.scale" level="DEBUG"
 			additivity="false">
 			<appender-ref ref="ROLLBAR" />
+			<appender-ref ref="CONSOLE" />
 		</logger>
 	</springProfile>
 
