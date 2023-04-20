@@ -722,7 +722,7 @@ public class ProcurementProjectService {
       Tender tender;
       var operationCode = OperationCode.CREATEUPDATE;
  
-      if (projectTender.getTenderReferenceCode().isEmpty()) {
+      if (projectTender.getTenderReferenceCode() != null && projectTender.getTenderReferenceCode().isEmpty()) {
  
     	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
 
