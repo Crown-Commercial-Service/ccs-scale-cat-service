@@ -117,11 +117,11 @@ public class TendersController extends AbstractRestController {
   @PostMapping("/projects/salesforce")
   @TrackExecutionTime
 
-  public SalesforceProjectTender200Response createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender) {
+  public ResponseEntity<SalesforceProjectTender200Response> createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender) {
 	  
       log.info("createProcurementCase() called");
-      return procurementProjectService.createFromSalesforceDetails(projectTender); 
-	    
+      return ResponseEntity.status(HttpStatus.CREATED).body(procurementProjectService.createFromSalesforceDetails(projectTender));
+      
   }
 
   @GetMapping("/projects/deltas")
