@@ -27,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import uk.gov.crowncommercial.dts.scale.cat.auth.Authorities;
@@ -73,13 +74,14 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
         ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class,EventTransitionService.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
+@ActiveProfiles("test")
 class EsourcingProcurementProjectServiceTest {
 
   private static final String PRINCIPAL = "peter.simpson@roweit.co.uk";
   private static final String SHORT_DESCRIPTION = "Project for Provision of Face Masks";
   private static final String CA_NUMBER = "RM12345";
   private static final String LOT_NUMBER = "Lot 209";
-  private static final String TEMPLATE_REFERENCE_CODE="itt_609";
+  private static final String TEMPLATE_REFERENCE_CODE="project_609";
   private static final String RFX_ID = "1";
   private static final String RFX_REFERENCE_CODE = "itt_9899";
   private static final String TENDER_CODE = "tender_0001";
@@ -109,11 +111,14 @@ class EsourcingProcurementProjectServiceTest {
   private static final String JAGGAER_BUYER_COMPANY_ID ="51435";
   private static final String CONCLAVE_ORG_ID = "GB-COH-05684804"; // Internal PPG ID
 
+  private static final SalesforceRfx SALESFORCE_RFX = new SalesforceRfx();
+  private static final SalesforceProjectTender SALESFORCE_PROJECT_TENDER = new SalesforceProjectTender();
+
   private static final  BuyerCompany BUYER_COMPANY = BuyerCompany.builder().id(JAGGAER_BUYER_COMPANY_ID).build();
   private static final  OwnerUser OWNER_USER = OwnerUser.builder().login(OWNER_USER_LOGIN).build();
 
   private static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder()
-		  .id(2)
+		  .id(1)
 	      .externalOrganisationId(Integer.valueOf(JAGGAER_BUYER_COMPANY_ID))
 	      .organisationId(CONCLAVE_ORG_ID).build();
 
@@ -151,7 +156,7 @@ class EsourcingProcurementProjectServiceTest {
           		.rfiFlag(RFI_FLAG)
           		.value(Integer.valueOf(VALUE))
   				.templateReferenceCode(TEMPLATE_REFERENCE_CODE)
-  				.tenderReferenceCode("1")	// was project.getExternalReferenceId()
+  				.tenderReferenceCode(TENDER_REF_CODE)	// was project.getExternalReferenceId()
                 .buyerCompany(BUYER_COMPANY)
                 .ownerUser(OWNER_USER)
                 .rfxType(RFX_TYPE)
@@ -169,8 +174,6 @@ class EsourcingProcurementProjectServiceTest {
             .rfxAdditionalInfoList(rfxAdditionalInfoList)
             .build();
   
-  private static final SalesforceRfx SALESFORCE_RFX = new SalesforceRfx();
-  private static final SalesforceProjectTender SALESFORCE_PROJECT_TENDER = new SalesforceProjectTender();
   
   private static final Optional<SubUser> JAGGAER_USER = Optional
 	      .of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).name(BUYER_USER_NAME).build());
@@ -200,8 +203,8 @@ class EsourcingProcurementProjectServiceTest {
   @MockBean
   private AgreementsService agreementsService;
 
-//  @MockBean
-//  private SalesforceProjectTender200Response salesforceProjectTender200Response;
+  @MockBean
+  private SalesforceProjectTender200Response salesforceProjectTender200Response;
 
   @MockBean
   private EventTransitionService eventTransitionService;
@@ -261,7 +264,7 @@ class EsourcingProcurementProjectServiceTest {
   
   @Test
   void testCreateFromSalesForceDetails() throws Exception {
-	  
+		
 	String key = "jgkepi7df-890g7s-8g7usidfgpoid7yf";
     when(apiKeyDetailsProvider.findDetailsByKey(key)).thenReturn(Optional
             .of(ApiKeyDetails.builder().key(key)
@@ -285,12 +288,11 @@ class EsourcingProcurementProjectServiceTest {
     var createUpdateRfx = new CreateUpdateRfx(OperationCode.CREATE, rfx);
  
     var procurementProject = ProcurementProject.builder()
-        .caNumber(CA_NUMBER).lotNumber(LOT_NUMBER)
+        .id(PROC_PROJECT_ID).caNumber(CA_NUMBER).lotNumber(LOT_NUMBER)
         .externalProjectId(TENDER_CODE).externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME)
         .createdBy(key).createdAt(Instant.now()).updatedBy(key).updatedAt(Instant.now())
         .procurementEvents(Set.of(ProcurementEvent.builder().eventType("FC").id(1).build()))
         .build();
-    procurementProject.setId(PROC_PROJECT_ID);
     
     var procurementEvent = ProcurementEvent.builder()
     		.id(PROC_PROJECT_ID)
@@ -299,19 +301,10 @@ class EsourcingProcurementProjectServiceTest {
     		.project(procurementProject)
     		.build();
 
-//    var eventSummary = new EventSummary();
-//    eventSummary.setId(EVENT_OCID);
-    
-//    var salesforceProjectTender200Response = new SalesforceProjectTender200Response();
-//    salesforceProjectTender200Response.setRfxReferenceCode(CA_NUMBER);
-//    salesforceProjectTender200Response.setTenderReferenceCode(TENDER_REF_CODE);
-	var salesforceProjectTender200Response =  
-			tendersAPIModelUtils.buildSalesforceProjectTender200Response(TENDER_REF_CODE,RFX_REFERENCE_CODE, EVENT_ID, PROC_PROJECT_ID);
-
     // Mock behaviours
     when(retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(CA_NUMBER + "/" + LOT_NUMBER))
     	.thenReturn(Optional.of(RFX_TEMP_MAPPING));
-    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(CONCLAVE_ORG_ID))
+    when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(any(String.class)))
     	.thenReturn(Optional.of(ORG_MAPPING));
     when(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get("endpoint"))
             .bodyValue(any(CreateUpdateProject.class)).retrieve()
@@ -327,29 +320,19 @@ class EsourcingProcurementProjectServiceTest {
         .thenReturn(procurementProject);
     when(retryableTendersDBDelegate.save(any(ProcurementEvent.class)))
     	.thenReturn(procurementEvent);
+    when(retryableTendersDBDelegate.findProcurementProjectById(any(Integer.class)))
+    	.thenReturn(Optional.of(procurementProject));
     when(procurementEventService.createSalesforceRfxRequest(procurementProject, SALESFORCE_PROJECT_TENDER, PRINCIPAL))
         .thenReturn(createUpdateRfx);
     when(userProfileService.resolveBuyerUserProfile(any(String.class)))
     	.thenReturn(JAGGAER_USER);
 
-    //TODO: generates Null Pointer exception
-    //var salesforceProjectTender = procurementProjectService.createFromSalesforceDetails(SALESFORCE_PROJECT_TENDER);
+    
+    var salesforceProjectTender200Response = procurementProjectService.createFromSalesforceDetails(SALESFORCE_PROJECT_TENDER);
 
     // Assert
-    //assertEquals(RFX_REFERENCE_CODE, salesforceProjectTender.getRfxReferenceCode());
-    //assertEquals(TENDER_REF_CODE, salesforceProjectTender.getTenderReferenceCode());
+    assertEquals(RFX_REFERENCE_CODE, salesforceProjectTender200Response.getRfxReferenceCode());
+    assertEquals(TENDER_REF_CODE, salesforceProjectTender200Response.getTenderReferenceCode());
 
-
-    // Verify
-//    var captor = ArgumentCaptor.forClass(ProcurementProject.class);
-//    verify(retryableTendersDBDelegate, times(1)).save(captor.capture());
-//    var capturedProcProject = captor.getValue();
-//    assertEquals(CA_NUMBER, capturedProcProject.getCaNumber());
-//    assertEquals(LOT_NUMBER, capturedProcProject.getLotNumber());
-//    assertEquals(ORG_MAPPING, capturedProcProject.getOrganisationMapping());
-//    assertEquals(PRINCIPAL, capturedProcProject.getCreatedBy());
-//    assertEquals(PRINCIPAL, capturedProcProject.getUpdatedBy());
-
-    //verify(procurementEventService).createEvent(PROC_PROJECT_ID, CREATE_EVENT, null, PRINCIPAL);
   }
 }

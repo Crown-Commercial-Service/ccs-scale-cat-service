@@ -182,7 +182,7 @@ class EsourcingTendersControllerTest {
   }
   
   @Test
-  void createProjectFromSalesforce_200_OK() throws Exception {
+  void createProjectFromSalesforce_201_OK() throws Exception {
 
 	String key = "jgkepi7df-890g7s-8g7usidfgpoid7yf";
     when(apiKeyDetailsProvider.findDetailsByKey(key)).thenReturn(Optional
@@ -201,7 +201,7 @@ class EsourcingTendersControllerTest {
             .header("x-api-key", key)
             .contentType(APPLICATION_JSON)
            .content(objectMapper.writeValueAsString(salesforceProjectTender)))
-        .andDo(print()).andExpect(status().isOk())
+        .andDo(print()).andExpect(status().isCreated())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.tenderReferenceCode").value(TENDER_REF_CODE))
         .andExpect(jsonPath("$.rfxReferenceCode").value(RFX_REFERENCE_CODE));
