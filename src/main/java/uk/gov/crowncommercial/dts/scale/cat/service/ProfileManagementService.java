@@ -19,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.SSOObjectMissingException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.SupplierLink;
@@ -333,17 +334,21 @@ public class ProfileManagementService {
       final UserContactInfoList conclaveUserContacts,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
       final Optional<SubUser> jaggaerBuyer, final RegisterUserResponse registerUserResponse) {
+    if(jaggaerBuyer.isPresent() && !ssoCodeDataExists(jaggaerBuyer.get().getSsoCodeData()))
+    {
+      throw new SSOObjectMissingException("SSO Object is not present for the User"+ jaggaerBuyer.get().getEmail());
+    }else {
+      createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+              conclaveUserContacts, jaggaerBuyer, jaggaerAPIConfig.getSelfServiceId(),
+              jaggaerAPIConfig.getDefaultBuyerRightsProfile());
 
-    createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-        conclaveUserContacts, jaggaerBuyer, jaggaerAPIConfig.getSelfServiceId(),
-        jaggaerAPIConfig.getDefaultBuyerRightsProfile());
+      log.debug("Updating buyer user: [{}]", conclaveUser.getUserName());
+      jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+      userProfileService.refreshBuyerCache(conclaveUser.getUserName());
 
-    log.debug("Updating buyer user: [{}]", conclaveUser.getUserName());
-    jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
-    userProfileService.refreshBuyerCache(conclaveUser.getUserName());
-
-    registerUserResponse.userAction(UserActionEnum.EXISTED);
-    registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
+      registerUserResponse.userAction(UserActionEnum.EXISTED);
+      registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
+    }
   }
 
   private void updateSupplier(final UserProfileResponseInfo conclaveUser,
