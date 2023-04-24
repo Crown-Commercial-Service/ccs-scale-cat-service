@@ -45,6 +45,8 @@ public class DOS6Processor implements CommandLineRunner {
     private final AgreementService supplierService;
 
     private final ScriptConfig scriptConfig;
+
+    private final SupplierLinkUploader linkUploader;
     //    private final JaggaerQuerySync querySyncConsumer;
     private Map<String, CiiSingleOrg> ciiOrgSingleMap;
 
@@ -96,15 +98,19 @@ public class DOS6Processor implements CommandLineRunner {
 
         fetchSuppliers(AGREEMENT_DATA_FILE);
         String currentFolder = getCurrentFolder();
-        supplierDownloader.downloadSuppliers(currentFolder, "input/jaggaer_suppliers.csv");
+//        supplierDownloader.downloadSuppliers(currentFolder, "input/jaggaer_suppliers.csv");
         jaggaerSupplierMap = supplierDownloader.getSuppliers(currentFolder, "input/jaggaer_suppliers.csv");
-        jaggaerMatcher = new JaggaerMatcher(jaggaerSupplierMap);
-        jaggaerMatcher.init();
-//        writeDuplicateJaggaerSuppliers(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
+//        jaggaerMatcher = new JaggaerMatcher(jaggaerSupplierMap);
+//        jaggaerMatcher.init();
+////        writeDuplicateJaggaerSuppliers(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
+//
+//        advancedLocalJaggaerDataSync(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
+//        generateLotWiseReport();
 
-        advancedLocalJaggaerDataSync(AGREEMENT_DATA_FILE, BUSINESS_INPUT_FILE);
-        generateLotWiseReport();
+        linkUploader.setJaggaerSupplierMap(jaggaerSupplierMap);
+        linkUploader.upload();
 
+        Thread.sleep(60*1000);
         System.exit(0);
     }
 

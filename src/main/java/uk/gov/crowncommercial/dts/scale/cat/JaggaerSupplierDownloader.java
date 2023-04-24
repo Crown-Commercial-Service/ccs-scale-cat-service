@@ -89,6 +89,7 @@ public class JaggaerSupplierDownloader {
             model.setBravoId(supplier.getBravoId());
             model.setExtCode(supplier.getExtCode());
             model.setExtUniqueCode(supplier.getExtUniqueCode());
+            model.setFiscalCode(supplier.getFiscalCode());
             model.setPostalAddress(getValueOrEmpty(supplier.getAddress()) + ", " + getValueOrEmpty(supplier.getCity())
                     + ", " + getValueOrEmpty(supplier.getZip())
             );

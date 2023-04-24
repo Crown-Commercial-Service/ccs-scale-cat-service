@@ -111,8 +111,11 @@ public abstract class AbstractCSVReader<T> {
     private boolean isRunning= false;
 
     public void parallelRecordProcess(File file, Consumer<T> consumer) {
+        parallelRecordProcess(file, consumer, 2);
+    }
+
+    public void parallelRecordProcess(File file, Consumer<T> consumer, int noThreads) {
         isRunning = true;
-        int noThreads = 2;
         ExecutorService executorService = Executors.newFixedThreadPool(noThreads);
         ArrayBlockingQueue<T> blockQueue = new ArrayBlockingQueue<>(noThreads * 8);
 
