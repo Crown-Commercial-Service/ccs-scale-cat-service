@@ -303,6 +303,13 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
             supplierModel.setMapping("DUNS", duns);
         }
 
+        if(null == data){
+            data = queryCompanyFiscalCoH(Util.getCoHId(supplierModel.getHouseNumber()));
+            if(null != data){
+                supplierModel.setMapping("Fis_CoH", Util.getCoHId(supplierModel.getHouseNumber()));
+            }
+        }
+
         if (null == data) {
             if (null != houseNUmber && houseNUmber.length() < 9) {
                 String gbCoh = "GB-COH-";
@@ -345,6 +352,17 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 supplierModel.setMappingType("JaggaerBravo");
             }
             return jaggaerSupplierModel;
+        }
+        return null;
+    }
+
+    private JaggaerSupplierModel queryCompanyFiscalCoH(String coh) {
+        if(null == coh || coh.length() !=8)
+            return null;
+        for(JaggaerSupplierModel model : jaggaerSupplierMap.values()){
+            if(null != model.getFiscalCode() && coh.equals(Util.getCoHId(model.getFiscalCode()))){
+                return model;
+            }
         }
         return null;
     }

@@ -9,6 +9,7 @@ public class JaggaerSupplierModel {
     private String bravoId;
     private String extCode;
     private String extUniqueCode;
+    private String fiscalCode;
     private String supplierName;
     private String email;
     private String postalAddress;

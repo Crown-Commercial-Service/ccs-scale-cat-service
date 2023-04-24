@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 public class JaggaerSupplierWriter extends AbstractCsvGenerator<JaggaerSupplierModel> implements Consumer<JaggaerSupplierModel> {
 
-    private static final List<String> columns = Arrays.asList("bravoId","extCode","extUniqueCode", "supplierName", "email", "postalAddress");
+    private static final List<String> columns = Arrays.asList("bravoId","extCode","extUniqueCode", "fiscalCode","supplierName", "email", "postalAddress");
     private final String filename;
 
     private BufferedWriter writer;

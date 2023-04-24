@@ -15,6 +15,7 @@ public class CompanyInfo {
   String bravoId;
   String companyName;
   String userAlias;
+  String fiscalCode;
   String dAndBCode;
   String extCode;
   String extUniqueCode;

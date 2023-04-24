@@ -53,8 +53,8 @@ public class SaveService {
 
         OrganisationMapping om = getByOrgIds(externalOrgId, ciiIdentifier, orgId);
 
-        log.trace("Existing record found and will update id:{}, bravoId:{}", om.getId(), om.getExternalOrganisationId());
         if (null != om) {
+            log.trace("Existing record found and will update id:{}, bravoId:{}", om.getId(), om.getExternalOrganisationId());
             updateCasOrgId(ciiIdentifier, externalOrgId, orgId, om);
         } else {
             om = repo.findByOrganisationId(ciiIdentifier).orElse(null);
