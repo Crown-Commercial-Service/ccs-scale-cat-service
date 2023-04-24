@@ -484,6 +484,20 @@ public class JaggaerService {
     log.debug("Invalidate event response: {}", response);
   }
 
+
+  /**
+   * Invalidate Event Rfx
+   *
+   * @param request
+ * @return 
+   */
+  public WorkflowRfxResponse invalidateSalesforceEvent(final InvalidateEventRequest request) {
+    final var endPoint = jaggaerAPIConfig.getInvalidateEvent().get(ENDPOINT);
+    final var response = webclientWrapper.postData(request, WorkflowRfxResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+    log.debug("Invalidate event response: {}", response);
+    return response;
+  }
   /**
    * Get Project
    *
