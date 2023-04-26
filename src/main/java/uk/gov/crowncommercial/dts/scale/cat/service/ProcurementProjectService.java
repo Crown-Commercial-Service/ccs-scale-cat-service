@@ -387,8 +387,32 @@ public class ProcurementProjectService {
       throw new IllegalArgumentException("Unable to delete project owner");
     }
 
-    // update team member as deleted
-    deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
+    // check email-recipient in jaggaer
+    var event = getCurrentEvent(dbProject);
+    var exportRfxResponse = jaggaerService.getRfxWithEmailRecipients(event.getExternalEventId());
+
+    Optional<EmailRecipient> isEmailRecipient =
+        exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
+            .filter(e -> e.getUser().getId().equals(jaggaerUserId)).findAny();
+
+    if (isEmailRecipient.isPresent()) {
+      log.debug("delete email-recipient in jaggaer");
+      List<EmailRecipient> newEmailRecipientsList =
+          exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
+              .filter(e -> !e.getUser().getId().equals(jaggaerUserId)).toList();
+      var rfxRequest = Rfx.builder()
+          .rfxSetting(RfxSetting.builder().rfxId(event.getExternalEventId())
+              .rfxReferenceCode(event.getExternalReferenceId()).build())
+          .emailRecipientList(
+              EmailRecipientList.builder().emailRecipient(newEmailRecipientsList).build())
+          .build();
+      jaggaerService.createUpdateRfx(rfxRequest, OperationCode.UPDATE_RESET);
+    } else {
+      // update team member as deleted
+      deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
+    }
+
+
   }
 
   /**
