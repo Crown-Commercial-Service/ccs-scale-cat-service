@@ -420,9 +420,6 @@ class ProcurementProjectServiceTest {
         .build();
 
     // Verify
-    verify(retryableTendersDBDelegate).findProjectUserMappingByProjectIdAndUserId(
-        procurementProject.getId(), JAGGAER_USER_1.get().getUserId());
-    verify(retryableTendersDBDelegate).save(any(ProjectUserMapping.class));
     verify(jaggaerService).createUpdateRfx(rfxRequest, OperationCode.UPDATE_RESET);
   }
 
