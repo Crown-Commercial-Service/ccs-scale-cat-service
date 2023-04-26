@@ -139,12 +139,10 @@ class TendersControllerTest {
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
-        .andDo(print()).andExpect(status().isInternalServerError())
+        .andDo(print()).andExpect(status().is2xxSuccessful())
         .andExpect(content().contentType(APPLICATION_JSON))
-            .andExpect(jsonPath("$.errors", hasSize(1)))
-            .andExpect(jsonPath("$.errors[0].status", is("500 INTERNAL_SERVER_ERROR")))
-            .andExpect(jsonPath("$.errors[0].title", is("Jaggaer User Exist Scenario")))
-            .andExpect(jsonPath("$.errors[0].detail", is("Jaggaer sub or super user already exists")));
+            .andExpect(jsonPath("$.roles", hasSize(1)))
+            .andExpect(jsonPath("$.userAction", is("existed")));
   }
 
   @Test

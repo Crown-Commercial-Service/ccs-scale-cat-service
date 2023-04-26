@@ -80,7 +80,7 @@ public class TendersController extends AbstractRestController {
     }
     var registerUserResponse = profileManagementService.registerUser(userId);
     if (registerUserResponse.getUserAction() == UserActionEnum.EXISTED) {
-      throw new JaggaerUserExistException("Jaggaer sub or super user already exists");
+      return ResponseEntity.status(HttpStatus.OK).body(registerUserResponse);
     } else {
       return ResponseEntity.status(HttpStatus.CREATED).body(registerUserResponse);
     }
