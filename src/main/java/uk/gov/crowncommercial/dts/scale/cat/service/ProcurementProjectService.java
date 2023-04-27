@@ -396,23 +396,26 @@ public class ProcurementProjectService {
             .filter(e -> e.getUser().getId().equals(jaggaerUserId)).findAny();
 
     if (isEmailRecipient.isPresent()) {
-      log.debug("delete email-recipient in jaggaer");
-      List<EmailRecipient> newEmailRecipientsList =
-          exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
-              .filter(e -> !e.getUser().getId().equals(jaggaerUserId)).toList();
-      var rfxRequest = Rfx.builder()
-          .rfxSetting(RfxSetting.builder().rfxId(event.getExternalEventId())
-              .rfxReferenceCode(event.getExternalReferenceId()).build())
-          .emailRecipientList(
-              EmailRecipientList.builder().emailRecipient(newEmailRecipientsList).build())
-          .build();
-      jaggaerService.createUpdateRfx(rfxRequest, OperationCode.UPDATE_RESET);
+      deleteEmailRecipientInJaggaer(event, jaggaerUserId, exportRfxResponse);
     } else {
       // update team member as deleted
       deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
     }
+  }
 
-
+  private void deleteEmailRecipientInJaggaer(ProcurementEvent event, String jaggaerUserId,
+                                             ExportRfxResponse exportRfxResponse){
+    log.debug("delete email-recipient in jaggaer");
+    List<EmailRecipient> newEmailRecipientsList =
+            exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
+                    .filter(e -> !e.getUser().getId().equals(jaggaerUserId)).toList();
+    var rfxRequest = Rfx.builder()
+            .rfxSetting(RfxSetting.builder().rfxId(event.getExternalEventId())
+                    .rfxReferenceCode(event.getExternalReferenceId()).build())
+            .emailRecipientList(
+                    EmailRecipientList.builder().emailRecipient(newEmailRecipientsList).build())
+            .build();
+    jaggaerService.createUpdateRfx(rfxRequest, OperationCode.UPDATE_RESET);
   }
 
   /**
