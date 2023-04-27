@@ -56,6 +56,7 @@ data "aws_ssm_parameter" "jaggaer_self_service_id" {
 
 data "aws_ssm_parameter" "jaggaer_assisted_procurement_user_id" {
   name = "/cat/${var.environment}/jaggaer-assisted-procurement-user-id"
+}
 
 data "aws_ssm_parameter" "jaggaer_assisted_procurement_org_id" {
   name = "/cat/${var.environment}/jaggaer-assisted-procurement-org-id"
