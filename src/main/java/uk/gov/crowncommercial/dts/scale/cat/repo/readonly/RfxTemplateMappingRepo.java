@@ -14,13 +14,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxTemplateMapping;
 @Repository
 public interface RfxTemplateMappingRepo extends ReadOnlyRepository<RfxTemplateMapping, Integer>{
 
-	//Set<RfxTemplateMapping> findByRfxShortDescription(@Param("rfxShortDescription") String rfxShortDescription);    
-	
     @Query("select DISTINCT rtm from RfxTemplateMapping rtm where rtm.rfxShortDescription = :rfxShortDescription")
     Optional<RfxTemplateMapping> findByRfxShortDescription(@Param("rfxShortDescription") String rfxShortDescription);
     
-//    public static interface RfxTemplateMapping {
-//    	String getRfxReferenceCode();
-//    }
-
+    @Query("select DISTINCT rtm from RfxTemplateMapping rtm where rtm.commercialAgreementNumber = :commercialAgreementNumber and lotNumber = :lotNumber")
+    Optional<RfxTemplateMapping> findByRfxCommercialAgreementNumberAndLotNumber(
+    		@Param("commercialAgreementNumber") String commercialAgreementNumber,
+    		@Param("lotNumber") String lotNumber);
+    
 }

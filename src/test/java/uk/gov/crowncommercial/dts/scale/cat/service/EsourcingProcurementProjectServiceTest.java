@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -300,6 +301,8 @@ class EsourcingProcurementProjectServiceTest {
     		.ocidPrefix("abc123")
     		.project(procurementProject)
     		.build();
+    
+    List<ProcurementEvent> procurementEvents = Arrays.asList(procurementEvent);
 
     // Mock behaviours
     when(retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(CA_NUMBER + "/" + LOT_NUMBER))
@@ -326,6 +329,8 @@ class EsourcingProcurementProjectServiceTest {
         .thenReturn(createUpdateRfx);
     when(userProfileService.resolveBuyerUserProfile(any(String.class)))
     	.thenReturn(JAGGAER_USER);
+    when(retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(any(String.class)))
+    	.thenReturn(procurementEvents);
 
     
     var salesforceProjectTender200Response = procurementProjectService.createFromSalesforceDetails(SALESFORCE_PROJECT_TENDER);

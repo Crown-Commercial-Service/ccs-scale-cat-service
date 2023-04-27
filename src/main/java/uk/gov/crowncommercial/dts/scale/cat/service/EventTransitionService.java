@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.OperationNotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
@@ -39,6 +41,7 @@ public class EventTransitionService {
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   private final JaggaerService jaggaerService;
+  private final JaggaerAPIConfig jaggaerAPIConfig;
 
   private final ValidationService validationService;
 
@@ -123,6 +126,52 @@ public class EventTransitionService {
     }
   }
 
+  /**
+   * Terminate the (Salesforce) Event in Jaggaer
+   *
+   * @param procId
+   * @param eventId
+   * @param type
+   * @param openCompletedEvent
+   */
+  @Transactional
+  public String terminateSalesforceEvent(
+      final Integer procId,
+      final String eventId,
+      final TerminationType type,
+      final String principal,
+      boolean openCompletedEvent) {
+
+    var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId);
+
+    final var invalidateEventRequest =
+          InvalidateEventRequest.builder()
+              .invalidateReason(type.getValue())
+              .rfxId(terminatingEvent.getExternalEventId())
+              .rfxReferenceCode(terminatingEvent.getExternalReferenceId())
+              .operatorUser(OwnerUser.builder().id(jaggaerAPIConfig.getAssistedProcurementUserId()).build())
+              .build();
+      
+    log.info("Invalidate event request: {}", invalidateEventRequest);
+      
+    var workflowRfxResponse = jaggaerService.invalidateSalesforceEvent(invalidateEventRequest);
+    
+    // update status
+    updateStatusAndDates(principal, terminatingEvent, type);
+
+    if (openCompletedEvent) {
+      openCompletedEvent(procId, terminatingEvent, principal);
+    }
+    
+    // -996 = "Invalid Request Object - User is trying to invalidate rfx without the necessary permission or the rfx can't be invalidate;"
+    if (workflowRfxResponse.getReturnCode() == -996) {
+    	return workflowRfxResponse.getReturnMessage();
+    } else {
+        return("OK");
+    }
+    
+  }
+  
   @Transactional
   public void openCompletedEvent(
       final Integer projectId, final ProcurementEvent terminatedEvent, final String principal) {

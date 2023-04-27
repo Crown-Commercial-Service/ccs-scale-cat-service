@@ -14,7 +14,9 @@ config:
     jaggaer:
       rpa: 
         encryptionIv: hjnhgy8k*A?(7y-K
-        encryptionKey: uikjnsh657*y%hD*G-KaPdS*kij#3s6v
+        encryptionKey: uikjnsh657*y%hD*G-KaPdS*kij#3s6v  
+      esourcing:
+        principal-email: jsmith@ccs.org.uk
       self-service-id: 52423
       assisted-procurement-id: 51435
       assisted-procurement-org-id: 1

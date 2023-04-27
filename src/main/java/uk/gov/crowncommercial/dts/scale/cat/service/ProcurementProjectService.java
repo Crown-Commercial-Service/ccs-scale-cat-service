@@ -718,92 +718,100 @@ public class ProcurementProjectService {
 	   
 	  var AdditionalInfoList =
 	          new AdditionalInfoList(Arrays.asList(additionalInfoProcurementReference));
-	
-      Tender tender;
-      var operationCode = OperationCode.CREATEUPDATE;
- 
-      if (projectTender.getTenderReferenceCode() != null && projectTender.getTenderReferenceCode().isEmpty()) {
- 
-    	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+	  
+	  ProcurementProject procurementProject;
 
-          tender = Tender.builder().title(projectTender.getSubject())
+      // if no tenderReferenceCode provided then create new project otherwise update RFx for project
+      if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
+ 
+    	  var operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+
+          Tender tender = Tender.builder().title(projectTender.getSubject())
                   .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
                   .sourceTemplateReferenceCode(jaggaerAPIConfig.getApiDefaults().get("source-template-reference-code"))
                   .additionalInfo(AdditionalInfoList)
                   .projectOwner(projectOwner)
                   .build();
     	  
+          log.debug("Project build -> operationCode {}, tender: {}",operationCode, tender.toString());
+
+          var projectBuilder = Project.builder().tender(tender);    
+          log.debug("Project to create: {}", projectBuilder.toString());
+
+          var createUpdateProject =
+                  new CreateUpdateProject(operationCode, projectBuilder.build());
+          
+          log.debug("Project to create/update: {}", createUpdateProject.toString());
+
+          /*
+           * Call Jaggaer endpoint to create project
+           */
+          var createProjectResponse =
+                  ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                          .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                          .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                          .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                                  "Unexpected error creating project"));
+
+          if (createProjectResponse.getReturnCode() != 0
+                  || !"OK".equals(createProjectResponse.getReturnMessage())) {
+            throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
+                    createProjectResponse.getReturnMessage());
+          }
+          log.info("Created project: {}", createProjectResponse);
+
+          procurementProject = ProcurementProject.builder()
+                  .caNumber(projectTender.getRfx().getFrameworkRMNumber())
+                  .lotNumber(projectTender.getRfx().getFrameworkLotNumber())
+                  .externalProjectId(createProjectResponse.getTenderCode())
+                  .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+                  .projectName(projectTender.getSubject()).createdBy(principal).createdAt(Instant.now())
+                  .updatedBy(principal).updatedAt(Instant.now()).build();
+
+          log.info("Procurement project: {}", procurementProject.toString());
+
+    	  var organisationIdentifier = jaggaerAPIConfig.getAssistedProcurementOrgId();
+    	  log.info("organisationIdentifier: {}", organisationIdentifier);
+          
+    	  var organisationMapping =
+                  retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+    	  log.info("organisationMapping: {}", organisationMapping);
+
+          // Adapt save strategy based on org mapping status (new/existing)
+          if (organisationMapping.isEmpty()) {
+            organisationMapping=Optional.of(retryableTendersDBDelegate
+                    .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
+                            .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+                            .createdAt(Instant.now()).createdBy(principal).build()));
+          }
+    	  log.debug("organisationMapping-2: {}", organisationMapping);
+
+          procurementProject.setOrganisationMapping(organisationMapping.get());
+          procurementProject=retryableTendersDBDelegate.save(procurementProject);
+    	  log.debug("procurementProject: {}", procurementProject);
+
+    	  
       } else {
+    	  
+          log.info("projectTender.getTenderReferenceCode(): {}", projectTender.getTenderReferenceCode());
+  
+    	  List<ProcurementEvent> procurementEvent =
+    			  retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(projectTender.getTenderReferenceCode());
+    			  
+          log.info("procurementEvent: {}", procurementEvent);
+          var projectId = procurementEvent.get(0).getProject().getId();
 
-    	  tender = Tender.builder().title(projectTender.getSubject())
-        		  .tenderReferenceCode(projectTender.getTenderReferenceCode())
-        		  .projectType(projectType) 		
-                  .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
-                  .additionalInfo(AdditionalInfoList)
-                  .projectOwner(projectOwner)
-                  .build();	
+    	  procurementProject = 
+    			  retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    	  
+          log.info("Procurement project: {}", procurementProject.toString());
+    	  
       }
-      
-      log.debug("Project build - tender: {}",tender.toString());
-
-      var projectBuilder = Project.builder().tender(tender);    
-      log.debug("Project to create: {}", projectBuilder.toString());
-
-      var createUpdateProject =
-              new CreateUpdateProject(operationCode, projectBuilder.build());
-      
-      log.debug("Project to create/update: {}", createUpdateProject.toString());
-
-      /*
-       * Call Jaggaer endpoint to create project
-       */
-      var createProjectResponse =
-              ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-                      .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-                      .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                      .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                              "Unexpected error creating project"));
-
-      if (createProjectResponse.getReturnCode() != 0
-              || !"OK".equals(createProjectResponse.getReturnMessage())) {
-        throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
-                createProjectResponse.getReturnMessage());
-      }
-      log.info("Created project: {}", createProjectResponse);
-
-      var procurementProject = ProcurementProject.builder()
-              .caNumber(projectTender.getRfx().getFrameworkRMNumber())
-              .lotNumber(projectTender.getRfx().getFrameworkLotNumber())
-              .externalProjectId(createProjectResponse.getTenderCode())
-              .externalReferenceId(createProjectResponse.getTenderReferenceCode())
-              .projectName(projectTender.getSubject()).createdBy(principal).createdAt(Instant.now())
-              .updatedBy(principal).updatedAt(Instant.now()).build();
-
-      log.info("Procurement project: {}", procurementProject.toString());
-
-	  var organisationIdentifier = jaggaerAPIConfig.getAssistedProcurementOrgId();
-	  log.info("organisationIdentifier: {}", organisationIdentifier);
-      
-	  var organisationMapping =
-              retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
-	  log.info("organisationMapping: {}", organisationMapping);
-
-      // Adapt save strategy based on org mapping status (new/existing)
-      if (organisationMapping.isEmpty()) {
-        organisationMapping=Optional.of(retryableTendersDBDelegate
-                .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
-                        .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-                        .createdAt(Instant.now()).createdBy(principal).build()));
-      }
-	  log.debug("organisationMapping-2: {}", organisationMapping);
-
-      procurementProject.setOrganisationMapping(organisationMapping.get());
-      procurementProject=retryableTendersDBDelegate.save(procurementProject);
-	  log.debug("procurementProject: {}", procurementProject);
-    
-      // Create RFx for new project
+          
+      // Create/Update RFx for new project
       var newRfx = procurementEventService.createSalesforceRfxRequest(procurementProject, projectTender, principal);
-      log.info("Rfx to create: {}", newRfx);
+      log.info("Rfx to create/update: {}", newRfx);
 
       // Call to Jaggaer to create rfx
       var createRfxResponse =
@@ -819,7 +827,7 @@ public class ProcurementProjectService {
                 createRfxResponse.getReturnMessage());
       }
       
-      log.info("Created Rfx: {}", createRfxResponse);
+      log.info("Created/updated Rfx response: {}", createRfxResponse);
       
       // Persist the Jaggaer Rfx details as a new event in the tenders DB
       

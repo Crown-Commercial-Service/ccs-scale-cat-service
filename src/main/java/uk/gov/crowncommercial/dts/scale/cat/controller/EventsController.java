@@ -370,17 +370,19 @@ public class EventsController extends AbstractRestController {
 	  
 	var principal = "";
 	if (authPrincipal instanceof JwtAuthenticationToken) {
-		log.info("terminateEvent invoked with JwtAuthenticationToken");		
 	    principal = getPrincipalFromJwt((JwtAuthenticationToken) authPrincipal);
+		log.info("terminateEvent invoked with JwtAuthenticationToken, with principal: {}", principal);		
+	    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, true);
+	    return new StringValueResponse("OK");
 	} else if (authPrincipal instanceof ApiKeyAuthToken) {
-			log.info("terminateEvent invoked with ApiKeyAuthToken");					
 		    principal = tendersAPIModelUtils.getPrincipalFromApiKey((ApiKeyAuthToken) authPrincipal);
+			log.info("terminateEvent invoked with ApiKeyAuthToken, with principal: {}", principal);	
+			var terminateSalesforceEventResponse = eventTransitionService.terminateSalesforceEvent(procId, eventId, type.getTerminationType(), principal, true);
+			return new StringValueResponse(terminateSalesforceEventResponse);
 	}
 	
-    log.info("terminateEvent invoked on behalf of principal: {}", principal);
+	return new StringValueResponse("OK");
 
-    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, true);
-    return new StringValueResponse("OK");
   }
 
   @GetMapping("/{eventID}/responses/export")

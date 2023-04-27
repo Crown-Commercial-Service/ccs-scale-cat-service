@@ -28,4 +28,10 @@ public class RfxTemplateMapping {
   @Column(name = "rfx_short_description")
   String rfxShortDescription;
 
+  @Column(name = "commercial_agreement_number")
+  String commercialAgreementNumber;
+
+  @Column(name = "lot_number")
+  String lotNumber;
+
 }

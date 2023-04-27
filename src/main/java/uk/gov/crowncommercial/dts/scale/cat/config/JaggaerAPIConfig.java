@@ -23,6 +23,7 @@ public class JaggaerAPIConfig {
   private String headerValueWWWAuthenticate;
   private String headerValueInvalidContentType;
   private String selfServiceId;
+  private String assistedProcurementUserId;
   private String assistedProcurementId;
   private String assistedProcurementOrgId;
   private String defaultBuyerRightsProfile;
