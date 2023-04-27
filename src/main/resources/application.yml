@@ -89,10 +89,6 @@ config:
         source-template-reference-code: project_609
         open-market-template-id: itt_747
         sta-template-id: itt_746
-        buyer-company-id: 51435             # TODO: this ID is CCS
-        conclave-org-id: 669821636384259971 # TODO: this ID is CCS
-        jaggaer-user-id: 110659             # TODO: this ID is peter.simpson@roweit.co.uk
-        cas-org-id: GB-COH-05684804         # TODO: this ID is CCS
       rfxStatusToTenderStatus:
         0: PLANNED
         100: PLANNED
@@ -201,6 +197,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
       getCompanyProfileByBravoID:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID=={{PRINCIPAL}}
+      getRfxByLastUpdateDateList:  
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=lastUpdateDate=ge="{lastUpdateDate}";buyerCompanyId=={buyerCompanyId}&comp={components}
 
       # This is far more performant for summary-level only data
       searchRfxSummary:

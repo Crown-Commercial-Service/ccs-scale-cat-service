@@ -29,6 +29,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
@@ -130,7 +131,9 @@ class ProcurementProjectServiceTest {
   @Autowired
   private ProcurementProjectService procurementProjectService;
 
-
+  @MockBean
+  private OcdsConfig ocdsConfig;
+  
   @MockBean
   private JaggaerService jaggaerService;
 

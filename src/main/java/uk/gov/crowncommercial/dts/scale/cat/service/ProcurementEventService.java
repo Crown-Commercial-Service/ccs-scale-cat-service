@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -98,6 +99,40 @@ public class ProcurementEventService implements EventService {
     //Added by RoweIT for Tenders API integration
     private static final String ADDITIONAL_INFO_PROCUREMENT_ROUTE = "Procurement Route";  
     private static final String ADDITIONAL_INFO_PROCUREMENT_ROUTE_TYPE = "5";  
+    
+    // Jaggaer tender status values
+    private static final String JAGGAER_STATUS_TO_BE_PUBLISHED = "To Be Published";
+    private static final String JAGGAER_STATUS_RUNNING = "Running";
+    private static final String JAGGAER_STATUS_TO_BE_EVALUATED = "To Be Evaluated";
+    private static final String JAGGAER_STATUS_TECHNICAL_EVALUATION = "Technical Evaluation";
+    private static final String JAGGAER_STATUS_COMMERCIAL_EVALUATION = "Commercial Evaluation";
+    private static final String JAGGAER_STATUS_FINAL_EVALUATION = "Final Evaluation";
+    private static final String JAGGAER_STATUS_CLOSED = "Closed";
+    private static final String JAGGAER_STATUS_FINAL_EVALUATION_PRE_AWARDED = "Final Evaluation - Pre-Awarded";
+    private static final String JAGGAER_STATUS_AWARDED = "Awarded";
+    private static final String JAGGAER_STATUS_AWARDED_TO_OFFLINE_RESPONSE = "Awarded to Offline Response";
+    private static final String JAGGAER_STATUS_NOT_AWARDED = "Not Awarded";
+    private static final String JAGGAER_STATUS_ROUND_CREATED_IN_NEW_RFQ = "Round Created in New RFQ";
+    private static final String JAGGAER_STATUS_SUSPENDED = "Suspended";
+    private static final String JAGGAER_STATUS_ENDED = "Ended";
+
+    
+    // Jaggaer tender status codes
+	private static final String JAGGAER_STATUS_CODE_TO_BE_PUBLISHED = "0";
+	private static final String JAGGAER_STATUS_CODE_RUNNING = "300";
+	private static final String JAGGAER_STATUS_CODE_TO_BE_EVALUATED = "400";
+	private static final String JAGGAER_STATUS_CODE_TECHNICAL_EVALUATION = "800";
+    private static final String JAGGAER_STATUS_CODE_COMMERCIAL_EVALUATION = "900";
+    private static final String JAGGAER_STATUS_CODE_FINAL_EVALUATION = "950";
+    private static final String JAGGAER_STATUS_CODE_CLOSED = "1200";
+    private static final String JAGGAER_STATUS_CODE_FINAL_EVALUATION_PRE_AWARDED = "975";
+    private static final String JAGGAER_STATUS_CODE_AWARDED = "500";
+    private static final String JAGGAER_STATUS_CODE_AWARDED_TO_OFFLINE_RESPONSE = "50";
+    private static final String JAGGAER_STATUS_CODE_NOT_AWARDED = "700";
+    private static final String JAGGAER_STATUS_CODE_ROUND_CREATED_IN_NEW_RFQ = "1800";
+    private static final String JAGGAER_STATUS_CODE_SUSPENDED = "1100";
+    private static final String JAGGAER_STATUS_CODE_ENDED = "1500";
+
 
     private final UserProfileService userProfileService;
     private final CriteriaService criteriaService;
@@ -1739,41 +1774,22 @@ public class ProcurementEventService implements EventService {
     public CreateUpdateRfx createSalesforceRfxRequest(final ProcurementProject project, final SalesforceProjectTender projectTender,
                                              final String principal) {
 
-      // Fetch Jaggaer ID and Buyer company ID from Jaggaer config
-      var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
-
-      var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
+      // Fetch Jaggaer ID and Buyer company ID from Jaggaer config     
   	  var ownerUser = OwnerUser.builder().login(projectTender.getRfx().getOwnerUserLogin()).build();
+      var jaggaerBuyerCompanyId =  jaggaerAPIConfig.getAssistedProcurementId();
+      var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
 
       // Retrieve template reference code from rfx_template_mapping table
-	  log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
-	  //log.debug("call findByRfxShortDescription() with arg {}", projectTender.getRfx().getShortDescription());
-
+	  log.debug("call findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber() with arg {}, {}", 
+			  	projectTender.getRfx().getFrameworkRMNumber(), projectTender.getRfx().getFrameworkLotNumber());
       Optional<RfxTemplateMapping> rfxTemplateMapping = 
-       		  	//retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getShortDescription());
-         		retryableTendersDBDelegate.findRfxTemplateMappingRfxShortDescription(projectTender.getRfx().getFrameworkRMNumber() + "/" + projectTender.getRfx().getFrameworkLotNumber());
+       		retryableTendersDBDelegate.findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber(
+       								projectTender.getRfx().getFrameworkRMNumber(),
+       								projectTender.getRfx().getFrameworkLotNumber());
       log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
 
       String rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();
       log.debug("rfxTemplateReferenceCode {}", rfxTemplateReferenceCode);
-
-      // Original logic - Template Reference Code now looked-up in mapping table
-//      var openMarketTemplateId = jaggaerAPIConfig.getApiDefaults().get("open-market-template-id");
-//      var staTemplateId = jaggaerAPIConfig.getApiDefaults().get("sta-template-id");      
-
-//      String rfxProcurementRoute = projectTender.getRfx().getProcurementRoute();
-//  	  String rfxProcurementRouteType = "";
-
-//      if (rfxProcurementRoute.equalsIgnoreCase("Open Market")) {
-//        rfxTemplateReferenceCode = openMarketTemplateId;
-//        rfxProcurementRouteType = "5";
-//      } else if (rfxProcurementRoute.equalsIgnoreCase("Single Tender Action")) {
-//        rfxTemplateReferenceCode = staTemplateId;
-//      } else {
-//        if (projectTender.getRfx().getTemplateReferenceCode() != null){
-//          rfxTemplateReferenceCode = projectTender.getRfx().getTemplateReferenceCode();
-//        }
-//      }
       
       var additionalInfoProcurementRoute = AdditionalInfo.builder()
       		.name(ADDITIONAL_INFO_PROCUREMENT_ROUTE)
@@ -1799,7 +1815,6 @@ public class ProcurementEventService implements EventService {
                       .build();
 
       var rfxAdditionalInfoList =
-              //new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute));
       			new RfxAdditionalInfoList(Arrays.asList(additionalInfoProcurementRoute, additionalInfoFramework, additionalInfoLot));
 
       String rfxType = "";
@@ -1813,7 +1828,13 @@ public class ProcurementEventService implements EventService {
       	rfxType = "STANDARD_ITT";
       }
       
-      var rfxSetting =
+      OperationCode operationCode;
+      RfxSetting rfxSetting = null;
+      if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
+    	  
+    	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+
+    	  rfxSetting =
               RfxSetting.builder()
   					.shortDescription(projectTender.getRfx().getShortDescription())
   					.longDescription(projectTender.getRfx().getShortDescription())
@@ -1821,6 +1842,7 @@ public class ProcurementEventService implements EventService {
               		.value(Integer.valueOf(projectTender.getRfx().getValue()))
       				.templateReferenceCode(rfxTemplateReferenceCode)
       				.tenderReferenceCode(project.getExternalReferenceId())
+      				.rfxReferenceCode(project.getExternalReferenceId())
                     .buyerCompany(buyerCompany)
                     .ownerUser(ownerUser)
                     .rfxType(rfxType)
@@ -1832,6 +1854,31 @@ public class ProcurementEventService implements EventService {
               		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
               		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
               		.build();  
+
+      } else {
+    	  operationCode = OperationCode.CREATEUPDATE;
+
+    	  rfxSetting =
+                  RfxSetting.builder()
+      					.shortDescription(projectTender.getRfx().getShortDescription())
+      					.longDescription(projectTender.getRfx().getShortDescription())
+                  		.rfiFlag(rfiFlag)
+                  		.value(Integer.valueOf(projectTender.getRfx().getValue()))
+          				.templateReferenceCode(rfxTemplateReferenceCode)
+          				//.tenderReferenceCode(project.getExternalReferenceId())
+          				.rfxReferenceCode(projectTender.getTenderReferenceCode())
+                        .buyerCompany(buyerCompany)
+                        .ownerUser(ownerUser)
+                        .rfxType(rfxType)
+                  		.qualEnvStatus(Integer.valueOf(projectTender.getRfx().getQualEnvStatus()))                    
+                  		.techEnvStatus(Integer.valueOf(projectTender.getRfx().getTechEnvStatus()))                    
+                  		.commEnvStatus(Integer.valueOf(projectTender.getRfx().getCommEnvStatus()))
+                  		.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
+                  		.rankingStrategy(projectTender.getRfx().getRankingStrategy())
+                  		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
+                  		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
+                  		.build();  
+      }
       
       log.debug("rfxSetting {}", rfxSetting);
       log.debug("rfxAdditionalInfoList {}", rfxAdditionalInfoList);
@@ -1841,10 +1888,201 @@ public class ProcurementEventService implements EventService {
       		.rfxSetting(rfxSetting)
               .rfxAdditionalInfoList(rfxAdditionalInfoList)
               .build();
-      
-      return new CreateUpdateRfx(OperationCode.CREATE, rfx);
+            
+      //return new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
+      return new CreateUpdateRfx(operationCode, rfx);
     }
     
+    /**
+    *
+    * EI-97 Add deltas endpoint to CAT service
+    * 
+    * Get Jaggaer project deltas from last update request
+    *
+    * @paramProcurementProject
+    * @paramSalesforceProjectTender
+    * @paramprincipal
+    * @returnCreateUpdateRfx
+    */
+    public List<Release> getProjectUpdatesByLastUpdateDate(@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final Date lastSuccessRun, 
+    									final String buyerCompanyId) {
+
+    	List<Release> updateList = jaggaerService.getRfxByLastUpdateDate(lastSuccessRun,buyerCompanyId).stream()
+    									.map(e -> {
+    										// Release
+    										Release r = new Release();
+    										
+    										r.setOcid(ocdsConfig.getAuthority() + '-' + ocdsConfig.getOcidPrefix() + '-' + e.getRfxSetting().getRfxReferenceCode());
+    										r.setId(e.getRfxSetting().getRfxReferenceCode());
+    										r.setDate(e.getRfxSetting().getPublishDate());
+    										
+    										OcdsTenderStatus ocdsStateMapping =getOcdsStateMapping(e.getRfxSetting().getStatusCode().toString(),
+    																					e.getRfxSetting().getStatus(),
+    																					null);
+    										r.setTag(ocdsStateMapping.getReleaseTag());
+    										r.setInitiationType(InitiationType.TENDER);
+    										
+    										// Tender1
+    										Tender1 t = new Tender1();
+    										t.setDescription(e.getRfxSetting().getShortDescription());
+    										t.setId(e.getRfxSetting().getRfxId());
+    										t.setStatus(ocdsStateMapping.getTenderStatus());
+    										Period1 tp = new Period1();
+    										tp.setEndDate(e.getRfxSetting().getCloseDate());
+    										t.setTenderPeriod(tp);
+    										r.setTender(t);
+    										
+    										// Planning / Milestone / Status & Type
+    										Planning1 p = new Planning1();
+    										Milestone1 m = new Milestone1();
+    										m.setStatus(ocdsStateMapping.getMilestoneStatus());
+    										m.setType(ocdsStateMapping.getMilestoneType());
+    										List<Milestone1> l = new ArrayList<Milestone1>();
+    										l.add(m);
+    										p.setMilestones(l);
+    										r.setPlanning(p);
+    										
+    										return r;    										
+    									})
+    									.collect(Collectors.toList());
+    	
+    	return updateList;
+
+    }
     
+    /**
+    *
+    * EI-97 Add deltas endpoint to CAT service
+    * 
+    * Get tender status OCDS mapping values
+    * 
+    * see doc "ES-States-MappingJaggaertoOCDStoSaleforce-220323-1058.pdf"
+    *
+    * @paramstatusCode
+    * @paramstatus
+    * @paramtenderPeriodEndDate
+    * @returnOcdsTenderStatus
+    */
+    private OcdsTenderStatus getOcdsStateMapping(final String statusCode, final String status, final Date tenderPeriodEndDate) {
+    	
+    	if (( status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_PUBLISHED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_PUBLISHED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.PLANNED)
+    				.releaseTag(ReleaseTag.PLANNING)
+    				.milestoneStatus(MilestoneStatus.SCHEDULED)
+    				.milestoneType(MilestoneType.PREPROCUREMENT)
+    				.build();    				
+    	}
+
+    	// TODO: Today < "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_RUNNING) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_RUNNING))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+    	// TODO: Today >= "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_EVALUATED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_EVALUATED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+    	// TODO: Today >= "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_TECHNICAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TECHNICAL_EVALUATION))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+    	// TODO: Today >= "tenderPeriod": "endDate"
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_COMMERCIAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_COMMERCIAL_EVALUATION))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_FINAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_FINAL_EVALUATION))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.COMPLETE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_CLOSED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_CLOSED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.UNSUCCESSFUL)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_FINAL_EVALUATION_PRE_AWARDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_FINAL_EVALUATION_PRE_AWARDED))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.PENDING)
+    				.releaseTag(ReleaseTag.AWARD)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_AWARDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_AWARDED))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.AWARD)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_AWARDED_TO_OFFLINE_RESPONSE) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_AWARDED_TO_OFFLINE_RESPONSE))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.AWARD)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_NOT_AWARDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_NOT_AWARDED))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.CANCELLED)
+    				.releaseTag(ReleaseTag.TENDERCANCELLATION)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_ROUND_CREATED_IN_NEW_RFQ) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_ROUND_CREATED_IN_NEW_RFQ))) {
+    		return OcdsTenderStatus.builder()
+    				.awardStatus(AwardStatus.CANCELLED)
+    				.releaseTag(ReleaseTag.IMPLEMENTATION)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_SUSPENDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_SUSPENDED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.WITHDRAWN)
+    				.build();    				
+    	}
+
+		if (( status.equalsIgnoreCase(JAGGAER_STATUS_ENDED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_ENDED))) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.CANCELLED)
+    				.build();    				
+    	}
+
+		// no status determined
+		return OcdsTenderStatus.builder().build();
+    	
+    }
 
 }

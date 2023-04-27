@@ -10,6 +10,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
@@ -30,6 +31,9 @@ import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.COMPLETE_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_JAGGAER_USER_NOT_FOUND;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 
@@ -61,6 +65,8 @@ public class ProcurementProjectService {
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
+  private final OcdsConfig ocdsConfig;
+
 
   /**
    * SCC-440/441
@@ -171,7 +177,7 @@ public class ProcurementProjectService {
 
       var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
               new CreateEvent(), null, principal);
-
+ 
       // add current user to project
       addProjectUserMapping(jaggaerUserId, procurementProject, principal);
 
@@ -693,141 +699,119 @@ public class ProcurementProjectService {
    * Create Jaggaer project and ITT for details received from SalesForce
    *
    * @param SalesforceProjectTender
-   * @param principal
-   * @param conclaveOrgId
    * @return Salesforce Project Tender 200
    */
-  public SalesforceProjectTender200Response createFromSalesforceDetails(final SalesforceProjectTender projectTender, 
-		  																final String principal) {
+  public SalesforceProjectTender200Response createFromSalesforceDetails(final SalesforceProjectTender projectTender) {
 
-	  // Fetch Jaggaer user ID and Buyer company ID from Jaggaer config
-	  var jaggaerBuyerCompanyId = jaggaerAPIConfig.getApiDefaults().get("buyer-company-id");
-	  //var jaggaerUserId = jaggaerAPIConfig.getApiDefaults().get("jaggaer-user-id");
+	  String principal = projectTender.getRfx().getOwnerUserLogin();
+
+      var jaggaerBuyerCompanyId = jaggaerAPIConfig.getAssistedProcurementId();
 	  
-	  // default project type
-	  var projectType = jaggaerAPIConfig.getApiDefaults().get("project-type");
-	  
-  	  // get projectOwner from the Rfx ownerUser
+      var projectType = jaggaerAPIConfig.getApiDefaults().get("project-type");
 	  var projectOwner = ProjectOwner.builder().login(projectTender.getRfx().getOwnerUserLogin()).build();
 	  
-	  // create Additional Info list
 	  var additionalInfoProcurementReference = AdditionalInfo.builder().name(ADDITIONAL_INFO_PROCUREMENT_REFERENCE)
 	          .label(ADDITIONAL_INFO_PROCUREMENT_REFERENCE).labelLocale(ADDITIONAL_INFO_LOCALE)
 	          .values(
 	                  new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(projectTender.getProcurementReference()))))
 	          .build();
 	   
-	  log.debug("Additional info: {}", additionalInfoProcurementReference.toString());
-	  
 	  var AdditionalInfoList =
 	          new AdditionalInfoList(Arrays.asList(additionalInfoProcurementReference));
-	
-	  // initiate Tender details
-      Tender tender;
-      var operationCode = OperationCode.CREATEUPDATE;
- 
-      if (projectTender.getTenderReferenceCode().isEmpty()) {
- 
-    	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+	  
+	  ProcurementProject procurementProject;
 
-    	  // set sourceTemplateReferenceCode
-          tender = Tender.builder().title(projectTender.getSubject())
+      // if no tenderReferenceCode provided then create new project otherwise update RFx for project
+      if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
+ 
+    	  var operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+
+          Tender tender = Tender.builder().title(projectTender.getSubject())
                   .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
                   .sourceTemplateReferenceCode(jaggaerAPIConfig.getApiDefaults().get("source-template-reference-code"))
                   .additionalInfo(AdditionalInfoList)
                   .projectOwner(projectOwner)
                   .build();
     	  
+          log.debug("Project build -> operationCode {}, tender: {}",operationCode, tender.toString());
+
+          var projectBuilder = Project.builder().tender(tender);    
+          log.debug("Project to create: {}", projectBuilder.toString());
+
+          var createUpdateProject =
+                  new CreateUpdateProject(operationCode, projectBuilder.build());
+          
+          log.debug("Project to create/update: {}", createUpdateProject.toString());
+
+          /*
+           * Call Jaggaer endpoint to create project
+           */
+          var createProjectResponse =
+                  ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                          .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                          .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                          .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                                  "Unexpected error creating project"));
+
+          if (createProjectResponse.getReturnCode() != 0
+                  || !"OK".equals(createProjectResponse.getReturnMessage())) {
+            throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
+                    createProjectResponse.getReturnMessage());
+          }
+          log.info("Created project: {}", createProjectResponse);
+
+          procurementProject = ProcurementProject.builder()
+                  .caNumber(projectTender.getRfx().getFrameworkRMNumber())
+                  .lotNumber(projectTender.getRfx().getFrameworkLotNumber())
+                  .externalProjectId(createProjectResponse.getTenderCode())
+                  .externalReferenceId(createProjectResponse.getTenderReferenceCode())
+                  .projectName(projectTender.getSubject()).createdBy(principal).createdAt(Instant.now())
+                  .updatedBy(principal).updatedAt(Instant.now()).build();
+
+          log.info("Procurement project: {}", procurementProject.toString());
+
+    	  var organisationIdentifier = jaggaerAPIConfig.getAssistedProcurementOrgId();
+    	  log.info("organisationIdentifier: {}", organisationIdentifier);
+          
+    	  var organisationMapping =
+                  retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+    	  log.info("organisationMapping: {}", organisationMapping);
+
+          // Adapt save strategy based on org mapping status (new/existing)
+          if (organisationMapping.isEmpty()) {
+            organisationMapping=Optional.of(retryableTendersDBDelegate
+                    .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
+                            .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
+                            .createdAt(Instant.now()).createdBy(principal).build()));
+          }
+    	  log.debug("organisationMapping-2: {}", organisationMapping);
+
+          procurementProject.setOrganisationMapping(organisationMapping.get());
+          procurementProject=retryableTendersDBDelegate.save(procurementProject);
+    	  log.debug("procurementProject: {}", procurementProject);
+
+    	  
       } else {
+    	  
+          log.info("projectTender.getTenderReferenceCode(): {}", projectTender.getTenderReferenceCode());
+  
+    	  List<ProcurementEvent> procurementEvent =
+    			  retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(projectTender.getTenderReferenceCode());
+    			  
+          log.info("procurementEvent: {}", procurementEvent);
+          var projectId = procurementEvent.get(0).getProject().getId();
 
-    	  // set tenderReferenceCode
-    	  // set projectType
-    	  tender = Tender.builder().title(projectTender.getSubject())
-        		  .tenderReferenceCode(projectTender.getTenderReferenceCode())
-        		  .projectType(projectType) 		
-                  .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
-                  .additionalInfo(AdditionalInfoList)
-                  .projectOwner(projectOwner)
-                  .build();	
+    	  procurementProject = 
+    			  retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+    	  
+          log.info("Procurement project: {}", procurementProject.toString());
+    	  
       }
-      
-      log.debug("Project build - tender: {}",tender.toString());
-
-      var projectBuilder = Project.builder().tender(tender);
-
-      // By default, adding the division is disabled
-      if (Boolean.TRUE.equals(jaggaerAPIConfig.getAddDivisionToProjectTeam())) {
-        var userDivision = User.builder().code("DIVISION").build();
-        var projectTeam = ProjectTeam.builder().user(Collections.singleton(userDivision)).build();
-        projectBuilder.projectTeam(projectTeam);
-      }
-      
-      log.debug("Project to create: {}", projectBuilder.toString());
-
-      var createUpdateProject =
-              new CreateUpdateProject(operationCode, projectBuilder.build());
-      
-      log.debug("Project to create/update: {}", createUpdateProject.toString());
-
-      /*
-       * Call Jaggaer endpoint to create project
-       */
-      var createProjectResponse =
-              ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-                      .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-                      .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                      .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                              "Unexpected error creating project"));
-
-      if (createProjectResponse.getReturnCode() != 0
-              || !"OK".equals(createProjectResponse.getReturnMessage())) {
-        throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
-                createProjectResponse.getReturnMessage());
-      }
-      log.info("Created project: {}", createProjectResponse);
-
-      var procurementProject = ProcurementProject.builder()
-              // .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId())
-              .caNumber(projectTender.getRfx().getFrameworkRMNumber())
-              .lotNumber(projectTender.getRfx().getFrameworkLotNumber())
-              .externalProjectId(createProjectResponse.getTenderCode())
-              .externalReferenceId(createProjectResponse.getTenderReferenceCode())
-              .projectName(projectTender.getSubject()).createdBy(principal).createdAt(Instant.now())
-              .updatedBy(principal).updatedAt(Instant.now()).build();
-
-
-      log.debug("Procurement project: {}", procurementProject.toString());
-
-      /*
-       * Get existing buyer user org mapping or create as part of procurement project persistence.
-       * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
-       * self-service company).
-       */
-	  var organisationIdentifier = jaggaerAPIConfig.getApiDefaults().get("cas-org-id");
-      //var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
-	  
-	  log.debug("organisationIdentifier: {}", organisationIdentifier);
-      
-	  var organisationMapping =
-              retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
-	  log.debug("organisationMapping: {}", organisationMapping);
-
-      // Adapt save strategy based on org mapping status (new/existing)
-      if (organisationMapping.isEmpty()) {
-        organisationMapping=Optional.of(retryableTendersDBDelegate
-                .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
-                        .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
-                        .createdAt(Instant.now()).createdBy(principal).build()));
-      }
-	  log.debug("organisationMapping-2: {}", organisationMapping);
-
-      procurementProject.setOrganisationMapping(organisationMapping.get());
-      procurementProject=retryableTendersDBDelegate.save(procurementProject);
-	  log.debug("procurementProject: {}", procurementProject);
-    
-      // Create RFx for new project
+          
+      // Create/Update RFx for new project
       var newRfx = procurementEventService.createSalesforceRfxRequest(procurementProject, projectTender, principal);
-      log.info("Rfx to create: {}", newRfx);
+      log.info("Rfx to create/update: {}", newRfx);
 
       // Call to Jaggaer to create rfx
       var createRfxResponse =
@@ -843,23 +827,36 @@ public class ProcurementProjectService {
                 createRfxResponse.getReturnMessage());
       }
       
-      log.info("Created Rfx: {}", createRfxResponse);
-
+      log.info("Created/updated Rfx response: {}", createRfxResponse);
       
-      // add current user to project
-      //addProjectUserMapping(jaggaerUserId, procurementProject, principal);
+      // Persist the Jaggaer Rfx details as a new event in the tenders DB
+      
+      // Get project from tenders DB to obtain Jaggaer project id
+      var projectId = procurementProject.getId();
+      var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+              .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-//      return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
-//              procurementProject.getId(), eventSummary.getId(), projectTender.getSubject(),
-//              conclaveUserOrg.getIdentifier().getLegalName());
-//    } else {
-//      throw new AuthorisationFailureException("A lot is required for this commercial agreement.");
-//    }
-//      
-    
+      var ocdsAuthority = ocdsConfig.getAuthority();
+      var ocidPrefix = ocdsConfig.getOcidPrefix();
+      var eventBuilder = ProcurementEvent.builder();
+
+      var tenderStatus = TenderStatus.PLANNING.getValue();
+
+      eventBuilder.project(project).eventName(procurementProject.getProjectName()).eventType(ViewEventType.TBD.toString())
+      		  .externalEventId(createRfxResponse.getRfxId()).externalReferenceId(createRfxResponse.getRfxReferenceCode())
+              .downSelectedSuppliers(Boolean.FALSE).ocdsAuthorityName(ocdsAuthority)
+              .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
+              .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+      var event = eventBuilder.build();
+      ProcurementEvent procurementEvent = retryableTendersDBDelegate.save(event);
+      log.info("procurementEvent: {}", procurementEvent);
+
       return tendersAPIModelUtils.buildSalesforceProjectTender200Response(
     			createRfxResponse.getRfxId(),
-    			createRfxResponse.getRfxReferenceCode());  
+    			createRfxResponse.getRfxReferenceCode(),
+    			procurementEvent.getEventID(),
+    			procurementEvent.getProject().getId());  
   
   }
 

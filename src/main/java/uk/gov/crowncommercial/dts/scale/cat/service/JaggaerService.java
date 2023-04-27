@@ -6,12 +6,28 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.DateFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -52,6 +68,8 @@ public class JaggaerService {
 
   private static final String ERRCODE_SUBUSER_EXISTS = "112(loginSubUser)";
   private static final String ERRCODE_SUPERUSER_EXISTS = "112(USER_ALIAS)";
+  
+  private static final String JAGGAER_API_DATEFORMATTER = "yyyy-MM-dd HH:mm:ss.SSS Z";
 
   /**
    * Create or update a Project.
@@ -631,4 +649,34 @@ public class JaggaerService {
     }
     return scoreResponse;
   }
+  
+  /**
+   * Get Rfxs by lastUpdateDate.
+   *
+   * @param lastUpdateDate
+   * @param buyerCompanyID
+   * @return
+   */
+  public Collection<ExportRfxResponse> getRfxByLastUpdateDate(@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final Date lastUpdateDate, 
+		  																final String buyerCompanyId) {
+
+	var formattedLastUpdateDate = DateTimeFormatter.ofPattern(JAGGAER_API_DATEFORMATTER)
+								.withZone(ZoneOffset.systemDefault()).format(lastUpdateDate.toInstant()).toString();
+	log.info("getRfxByLastUpdateDate() - formattedLastUpdateDate {}", formattedLastUpdateDate);
+			  
+	final var rfxUri = jaggaerAPIConfig.getGetRfxByLastUpdateDateList().get(ENDPOINT);
+    log.info("getRfxByLastUpdateDate() - rfxUri: {}", rfxUri);
+   
+    var updatedRfxs = webclientWrapper
+            .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
+                jaggaerAPIConfig.getTimeoutDuration(), rfxUri, formattedLastUpdateDate, buyerCompanyId,"")
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                "Unexpected error searching rfxs"));
+    
+    log.info("getRfxByLastUpdateDate() - updatedRfxs: {}", updatedRfxs);
+
+    return updatedRfxs.getDataList().getRfx();
+    
+  }
+  
 }

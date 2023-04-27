@@ -14,7 +14,6 @@ public class AdditionalInfo {
   @JsonProperty("values")
   AdditionalInfoValues values;
   
-  // Added by RoweIT for Tenders API integration
   String type;
   Integer visibleToSupplier;
   
