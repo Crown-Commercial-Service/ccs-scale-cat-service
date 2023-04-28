@@ -77,6 +77,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Optional<ProcurementEvent> findProcurementEventByExternalEventIdAndExternalReferenceId(final String externalEventId, final String externalReferenceId) {
+    return procurementEventRepo.findByExternalEventIdAndExternalReferenceId(externalEventId, externalReferenceId);
+  }
+  
+  @TendersRetryable
   public Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
       final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
     return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(

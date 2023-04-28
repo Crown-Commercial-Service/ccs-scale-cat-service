@@ -16,4 +16,7 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
 
   Set<ProcurementEvent> findByProjectId(Integer projectId);
+  
+  Optional<ProcurementEvent> findByExternalEventIdAndExternalReferenceId(String externalEventId, String externalReferenceId);
+  
 }

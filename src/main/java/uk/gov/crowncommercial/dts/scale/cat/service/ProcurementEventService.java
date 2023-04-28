@@ -1895,12 +1895,18 @@ public class ProcurementEventService implements EventService {
     									final String buyerCompanyId) {
 
     	List<Release> updateList = jaggaerService.getRfxByLastUpdateDate(lastSuccessRun,buyerCompanyId).stream()
+    									.filter(e -> filterExportRfxResponse(e))
     									.map(e -> {
     										// Release
     										Release r = new Release();
-    										
-    										r.setOcid(ocdsConfig.getAuthority() + '-' + ocdsConfig.getOcidPrefix() + '-' + e.getRfxSetting().getRfxReferenceCode());
-    										r.setId(e.getRfxSetting().getRfxReferenceCode());
+    									    
+    										Optional<ProcurementEvent> procurementEvent = retryableTendersDBDelegate
+    												.findProcurementEventByExternalEventIdAndExternalReferenceId(
+    															e.getRfxSetting().getRfxId(), 
+    															e.getRfxSetting().getRfxReferenceCode());
+
+    										r.setOcid(procurementEvent.get().getEventID());    											
+    										r.setId(procurementEvent.get().getProject().getId().toString());
     										r.setDate(e.getRfxSetting().getPublishDate());
     										
     										OcdsTenderStatus ocdsStateMapping =getOcdsStateMapping(e.getRfxSetting().getStatusCode().toString(),
@@ -1935,6 +1941,33 @@ public class ProcurementEventService implements EventService {
     	
     	return updateList;
 
+    }
+    
+    /**
+    *
+    * EI-97 Add deltas endpoint to CAT service
+    * 
+    * Get tender status OCDS mapping values
+    * 
+    * see doc "ES-States-MappingJaggaertoOCDStoSaleforce-220323-1058.pdf"
+    * 
+    * This filter ensures only events found in CAS DB (for the current environment i.e. local/sbx3/etc.) are returned.
+    * 
+    * @paramexportRfxResponse
+    * @returnBoolean
+    */
+    private Boolean filterExportRfxResponse (final ExportRfxResponse exportRfxResponse) {
+    	
+		Optional<ProcurementEvent> procurementEvent = retryableTendersDBDelegate
+				.findProcurementEventByExternalEventIdAndExternalReferenceId(
+						exportRfxResponse.getRfxSetting().getRfxId(), 
+						exportRfxResponse.getRfxSetting().getRfxReferenceCode());
+
+		log.debug("procurementEvent {}", procurementEvent);
+		if (!procurementEvent.isEmpty()) {
+			return true;
+		} 
+    	return false;
     }
     
     /**
