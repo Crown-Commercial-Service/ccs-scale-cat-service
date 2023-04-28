@@ -19,6 +19,8 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
 
   Set<ProcurementEvent> findByProjectId(Integer projectId);
   
+  List<ProcurementEvent> findByExternalReferenceId(String externalReferenceId);
+  
   Optional<ProcurementEvent> findByExternalEventIdAndExternalReferenceId(String externalEventId, String externalReferenceId);
 
 }
