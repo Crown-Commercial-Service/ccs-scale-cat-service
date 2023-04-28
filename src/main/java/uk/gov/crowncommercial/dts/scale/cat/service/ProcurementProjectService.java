@@ -829,27 +829,40 @@ public class ProcurementProjectService {
       
       log.info("Created/updated Rfx response: {}", createRfxResponse);
       
-      // Persist the Jaggaer Rfx details as a new event in the tenders DB
+      // Persist the (new) Jaggaer Rfx details as a new event in the tenders DB
+      ProcurementEvent procurementEvent = null;
+      if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
       
-      // Get project from tenders DB to obtain Jaggaer project id
-      var projectId = procurementProject.getId();
-      var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
-              .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-
-      var ocdsAuthority = ocdsConfig.getAuthority();
-      var ocidPrefix = ocdsConfig.getOcidPrefix();
-      var eventBuilder = ProcurementEvent.builder();
-
-      var tenderStatus = TenderStatus.PLANNING.getValue();
-
-      eventBuilder.project(project).eventName(procurementProject.getProjectName()).eventType(ViewEventType.TBD.toString())
-      		  .externalEventId(createRfxResponse.getRfxId()).externalReferenceId(createRfxResponse.getRfxReferenceCode())
-              .downSelectedSuppliers(Boolean.FALSE).ocdsAuthorityName(ocdsAuthority)
-              .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
-              .updatedAt(Instant.now()).tenderStatus(tenderStatus);
-
-      var event = eventBuilder.build();
-      ProcurementEvent procurementEvent = retryableTendersDBDelegate.save(event);
+	      // Get project from tenders DB to obtain Jaggaer project id
+	      var projectId = procurementProject.getId();
+	      var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+	              .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+	
+	      var ocdsAuthority = ocdsConfig.getAuthority();
+	      var ocidPrefix = ocdsConfig.getOcidPrefix();
+	      var eventBuilder = ProcurementEvent.builder();
+	
+	      var tenderStatus = TenderStatus.PLANNING.getValue();
+	
+	      eventBuilder.project(project).eventName(procurementProject.getProjectName()).eventType(ViewEventType.TBD.toString())
+	      		  .externalEventId(createRfxResponse.getRfxId()).externalReferenceId(createRfxResponse.getRfxReferenceCode())
+	              .downSelectedSuppliers(Boolean.FALSE).ocdsAuthorityName(ocdsAuthority)
+	              .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
+	              .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+	
+	      var event = eventBuilder.build();
+	      procurementEvent = retryableTendersDBDelegate.save(event);
+	      
+      } else {
+    	  //retrieve existing event
+    	  List<ProcurementEvent> procurementEvents =
+    			  retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(projectTender.getTenderReferenceCode());
+    			  
+          log.info("procurementEvent: {}", procurementEvent);
+          procurementEvent = procurementEvents.get(0);
+    	  
+      }
+      
       log.info("procurementEvent: {}", procurementEvent);
 
       return tendersAPIModelUtils.buildSalesforceProjectTender200Response(
