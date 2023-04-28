@@ -397,10 +397,9 @@ public class ProcurementProjectService {
 
     if (isEmailRecipient.isPresent()) {
       deleteEmailRecipientInJaggaer(event, jaggaerUserId, exportRfxResponse);
-    } else {
-      // update team member as deleted
-      deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
     }
+    // update team member as deleted
+    deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
   }
 
   private void deleteEmailRecipientInJaggaer(ProcurementEvent event, String jaggaerUserId,
