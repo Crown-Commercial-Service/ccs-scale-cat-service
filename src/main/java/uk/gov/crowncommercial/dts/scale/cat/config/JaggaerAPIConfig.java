@@ -23,7 +23,9 @@ public class JaggaerAPIConfig {
   private String headerValueWWWAuthenticate;
   private String headerValueInvalidContentType;
   private String selfServiceId;
+  private String assistedProcurementUserId;
   private String assistedProcurementId;
+  private String assistedProcurementOrgId;
   private String defaultBuyerRightsProfile;
   private String defaultSupplierRightsProfile;
   private Integer timeoutDuration;
@@ -60,9 +62,9 @@ public class JaggaerAPIConfig {
   private Map<String, String> award;
   private Map<String, String> preAward;
   private Map<String, String> completeTechnical;
-  private Map<String, String> apiDefaults;			// Added by RoweIT for Tenders API integration
-  private Map<String, String> esourcing;
+  private Map<String, String> apiDefaults;
   private Map<String, String> getRfxByLastUpdateDateList;
+  private Map<String, String> esourcing;
 
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;

@@ -117,16 +117,11 @@ public class TendersController extends AbstractRestController {
   @PostMapping("/projects/salesforce")
   @TrackExecutionTime
 
-  public SalesforceProjectTender200Response createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender,
-		  final ApiKeyAuthToken authentication) {
+  public ResponseEntity<SalesforceProjectTender200Response> createProcurementCase(@Valid @RequestBody SalesforceProjectTender projectTender) {
 	  
-	  String principal = (String) authentication.getPrincipal();
-	  
-	  log.debug("createProcurementCase() with principal -> {}", principal);
-
-	 // 
-	 return procurementProjectService.createFromSalesforceDetails(projectTender,principal);
-	    
+      log.info("createProcurementCase() called");
+      return ResponseEntity.status(HttpStatus.CREATED).body(procurementProjectService.createFromSalesforceDetails(projectTender));
+      
   }
 
   @GetMapping("/projects/deltas")

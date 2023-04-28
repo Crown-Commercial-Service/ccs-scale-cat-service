@@ -61,6 +61,8 @@ class EsourcingTendersControllerTest {
   private static final String LOT_NUMBER = "Lot1a";
   private static final String RFX_REFERENCE_CODE = "itt_9899";
   private static final String TENDER_REF_CODE = "project_0001";
+  private static final Integer PROC_PROJECT_ID = 1;
+  private static final String EVENT_ID = "ocds-pfhb7i-1";
 
   private static final SalesforceProjectTender salesforceProjectTender = new SalesforceProjectTender();
   private static final SalesforceRfx salesforceRfx = new SalesforceRfx();
@@ -180,7 +182,7 @@ class EsourcingTendersControllerTest {
   }
   
   @Test
-  void createProjectFromSalesforce_200_OK() throws Exception {
+  void createProjectFromSalesforce_201_OK() throws Exception {
 
 	String key = "jgkepi7df-890g7s-8g7usidfgpoid7yf";
     when(apiKeyDetailsProvider.findDetailsByKey(key)).thenReturn(Optional
@@ -189,9 +191,9 @@ class EsourcingTendersControllerTest {
             .build()));
     
 	var salesforceProjectTender200Response =  
-			tendersAPIModelUtils.buildSalesforceProjectTender200Response(TENDER_REF_CODE,RFX_REFERENCE_CODE);
+			tendersAPIModelUtils.buildSalesforceProjectTender200Response(TENDER_REF_CODE,RFX_REFERENCE_CODE,EVENT_ID,PROC_PROJECT_ID);
 
-    when(procurementProjectService.createFromSalesforceDetails(salesforceProjectTender, key))
+    when(procurementProjectService.createFromSalesforceDetails(salesforceProjectTender))
     	.thenReturn(salesforceProjectTender200Response);
 
     mockMvc
@@ -199,12 +201,12 @@ class EsourcingTendersControllerTest {
             .header("x-api-key", key)
             .contentType(APPLICATION_JSON)
            .content(objectMapper.writeValueAsString(salesforceProjectTender)))
-        .andDo(print()).andExpect(status().isOk())
+        .andDo(print()).andExpect(status().isCreated())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.tenderReferenceCode").value(TENDER_REF_CODE))
         .andExpect(jsonPath("$.rfxReferenceCode").value(RFX_REFERENCE_CODE));
 
-        verify(procurementProjectService).createFromSalesforceDetails(any(SalesforceProjectTender.class), anyString());
+        verify(procurementProjectService).createFromSalesforceDetails(any(SalesforceProjectTender.class));
   }
   
 }

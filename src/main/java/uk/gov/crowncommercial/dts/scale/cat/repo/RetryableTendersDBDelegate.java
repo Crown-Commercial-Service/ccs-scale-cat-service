@@ -75,6 +75,11 @@ public class RetryableTendersDBDelegate {
   public Optional<ProcurementEvent> findProcurementEventById(final Integer id) {
     return procurementEventRepo.findById(id);
   }
+  
+  @TendersRetryable
+  public List<ProcurementEvent> findProcurementEventByExternalReferenceId(final String externalReferenceId) {
+    return procurementEventRepo.findByExternalReferenceId(externalReferenceId);
+  }
 
   @TendersRetryable
   public Optional<ProcurementEvent> findProcurementEventByExternalEventIdAndExternalReferenceId(final String externalEventId, final String externalReferenceId) {
@@ -417,6 +422,13 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<RfxTemplateMapping> findRfxTemplateMappingRfxShortDescription(final String rfxShortDescription) {
     return rfxTemplateMappingRepo.findByRfxShortDescription(rfxShortDescription);
+  }
+    
+  @TendersRetryable
+  public Optional<RfxTemplateMapping> findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber(
+		  					final String rfxShortDescription,
+		  					final String lotNumber) {
+    return rfxTemplateMappingRepo.findByRfxCommercialAgreementNumberAndLotNumber(rfxShortDescription, lotNumber);
   }
     
   public void updateEventDate(ProcurementEvent procurementEvent, String profile) {

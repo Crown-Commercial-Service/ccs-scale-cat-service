@@ -11,6 +11,6 @@ public class ProjectOwner {
 
   String id;
   
-  String login; // Added by RoweIT EI-74 /salesforce endpoint
+  String login; 
 
 }
