@@ -1,6 +1,6 @@
 {
   "instance_min_count": 2,
-  "instance_max_count": 4,
+  "instance_max_count": 3,
   "scaling_rules": [
     {
       "metric_type": "cpu",
