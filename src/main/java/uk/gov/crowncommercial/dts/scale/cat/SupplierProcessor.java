@@ -270,15 +270,12 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
 
     private JaggaerSupplierModel getCompanyData(SupplierModel supplierModel, String duns) {
         JaggaerSupplierModel data = queryCompanyFromJaggaer(duns);
-        String houseNUmber = getHouseNumber(supplierModel.getHouseNumber());
+        String houseNUmber = Util.getCoHId(getHouseNumber(supplierModel.getHouseNumber()));
         if(null == data)
            data = queryCompanyJaggaerWithTrim(duns);
         if (null == data && null != supplierModel.getHouseNumber()) {
             if (null != houseNUmber) {
                 data = queryCompanyFromJaggaer(houseNUmber);
-                if (null == data && houseNUmber.length() == 7) {
-                    data = queryCompanyFromJaggaer("0" + houseNUmber);
-                }
             }
             if (null == data) {
                 String dunsNumber = "US-DUNS-" + duns;
@@ -450,7 +447,7 @@ public class SupplierProcessor implements Consumer<SupplierModel> {
                 }
             }
         }
-        if (currentSimilarity > 0.85) {
+        if (currentSimilarity > 0.95) {
             if (Util.isCohEqual(houseNumber, currentMappedCoH)) return null;
             supplierModel.setCiiCoH(currentMappedCoH);
             supplierModel.setCiiOrgName(currentMappedOrgName);
