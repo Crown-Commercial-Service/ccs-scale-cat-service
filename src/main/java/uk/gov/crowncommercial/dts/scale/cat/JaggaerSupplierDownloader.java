@@ -29,10 +29,19 @@ public class JaggaerSupplierDownloader {
         reader.processFile(file, new Consumer<JaggaerSupplierModel>() {
             @Override
             public void accept(JaggaerSupplierModel jaggaerSupplierModel) {
+                jaggaerSupplierModel.setExtCode(replaceNbsp(jaggaerSupplierModel.getExtCode()));
+                jaggaerSupplierModel.setExtUniqueCode(replaceNbsp(jaggaerSupplierModel.getExtUniqueCode()));
+                jaggaerSupplierModel.setFiscalCode(replaceNbsp(jaggaerSupplierModel.getFiscalCode()));
                 result.put(jaggaerSupplierModel.getBravoId(), jaggaerSupplierModel);
             }
         });
         return result;
+    }
+
+    private static String replaceNbsp(String input){
+        if(null == input)
+            return null;
+        return input.replaceAll(" ","");
     }
 
     public void downloadSuppliers(String baseFolder, String filename){
