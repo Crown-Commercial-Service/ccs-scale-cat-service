@@ -6,12 +6,12 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Stream;
 import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import com.google.common.base.CharMatcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
@@ -21,8 +21,6 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseExcep
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.SSOObjectMissingException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.UserRolesConflictException;
-import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
-import uk.gov.crowncommercial.dts.scale.cat.model.SupplierLink;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.GroupAccessRole;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
@@ -238,7 +236,7 @@ public class ProfileManagementService {
                 .build()));
           }
         } catch (Exception e) {
-          log.error("Error while seraching supplier mapping table", e);
+          log.error("Error while searching supplier mapping table", e);
         }
       }
 
@@ -250,9 +248,14 @@ public class ProfileManagementService {
             conclaveUser, conclaveUserOrg, conclaveUserContacts, userId, registerUserResponse);
 
       } else {
-        // Call Jaggaer to check the supplier super user is exists
+        // Call Jaggaer by extUnique code to check the supplier super user is exists
         var superUser =
             userProfileService.getSupplierDataByDUNSNumber(conclaveUserOrg.getIdentifier().getId());
+        if (superUser.isEmpty()) {
+          // Call Jaggaer by fiscal code to check the supplier super user is exists
+          String fiscalCode = CharMatcher.inRange('0', '9').retainFrom(primaryOrgId);
+          superUser = userProfileService.getSupplierDataByFiscalCode(fiscalCode);
+        }
         if (superUser.isPresent()) {
           // Create Jaggaer Supplier sub-user
           createUpdateSupplierSubUser(superUser.get().getReturnCompanyInfo().getBravoId(),

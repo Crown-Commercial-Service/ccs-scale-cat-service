@@ -4,8 +4,11 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.DUNS_PLACEHOLDER;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.FISCALCODE_PLACEHOLDER;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.DuplicateFiscalCodeException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
@@ -234,6 +238,21 @@ public class UserProfileService {
     }
     return Optional.empty();
   }
+  
+  private Set<ReturnCompanyData> getSuppliersDataHelper(final String endpoint) {
+    var response = ofNullable(
+        jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
+            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving Jaggear supplier company data"));
+
+    if ("0".equals(response.getReturnCode()) && "OK".equals(response.getReturnMessage())
+        && response.getReturnCompanyData() != null) {
+
+      return response.getReturnCompanyData();
+    }
+    return Collections.emptySet();
+  }
 
   /**
    *
@@ -274,7 +293,24 @@ public class UserProfileService {
                  DUNS_PLACEHOLDER, concalveIdentifier);
      return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
  }
+ 
+ /**
+ *
+ * Return Supplier CompanyData for given supplier ficalcode (COH-Number)
+ * @param concalveIdentifier
+ * @return company
+ */
+ public Optional<ReturnCompanyData> getSupplierDataByFiscalCode(final String concalveIdentifier) {
+   var getSupplierCompanyByFiscalCodeEndpoint = jaggaerAPIConfig.getGetCompanyProfileByFiscalCode()
+       .get(JaggaerAPIConfig.ENDPOINT).replace(FISCALCODE_PLACEHOLDER, concalveIdentifier);
+   var supplierSuperUserData = getSuppliersDataHelper(getSupplierCompanyByFiscalCodeEndpoint);
+   if (supplierSuperUserData.size() > 1) {
+     throw new DuplicateFiscalCodeException(
+         "Duplicate fiscal code " + concalveIdentifier + " found in jaggaer");
+   }
+   return supplierSuperUserData.stream().findFirst();
 
+ }
 
   public Optional<ReturnCompanyData> resolveCompanyProfileData(final String organisationIdentifier) {
 
