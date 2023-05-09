@@ -100,16 +100,6 @@ deploy:
       all_branches: true
       condition: $DEPLOY_BRANCH = TRUE
 
-branches:
-  only:
-    - "/^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$/"
-    - "/^(release)\\/.*$/"
-    - "/^snyk-(upgrade|fix)-[a-z0-9]+$/"
-    - "/^(dependabot\/maven)\/.*$/"
-    - "/^(sbx3feature)\\/.*$/"
-    - develop
-    - main
-
 # WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments 
 env:
   global:
