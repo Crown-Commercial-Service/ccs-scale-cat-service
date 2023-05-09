@@ -434,6 +434,25 @@ public class EventsController extends AbstractRestController {
     return ResponseEntity.ok(streamResponseBody);
 
   }
+  
+  @PostMapping("/{eventID}/startEvaluation")
+  @TrackExecutionTime
+  public StringValueResponse startEvaluation(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("startEvaluation invoked on behalf of principal: {}", principal);
+
+    StopWatch watch = new StopWatch();
+    watch.start();
+    procurementEventService.startEvaluation(principal, procId, eventId);
+    watch.stop();
+    log.info(
+        "startEvaluation : Total time taken to Start Evaluation for procID {} : eventId :{} : Timetaken : {}  ",
+        procId, eventId, watch.getLastTaskTimeMillis());
+
+    return new StringValueResponse("OK");
+  }
 
   private ZipEntry getZipEntryForSupplierResponse(SupplierAttachmentResponse supplierAttachmentResponse, ZipOutputStream zipOutputStream, ZipEntry zipEntry) throws IOException {
     List<ParameterInfo> parameterInfoList =

@@ -21,21 +21,21 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
-import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.DocumentConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.OcdsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.ProcurementEventBuilder;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.QueuedAsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DOS6SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.JaggaerSupplierStore;
@@ -50,8 +50,9 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementEventService.class, JaggaerAPIConfig.class, OcdsConfig.class,
+            ExperimentalFlagsConfig.class,
         DocumentConfig.class, TendersAPIModelUtils.class, RetryableTendersDBDelegate.class,
-        ApplicationFlagsConfig.class, RPAGenericService.class,EventTransitionService.class,
+        ApplicationFlagsConfig.class,EventTransitionService.class,
             SupplierStoreFactory.class, JaggaerSupplierStore.class, DatabaseSupplierStore.class,
     DOS6SupplierStore.class},
     webEnvironment = WebEnvironment.NONE)
@@ -115,6 +116,9 @@ class ProcurementEventServiceTest {
 
   @Autowired
   private ProcurementEventService procurementEventService;
+
+  @MockBean
+  private QueuedAsyncExecutor asyncExecutor;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
@@ -182,8 +186,6 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
-  @MockBean
-  private RPAGenericService rpaGenericService;
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
@@ -231,11 +233,18 @@ class ProcurementEventServiceTest {
     var procurementProject = ProcurementProject.builder()
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
     var procurementEvent = ProcurementEvent.builder().build();
-
+    procurementEvent.setRefreshSuppliers(false);
     var rfxSetting = RfxSetting.builder().shortDescription(UPDATED_EVENT_NAME).statusCode(100)
         .publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
+
+    var assessmentTool = AssessmentTool.builder()
+            .id(1).downSelectSuppliers(false).build();
+
+    var assessment= new Assessment();
+    assessment.setAssessmentId(0);
+    assessment.setExternalToolId("1");
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
@@ -255,6 +264,15 @@ class ProcurementEventServiceTest {
       procurementEvent.setOcidPrefix(OCID_PREFIX);
       return procurementEvent;
     });
+
+
+    when(assessmentToolRepo.findByExternalToolId(any())).then(mock -> {
+      return Optional.of(assessmentTool);
+    });
+
+
+    when(assessmentService.getAssessment(
+            0, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
@@ -305,12 +323,21 @@ class ProcurementEventServiceTest {
 
     var procurementProject = ProcurementProject.builder()
         .caNumber(agreementDetails.getAgreementId()).lotNumber(agreementDetails.getLotId()).build();
+
+
     var procurementEvent = ProcurementEvent.builder().build();
 
     var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(UPDATED_EVENT_NAME)
         .statusCode(100).publishDate(OffsetDateTime.now()).closeDate(OffsetDateTime.now()).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
+
+    var assessmentTool = AssessmentTool.builder()
+            .id(1).downSelectSuppliers(false).build();
+
+    var assessment= new Assessment();
+    assessment.setAssessmentId(ASSESSMENT_ID);
+    assessment.setExternalToolId("1");
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
@@ -330,8 +357,23 @@ class ProcurementEventServiceTest {
       return procurementEvent;
     });
 
+    when(procurementProjectRepo.findById(PROC_PROJECT_ID)).then(mock -> {
+      procurementProject.setId(PROC_PROJECT_ID);
+      procurementProject.setProjectName(PROJECT_NAME);
+      return Optional.of(procurementProject);
+    });
+
+    when(assessmentToolRepo.findByExternalToolId(any())).then(mock -> {
+      return Optional.of(assessmentTool);
+    });
+
+
+
     when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
         PRINCIPAL)).thenReturn(ASSESSMENT_ID);
+
+    when(assessmentService.getAssessment(
+            ASSESSMENT_ID, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
@@ -589,6 +631,13 @@ class ProcurementEventServiceTest {
     letype.setAssessmentToolId("1");
     letype.setType(UPDATED_EVENT_TYPE_CAP_ASS);
 
+    var assessmentTool = AssessmentTool.builder()
+              .id(1).downSelectSuppliers(false).build();
+
+    var assessment= new Assessment();
+      assessment.setAssessmentId(ASSESSMENT_ID);
+      assessment.setExternalToolId("1");
+
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
@@ -598,6 +647,18 @@ class ProcurementEventServiceTest {
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
     when(agreementsService.getLotEventTypes(any(), any())).thenReturn(Set.of(letype));
+
+      when(assessmentToolRepo.findByExternalToolId(any())).then(mock -> {
+          return Optional.of(assessmentTool);
+      });
+
+
+
+      when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
+              PRINCIPAL)).thenReturn(ASSESSMENT_ID);
+
+      when(assessmentService.getAssessment(
+              ASSESSMENT_ID, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -639,11 +700,24 @@ class ProcurementEventServiceTest {
     event.setEventType(ORIGINAL_EVENT_TYPE);
     event.setProject(project);
 
+      var assessmentTool = AssessmentTool.builder()
+              .id(1).downSelectSuppliers(false).build();
+
+      var assessment= new Assessment();
+      assessment.setAssessmentId(ASSESSMENT_ID);
+      assessment.setExternalToolId("1");
+
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+
+      when(assessmentService.createEmptyAssessment(CA_NUMBER, LOT_NUMBER, DefineEventType.FCA,
+              PRINCIPAL)).thenReturn(ASSESSMENT_ID);
+
+      when(assessmentService.getAssessment(
+              ASSESSMENT_ID, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     // Invoke
     var captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -733,11 +807,14 @@ class ProcurementEventServiceTest {
     var orgMapping = new OrganisationMapping();
     orgMapping.setExternalOrganisationId(JAGGAER_SUPPLIER_ID);
     orgMapping.setOrganisationId(SUPPLIER_ID);
+    orgMapping.setCasOrganisationId(SUPPLIER_ID);
 
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
+    when(organisationMappingRepo.findByExternalOrganisationIdIn(Set.of(JAGGAER_SUPPLIER_ID)))
+            .thenReturn(Set.of(orgMapping));
     when(organisationMappingRepo.findByExternalOrganisationId(JAGGAER_SUPPLIER_ID))
         .thenReturn(Optional.of(orgMapping));
 
@@ -770,7 +847,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+    when(organisationMappingRepo.findByCasOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
 
     ArgumentCaptor<Rfx> rfxCaptor = ArgumentCaptor.forClass(Rfx.class);
@@ -812,7 +889,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationIdIn(Set.of(SUPPLIER_ID)))
+    when(organisationMappingRepo.findByCasOrganisationIdIn(Set.of(SUPPLIER_ID)))
         .thenReturn(Set.of(mapping));
     when(assessmentService.getAssessment(ASSESSMENT_ID, Boolean.FALSE, Optional.empty()))
         .thenReturn(assessment);
@@ -847,7 +924,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
-    when(organisationMappingRepo.findByOrganisationId(SUPPLIER_ID))
+    when(organisationMappingRepo.findByCasOrganisationId(SUPPLIER_ID))
         .thenReturn(Optional.of(mapping));
     when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
 
@@ -938,7 +1015,7 @@ class ProcurementEventServiceTest {
     var procurementProject =
         ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
     var procurementEvent = ProcurementEvent.builder().project(procurementProject).eventType("RFI")
-        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+        .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).refreshSuppliers(false).build();
 
     var documentUpload1 = DocumentUpload.builder().id(1).externalStatus(VirusCheckStatus.SAFE)
         .documentId("YnV5ZXItMjM3MDU4LW5pY2VwZGYucGRm").mimetype("application/pdf")
@@ -963,10 +1040,14 @@ class ProcurementEventServiceTest {
         .shortDescription(ORIGINAL_EVENT_NAME).longDescription(DESCRIPTION).build();
     var rfxResponse = new ExportRfxResponse();
     rfxResponse.setRfxSetting(rfxSetting);
-
+    SuppliersList supplierList= SuppliersList.builder().build();
+    rfxResponse.setSuppliersList(supplierList);
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
+
+
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
     when(documentUploadService.retrieveDocument(documentUpload1, PRINCIPAL))
@@ -997,6 +1078,7 @@ class ProcurementEventServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(procurementEvent);
 
@@ -1091,7 +1173,9 @@ class ProcurementEventServiceTest {
         LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
         .build();
     var organisationMapping =
-        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684804")
+                .casOrganisationId("GB-COH-05684804")
+                .build();
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
     rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
@@ -1116,47 +1200,6 @@ class ProcurementEventServiceTest {
     assertEquals(7, response.getNoResponse());
   }
 
-  @Test
-  void testSupplierResponsesWithNoOffers() throws Exception {
-
-    var event = new ProcurementEvent();
-    event.setId(PROC_EVENT_DB_ID);
-    event.setExternalEventId(PROC_EVENT_ID);
-    event.setEventType(ORIGINAL_EVENT_TYPE);
-
-    var rfxResponse = new ExportRfxResponse();
-    var rfxSetting = RfxSetting.builder().statusCode(0).rfxId(RFX_ID).build();
-
-    var supplier = Supplier.builder()
-        .companyData(CompanyData.builder().id(5684804).name("Test Supplier 1").build())
-        .status("Replied").statusCode(4).build();
-    var supplierResponseCounters = SupplierResponseCounters.builder().lastRound(
-        LastRound.builder().numSupplInvited(8).numSupplResponded(1).numSupplNotResponded(7).build())
-        .build();
-    var organisationMapping =
-        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
-    rfxResponse.setRfxSetting(rfxSetting);
-    rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());
-    rfxResponse.setSupplierResponseCounters(supplierResponseCounters);
-    // Mock behaviours
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
-        .thenReturn(event);
-    when(jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(PROC_EVENT_ID)).thenReturn(rfxResponse);
-    when(organisationMappingRepo.findByExternalOrganisationId(supplier.getCompanyData().getId()))
-        .thenReturn(Optional.of(organisationMapping));
-
-    var response = procurementEventService.getSupplierResponses(PROC_PROJECT_ID, PROC_EVENT_ID);
-
-    // Verify
-    assertNotNull(response);
-
-    assertEquals("GB-COH-05684804", response.getResponders().get(0).getSupplier().getId());
-    assertEquals("Test Supplier 1", response.getResponders().get(0).getSupplier().getName());
-    assertNull(response.getResponders().get(0).getResponseDate());
-    assertEquals(1, response.getResponded());
-    assertEquals(8, response.getInvited());
-    assertEquals(7, response.getNoResponse());
-  }
 
   void testTerminateEvent() throws Exception {
 
@@ -1897,10 +1940,14 @@ class ProcurementEventServiceTest {
         .build();
 
     var organisationMapping =
-        OrganisationMapping.builder().organisationId("GB-COH-05684804").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684804")
+                .casOrganisationId("GB-COH-05684804")
+                .build();
 
     var organisationMappingSecondSupplier =
-        OrganisationMapping.builder().organisationId("GB-COH-05684805").build();
+        OrganisationMapping.builder().organisationId("GB-COH-05684805")
+                .casOrganisationId("GB-COH-05684805")
+                .build();
 
     rfxResponse.setRfxSetting(rfxSetting);
     rfxResponse.setSuppliersList(SuppliersList.builder().supplier(Arrays.asList(supplier)).build());

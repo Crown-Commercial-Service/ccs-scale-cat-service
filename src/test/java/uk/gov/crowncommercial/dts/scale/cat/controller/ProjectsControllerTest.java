@@ -364,7 +364,7 @@ class ProjectsControllerTest {
             .andDo(print()).andExpect(status().isOk())
             .andExpect(content().contentType(APPLICATION_JSON));
 
-    verify(procurementProjectService, times(1)).getProjects(PRINCIPAL);
+    verify(procurementProjectService, times(1)).getProjects(PRINCIPAL, null, null, "0", "20");
   }
   private void testCreateFromAgreement400BadRequestHelper(final AgreementDetails invalidPayload)
       throws Exception {

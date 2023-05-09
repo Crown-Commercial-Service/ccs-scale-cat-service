@@ -35,20 +35,16 @@ public class AwardService {
 
   private final ValidationService validationService;
   private final UserProfileService userService;
-  private final RPAGenericService rpaGenericService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final JaggaerService jaggaerService;
+
+  private final SupplierService supplierService;
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
   public static final String AWARDS_TO_MUTLIPLE_SUPPLIERS =
       "Awards to multiple suppliers is not currently supported";
-  private static final String PRE_AWARD = "Pre-Award";
-  private static final String EDIT_PRE_AWARD = "Edit Pre-Awarding";
-  private static final String AWARD = "Award";
-  private static final String RPA_END_EVALUATION_ERROR_DESC =
-      "Awarding action dropdown button not found";
   static final String AWARDED_TEMPLATE_DESCRIPTION = "Awarded Templates";
   static final String UN_SUCCESSFUL_TEMPLATE_DESCRIPTION = "UnSuccessful Supplier Templates";
   static final String ORDER_FORM_TEMPLATE_DESCRIPTION = "Order Form Templates";
@@ -62,66 +58,11 @@ public class AwardService {
   public static final String OFFER_COPONENT_FILTER = "OFFERS";
 
   /**
-   * Pre-Award or Edit-Pre-Award or Complete Award to the supplied suppliers.
-   *
-   * @param principal
-   * @param projectId
-   * @param eventId
-   * @param awardAction
-   * @param award
-   * @return status
-   */
-  @Deprecated
-  public String createOrUpdateAward(final String principal, final Integer projectId,
-      final String eventId, final AwardState awardState, final Award2AllOf award,
-      final Integer awardId) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserProfile(principal)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-
-    if (award.getSuppliers().size() > 1) {
-      throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
-    }
-
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, award.getSuppliers()
-        .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
-
-    var validSupplierName =
-        validSuppliers.getFirst().stream().map(e -> e.getCompanyData().getName()).findFirst()
-            .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND));
-
-    var awardAction = AwardState.AWARD.equals(awardState) ? AWARD : PRE_AWARD;
-    if (awardId != null) {
-      awardAction = AwardState.AWARD.equals(awardState) ? AWARD : EDIT_PRE_AWARD;
-    }
-    log.info("SupplierName {} and Award-action {}", validSupplierName, awardAction);
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(buyerUser.getEmail())
-        .password(rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()))
-        .ittCode(procurementEvent.getExternalReferenceId()).awardAction(awardAction)
-        .supplierName(validSupplierName);
-    try {
-      return rpaGenericService.callRPAMessageAPI(inputBuilder.build(), RPAProcessNameEnum.AWARDING);
-    } catch (JaggaerRPAException je) {
-      // End Evaluation
-      if (je.getMessage().contains(RPA_END_EVALUATION_ERROR_DESC)) {
-        this.callEndEvaluation(buyerUser.getEmail(),
-            rpaGenericService.getBuyerEncryptedPassword(buyerUser.getUserId()),
-            procurementEvent.getExternalReferenceId());
-        return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-            RPAProcessNameEnum.AWARDING);
-      }
-      throw je;
-    }
-  }
-  
-  /**
    * Pre-Award or Award to the supplied suppliers.
    *
    * @param principal
    * @param projectId
    * @param eventId
-   * @param awardAction
    * @param award
    * @param awardId - For Future use
    * @return status
@@ -135,36 +76,23 @@ public class AwardService {
     if (award.getSuppliers().size() > 1) {
       throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
     }
-    var validSuppliers = rpaGenericService.getValidSuppliers(procurementEvent, award.getSuppliers()
+    var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
         .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
     
-    //TODO delete once score testing is done 
-    jaggaerService.completeTechnical(procurementEvent, buyerUser.getUserId());
-    return jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
+    var awardOrPreAwardRfxResponse = jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
         validSuppliers.getFirst().stream().findFirst()
             .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getCompanyData()
             .getId().toString(),
         awardState);
+    log.debug("Successfully {}", awardState.getValue());
+    retryableTendersDBDelegate.updateEventDate(procurementEvent, principal);
+    return awardOrPreAwardRfxResponse;
   }
 
-  /**
-   * Calls RPA to End Evaluation
-   */
-  @Deprecated
-  public String callEndEvaluation(final String userEmail, final String password,
-      final String externalReferenceId) {
-    log.info("Calling End Evaluation for {}", externalReferenceId);
-    // Creating RPA process input string
-    var inputBuilder = RPAProcessInput.builder().userName(userEmail).password(password)
-        .ittCode(externalReferenceId);
-    return rpaGenericService.callRPAMessageAPI(inputBuilder.build(),
-        RPAProcessNameEnum.END_EVALUATION);
-  }
 
   /**
    * Lists the template documents for an award.
    *
-   * @param Set<DocumentTemplate>
    * @return a collection of document summaries
    */
   public Collection<DocumentSummary> getAwardTemplates(final Integer procId, final String eventId) {
@@ -289,7 +217,7 @@ public class AwardService {
 
     // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
     return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
-        .addSuppliersItem(new OrganizationReference1().id(supplier.getOrganisationId()))
+        .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
         .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
             ? AwardState.AWARD
             : AwardState.PRE_AWARD);

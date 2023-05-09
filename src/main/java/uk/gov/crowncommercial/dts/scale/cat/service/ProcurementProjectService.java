@@ -33,8 +33,6 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 
-import javax.transaction.Transactional;
-
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 
@@ -101,7 +99,7 @@ public class ProcurementProjectService {
               .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
       var jaggaerBuyerCompanyId = userProfileService.resolveBuyerUserCompany(principal).getBravoId();
 
-      var conclaveUserOrg = conclaveService.getOrganisation(conclaveOrgId)
+      var conclaveUserOrg = conclaveService.getOrganisationIdentity(conclaveOrgId)
               .orElseThrow(() -> new AuthorisationFailureException(
                       "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
 
@@ -389,17 +387,48 @@ public class ProcurementProjectService {
       throw new IllegalArgumentException("Unable to delete project owner");
     }
 
+    // check email-recipient in jaggaer
+    var event = getCurrentEvent(dbProject);
+    var exportRfxResponse = jaggaerService.getRfxWithEmailRecipients(event.getExternalEventId());
+
+    Optional<EmailRecipient> isEmailRecipient =
+        exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
+            .filter(e -> e.getUser().getId().equals(jaggaerUserId)).findAny();
+
+    if (isEmailRecipient.isPresent()) {
+      deleteEmailRecipientInJaggaer(event, jaggaerUserId, exportRfxResponse);
+    }
     // update team member as deleted
     deleteProjectUserMapping(jaggaerUserId, dbProject, principal);
+  }
+
+  private void deleteEmailRecipientInJaggaer(ProcurementEvent event, String jaggaerUserId,
+                                             ExportRfxResponse exportRfxResponse){
+    log.debug("delete email-recipient in jaggaer");
+    List<EmailRecipient> newEmailRecipientsList =
+            exportRfxResponse.getEmailRecipientList().getEmailRecipient().stream()
+                    .filter(e -> !e.getUser().getId().equals(jaggaerUserId)).toList();
+    var rfxRequest = Rfx.builder()
+            .rfxSetting(RfxSetting.builder().rfxId(event.getExternalEventId())
+                    .rfxReferenceCode(event.getExternalReferenceId()).build())
+            .emailRecipientList(
+                    EmailRecipientList.builder().emailRecipient(newEmailRecipientsList).build())
+            .build();
+    jaggaerService.createUpdateRfx(rfxRequest, OperationCode.UPDATE_RESET);
   }
 
   /**
    * Get Projects
    *
-   * @return Collection of projects
    * @param principal
+   * @param searchType
+   * @param searchTerm
+   * @param page
+   * @param pageSize
+   * @return Collection of projects
    */
-  public Collection<ProjectPackageSummary> getProjects(final String principal) {
+  public Collection<ProjectPackageSummary> getProjects(final String principal, final String searchType,final String searchTerm,
+                                                       String page, String pageSize) {
 
     log.debug("Get projects for user: " + principal);
 
@@ -407,19 +436,23 @@ public class ProcurementProjectService {
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
+
     var projectUserMappings = retryableTendersDBDelegate.findProjectUserMappingByUserId(
-        jaggaerUserId, PageRequest.of(0, 20, Sort.by("timestamps.createdAt").descending()));
+                                                      jaggaerUserId,
+                                                      searchType,
+                                                      searchTerm,
+                                                      PageRequest.of(Objects.nonNull(page)?Integer.valueOf(page):0, Objects.nonNull(pageSize)?Integer.valueOf(pageSize):20, Sort.by("project.procurementEvents.updatedAt").descending()));
 
     if (!CollectionUtils.isEmpty(projectUserMappings)) {
       var externalEventIdsAllProjects = projectUserMappings.stream()
           .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
           .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
-
       var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
-
+      
       return projectUserMappings.stream()
           .map(pum -> convertProjectToProjectPackageSummary(pum, projectUserRfxs))
-          .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
+          .filter(Optional::isPresent).map(Optional::get)
+          .collect(Collectors.toSet());
     }
     return Collections.emptyList();
   }
@@ -457,6 +490,7 @@ public class ProcurementProjectService {
     projectPackageSummary.setLotId(mapping.getProject().getLotNumber());
     projectPackageSummary.setProjectId(mapping.getProject().getId());
     projectPackageSummary.setProjectName(mapping.getProject().getProjectName());
+    projectPackageSummary.setSupportId(mapping.getProject().getExternalReferenceId());
 
     EventSummary eventSummary = null;
     RfxSetting rfxSetting = null;
@@ -505,6 +539,7 @@ public class ProcurementProjectService {
 
     if(null != eventSummary) {
       eventSummary.setDashboardStatus(tendersAPIModelUtils.getDashboardStatus(rfxSetting, dbEvent));
+      eventSummary.setLastUpdated(OffsetDateTime.ofInstant(dbEvent.getUpdatedAt(),ZoneId.systemDefault()));
       projectPackageSummary.activeEvent(eventSummary);
     }
 

@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -81,9 +82,8 @@ public class DocGenValueAdaptors {
   @Bean("DocumentValueAdaptorPublishDateAndTime")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorPublishDateAndTime() {
-    var formattedDatetime =
-        OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
-    return (event, requestCache) -> List.of(formattedDatetime);
+
+    return (event, requestCache) -> List.of(getPublishDate(event, requestCache));
   }
 
   @Bean("DocumentValueAdaptorProcLead")
@@ -157,6 +157,11 @@ public class DocGenValueAdaptors {
         });
   }
 
+  private String getPublishDate(final ProcurementEvent event, final Map<String, Object> requestCache){
+    var formattedDatetime = event.getPublishDate() == null ? OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
+            : OffsetDateTime.ofInstant(event.getPublishDate(), ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+    return formattedDatetime;
+  }
   private TeamMember getProcurementProjectLead(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
 
@@ -179,7 +184,7 @@ public class DocGenValueAdaptors {
               .orElseThrow(() -> new TendersDBDataException(
                   "Project [" + event.getProject().getId() + "] has no org mapping"))
               .getOrganisationId();
-          return conclaveService.getOrganisation(projectOrgId)
+          return conclaveService.getOrganisationIdentity(projectOrgId)
               .orElseThrow(() -> new TendersDBDataException(
                   "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
         });

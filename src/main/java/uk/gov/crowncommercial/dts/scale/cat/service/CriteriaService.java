@@ -134,8 +134,6 @@ public class CriteriaService {
         .filter(r -> Objects.equals(r.getOcds().getId(), questionId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
-    validateProjectDurationQuestion(question, group, requirement);
-
     eventHelperService.checkValidforUpdate(requirement);
 
     var options = question.getNonOCDS().getOptions();
@@ -186,14 +184,6 @@ public class CriteriaService {
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
   }
 
-  private void validateProjectDurationQuestion(Question question, RequirementGroup group,
-      Requirement requirement) {
-    if (Objects.equals(group.getOcds().getId(), "Group 10")
-        && Objects.equals(requirement.getOcds().getId(), "Question 12")
-        && requirement.getOcds().getId().equalsIgnoreCase(question.getOCDS().getId())) {
-      validationService.validateProjectDuration(question.getNonOCDS().getOptions());
-    }
-  }
 
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
       List<QuestionNonOCDSOptions> options) {

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
@@ -11,7 +12,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
-
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -108,6 +111,19 @@ public class RetryableTendersDBDelegate {
   public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
       final String organisationId) {
     return organisationMappingRepo.findByOrganisationId(organisationId);
+  }
+
+  @TendersRetryable
+  public Set<OrganisationMapping> findOrganisationMappingByCasOrganisationIdIn(
+          final Set<String> organisationIds) {
+    return organisationMappingRepo.findByCasOrganisationIdIn(organisationIds);
+  }
+
+  @TendersRetryable
+  @Cacheable(value = "findOrganisationMappingByOrganisationId", key = "#organisationId")
+  public Optional<OrganisationMapping> findOrganisationMappingByCasOrganisationId(
+          final String organisationId) {
+    return organisationMappingRepo.findByCasOrganisationId(organisationId);
   }
 
   @TendersRetryable
@@ -342,6 +358,17 @@ public class RetryableTendersDBDelegate {
     return projectUserMappingRepo.findByUserId(userId, pageable);
   }
 
+
+  @TendersRetryable
+  public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,final String searchType,final String searchTerm,
+                                                                 final Pageable pageable) {
+
+    ProjectSearchSpecification specification= new ProjectSearchSpecification(new ProjectSearchCriteria(searchType,searchTerm,userId));
+
+    Page<ProjectUserMapping> page=projectUserMappingRepo.findAll(specification, pageable);
+    return page.getContent();
+  }
+
   @TendersRetryable
   public Optional<ProjectUserMapping> findProjectUserMappingByProjectIdAndUserId(
       final Integer projectId, final String userId) {
@@ -376,6 +403,12 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<ContractDetails> findByEventId(final Integer eventId) {
     return contractDetailsRepo.findByEventId(eventId);
+  }
+  
+  public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
+    procurementEvent.setUpdatedBy(profile);
+    procurementEvent.setUpdatedAt(Instant.now());
+    this.save(procurementEvent);
   }
 
   /**

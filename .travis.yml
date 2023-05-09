@@ -12,9 +12,10 @@ cache:
     - "$HOME/.m2"
 branches:
   only:
-    - "/^(feature|bugfix)\\/(SCC|SCAT|CON)-[0-9]+.*$/"
+    - "/^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$/"
     - "/^(release)\\/.*$/"
     - "/^snyk-(upgrade|fix)-[a-z0-9]+$/"
+    - "/^(sbx3feature)\\/.*$/"
     - develop
     - main
 
@@ -34,7 +35,22 @@ deploy:
     script: CF_ENVIRONMENT=sbx2 bash ./deploy.sh
     on:
       all_branches: true
-      condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/(SCC|SCAT|CON)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-(upgrade|fix)-[a-z0-9]+$"
+      condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-(upgrade|fix)-[a-z0-9]+$"
+
+  # SBX3 - modify CF_ENVIRONMENT as required
+  - provider: script
+    skip_cleanup: true
+    script: CF_ENVIRONMENT=sbx3 bash ./deploy.sh
+    on:
+      all_branches: true
+      condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(sbx3feature)\\/.*$"
+
+  # SBX4 - modify CF_ENVIRONMENT as required
+  - provider: script
+    skip_cleanup: true
+    script: CF_ENVIRONMENT=sbx4 bash ./deploy.sh
+    on:
+      branch: release/sbx4
 
   # DEVELOP
   - provider: script
@@ -79,7 +95,7 @@ deploy:
     on:
       branch: release/prd      
 
-# WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments
+# WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments.
 env:
   global:
     # ACCESS_KEY_ID
