@@ -31,7 +31,7 @@
 		<notifications-java-client.version>3.17.3-RELEASE</notifications-java-client.version>
 		<poi-ooxml.version>5.2.2</poi-ooxml.version>
 		<xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-		<snakeyaml.version>1.32</snakeyaml.version>
+		<snakeyaml.version>2.0</snakeyaml.version>
 		<spring-security-oauth2-client.version>5.7.5</spring-security-oauth2-client.version>
 		<spring-security-web.version>5.7.5</spring-security-web.version>
 		<hsql.version>2.7.1</hsql.version>
