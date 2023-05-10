@@ -6,8 +6,8 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.6</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<version>2.7.11</version>
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
 	<artifactId>ccs-scale-cat-service</artifactId>
@@ -17,23 +17,23 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<swagger-parser.version>2.1.9</swagger-parser.version>
+		<swagger-parser.version>2.1.13</swagger-parser.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
-		<hibernate-types.version>2.17.1</hibernate-types.version>
+		<hibernate-types.version>2.21.1</hibernate-types.version>
 		<modelmapper.version>2.4.5</modelmapper.version>
 		<simple-odf.version>0.9.0</simple-odf.version>
 		<jena-core.version>4.5.0</jena-core.version>
 		<commons-io.version>2.11.0</commons-io.version>
-		<aws-java-sdk-s3.version>1.12.347</aws-java-sdk-s3.version>
-		<tika-core.version>2.4.1</tika-core.version>
+		<aws-java-sdk-s3.version>1.12.348</aws-java-sdk-s3.version>
+		<tika-core.version>2.7.0</tika-core.version>
 		<java-cfenv-boot.version>2.4.0</java-cfenv-boot.version>
 		<notifications-java-client.version>3.19.1-RELEASE</notifications-java-client.version>
 		<poi-ooxml.version>5.2.2</poi-ooxml.version>
 		<xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-		<snakeyaml.version>1.32</snakeyaml.version>
-		<spring-security-oauth2-client.version>5.7.5</spring-security-oauth2-client.version>
-		<spring-security-web.version>5.7.5</spring-security-web.version>
+		<snakeyaml.version>2.0</snakeyaml.version>
+		<spring-security-oauth2-client.version>5.7.8</spring-security-oauth2-client.version>
+		<spring-security-web.version>5.7.8</spring-security-web.version>
 		<hsql.version>2.7.1</hsql.version>
 
 	</properties>
