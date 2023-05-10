@@ -11,10 +11,6 @@ public class DuplicateFiscalCodeException extends UpstreamServiceException {
 
   private static final long serialVersionUID = 1L;
 
-  public DuplicateFiscalCodeException(final Object code, final String message) {
-    super(SERVICE_NAME, Optional.of(code), message);
-  }
-
   public DuplicateFiscalCodeException(final String message) {
     super(SERVICE_NAME, Optional.empty(), message);
   }
