@@ -39,11 +39,25 @@ public class TaskEntityService {
         task.setId(entity.getId());
     }
 
+    @Transactional
+    public TaskHistoryEntity getLatestHistory(Task task, String stage){
+        if(null == stage)
+            return null;
+        TaskEntity entity = getEntity(task);
+        List<TaskHistoryEntity> history = entity.getHistory();
+        for(TaskHistoryEntity e : history){
+            if(null != e.getStage() && stage.equalsIgnoreCase(e.getStage()))
+                return e;
+        }
+        return null;
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TaskEntity markInProgress(Task task) {
         TaskEntity entity = getEntity(task);
         checkProceed(entity);
         markHistoryAborted(entity);
+        entity.setStage(task.getTaskStage());
         addHistory(entity);
         entity.setStatus(Task.INFLIGHT);
         entity.setLastExecutedOn(Instant.now());
@@ -111,12 +125,22 @@ public class TaskEntityService {
         List<TaskHistoryEntity> historyList = entity.getHistory();
         if (historyList.size() > 0) {
             TaskHistoryEntity history = historyList.get(0);
-            history.setStatus(taskExecutionStatus);
-            history.setResponse(response);
-            Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
+            if(!isClosed(history)) {
+                history.setStatus(taskExecutionStatus);
+                history.setResponse(response);
+                Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
+            }else{
+                if(null == history.getStage())
+                    throw new IllegalStateException("Task History already closed with status:" + history.getStatus());
+            }
         } else {
             throw new IllegalStateException("Task History cannot be Empty");
         }
+    }
+
+    private boolean isClosed(TaskHistoryEntity entity){
+        char status = entity.getStatus();
+        return (status == 'C' || status == 'F');
     }
 
 
@@ -152,6 +176,7 @@ public class TaskEntityService {
         historyEntity = new TaskHistoryEntity();
         historyEntity.setTaskEntity(entity);
         historyEntity.setStatus(Task.INFLIGHT);
+        historyEntity.setStage(entity.getStage());
         historyEntity.setNode(entity.getNode());
         historyEntity.setScheduledOn(instant);
         historyEntity.setTimestamps(Timestamps.createTimestamps(entity.getPrincipal()));
@@ -183,5 +208,15 @@ public class TaskEntityService {
             Thread.sleep(i);
         } catch (InterruptedException e) {
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markStageComplete(Task task, String response) {
+        TaskEntity entity = getEntity(task);
+        entity.setResponse(response);
+        entity.setStatus(Task.INFLIGHT);
+        update(entity);
+        updateHistory(entity, Task.COMPLETED, response);
+        taskRepo.saveAndFlush(entity);
     }
 }

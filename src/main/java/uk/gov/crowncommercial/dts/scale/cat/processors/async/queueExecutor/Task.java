@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,7 +15,7 @@ public class Task {
     private final String runner;
     private final String className;
     private Object data;
-
+    private String taskStage;
 
     private Long id;
 

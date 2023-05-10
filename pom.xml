@@ -193,7 +193,11 @@
 		    <artifactId>notifications-java-client</artifactId>
 		    <version>${notifications-java-client.version}</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+			<version>2.15.0</version>
+		</dependency>
 
 		<!-- Snyk recommended -->
 		<dependency>
