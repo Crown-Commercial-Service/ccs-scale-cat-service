@@ -25,8 +25,8 @@ public class MessageTask {
     @Column(name = "message_request")
     Message messageRequest;
 
-    @Column(name = "event_type")
-    String eventType;
+    @Column(name = "event_id")
+    Integer eventType;
 
     @Column(name = "created_by", updatable = false)
     String createdBy;
