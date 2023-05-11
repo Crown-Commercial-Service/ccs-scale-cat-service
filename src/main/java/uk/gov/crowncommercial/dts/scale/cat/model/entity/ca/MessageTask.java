@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.Type;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import javax.persistence.*;
 import java.time.Instant;
@@ -28,19 +29,8 @@ public class MessageTask {
     @Column(name = "event_id")
     Integer eventType;
 
-    @Column(name = "created_by", updatable = false)
-    String createdBy;
-
-    @Column(name = "created_at", updatable = false)
     @Embedded
-    Instant createdAt;
-
-    @Column(name = "updated_by")
-    String updatedBy;
-
-    @Column(name = "updated_at")
-    @Embedded
-    Instant updatedAt;
+    private Timestamps timestamps;
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
