@@ -62,6 +62,9 @@ public class TaskEntity {
   @Column(name = "task_node")
   private String node;
 
+  @Column(name = "task_stage")
+  private String stage;
+
   @Column(name = "task_response")
   private String Response;
 

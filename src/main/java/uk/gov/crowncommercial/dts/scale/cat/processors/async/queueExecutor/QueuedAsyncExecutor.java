@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -46,6 +47,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor {
         this.applicationFlags = applicationFlags;
         this.taskEntityService = taskEntityService;
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        mapper.registerModule(new JavaTimeModule());
     }
 
     public void startup() {
@@ -90,6 +92,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor {
         Task task = new Task(entity.getPrincipal(),
                 entity.getTaskExecutor(), entity.getDataClass(), data);
         task.setId(entity.getId());
+        task.setTaskStage(entity.getStage());
         return task;
     }
 
