@@ -32,14 +32,17 @@ public class MessageTask {
     String createdBy;
 
     @Column(name = "created_at", updatable = false)
+    @Embedded
     Instant createdAt;
 
     @Column(name = "updated_by")
     String updatedBy;
 
     @Column(name = "updated_at")
+    @Embedded
     Instant updatedAt;
 
     @Column(name = "status")
-    String status;
+    @Enumerated(EnumType.STRING)
+    MessageTaskStatus status;
 }
