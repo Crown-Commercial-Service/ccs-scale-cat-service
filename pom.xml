@@ -35,7 +35,7 @@
 		<spring-security-oauth2-client.version>5.8.3</spring-security-oauth2-client.version>
 		<spring-security-web.version>5.8.3</spring-security-web.version>
 		<hsql.version>2.7.1</hsql.version>
-		<spring-security-core.version>5.8.3</spring-security-core.version>
+		<spring-security-core.version>6.0.3</spring-security-core.version>
 	</properties>
 
 	<dependencies>
