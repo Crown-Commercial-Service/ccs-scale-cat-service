@@ -50,6 +50,7 @@ public class MessageService {
   private static final String RPA_DELIMETER = "~|";
   private static final String OBJECT_TYPE = "RFQ";
 
+  private static final String MESSAGE_TASK = "JaggerMessagePush";
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
       "Organisation [%s] not found in Conclave";
@@ -81,6 +82,7 @@ public class MessageService {
    * @return
    * @throws JsonProcessingException
    */
+  @Deprecated
   public String createOrReplyMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
@@ -129,8 +131,7 @@ public class MessageService {
                                      final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     MessageAsync messageAsync = retryableTendersDBDelegate.save(MessageAsync.builder().messageRequest(message).eventId(procurementEvent.getId()).status(MessageTaskStatus.CREATE).timestamps(Timestamps.createTimestamps(profile)).build());
-
-    asyncExecutor.execute(profile, JaggaerMessagePush.class, MessageTaskData.builder().messageId(messageAsync.getMessageId()).eventId(messageAsync.getEventId()).profile(profile).build());
+    asyncExecutor.submit(profile, JaggaerMessagePush.class, MessageTaskData.builder().messageId(messageAsync.getMessageId()).eventId(messageAsync.getEventId()).profile(profile).build(), MESSAGE_TASK ,messageAsync.getMessageId().toString());
     return messageAsync.getMessageRequest();
   }
 
