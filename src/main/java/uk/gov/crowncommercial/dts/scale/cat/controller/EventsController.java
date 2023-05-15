@@ -16,8 +16,12 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerEventPublish;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.JaggaerPublishEventData;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 
 import javax.servlet.http.HttpServletResponse;
@@ -46,7 +50,7 @@ public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
   private final AssessmentScoreExportService scoreExportService;
-
+  private final AsyncExecutor asyncExecutor;
   private final EventTransitionService eventTransitionService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
@@ -268,25 +272,28 @@ public class EventsController extends AbstractRestController {
   @TrackExecutionTime
   public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
+      @RequestParam(required = false, name="async") final String async,
       @RequestBody @Valid final PublishDates publishDates,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-    StopWatch generateUpdateDocWatch= new StopWatch();
-    generateUpdateDocWatch.start();
-       docGenService.generateAndUploadDocuments(procId, eventId);
-    generateUpdateDocWatch.stop();
-    log.info("publishEvent : Total time taken to generateAndUploadDocuments for procID {} : eventId :{} : Timetaken : {}  ", procId,eventId,generateUpdateDocWatch.getLastTaskTimeMillis());
+    JaggaerPublishEventData event = new JaggaerPublishEventData();
+    event.setProcId(procId);
+    event.setEventId(eventId+ "");
+    event.setPublishDates(publishDates);
 
-
-    StopWatch publishStopWatch= new StopWatch();
-    publishStopWatch.start();
-    procurementEventService.publishEvent(procId, eventId, publishDates, principal);
-    publishStopWatch.stop();
-    log.info("publishEvent : Total time taken to publishEvent service for procID {} : eventId :{} , Timetaken : {}  ", procId,eventId,publishStopWatch.getLastTaskTimeMillis());
+    ProcurementEvent procurementEvent = procurementEventService.preValidatePublish(procId, eventId, publishDates, principal);
+    if(isAsync(async))
+      asyncExecutor.submit(principal, JaggaerEventPublish.class, event, "ProcurementEvent", procurementEvent.getId()+"");
+    else
+      asyncExecutor.execute(principal, JaggaerEventPublish.class, event);
     return new StringValueResponse("OK");
+  }
+
+  private boolean isAsync(String async){
+    return null == async || !async.equalsIgnoreCase("false");
   }
 
   @GetMapping("/{eventID}/documents/export")
