@@ -195,12 +195,17 @@ class ProcurementEventServiceTest {
   
   @MockBean
   private ContractDetailsRepo contractDetailsRepo;
+
+  @MockBean
+  private MessageTaskRepo messageTaskRepo;
   
   @MockBean
   private AwardService awardService;
 
   @MockBean
   private EventTransitionService eventTransitionService;
+
+
 
   @Autowired
   private SupplierStoreFactory storeFactory;
