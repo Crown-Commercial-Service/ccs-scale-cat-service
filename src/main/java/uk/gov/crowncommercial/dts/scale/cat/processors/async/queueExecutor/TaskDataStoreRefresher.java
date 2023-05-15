@@ -11,6 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ExperimentalFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 
+import javax.transaction.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -23,15 +24,18 @@ public class TaskDataStoreRefresher {
     private final QueuedAsyncExecutor asyncExecutor;
     private final ExperimentalFlagsConfig experimentalFlags;
     private final EnvironmentConfig environmentConfig;
-    private final int WAIT_TIME_MINUTES = 10;
+    private final int TASK_LOAD_INTERVAL = 2;
 
-    @Scheduled(fixedDelay = WAIT_TIME_MINUTES * 2 * 60 * 1000, initialDelay = WAIT_TIME_MINUTES * 60 * 1000)
+    private static final int ORPHAN_LOAD_INTERVAL = 15;
+
+    @Scheduled(fixedRate = ORPHAN_LOAD_INTERVAL * 60 * 1000, initialDelay = TASK_LOAD_INTERVAL * 60 * 1000)
+    @Transactional
     public void loadOrphanTasksFromDataStore() {
         if(!experimentalFlags.isAsyncOrphanJobsLoader())
             return;
 
         char[] status = {'I', 'S'};
-        Instant checkTime = Instant.now().minus(WAIT_TIME_MINUTES * 2, ChronoUnit.MINUTES);
+        Instant checkTime = Instant.now().minus(ORPHAN_LOAD_INTERVAL , ChronoUnit.MINUTES);
         List<TaskEntity> orphanTasks = taskRepo.findOrphanTasks(environmentConfig.getServiceInstance(), status, checkTime, checkTime);
         if(orphanTasks.size() > 0) {
             log.info("Retrieved {} orphan tasks from the database ", orphanTasks.size());
@@ -42,14 +46,16 @@ public class TaskDataStoreRefresher {
 
     }
 
-    @Scheduled(fixedDelay = WAIT_TIME_MINUTES * 60 * 1000)
+    @Scheduled(fixedRate = TASK_LOAD_INTERVAL * 60 * 1000, initialDelay = 5*1000)
+    @Transactional
     public void loadTasksFromDataStore() {
         if(!experimentalFlags.isAsyncMissedJobsLoader())
             return;
 
         char[] status = {'I', 'S'};
-        Instant checkTime = Instant.now().minus(WAIT_TIME_MINUTES, ChronoUnit.MINUTES);
-        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), status, checkTime, checkTime);
+        Instant checkTime = Instant.now().minus(TASK_LOAD_INTERVAL, ChronoUnit.MINUTES);
+        Instant tobeExecutedAt = Instant.now().plus(TASK_LOAD_INTERVAL * 60, ChronoUnit.SECONDS);
+        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), status, checkTime, tobeExecutedAt);
         if (taskEntities.size() > 0) {
             log.info("Retrieved {}  tasks from the database ", taskEntities.size());
             asyncExecutor.loadFromDataStore(taskEntities);
@@ -58,13 +64,15 @@ public class TaskDataStoreRefresher {
         }
     }
 
+    @Transactional
     public void initFromDataStore() {
         if(!experimentalFlags.isAsyncResumeJobsOnStartup())
             return;
 
         char[] status = {'I', 'S'};
-        Instant checkTime = Instant.now().minus(WAIT_TIME_MINUTES, ChronoUnit.MINUTES);
-        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), status, checkTime, checkTime);
+        Instant checkTime = Instant.now().minus(1, ChronoUnit.SECONDS);
+        Instant tobeExecutedAt = Instant.now().plus(TASK_LOAD_INTERVAL * 60, ChronoUnit.SECONDS);
+        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), status, checkTime, tobeExecutedAt);
         if (taskEntities.size() > 0) {
             log.info("loading {} pending tasks from the database ", taskEntities.size());
             asyncExecutor.loadFromDataStore(taskEntities);
@@ -74,6 +82,7 @@ public class TaskDataStoreRefresher {
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void onStartup() {
 //        initFromDataStore();
     }

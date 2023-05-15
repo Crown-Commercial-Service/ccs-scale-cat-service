@@ -29,6 +29,9 @@ public class TaskEntity {
   @Column(name = "task_name")
   private String name;
 
+  @Column(name="group_id")
+  private Long groupId;
+
   @Column(name = "task_object")
   private String recordType;
 

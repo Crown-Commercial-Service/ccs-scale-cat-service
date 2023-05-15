@@ -3,6 +3,10 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.persistence.Column;
+import java.time.Instant;
+import java.util.Objects;
+
 @Getter
 @Setter
 public class Task {
@@ -14,6 +18,7 @@ public class Task {
     private final String principal;
     private final String runner;
     private final String className;
+    private Instant tobeExecutedAt;
     private Object data;
     private String taskStage;
 
@@ -32,5 +37,24 @@ public class Task {
 
     void setId (Long id){
         this.id = id;
+    }
+
+    @Override
+    public int hashCode() {
+        if(null != id)
+            return id.hashCode();
+
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(obj instanceof Task){
+            Task t = (Task) obj;
+            if(null == id)
+                return false;
+            return Objects.equals(this.id, t.id);
+        }
+        return super.equals(obj);
     }
 }
