@@ -18,6 +18,7 @@ import java.util.List;
 public class TaskRunner{
     private final ApplicationContext ctx;
     private final TaskEntityService taskEntityService;
+    private final TaskRetryManager retryManager;
 
     public void runTask(Task task){
         if(null == task.getId()){
@@ -86,16 +87,17 @@ public class TaskRunner{
         }
 
         if(null != handler){
-            if(handler.canRetry(t)){
+            if(handler.canRetry(t) && retryManager.canSchedule(task, 1)){
                 log.info("Rescheduling the task {} for user {}", consumer.getTaskName(), task.getPrincipal());
                 String response = "Rescheduled. "
                         + "::"  + handler.getMessage(t);
-                taskEntityService.markRetry(task, response);
-            }
-            markFailure(task, consumer, t, handler.getMessage(t));
+                taskEntityService.markRetry(task, response, retryManager.getInterval(task));
+            }else
+                markFailure(task, consumer, t, handler.getMessage(t));
         }else{
             log.error("No Error handler found to handle the exception ", t.getClass().getCanonicalName()
                     + ", " + t.getMessage());
+            markFailure(task, consumer, t, t.getMessage());
         }
     }
 

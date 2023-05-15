@@ -4,16 +4,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 
+import java.util.function.Consumer;
+
 @RequiredArgsConstructor
 @Slf4j
 public class RunnableTask implements Runnable {
     private final Task task;
     private final ApplicationContext ctx;
+    private final Consumer<Task> onComplete;
 
     @Override
     public void run() {
-        TaskRunner runner = ctx.getBean(TaskRunner.class);
-        runner.runTask(task);
+        try {
+            TaskRunner runner = ctx.getBean(TaskRunner.class);
+            runner.runTask(task);
+        }finally {
+            onComplete.accept(task);
+        }
     }
 
     public void execute() {

@@ -7,21 +7,27 @@ import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskGroupEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskHistoryEntity;
+import uk.gov.crowncommercial.dts.scale.cat.repo.TaskGroupRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class TaskEntityService {
     private final TaskRepo taskRepo;
+    private final TaskGroupRepo taskGroupRepo;
     private final EnvironmentConfig environmentConfig;
+    private final TaskRetryManager taskRetryManager;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persist(String principal, Task task, String recordType, String recordId, String data) {
         TaskEntity entity = new TaskEntity();
+        TaskGroupEntity groupEntity = saveTaskGroup(principal, recordType, recordId);
         entity.setName(recordType + recordId + task.getRunner());
         entity.setPrincipal(principal);
         entity.setData(data);
@@ -30,13 +36,34 @@ public class TaskEntityService {
         Instant instant = Instant.now();
         entity.setTobeExecutedAt(instant);
         entity.setScheduledOn(instant);
+        entity.setGroupId(groupEntity.getId());
         entity.setRecordType(recordType);
         entity.setRecordId(recordId);
         entity.setStatus(Task.SCHEDULED);
+
+        if(null != groupEntity.getNode())
+            entity.setNode(groupEntity.getNode());
+        else
+            entity.setNode(environmentConfig.getServiceInstance());
+
+        entity.setTimestamps(Timestamps.createTimestamps(principal));
+        Timestamps.updateTimestamps(entity.getTimestamps(), principal);
+        taskRepo.saveAndFlush(entity);
+        task.setId(entity.getId());
+    }
+
+    private TaskGroupEntity saveTaskGroup(String principal, String recordType, String recordId) {
+        TaskGroupEntity entity = taskGroupRepo.findActiveGroup(recordType, recordId);
+        if(null != entity)
+            return entity;
+        entity = new TaskGroupEntity();
+        entity.setName(recordType);
+        entity.setReference(recordId);
+        entity.setStatus('A');
         entity.setNode(environmentConfig.getServiceInstance());
         entity.setTimestamps(Timestamps.createTimestamps(principal));
-        taskRepo.save(entity);
-        task.setId(entity.getId());
+        taskGroupRepo.saveAndFlush(entity);
+        return entity;
     }
 
     @Transactional
@@ -95,12 +122,14 @@ public class TaskEntityService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markRetry(Task task, String response) {
+    public void markRetry(Task task, String response, int seconds) {
         TaskEntity entity = getEntity(task);
         entity.setResponse(response);
+        updateHistory(entity, Task.FAILED, response);
+        entity.setTobeExecutedAt(Instant.now().plus(seconds, ChronoUnit.SECONDS));
+        task.setTobeExecutedAt(entity.getTobeExecutedAt());
         entity.setStatus(Task.SCHEDULED);
         update(entity);
-        updateHistory(entity, Task.FAILED, response);
         taskRepo.save(entity);
     }
 
@@ -178,7 +207,7 @@ public class TaskEntityService {
         historyEntity.setStatus(Task.INFLIGHT);
         historyEntity.setStage(entity.getStage());
         historyEntity.setNode(entity.getNode());
-        historyEntity.setScheduledOn(instant);
+        historyEntity.setScheduledOn(null != entity.getTobeExecutedAt() ? entity.getTobeExecutedAt() : instant);
         historyEntity.setTimestamps(Timestamps.createTimestamps(entity.getPrincipal()));
         return historyEntity;
     }
@@ -218,5 +247,14 @@ public class TaskEntityService {
         update(entity);
         updateHistory(entity, Task.COMPLETED, response);
         taskRepo.saveAndFlush(entity);
+    }
+
+    public boolean isSchedulable(Task task){
+        TaskEntity entity = getEntity(task);
+        if(entity.getStatus() == Task.SCHEDULED &&
+                (null == entity.getNode() || entity.getNode().equalsIgnoreCase(environmentConfig.getServiceInstance()))){
+                    return true;
+        }
+        return false;
     }
 }
