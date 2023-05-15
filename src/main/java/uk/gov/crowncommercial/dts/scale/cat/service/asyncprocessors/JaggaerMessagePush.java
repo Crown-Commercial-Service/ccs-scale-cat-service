@@ -32,16 +32,9 @@ public class JaggaerMessagePush implements AsyncConsumer<MessageTaskData> {
         String messageId = null;
         var messageTask = dbDelegate.findMessageTaskById(data.getMessageId()).orElse(null);
         var event = dbDelegate.findProcurementEventById(messageTask.getEventId());
-        try {
              messageId = messageService.createorReplyMessage(messageTask.getTimestamps().getCreatedBy(), event.get(), messageTask.getMessageRequest());
-            messageTask.setStatus(MessageTaskStatus.COMPLETE);
             messageTask.setTimestamps(Timestamps.updateTimestamps(messageTask.getTimestamps(),"AsyncExecutor"));
             dbDelegate.save(messageTask);
-        }catch(JaggaerApplicationException e)
-        {
-            messageTask.setStatus(MessageTaskStatus.FAILED);
-            dbDelegate.save(messageTask);
-        }
         return messageId;
     }
 

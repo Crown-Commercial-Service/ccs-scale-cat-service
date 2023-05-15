@@ -6,16 +6,15 @@ import org.hibernate.annotations.Type;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import javax.persistence.*;
-import java.time.Instant;
 
 @Entity
-@Table(name = "message_task")
+@Table(name = "messages")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class MessageTask {
+public class MessageAsync {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,7 +31,4 @@ public class MessageTask {
     @Embedded
     private Timestamps timestamps;
 
-    @Column(name = "status")
-    @Enumerated(EnumType.STRING)
-    MessageTaskStatus status;
 }
