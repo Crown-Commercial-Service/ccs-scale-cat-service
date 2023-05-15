@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
@@ -36,7 +37,7 @@ public class JaggaerMessagePush implements AsyncConsumer<MessageTaskData> {
             messageTask.setStatus(MessageTaskStatus.COMPLETE);
             messageTask.setTimestamps(Timestamps.updateTimestamps(messageTask.getTimestamps(),"AsyncExecutor"));
             dbDelegate.save(messageTask);
-        }catch(Exception e)
+        }catch(JaggaerApplicationException e)
         {
             messageTask.setStatus(MessageTaskStatus.FAILED);
             dbDelegate.save(messageTask);
