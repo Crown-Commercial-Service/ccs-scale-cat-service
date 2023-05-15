@@ -9,7 +9,7 @@ import javax.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "assessments")
+@Table(name = "message_task")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,7 +27,7 @@ public class MessageTask {
     Message messageRequest;
 
     @Column(name = "event_id")
-    Integer eventType;
+    Integer eventId;
 
     @Embedded
     private Timestamps timestamps;

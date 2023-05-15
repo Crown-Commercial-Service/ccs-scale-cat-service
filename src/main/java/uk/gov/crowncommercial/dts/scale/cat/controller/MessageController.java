@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import javax.validation.Valid;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
@@ -32,7 +33,7 @@ public class MessageController extends AbstractRestController {
 
   @PostMapping
   @TrackExecutionTime
-  public ResponseEntity<String> createAndRespondMessage(
+  public ResponseEntity<Message> createAndRespondMessage(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final Message messageRequest,
       final JwtAuthenticationToken authentication) {
@@ -42,8 +43,8 @@ public class MessageController extends AbstractRestController {
     log.info("createAndRespondMessage invoked on behalf of principal: {}", principal,
         conclaveOrgId);
 
-    return ResponseEntity
-        .ok(messageService.createOrReplyMessage(principal, procId, eventId, messageRequest));
+    return ResponseEntity.status(HttpStatus.CREATED).body(messageService.createOrReplyMessageAsync(principal, procId, eventId, messageRequest));
+
   }
 
 
