@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
 @RequiredArgsConstructor
@@ -32,11 +33,7 @@ public class RunnableTask implements Runnable {
     public boolean equals(Object obj) {
         if(null != obj && obj instanceof RunnableTask){
             RunnableTask cmp = (RunnableTask) obj;
-            if(null == task.getId() || null == cmp.task.getId()){
-                return false;
-            }else{
-                return task.getId().longValue() == cmp.task.getId().longValue();
-            }
+            return Objects.equals(task.getId(), cmp.task.getId());
         }
         return false;
     }

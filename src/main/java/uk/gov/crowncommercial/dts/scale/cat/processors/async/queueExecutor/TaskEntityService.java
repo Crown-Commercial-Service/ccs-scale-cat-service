@@ -151,17 +151,21 @@ public class TaskEntityService {
     }
 
     private void updateHistory(TaskEntity entity, char taskExecutionStatus, String response) {
+        TaskHistoryEntity history = getLatestHistory(entity);
+        if(!isClosed(history)) {
+            history.setStatus(taskExecutionStatus);
+            history.setResponse(response);
+            Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
+        }else{
+            if(null == history.getStage())
+                throw new IllegalStateException("Task History already closed with status:" + history.getStatus());
+        }
+    }
+
+    private TaskHistoryEntity getLatestHistory(TaskEntity entity) {
         List<TaskHistoryEntity> historyList = entity.getHistory();
         if (historyList.size() > 0) {
-            TaskHistoryEntity history = historyList.get(0);
-            if(!isClosed(history)) {
-                history.setStatus(taskExecutionStatus);
-                history.setResponse(response);
-                Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
-            }else{
-                if(null == history.getStage())
-                    throw new IllegalStateException("Task History already closed with status:" + history.getStatus());
-            }
+            return historyList.get(0);
         } else {
             throw new IllegalStateException("Task History cannot be Empty");
         }
@@ -169,45 +173,40 @@ public class TaskEntityService {
 
     private boolean isClosed(TaskHistoryEntity entity){
         char status = entity.getStatus();
-        return (status == 'C' || status == 'F');
+        return (status == 'C' || status == 'F' || status == 'A');
     }
 
 
     private void addHistory(TaskEntity entity) {
         List<TaskHistoryEntity> history = entity.getHistory();
-        Instant instant = Instant.now();
-        TaskHistoryEntity historyEntity;
+        TaskHistoryEntity historyEntity = null;
 
         if (0 > history.size()) {
             TaskHistoryEntity recentEntity = history.get(0);
-            if (recentEntity.getStatus() == Task.COMPLETED
-                    || recentEntity.getStatus() == Task.FAILED) {
-                historyEntity = createTaskHistory(entity, instant);
-                history.add(historyEntity);
-            } else if (recentEntity.getStatus() == Task.INFLIGHT) {
+            if (recentEntity.getStatus() == Task.SCHEDULED) {
+                recentEntity.setStatus(Task.INFLIGHT);
+                recentEntity.setExecutedOn(Instant.now());
+                return;
+            }
+            if (recentEntity.getStatus() == Task.INFLIGHT) {
                 recentEntity.setStatus(Task.ABORTED);
                 Timestamps.updateTimestamps(recentEntity.getTimestamps(), entity.getPrincipal());
-                historyEntity = createTaskHistory(entity, instant);
-                history.add(historyEntity);
-            } else {
-                historyEntity = recentEntity;
             }
-        } else {
-            historyEntity = createTaskHistory(entity, instant);
-            history.add(historyEntity);
         }
 
+        historyEntity = createTaskHistory(entity);
+        history.add(historyEntity);
         historyEntity.setExecutedOn(Instant.now());
     }
 
-    private static TaskHistoryEntity createTaskHistory(TaskEntity entity, Instant instant) {
+    private static TaskHistoryEntity createTaskHistory(TaskEntity entity) {
         TaskHistoryEntity historyEntity;
         historyEntity = new TaskHistoryEntity();
         historyEntity.setTaskEntity(entity);
         historyEntity.setStatus(Task.INFLIGHT);
         historyEntity.setStage(entity.getStage());
         historyEntity.setNode(entity.getNode());
-        historyEntity.setScheduledOn(null != entity.getTobeExecutedAt() ? entity.getTobeExecutedAt() : instant);
+        historyEntity.setScheduledOn(null != entity.getTobeExecutedAt() ? entity.getTobeExecutedAt() : Instant.now());
         historyEntity.setTimestamps(Timestamps.createTimestamps(entity.getPrincipal()));
         return historyEntity;
     }

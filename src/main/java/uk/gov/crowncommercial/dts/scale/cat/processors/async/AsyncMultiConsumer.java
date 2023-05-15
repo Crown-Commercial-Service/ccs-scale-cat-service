@@ -38,6 +38,8 @@ public abstract class AsyncMultiConsumer<T> implements AsyncConsumer<T>{
     }
 
     public int getTaskIndex(String key){
+        if(null == key)
+            return 0;
         int i = -1;
         for(Entry e : consumers){
             i++;
@@ -45,7 +47,7 @@ public abstract class AsyncMultiConsumer<T> implements AsyncConsumer<T>{
                 return i;
             }
         }
-        return -1;
+        return 0;
     }
 }
 

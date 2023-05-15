@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.InputStreamResource;
@@ -270,8 +272,7 @@ public class EventsController extends AbstractRestController {
 
   @PutMapping("/{eventID}/publish")
   @TrackExecutionTime
-  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId,
+  public StringValueResponse publishEvent(PathRequest eventReq,
       @RequestParam(required = false, name="async") final String async,
       @RequestBody @Valid final PublishDates publishDates,
       final JwtAuthenticationToken authentication) {
@@ -280,11 +281,11 @@ public class EventsController extends AbstractRestController {
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
     JaggaerPublishEventData event = new JaggaerPublishEventData();
-    event.setProcId(procId);
-    event.setEventId(eventId+ "");
+    event.setProcId(eventReq.getProcID());
+    event.setEventId(eventReq.getEventID());
     event.setPublishDates(publishDates);
 
-    ProcurementEvent procurementEvent = procurementEventService.preValidatePublish(procId, eventId, publishDates, principal);
+    ProcurementEvent procurementEvent = procurementEventService.preValidatePublish(eventReq.procID, eventReq.getEventID(), publishDates, principal);
     if(isAsync(async))
       asyncExecutor.submit(principal, JaggaerEventPublish.class, event, "ProcurementEvent", procurementEvent.getId()+"");
     else
@@ -494,5 +495,13 @@ public class EventsController extends AbstractRestController {
       }
     }
     return zipEntry;
+  }
+
+
+  @Getter
+  @Setter
+  class PathRequest{
+    Integer procID;
+    String eventID;
   }
 }

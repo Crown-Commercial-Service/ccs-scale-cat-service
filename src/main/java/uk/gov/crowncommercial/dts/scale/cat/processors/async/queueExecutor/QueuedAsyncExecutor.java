@@ -40,8 +40,8 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     private final ThreadPoolTaskExecutor taskExecutor;
     private final ApplicationContext ctx;
 
-    private List<Task> scheduledTasks = new ArrayList<>(16);
-    private List<Task> inflightTasks = new ArrayList<>(16);
+    private final List<Task> scheduledTasks = new ArrayList<>(16);
+    private final List<Task> inflightTasks = new ArrayList<>(16);
     private final Consumer<Task> onSyncTaskComplete = (task) -> {};
     private final ApplicationFlagsConfig applicationFlags;
     private final ExperimentalFlagsConfig experimentalFlags;
@@ -97,29 +97,31 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     @Scheduled(fixedRate = 60 * 1000)
     public void loadFromScheduled(){
         if(scheduledTasks.size() > 0) {
-            Instant instant = Instant.now();
             ArrayList<Task> tempList = new ArrayList<>(scheduledTasks);
             for (Task task : tempList) {
-                if (task.getTobeExecutedAt().isBefore(Instant.now()))
-                    schedule(task);
+                schedule(task);
             }
         }
+    }
+
+    private boolean canExecuteNow(Task task){
+        return null == task.getTobeExecutedAt() || task.getTobeExecutedAt().isBefore(Instant.now());
     }
 
     public void loadFromDataStore(List<TaskEntity> taskEntities) {
         for (TaskEntity taskEntity : taskEntities) {
+            if(queueFull())
+                break;
+
             if(taskRetryManager.canSchedule(taskEntity)){
                 Task task = getTask(taskEntity);
-                if (queueNotFull()) {
-                    schedule(task);
-                } else
-                    break;
+                schedule(task);
             }
         }
     }
 
-    private boolean queueNotFull(){
-        return queue.size() < AsyncExecutionConfig.poolSize * 3;
+    private boolean queueFull(){
+        return queue.size() > AsyncExecutionConfig.poolSize * 3;
     }
 
     private boolean inFlight(RunnableTask runnableTask) {
@@ -147,22 +149,35 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
 
     @SneakyThrows
     public boolean schedule(Task task) {
-        Instant instant = Instant.now();
-        if(queue.size() < AsyncExecutionConfig.poolSize * 3) {
-            if(null == task.getTobeExecutedAt() || task.getTobeExecutedAt().isBefore(instant)) {
-                RunnableTask runnableTask = new RunnableTask(task, ctx, onAsyncTaskComplete);
-                if(addToInflight(task)) {
-                    taskExecutor.execute(runnableTask);
-                    scheduledTasks.remove(task);
-                    return true;
-                }
-            }else{
-                if(task.getTobeExecutedAt().minus(15, ChronoUnit.MINUTES).isBefore(instant))
-                    if(!scheduledTasks.contains(task)) {
-                        scheduledTasks.add(task);
-                        return true;
-                    }
+        if(!queueFull()) {
+            if(canExecuteNow(task)) {
+                return (executeNow(task));
+            }else
+                return addSchedule(task);
+        }
+        return false;
+    }
+
+    private static boolean canExecuteAfter(Task task, int minutes) {
+        return task.getTobeExecutedAt().minus(minutes, ChronoUnit.MINUTES).isBefore(Instant.now());
+    }
+
+    private boolean addSchedule( Task task) {
+        if(canExecuteAfter(task, 15)) {
+            if (!scheduledTasks.contains(task)) {
+                scheduledTasks.add(task);
+                return true;
             }
+        }
+        return false;
+    }
+
+    private boolean executeNow(Task task) {
+        RunnableTask runnableTask = new RunnableTask(task, ctx, onAsyncTaskComplete);
+        if(addToInflight(task)) {
+            taskExecutor.execute(runnableTask);
+            scheduledTasks.remove(task);
+            return true;
         }
         return false;
     }
@@ -194,7 +209,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     }
 
     public <T> String getSpringName(Class<? extends AsyncConsumer> clazz) {
-        Component a = (Component) clazz.getAnnotation(Component.class);
+        Component a = clazz.getAnnotation(Component.class);
         if (null == a || null == a.value()) {
             throw new IllegalArgumentException("Processing class " + clazz.getCanonicalName() + " must be annotated with Spring @Component(\"componentname\"");
         }

@@ -44,31 +44,20 @@ public class TaskRunner{
 
     public void execMultiConsumer(Task task, AsyncMultiConsumer consumer){
         final String identifier = consumer.getIdentifier(task.getData());
-        final String taskCode = task.getTaskStage();
-        final int start = null == taskCode ? 0 : consumer.getTaskIndex(taskCode);
+        final int start = consumer.getTaskIndex(task.getTaskStage());
 
         List<String> taskNames = consumer.getAllTasks();
 
-        int currentIndex = -1;
         try {
             String response = null;
-            for(String taskName : taskNames){
-                currentIndex++;
-                if(start > currentIndex) {
+            for(int i = start; i < taskNames.size(); i++){
+                String currentStage = taskNames.get(i);
+
+                TaskHistoryEntity history = taskEntityService.getLatestHistory(task, currentStage);
+                if (null != history && history.getStatus() == 'C') {
                     continue;
                 }
-                else if (start == currentIndex) {
-                    TaskHistoryEntity history = taskEntityService.getLatestHistory(task, taskName);
-                    if (null != history && history.getStatus() == 'C') {
-                        continue;
-                    }
-                }
-
-                task.setTaskStage(taskName);
-                taskEntityService.markInProgress(task);
-                TaskConsumer taskConsumer = consumer.getTaskConsumer(taskName);
-                response = execute(task, taskConsumer, identifier);
-                taskEntityService.markStageComplete(task, response);
+                response = executeStage(task, consumer, identifier, currentStage);
             }
             taskEntityService.markComplete(task, response);
         } catch (Throwable t) {
@@ -76,15 +65,18 @@ public class TaskRunner{
         }
     }
 
+    private String executeStage(Task task, AsyncMultiConsumer consumer, String identifier, String taskName) {
+        String response;
+        task.setTaskStage(taskName);
+        taskEntityService.markInProgress(task);
+        TaskConsumer taskConsumer = consumer.getTaskConsumer(taskName);
+        response = execute(task, taskConsumer, identifier);
+        taskEntityService.markStageComplete(task, response);
+        return response;
+    }
+
     private void handleException(AsyncConsumer consumer, Task task, Throwable t){
-        ErrorHandler handler = null;
-        List<ErrorHandler> errorHandlers= consumer.getErrorHandlers();
-        for(ErrorHandler eh : errorHandlers){
-            if(eh.canHandle(t)) {
-                handler = eh;
-                break;
-            }
-        }
+        ErrorHandler handler = getErrorHandler(consumer, t);
 
         if(null != handler){
             if(handler.canRetry(t) && retryManager.canSchedule(task, 1)){
@@ -99,6 +91,16 @@ public class TaskRunner{
                     + ", " + t.getMessage());
             markFailure(task, consumer, t, t.getMessage());
         }
+    }
+
+    private static ErrorHandler getErrorHandler(AsyncConsumer consumer, Throwable t) {
+        List<ErrorHandler> errorHandlers= consumer.getErrorHandlers();
+        for(ErrorHandler eh : errorHandlers){
+            if(eh.canHandle(t)) {
+                return eh;
+            }
+        }
+        return null;
     }
 
     private void markFailure(Task task, AsyncConsumer consumer, Throwable t, String message) {
