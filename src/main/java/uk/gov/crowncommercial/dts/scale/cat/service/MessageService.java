@@ -84,11 +84,11 @@ public class MessageService {
   public String createOrReplyMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    return createorReplyMessage(profile, procurementEvent, message);
+    return publishMessage(profile, procurementEvent, message);
 
   }
   @Transactional
-  public String createorReplyMessage(String profile, ProcurementEvent procurementEvent,Message message) {
+  public String publishMessage(String profile, ProcurementEvent procurementEvent, Message message) {
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
     String messageClassification = nonOCDS.getClassification().getValue();
@@ -128,7 +128,7 @@ public class MessageService {
   public Message createOrReplyMessageAsync(final String profile, final Integer projectId,
                                      final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    MessageAsync messageAsync = retryableTendersDBDelegate.save(MessageAsync.builder().messageRequest(message).eventId(procurementEvent.getId()).timestamps(Timestamps.createTimestamps(profile)).build());
+    MessageAsync messageAsync = retryableTendersDBDelegate.save(MessageAsync.builder().messageRequest(message).eventId(procurementEvent.getId()).status(MessageTaskStatus.CREATE).timestamps(Timestamps.createTimestamps(profile)).build());
 
     asyncExecutor.execute(profile, JaggaerMessagePush.class, MessageTaskData.builder().messageId(messageAsync.getMessageId()).eventId(messageAsync.getEventId()).profile(profile).build());
     return messageAsync.getMessageRequest();

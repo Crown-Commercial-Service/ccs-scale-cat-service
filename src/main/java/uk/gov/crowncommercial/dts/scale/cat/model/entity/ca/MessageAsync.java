@@ -31,4 +31,7 @@ public class MessageAsync {
     @Embedded
     private Timestamps timestamps;
 
+    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    MessageTaskStatus status;
 }

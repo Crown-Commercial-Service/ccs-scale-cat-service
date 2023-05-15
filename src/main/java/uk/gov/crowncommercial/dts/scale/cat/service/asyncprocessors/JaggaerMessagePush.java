@@ -5,11 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageAsync;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.ErrorHandler;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.service.EventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.MessageService;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.MessageTaskData;
 
@@ -32,10 +32,23 @@ public class JaggaerMessagePush implements AsyncConsumer<MessageTaskData> {
         String messageId = null;
         var messageTask = dbDelegate.findMessageTaskById(data.getMessageId()).orElse(null);
         var event = dbDelegate.findProcurementEventById(messageTask.getEventId());
-             messageId = messageService.createorReplyMessage(messageTask.getTimestamps().getCreatedBy(), event.get(), messageTask.getMessageRequest());
-            messageTask.setTimestamps(Timestamps.updateTimestamps(messageTask.getTimestamps(),"AsyncExecutor"));
-            dbDelegate.save(messageTask);
+        messageTask.setStatus(MessageTaskStatus.INPROGRESS);
+        updateMessages(messageTask);
+        try {
+             messageId = messageService.publishMessage(messageTask.getTimestamps().getCreatedBy(), event.get(), messageTask.getMessageRequest());
+             messageTask.setStatus(MessageTaskStatus.COMPLETE);
+            updateMessages(messageTask);
+        }catch(JaggaerApplicationException e)
+        {
+            messageTask.setStatus(MessageTaskStatus.FAILED);
+            updateMessages(messageTask);
+        }
         return messageId;
+    }
+
+    private void updateMessages(MessageAsync messageTask) {
+        messageTask.setTimestamps(Timestamps.updateTimestamps(messageTask.getTimestamps(),"AsyncExecutor"));
+        dbDelegate.save(messageTask);
     }
 
     @Override
