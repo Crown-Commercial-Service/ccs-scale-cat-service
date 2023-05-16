@@ -197,9 +197,6 @@ class ProcurementEventServiceTest {
   
   @MockBean
   private ContractDetailsRepo contractDetailsRepo;
-
-  @MockBean
-  private MessageTaskRepo messageTaskRepo;
   
   @MockBean
   private AwardService awardService;

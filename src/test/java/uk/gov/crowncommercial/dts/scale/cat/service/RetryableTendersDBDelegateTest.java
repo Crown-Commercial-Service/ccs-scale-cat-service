@@ -94,8 +94,7 @@ class RetryableTendersDBDelegateTest {
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
-  @MockBean
-  private MessageTaskRepo messageTaskRepo;
+
   @MockBean
   private ContractDetailsRepo contractDetailsRepo;
 
