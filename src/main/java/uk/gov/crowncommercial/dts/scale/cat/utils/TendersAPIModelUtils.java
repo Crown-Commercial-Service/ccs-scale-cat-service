@@ -21,7 +21,6 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
-
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 
 /**
@@ -155,37 +154,46 @@ public class TendersAPIModelUtils {
           && Constants.TENDER_NON_DB_EVENT_TYPES.contains(
               ViewEventType.fromValue(procurementEvent.getEventType()))
           && Objects.nonNull(rfxSetting)) {
-        return deriveAsyncPublishStatus(rfxSetting, procurementEvent);
+        if (Objects.isNull(rfxSetting.getPublishDate()) && Objects.isNull(procurementEvent.getAsyncPublishedStatus())) {
+          return DashboardStatus.IN_PROGRESS;
+        } else {
+          return deriveAsyncPublishStatus(rfxSetting, procurementEvent);
+        }
       }
     }
     log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
   }
-  
-  private static DashboardStatus deriveAsyncPublishStatus(
-      final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
 
-    DashboardStatus dashboardStatus;
-    if (Objects.isNull(rfxSetting.getPublishDate())
-        && Objects.isNull(procurementEvent.getAsyncPublishedStatus())) {
-      dashboardStatus = DashboardStatus.IN_PROGRESS;
-    } else if (Objects.nonNull(procurementEvent.getAsyncPublishedStatus())
-        && ASYNC_PUBLISH_STATUS_TYPES
-            .contains(AsyncPublishedStatus.valueOf(procurementEvent.getAsyncPublishedStatus()))) {
-      dashboardStatus = DashboardStatus.PUBLISHING;
-    } else if (Objects.nonNull(procurementEvent.getAsyncPublishedStatus())
-        && AsyncPublishedStatus.FAILED.name()
-            .equalsIgnoreCase(procurementEvent.getAsyncPublishedStatus())) {
-      dashboardStatus = DashboardStatus.PUBLISH_FAILED;
-    } else if (Objects.nonNull(rfxSetting.getCloseDate())
-        && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now())) {
-      dashboardStatus = DashboardStatus.PUBLISHED;
-    } else {
-      dashboardStatus = evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
+  private static DashboardStatus deriveAsyncPublishStatus(final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
+    if (isAsyncPublishing(procurementEvent)) {
+      return DashboardStatus.PUBLISHING;
     }
-    return dashboardStatus;
-
+    if (isAsyncPublishFailed(procurementEvent)) {
+      return DashboardStatus.PUBLISH_FAILED;
+    }
+    if (isPublished(rfxSetting)) {
+      return DashboardStatus.PUBLISHED;
+    }
+    return evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
   }
+
+  private static boolean isAsyncPublishing(ProcurementEvent procurementEvent) {
+    return Objects.nonNull(procurementEvent.getAsyncPublishedStatus()) && ASYNC_PUBLISH_STATUS_TYPES
+        .contains(AsyncPublishedStatus.valueOf(procurementEvent.getAsyncPublishedStatus()));
+  }
+
+  private static boolean isAsyncPublishFailed(ProcurementEvent procurementEvent) {
+    return Objects.nonNull(procurementEvent.getAsyncPublishedStatus())
+        && AsyncPublishedStatus.FAILED.name()
+            .equalsIgnoreCase(procurementEvent.getAsyncPublishedStatus());
+  }
+
+  private static boolean isPublished(RfxSetting rfxSetting) {
+    return Objects.nonNull(rfxSetting.getCloseDate())
+        && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now());
+  }
+
 
   private static DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
 
