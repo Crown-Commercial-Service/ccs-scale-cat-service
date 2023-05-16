@@ -8,4 +8,5 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageAsync;
 @Repository
 public interface MessageTaskRepo extends JpaRepository<MessageAsync, Integer> {
 
+
 }

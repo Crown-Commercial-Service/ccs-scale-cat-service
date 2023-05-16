@@ -979,7 +979,7 @@ public class ProcurementEventService implements EventService {
 
 
     @Transactional
-    public void preValidatePublish(final Integer procId, final String eventId,
+    public ProcurementEvent preValidatePublish(final Integer procId, final String eventId,
                              final PublishDates publishDates, final String principal) {
         var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
         var exportRfxResponse = getRfxWithSuppliers(procurementEvent.getExternalEventId());
@@ -991,6 +991,7 @@ public class ProcurementEventService implements EventService {
                     "You cannot publish an event unless it is in a 'planned' state");
         }
         validationService.validatePublishDates(publishDates);
+        return procurementEvent;
     }
 
     @Transactional

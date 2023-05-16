@@ -36,18 +36,30 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.ExperimentalFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.TaskGroupRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerEventPublish;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.DocumentPushTask;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.EventPublishTask;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.PublishPrevalidationTask;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.SupplierPushTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -55,7 +67,10 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  * Controller tests
  */
 @WebMvcTest(EventsController.class)
-@Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class})
+@Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class,
+        QueuedAsyncExecutor.class, AsyncExecutionConfig.class, ExperimentalFlagsConfig.class,
+    TaskEntityService.class, TaskRetryManager.class, EnvironmentConfig.class,TaskRunner.class,
+        JaggaerEventPublish.class, PublishPrevalidationTask.class,  DocumentPushTask.class, SupplierPushTask.class, EventPublishTask.class})
 @ActiveProfiles("test")
 class EventsControllerTest {
 
@@ -83,10 +98,20 @@ class EventsControllerTest {
   private MockMvc mockMvc;
 
   @Autowired
+  private AsyncExecutor asyncExecutor;
+
+  @Autowired
   private TendersAPIModelUtils tendersAPIModelUtils;
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @MockBean
+  private TaskRepo taskRepo;
+
+  @MockBean
+  private TaskGroupRepo taskGroupRepo;
+
 
   @MockBean
   private ProcurementEventService procurementEventService;
@@ -308,14 +333,14 @@ class EventsControllerTest {
     var publishDates = new PublishDates().endDate(LocalDateTime.now().atOffset(ZoneOffset.UTC));
 
     mockMvc
-        .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+        .perform(put(EVENTS_PATH + "/{eventID}/publish?async=false", PROC_PROJECT_ID, EVENT_ID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(publishDates)))
         .andDo(print()).andExpect(status().isOk()).andExpect(jsonPath("$").value("OK"));
 
     verify(docGenService).generateAndUploadDocuments(PROC_PROJECT_ID, EVENT_ID);
-    verify(procurementEventService).publishEvent(PROC_PROJECT_ID, EVENT_ID, publishDates,
-        PRINCIPAL);
+    verify(procurementEventService).publish(PROC_PROJECT_ID, EVENT_ID, publishDates, PRINCIPAL);
+    verify(procurementEventService).jaggaerSupplierRefresh(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
   }
 
   @ParameterizedTest
