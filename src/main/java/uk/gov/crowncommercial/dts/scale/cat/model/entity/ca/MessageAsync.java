@@ -8,7 +8,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "message_task")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
