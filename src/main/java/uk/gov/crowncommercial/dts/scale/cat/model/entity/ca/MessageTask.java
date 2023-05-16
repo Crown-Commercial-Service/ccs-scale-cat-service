@@ -9,7 +9,7 @@ import javax.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "assessments")
+@Table(name = "message_task")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
