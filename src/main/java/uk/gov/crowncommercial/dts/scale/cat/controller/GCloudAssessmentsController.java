@@ -3,9 +3,11 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.jsoup.Jsoup;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
@@ -26,9 +28,8 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Slf4j
 @Validated
 public class GCloudAssessmentsController extends AbstractRestController {
-    private static final String CSV_GENERIC_HEADERS = "Framework name,Search ended,Search summary\n";
+    private static final String CSV_GENERIC_HEADERS = "Framework name,Search ended,Search criteria\n";
     private static final String CSV_STATIC_NAME = "G-Cloud 13";
-    private static final String CSV_RESULTS_TEXT = " results found\n";
     private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL\n";
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
 
@@ -95,8 +96,15 @@ public class GCloudAssessmentsController extends AbstractRestController {
                     // Start with the generic information
                     SimpleDateFormat dateFormat = new SimpleDateFormat(CSV_DATE_FORMAT);
                     String exportTime = dateFormat.format(new Date());
+
+                    // Sanitise the results summary to remove the HTML tags
+                    String sanitisedResultsSummary = StringUtils.normalizeSpace(Jsoup.parse(assessmentModel.getResultsSummary()).text());
+                    if (sanitisedResultsSummary.contains(",") || sanitisedResultsSummary.contains("\"") || sanitisedResultsSummary.contains("'")) {
+                        sanitisedResultsSummary = sanitisedResultsSummary.replace("\"", "\"\"");
+                    }
+
                     writer.write(CSV_GENERIC_HEADERS);
-                    writer.write(CSV_STATIC_NAME + "," + exportTime + "," + assessmentModel.getResults().size() + CSV_RESULTS_TEXT);
+                    writer.write(CSV_STATIC_NAME + "," + exportTime + ",\"" + sanitisedResultsSummary + "\"\n");
 
                     // Now deal with the specific results
                     writer.write(CSV_RESULTS_HEADERS);
