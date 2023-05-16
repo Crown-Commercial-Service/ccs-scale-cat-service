@@ -9,6 +9,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.AsyncPublishedStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -155,9 +156,18 @@ public class TendersAPIModelUtils {
               ViewEventType.fromValue(procurementEvent.getEventType()))
           && Objects.nonNull(rfxSetting)) {
 
-        if (Objects.isNull(rfxSetting.getPublishDate())) {
+        if (Objects.isNull(rfxSetting.getPublishDate())
+            && Objects.isNull(procurementEvent.getAsyncPublishedStatus())) {
           return DashboardStatus.IN_PROGRESS;
-        } else if (Objects.nonNull(rfxSetting.getCloseDate())
+        } else if (Objects.nonNull(procurementEvent.getAsyncPublishedStatus())
+            && ASYNC_PUBLISH_STATUS_TYPES.contains(
+                AsyncPublishedStatus.fromName(procurementEvent.getAsyncPublishedStatus()))) {
+          return DashboardStatus.PUBLISHING;
+        } else if (Objects.nonNull(procurementEvent.getAsyncPublishedStatus())
+            && AsyncPublishedStatus.FAILED.name()
+                .equalsIgnoreCase(procurementEvent.getAsyncPublishedStatus())) {
+          return DashboardStatus.PUBLISH_FAILED;
+        } else if (Objects.nonNull(rfxSetting.getCloseDate()) 
             && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now())) {
           return DashboardStatus.PUBLISHED;
         } else {
