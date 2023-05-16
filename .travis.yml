@@ -17,7 +17,7 @@ before_script:
 script:
   - mvn package
 
-before_deploy:
+after_success:
   - echo "Determine deployment environment"
   - |
     case $TRAVIS_BRANCH in
