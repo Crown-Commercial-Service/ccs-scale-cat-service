@@ -44,7 +44,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.MessageTaskRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -126,7 +128,13 @@ class MessageServiceTest {
   private MessageService messageService;
 
   @MockBean
+  private AsyncExecutor asyncExecutor;
+
+  @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
+
+  @MockBean
+  private MessageTaskRepo messageTaskRepo;
 
   private RPAGenericData request = new RPAGenericData();
   private RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();

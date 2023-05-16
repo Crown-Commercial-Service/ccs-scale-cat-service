@@ -7,7 +7,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -19,13 +20,20 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageAsync;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerMessagePush;
+import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.MessageTaskData;
+
+import javax.transaction.Transactional;
+
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.UNLIMITED_VALUE;
 /**
  *
@@ -42,6 +50,7 @@ public class MessageService {
   private static final String RPA_DELIMETER = "~|";
   private static final String OBJECT_TYPE = "RFQ";
 
+  private static final String MESSAGE_TASK = "JaggerMessagePush";
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
       "Organisation [%s] not found in Conclave";
@@ -58,7 +67,9 @@ public class MessageService {
 
   private static final String LINK_URI = "/messages/";
   private static final int RECORDS_PER_REQUEST = 100;
+  private final AsyncExecutor asyncExecutor;
 
+  private final ObjectMapper objectMapper;
   
   /**
    * Which sends outbound message to all suppliers and single supplier. And also responds supplier
@@ -71,12 +82,17 @@ public class MessageService {
    * @return
    * @throws JsonProcessingException
    */
+  @Deprecated
   public String createOrReplyMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    return publishMessage(profile, procurementEvent, message);
+
+  }
+  @Transactional
+  public String publishMessage(String profile, ProcurementEvent procurementEvent, Message message) {
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
-
     String messageClassification = nonOCDS.getClassification().getValue();
     if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
       messageClassification = "";
@@ -87,7 +103,7 @@ public class MessageService {
         .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
         .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
         .operatorUser(OperatorUser.builder().loginid(profile).build());
-    
+
     // Adding supplier details
     if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
       if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
@@ -98,7 +114,7 @@ public class MessageService {
 
       messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
     }
-    
+
     // To reply the message
     if (nonOCDS.getParentId() != null) {
       var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());
@@ -107,11 +123,17 @@ public class MessageService {
       }
       messageRequest.parentMessageId(String.valueOf(messageDetails.getMessageId()));
     }
-
     return jaggaerService.createReplyMessage(messageRequest.build()).getMessageId().toString();
 
   }
 
+  public Message createOrReplyMessageAsync(final String profile, final Integer projectId,
+                                     final String eventId, final Message message) {
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    MessageAsync messageAsync = retryableTendersDBDelegate.save(MessageAsync.builder().messageRequest(message).eventId(procurementEvent.getId()).status(MessageTaskStatus.CREATE).timestamps(Timestamps.createTimestamps(profile)).build());
+    asyncExecutor.submit(profile, JaggaerMessagePush.class, MessageTaskData.builder().messageId(messageAsync.getMessageId()).eventId(messageAsync.getEventId()).profile(profile).build(), MESSAGE_TASK ,messageAsync.getMessageId().toString());
+    return messageAsync.getMessageRequest();
+  }
 
   /**
    * Returns a list of message summary at the event level.
