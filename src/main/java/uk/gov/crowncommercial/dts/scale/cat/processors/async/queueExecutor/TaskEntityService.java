@@ -202,18 +202,7 @@ public class TaskEntityService {
         if (null == task.getId())
             return null;
 
-        TaskEntity entity = taskRepo.findById(task.getId()).orElse(null);
-
-        if (null != entity)
-            return entity;
-
-        int i = 0;
-        while (null == entity && i < 6) {
-            taskUtils.sleep(1000);
-            i++;
-            entity = taskRepo.findById(task.getId()).orElse(null);
-        }
-        return entity;
+        return taskUtils.get(()-> taskRepo.findById(task.getId()).orElse(null), 6);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
