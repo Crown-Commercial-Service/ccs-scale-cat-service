@@ -93,10 +93,7 @@ public class MessageService {
   public String publishMessage(String profile, ProcurementEvent procurementEvent, Message message) {
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
-    String messageClassification = nonOCDS.getClassification().getValue();
-    if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
-      messageClassification = "";
-    }
+    String messageClassification = getMessageClassification(nonOCDS);
 
     var messageRequest = CreateReplyMessage.builder().body(ocds.getDescription())
         .broadcast(Boolean.TRUE.equals(nonOCDS.getIsBroadcast()) ? "1" : "0")
@@ -105,15 +102,7 @@ public class MessageService {
         .operatorUser(OperatorUser.builder().loginid(profile).build());
 
     // Adding supplier details
-    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
-      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
-        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
-      }
-      var suppliers = supplierService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
-          .stream().map(OrganizationReference1::getId).toList());
-
-      messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
-    }
+    addSuppliers(procurementEvent, nonOCDS, messageRequest);
 
     // To reply the message
     if (nonOCDS.getParentId() != null) {
@@ -125,6 +114,26 @@ public class MessageService {
     }
     return jaggaerService.createReplyMessage(messageRequest.build()).getMessageId().toString();
 
+  }
+
+  private void addSuppliers(ProcurementEvent procurementEvent, MessageNonOCDS nonOCDS, CreateReplyMessage.CreateReplyMessageBuilder messageRequest) {
+    if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
+      if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
+        throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
+      }
+      var suppliers = supplierService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
+          .stream().map(OrganizationReference1::getId).toList());
+
+      messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
+    }
+  }
+
+  private static String getMessageClassification(MessageNonOCDS nonOCDS) {
+    String messageClassification = nonOCDS.getClassification().getValue();
+    if (messageClassification.contentEquals(ClassificationEnum.UNCLASSIFIED.getValue())) {
+      return "";
+    }
+    return messageClassification;
   }
 
   public Message createOrReplyMessageAsync(final String profile, final Integer projectId,
