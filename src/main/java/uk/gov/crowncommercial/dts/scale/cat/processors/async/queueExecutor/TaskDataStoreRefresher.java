@@ -25,19 +25,20 @@ public class TaskDataStoreRefresher {
     private final QueuedAsyncExecutor asyncExecutor;
     private final ExperimentalFlagsConfig experimentalFlags;
     private final EnvironmentConfig environmentConfig;
-    private final int TASK_LOAD_INTERVAL = 2;
+    private final int TASK_LOAD_INTERVAL = 5;
 
     private static final int ORPHAN_LOAD_INTERVAL = 15;
 
-    @Scheduled(fixedRate = ORPHAN_LOAD_INTERVAL * 60 * 1000, initialDelay = TASK_LOAD_INTERVAL * 60 * 1000)
+    @Scheduled(fixedRate = ORPHAN_LOAD_INTERVAL * 60 * 1000, initialDelay = 30 * 1000)
     @Transactional
     public void loadOrphanTasksFromDataStore() {
         if(!experimentalFlags.isAsyncOrphanJobsLoader())
             return;
-
-        char[] status = {'I', 'S'};
+        String category = "orphan";
+        char[] statusList = {'I', 'S'};
         Instant checkTime = Instant.now().minus(ORPHAN_LOAD_INTERVAL , ChronoUnit.MINUTES);
-        loadData(status, checkTime, checkTime, "orphan");
+        List<TaskEntity> taskEntities = taskRepo.findOrphanTasks(environmentConfig.getServiceInstance(), statusList, checkTime, checkTime);
+        loadTasks(category, taskEntities);
     }
 
     @Scheduled(fixedRate = TASK_LOAD_INTERVAL * 60 * 1000, initialDelay = 5*1000)
@@ -68,6 +69,10 @@ public class TaskDataStoreRefresher {
                          @Param("lastAccessTime")Instant lastAccessTime, @Param("scheduleTime") Instant scheduledAt, String category) {
 
         List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), statusList, lastAccessTime, scheduledAt);
+        loadTasks(category, taskEntities);
+    }
+
+    private void loadTasks(String category, List<TaskEntity> taskEntities) {
         if (taskEntities.size() > 0) {
             log.info("Retrieved {} {}  tasks from the database ", taskEntities.size(), category);
             asyncExecutor.loadFromDataStore(taskEntities);

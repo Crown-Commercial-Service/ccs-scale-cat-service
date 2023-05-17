@@ -36,7 +36,7 @@ public class TaskEntityService {
         Instant instant = Instant.now();
         entity.setTobeExecutedAt(instant);
         entity.setScheduledOn(instant);
-        entity.setGroupId(groupEntity.getId());
+        entity.setGroup(groupEntity);
         entity.setRecordType(recordType);
         entity.setRecordId(recordId);
         entity.setStatus(Task.SCHEDULED);
@@ -240,11 +240,7 @@ public class TaskEntityService {
 
     public boolean isSchedulable(Task task){
         TaskEntity entity = getEntity(task);
-        if(entity.getStatus() == Task.SCHEDULED &&
-                (null == entity.getNode() || entity.getNode().equalsIgnoreCase(environmentConfig.getServiceInstance()))){
-                    return true;
-        }
-        return false;
+        return isSchedulable(entity);
     }
 
     private void markTaskStatus(Task task, String response, char status) {
@@ -254,5 +250,25 @@ public class TaskEntityService {
         update(entity);
         updateHistory(entity, entity.getStatus(), response);
         taskRepo.save(entity);
+    }
+
+    public boolean isSchedulable(TaskEntity entity){
+        if(entity.getStatus() == Task.SCHEDULED &&
+                (null == entity.getNode() || entity.getNode().equalsIgnoreCase(environmentConfig.getServiceInstance()))){
+            return true;
+        }
+        return false;
+    }
+
+    public TaskEntity assignToSelf(TaskEntity taskEntity) {
+        TaskEntity entity = taskRepo.findById(taskEntity.getId()).orElseThrow();
+        entity.setNode(environmentConfig.getServiceInstance());
+        entity.getTimestamps().setUpdatedAt(Instant.now());
+        TaskGroupEntity groupEntity =  entity.getGroup();
+        if(null != groupEntity){
+            groupEntity.setNode(environmentConfig.getServiceInstance());
+        }
+        taskRepo.saveAndFlush(entity);
+        return entity;
     }
 }
