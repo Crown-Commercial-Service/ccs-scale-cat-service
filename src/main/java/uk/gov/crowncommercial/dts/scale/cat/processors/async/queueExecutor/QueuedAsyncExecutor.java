@@ -20,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskHistoryEntity;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.TaskScheduler;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 
@@ -86,7 +87,9 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     public <T> void submit(String principal, Class<? extends AsyncConsumer<T>> clazz, T data, String recordType, String recordId) {
         if (experimentalFlags.isAsyncExecutorEnabled()) {
             Task task = new Task(principal, getSpringName(clazz), getClassName(data), data);
+            AsyncConsumer consumer = ctx.getBean(task.getRunner(), AsyncConsumer.class);
             taskEntityService.persist(principal, task, recordType, recordId, writeData(task.getData()));
+            consumer.onStatusChange(principal, data, AsyncTaskStatus.SCHEDULED);
             if(taskEntityService.isSchedulable(task))
                 schedule(task);
         } else {

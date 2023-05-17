@@ -103,22 +103,12 @@ public class TaskEntityService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markComplete(Task task, String response) {
-        TaskEntity entity = getEntity(task);
-        entity.setResponse(response);
-        entity.setStatus(Task.COMPLETED);
-        update(entity);
-        updateHistory(entity, entity.getStatus(), response);
-        taskRepo.save(entity);
+        markTaskStatus(task, response, Task.COMPLETED);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailure(Task task, String response) {
-        TaskEntity entity = getEntity(task);
-        entity.setResponse(response);
-        entity.setStatus(Task.FAILED);
-        update(entity);
-        updateHistory(entity, entity.getStatus(), response);
-        taskRepo.save(entity);
+        markTaskStatus(task, response, Task.FAILED);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -255,5 +245,14 @@ public class TaskEntityService {
                     return true;
         }
         return false;
+    }
+
+    private void markTaskStatus(Task task, String response, char status) {
+        TaskEntity entity = getEntity(task);
+        entity.setResponse(response);
+        entity.setStatus(status);
+        update(entity);
+        updateHistory(entity, entity.getStatus(), response);
+        taskRepo.save(entity);
     }
 }

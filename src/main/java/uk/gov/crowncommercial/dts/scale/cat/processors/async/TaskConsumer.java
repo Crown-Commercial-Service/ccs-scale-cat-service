@@ -8,4 +8,8 @@ public interface TaskConsumer<T> {
     List<ErrorHandler> getErrorHandlers();
 
     String getTaskName();
+
+    default String getTaskCode(){
+        return getTaskName();
+    }
 }
