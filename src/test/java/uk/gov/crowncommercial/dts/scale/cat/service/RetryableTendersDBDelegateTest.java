@@ -48,6 +48,9 @@ class RetryableTendersDBDelegateTest {
   private JourneyRepo journeyRepo;
 
   @MockBean
+  private MessageTaskRepo messageTaskRepo;
+
+  @MockBean
   private DocumentTemplateRepo documentTemplateRepo;
 
   @MockBean
@@ -91,8 +94,7 @@ class RetryableTendersDBDelegateTest {
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
-  @MockBean
-  private MessageTaskRepo messageTaskRepo;
+
   @MockBean
   private ContractDetailsRepo contractDetailsRepo;
 

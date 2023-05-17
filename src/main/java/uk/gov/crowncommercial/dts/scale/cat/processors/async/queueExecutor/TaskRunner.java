@@ -33,10 +33,10 @@ public class TaskRunner{
     }
 
     public void execSingleConsumer(Task task, AsyncConsumer consumer){
-        taskEntityService.markInProgress(task);
         try {
+            markInProgress(task, consumer);
             String response = execute(task, consumer, consumer.getIdentifier(task.getData()));
-            taskEntityService.markComplete(task, response);
+            markComplete(task, consumer, response);
         } catch (Throwable t) {
             handleException(consumer, task, t);
         }
@@ -45,10 +45,10 @@ public class TaskRunner{
     public void execMultiConsumer(Task task, AsyncMultiConsumer consumer){
         final String identifier = consumer.getIdentifier(task.getData());
         final int start = consumer.getTaskIndex(task.getTaskStage());
-
         List<String> taskNames = consumer.getAllTasks();
 
         try {
+            markInProgress(task, consumer);
             String response = null;
             for(int i = start; i < taskNames.size(); i++){
                 String currentStage = taskNames.get(i);
@@ -59,7 +59,7 @@ public class TaskRunner{
                 }
                 response = executeStage(task, consumer, identifier, currentStage);
             }
-            taskEntityService.markComplete(task, response);
+            markComplete(task, consumer, response);
         } catch (Throwable t) {
             handleException(consumer, task, t);
         }
@@ -80,10 +80,7 @@ public class TaskRunner{
 
         if(null != handler){
             if(handler.canRetry(t) && retryManager.canSchedule(task, 1)){
-                log.info("Rescheduling the task {} for user {}", consumer.getTaskName(), task.getPrincipal());
-                String response = "Rescheduled. "
-                        + "::"  + handler.getMessage(t);
-                taskEntityService.markRetry(task, response, retryManager.getInterval(task));
+                markRetry(consumer, task, t, handler);
             }else
                 markFailure(task, consumer, t, handler.getMessage(t));
         }else{
@@ -103,11 +100,6 @@ public class TaskRunner{
         return null;
     }
 
-    private void markFailure(Task task, AsyncConsumer consumer, Throwable t, String message) {
-        log.error("Error while processing task {} for user {}", consumer.getTaskName(), task.getPrincipal());
-        log.error("Error details", t);
-        taskEntityService.markFailure(task, message);
-    }
 
 
     @Transactional
@@ -131,5 +123,30 @@ public class TaskRunner{
     private String execute(Task task, TaskConsumer consumer, String identifier) {
         log.info("Executing the task {} with data {}, for user {}", consumer.getTaskName(), identifier,  task.getPrincipal());
         return consumer.accept(task.getPrincipal(), task.getData());
+    }
+
+    private void markComplete(Task task, AsyncConsumer consumer, String response) {
+        taskEntityService.markComplete(task, response);
+        consumer.onStatusChange(task.getPrincipal(), task.getData(), AsyncTaskStatus.COMPLETED);
+    }
+
+    private void markInProgress(Task task, AsyncConsumer consumer) {
+        taskEntityService.markInProgress(task);
+        consumer.onStatusChange(task.getPrincipal(), task.getData(), AsyncTaskStatus.IN_FLIGHT);
+    }
+
+    private void markRetry(AsyncConsumer consumer, Task task, Throwable t, ErrorHandler handler) {
+        log.info("Rescheduling the task {} for user {}", consumer.getTaskName(), task.getPrincipal());
+        String response = "Rescheduled. "
+                + "::"  + handler.getMessage(t);
+        taskEntityService.markRetry(task, response, retryManager.getInterval(task));
+        consumer.onStatusChange(task.getPrincipal(), task.getData(), AsyncTaskStatus.RETRY);
+    }
+
+    private void markFailure(Task task, AsyncConsumer consumer, Throwable t, String message) {
+        log.error("Error while processing task {} for user {}", consumer.getTaskName(), task.getPrincipal());
+        log.error("Error details", t);
+        taskEntityService.markFailure(task, message);
+        consumer.onStatusChange(task.getPrincipal(), task.getData(), AsyncTaskStatus.FAILED);
     }
 }

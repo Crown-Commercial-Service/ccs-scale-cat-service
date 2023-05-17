@@ -32,4 +32,9 @@ public class PublishPrevalidationTask implements TaskConsumer<JaggaerPublishEven
     public String getTaskName() {
         return "SupplierPush";
     }
+
+    @Override
+    public String getTaskCode() {
+        return "publishPreValidate";
+    }
 }
