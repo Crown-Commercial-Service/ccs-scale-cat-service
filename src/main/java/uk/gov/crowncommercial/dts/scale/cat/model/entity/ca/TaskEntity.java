@@ -29,8 +29,9 @@ public class TaskEntity {
   @Column(name = "task_name")
   private String name;
 
-  @Column(name="group_id")
-  private Integer groupId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "group_id", referencedColumnName = "task_group_id")
+  private TaskGroupEntity group;
 
   @Column(name = "task_object")
   private String recordType;
