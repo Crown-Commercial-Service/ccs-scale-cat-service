@@ -36,6 +36,15 @@ public class TaskUtils {
         return (status == 'C' || status == 'F' || status == 'A');
     }
 
+    public static boolean isStatusIn(TaskHistoryEntity entity, char... statuses){
+        char status = entity.getStatus();
+        for(char s : statuses){
+            if(status == s)
+                return true;
+        }
+        return false;
+    }
+
     public static <T> T get(Supplier<T> supplier, int retry){
         T data = null;
         int i = 0;
@@ -45,5 +54,14 @@ public class TaskUtils {
             data = supplier.get();
         } while (null == data && i <= retry);
         return data;
+    }
+
+    public static void checkProceed(TaskEntity entity) {
+        switch(entity.getStatus()){
+            case Task.COMPLETED :
+            case Task.FAILED:
+            case Task.ABORTED:
+                throw new IllegalArgumentException("This task cannot be re-processed");
+        }
     }
 }

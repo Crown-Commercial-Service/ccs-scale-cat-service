@@ -21,6 +21,7 @@ public class Task {
     private Instant tobeExecutedAt;
     private Object data;
     private String taskStage;
+    private Integer groupId;
 
     private Long id;
 
