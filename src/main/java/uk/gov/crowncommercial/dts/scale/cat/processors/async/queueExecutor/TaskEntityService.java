@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class TaskEntityService {
     private final TaskRepo taskRepo;
     private final TaskGroupRepo taskGroupRepo;
@@ -141,13 +143,12 @@ public class TaskEntityService {
         if(entity.getHistory().size() > 0) {
             TaskHistoryEntity history = getLatestHistory(entity);
             if (taskUtils.isStatusIn(history, prevStatus)) {
-                history.setStatus(taskExecutionStatus);
-                history.setResponse(response);
-                Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
-            } else {
-                if (null == history.getStage())
-                    throw new IllegalStateException("Task History already closed with status:" + history.getStatus());
+                log.debug("expected previous status is not in place, current status {}, status list {}",
+                        taskExecutionStatus, prevStatus);
             }
+            history.setStatus(taskExecutionStatus);
+            history.setResponse(response);
+            Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
         }
     }
 
