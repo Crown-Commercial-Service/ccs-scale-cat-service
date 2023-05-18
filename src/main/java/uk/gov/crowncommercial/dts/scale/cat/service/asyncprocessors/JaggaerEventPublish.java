@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.*;
@@ -14,7 +13,6 @@ import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.Publ
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.SupplierPushTask;
 
 import javax.transaction.Transactional;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,14 +22,9 @@ public class JaggaerEventPublish extends AsyncMultiConsumer<JaggaerPublishEventD
 
     private final RetryableTendersDBDelegate dbDelegate;
     private final ValidationService validationService;
-    private final PublishPrevalidationTask prevalidationTask;
     private final DocumentPushTask documentPushConsumer;
     private final SupplierPushTask supplierPushConsumer;
     private final EventPublishTask eventPublisher;
-
-    public List<TaskConsumer> getCsonsumers(){
-        return Arrays.asList(prevalidationTask, documentPushConsumer, supplierPushConsumer, eventPublisher);
-    }
 
     @Override
     public String getIdentifier(JaggaerPublishEventData data) {
@@ -77,6 +70,6 @@ public class JaggaerEventPublish extends AsyncMultiConsumer<JaggaerPublishEventD
 
     @Override
     protected List<TaskConsumer<JaggaerPublishEventData>> getConsumers() {
-        return Arrays.asList(prevalidationTask, documentPushConsumer, supplierPushConsumer, eventPublisher);
+        return Arrays.asList(documentPushConsumer, supplierPushConsumer, eventPublisher);
     }
 }

@@ -24,7 +24,7 @@ public class TaskEntityService {
     private final TaskUtils taskUtils;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void persist(String principal, Task task, String recordType, String recordId, String data) {
+    public TaskEntity persist(String principal, Task task, String recordType, String recordId, String data) {
         TaskEntity entity = new TaskEntity();
         TaskGroupEntity groupEntity = saveTaskGroup(principal, recordType, recordId);
         entity.setName(recordType + recordId + task.getRunner());
@@ -49,6 +49,8 @@ public class TaskEntityService {
         Timestamps.updateTimestamps(entity.getTimestamps(), principal);
         taskRepo.saveAndFlush(entity);
         task.setId(entity.getId());
+        task.setGroupId(entity.getGroup().getId());
+        return entity;
     }
 
     private TaskGroupEntity saveTaskGroup(String principal, String recordType, String recordId) {
@@ -81,7 +83,7 @@ public class TaskEntityService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TaskEntity markInProgress(Task task) {
         TaskEntity entity = getEntity(task);
-        checkProceed(entity);
+        TaskUtils.checkProceed(entity);
         markHistoryAborted(entity);
         entity.setStage(task.getTaskStage());
         addHistory(entity);
@@ -91,30 +93,26 @@ public class TaskEntityService {
         return entity;
     }
 
-    private void checkProceed(TaskEntity entity) {
-        switch(entity.getStatus()){
-            case Task.COMPLETED :
-            case Task.FAILED:
-            case Task.ABORTED:
-                throw new IllegalArgumentException("This task cannot be re-processed");
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markComplete(Task task, String response) {
+        TaskEntity entity = markTaskStatus(task, response, Task.COMPLETED, 'I');
+        if(null != entity.getGroup() && taskRepo.findPendingJobsByGroup(entity.getGroup()) == 0){
+            TaskGroupEntity groupEntity = entity.getGroup();
+            groupEntity.setStatus('C');
+            taskGroupRepo.saveAndFlush(groupEntity);
         }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markComplete(Task task, String response) {
-        markTaskStatus(task, response, Task.COMPLETED);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailure(Task task, String response) {
-        markTaskStatus(task, response, Task.FAILED);
+        markTaskStatus(task, response, Task.FAILED, 'I');
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markRetry(Task task, String response, int seconds) {
         TaskEntity entity = getEntity(task);
         entity.setResponse(response);
-        updateHistory(entity, Task.FAILED, response);
+        updateHistory(entity, Task.FAILED, response, 'I', 'S');
         entity.setTobeExecutedAt(Instant.now().plus(seconds, ChronoUnit.SECONDS));
         task.setTobeExecutedAt(entity.getTobeExecutedAt());
         entity.setStatus(Task.SCHEDULED);
@@ -139,15 +137,17 @@ public class TaskEntityService {
         }
     }
 
-    private void updateHistory(TaskEntity entity, char taskExecutionStatus, String response) {
-        TaskHistoryEntity history = getLatestHistory(entity);
-        if(!taskUtils.isClosed(history)) {
-            history.setStatus(taskExecutionStatus);
-            history.setResponse(response);
-            Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
-        }else{
-            if(null == history.getStage())
-                throw new IllegalStateException("Task History already closed with status:" + history.getStatus());
+    private void updateHistory(TaskEntity entity, char taskExecutionStatus, String response, char... prevStatus) {
+        if(entity.getHistory().size() > 0) {
+            TaskHistoryEntity history = getLatestHistory(entity);
+            if (taskUtils.isStatusIn(history, prevStatus)) {
+                history.setStatus(taskExecutionStatus);
+                history.setResponse(response);
+                Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
+            } else {
+                if (null == history.getStage())
+                    throw new IllegalStateException("Task History already closed with status:" + history.getStatus());
+            }
         }
     }
 
@@ -211,7 +211,7 @@ public class TaskEntityService {
         entity.setResponse(response);
         entity.setStatus(Task.INFLIGHT);
         update(entity);
-        updateHistory(entity, Task.COMPLETED, response);
+        updateHistory(entity, Task.COMPLETED, response, 'I');
         taskRepo.saveAndFlush(entity);
     }
 
@@ -220,15 +220,17 @@ public class TaskEntityService {
         return taskUtils.isSchedulable(entity);
     }
 
-    private void markTaskStatus(Task task, String response, char status) {
+    private TaskEntity markTaskStatus(Task task, String response, char status, char... prevStatus) {
         TaskEntity entity = getEntity(task);
         entity.setResponse(response);
         entity.setStatus(status);
         update(entity);
-        updateHistory(entity, entity.getStatus(), response);
+        updateHistory(entity, entity.getStatus(), response, prevStatus);
         taskRepo.save(entity);
+        return entity;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TaskEntity assignToSelf(TaskEntity taskEntity) {
         TaskEntity entity = taskRepo.findById(taskEntity.getId()).orElseThrow();
         entity.setNode(taskUtils.getNodeName());
