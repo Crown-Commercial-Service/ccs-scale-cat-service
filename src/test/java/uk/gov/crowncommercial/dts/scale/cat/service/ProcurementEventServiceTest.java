@@ -43,6 +43,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.service.validators.ProcurementEventValidator;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -102,6 +103,8 @@ class ProcurementEventServiceTest {
   @MockBean
   private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
 
+  @MockBean
+  private ProcurementEventValidator procurementEventValidator;
   @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
 
