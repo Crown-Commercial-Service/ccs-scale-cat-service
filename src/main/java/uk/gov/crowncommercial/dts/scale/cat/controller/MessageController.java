@@ -33,7 +33,7 @@ public class MessageController extends AbstractRestController {
 
   @PostMapping
   @TrackExecutionTime
-  public ResponseEntity<Message> createAndRespondMessage(
+  public ResponseEntity<String> createAndRespondMessage(
       @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final Message messageRequest,
       final JwtAuthenticationToken authentication) {
@@ -43,7 +43,7 @@ public class MessageController extends AbstractRestController {
     log.info("createAndRespondMessage invoked on behalf of principal: {}", principal,
         conclaveOrgId);
 
-    return ResponseEntity.status(HttpStatus.CREATED).body(messageService.createOrReplyMessageAsync(principal, procId, eventId, messageRequest));
+    return ResponseEntity.ok(messageService.createOrReplyMessageAsync(principal, procId, eventId, messageRequest));
 
   }
 
