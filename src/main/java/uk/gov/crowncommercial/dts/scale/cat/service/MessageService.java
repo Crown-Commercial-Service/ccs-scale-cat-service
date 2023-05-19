@@ -136,12 +136,12 @@ public class MessageService {
     return messageClassification;
   }
 
-  public Message createOrReplyMessageAsync(final String profile, final Integer projectId,
+  public String createOrReplyMessageAsync(final String profile, final Integer projectId,
                                      final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     MessageAsync messageAsync = retryableTendersDBDelegate.save(MessageAsync.builder().messageRequest(message).eventId(procurementEvent.getId()).status(MessageTaskStatus.CREATE).timestamps(Timestamps.createTimestamps(profile)).build());
     asyncExecutor.submit(profile, JaggaerMessagePush.class, MessageTaskData.builder().messageId(messageAsync.getMessageId()).eventId(messageAsync.getEventId()).profile(profile).build(), MESSAGE_TASK ,messageAsync.getMessageId().toString());
-    return messageAsync.getMessageRequest();
+    return messageAsync.getMessageId().toString();
   }
 
   /**
