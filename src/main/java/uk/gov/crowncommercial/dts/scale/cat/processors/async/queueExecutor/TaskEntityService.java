@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskGroupEntity;
@@ -83,12 +82,13 @@ public class TaskEntityService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public TaskEntity markInProgress(Task task) {
+    public TaskEntity markInProgress(Task task, boolean abortHistory) {
         TaskEntity entity = getEntity(task);
         TaskUtils.checkProceed(entity);
-        markHistoryAborted(entity);
+        if(abortHistory)
+            markHistoryAborted(entity);
         entity.setStage(task.getTaskStage());
-        addHistory(entity);
+        addHistory(entity, abortHistory);
         entity.setStatus(Task.INFLIGHT);
         entity.setLastExecutedOn(Instant.now());
         taskRepo.save(entity);
@@ -128,7 +128,7 @@ public class TaskEntityService {
         timestamps.setUpdatedBy(entity.getPrincipal());
     }
 
-    private void markHistoryAborted(TaskEntity entity) {
+    public void markHistoryAborted(TaskEntity entity) {
         for (TaskHistoryEntity history : entity.getHistory()) {
             switch (history.getStatus()) {
                 case Task.INFLIGHT:
@@ -164,11 +164,11 @@ public class TaskEntityService {
 
 
 
-    private void addHistory(TaskEntity entity) {
+    private void addHistory(TaskEntity entity, boolean abortHistory) {
         List<TaskHistoryEntity> history = entity.getHistory();
         TaskHistoryEntity historyEntity = null;
 
-        if (0 > history.size()) {
+        if (history.size() > 0) {
             TaskHistoryEntity recentEntity = history.get(0);
             if (recentEntity.getStatus() == Task.SCHEDULED) {
                 recentEntity.setStatus(Task.INFLIGHT);
@@ -176,8 +176,12 @@ public class TaskEntityService {
                 return;
             }
             if (recentEntity.getStatus() == Task.INFLIGHT) {
-                recentEntity.setStatus(Task.ABORTED);
-                Timestamps.updateTimestamps(recentEntity.getTimestamps(), entity.getPrincipal());
+                if(abortHistory) {
+                    recentEntity.setStatus(Task.ABORTED);
+                    Timestamps.updateTimestamps(recentEntity.getTimestamps(), entity.getPrincipal());
+                }else {
+                    return;
+                }
             }
         }
 

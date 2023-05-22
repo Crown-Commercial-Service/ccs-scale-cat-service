@@ -68,7 +68,7 @@ public class TaskRunner{
     private String executeStage(Task task, AsyncMultiConsumer consumer, String identifier, String taskName) {
         String response;
         task.setTaskStage(taskName);
-        taskEntityService.markInProgress(task);
+        taskEntityService.markInProgress(task, false);
         TaskConsumer taskConsumer = consumer.getTaskConsumer(taskName);
         response = execute(task, taskConsumer, identifier);
         taskEntityService.markStageComplete(task, response);
@@ -131,7 +131,7 @@ public class TaskRunner{
     }
 
     private void markInProgress(Task task, AsyncConsumer consumer) {
-        taskEntityService.markInProgress(task);
+        taskEntityService.markInProgress(task, true);
         consumer.onStatusChange(task.getPrincipal(), task.getData(), AsyncTaskStatus.IN_FLIGHT);
     }
 
