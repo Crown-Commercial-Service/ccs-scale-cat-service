@@ -11,7 +11,7 @@ public class NoopErrorHandler implements ErrorHandler{
 
     @Override
     public boolean canRetry(Throwable t) {
-        return false;
+        return true;
     }
 
     @Override
