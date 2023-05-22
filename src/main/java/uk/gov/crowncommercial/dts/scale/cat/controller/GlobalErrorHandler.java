@@ -224,6 +224,17 @@ public class GlobalErrorHandler implements ErrorController {
     return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
             "Can not complete an Event", exception.getMessage());
   }
+  
+  @ResponseStatus(INTERNAL_SERVER_ERROR)
+  @ExceptionHandler({DuplicateFiscalCodeException.class})
+  public Errors handleDuplicateFiscalCodeException(
+          final DuplicateFiscalCodeException exception) {
+    log.error(exception.getMessage());
+
+    return tendersAPIModelUtils.buildDefaultErrors(INTERNAL_SERVER_ERROR.toString(),
+            "Login Director Edgecase Scenario", exception.getMessage());
+
+  }
 
 
 }

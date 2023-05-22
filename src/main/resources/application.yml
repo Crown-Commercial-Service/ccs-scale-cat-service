@@ -186,6 +186,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
       getCompanyProfileByDUNSNumber:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
+      getCompanyProfileByFiscalCode:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=fiscalCode=={{FISCALCODE}}  
       getCompanyProfileByBravoID:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID=={{PRINCIPAL}}
 
