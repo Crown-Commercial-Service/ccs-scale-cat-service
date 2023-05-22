@@ -166,26 +166,36 @@ public class TaskEntityService {
 
     private void addHistory(TaskEntity entity, boolean abortHistory) {
         List<TaskHistoryEntity> history = entity.getHistory();
-        TaskHistoryEntity historyEntity = null;
-
         if (history.size() > 0) {
-            TaskHistoryEntity recentEntity = history.get(0);
-            if (recentEntity.getStatus() == Task.SCHEDULED) {
+            addCheckHistory(entity, abortHistory);
+        }
+        else
+            addHistory(entity);
+    }
+
+    private void addCheckHistory(TaskEntity entity, boolean abortHistory) {
+        List<TaskHistoryEntity> history = entity.getHistory();
+        TaskHistoryEntity recentEntity = history.get(0);
+
+        switch (recentEntity.getStatus()){
+            case Task.SCHEDULED:
                 recentEntity.setStatus(Task.INFLIGHT);
                 recentEntity.setExecutedOn(Instant.now());
                 return;
-            }
-            if (recentEntity.getStatus() == Task.INFLIGHT) {
-                if(abortHistory) {
+            case Task.INFLIGHT:
+                if(!abortHistory)
+                    return;
+                else {
                     recentEntity.setStatus(Task.ABORTED);
                     Timestamps.updateTimestamps(recentEntity.getTimestamps(), entity.getPrincipal());
-                }else {
-                    return;
                 }
-            }
+            default: addHistory(entity);
         }
+    }
 
-        historyEntity = createTaskHistory(entity);
+    private static void addHistory(TaskEntity entity) {
+        List<TaskHistoryEntity> history = entity.getHistory();
+        TaskHistoryEntity historyEntity = createTaskHistory(entity);
         history.add(historyEntity);
         historyEntity.setExecutedOn(Instant.now());
     }

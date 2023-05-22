@@ -26,6 +26,8 @@ public class TaskRunner{
         }
         AsyncConsumer consumer = ctx.getBean(task.getRunner(), AsyncConsumer.class);
         if(consumer instanceof AsyncMultiConsumer<?>){
+            if(null == task.getTaskStage())
+                task.setTaskStage(((AsyncMultiConsumer<?>) consumer).getAllTasks().get(0));
             execMultiConsumer(task, (AsyncMultiConsumer) consumer);
         }else{
             execSingleConsumer(task, consumer);
