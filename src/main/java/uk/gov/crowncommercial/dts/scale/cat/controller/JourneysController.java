@@ -35,6 +35,17 @@ public class JourneysController extends AbstractRestController {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(new StringValueResponse(journeyService.createJourney(journey, principal)));
   }
+  
+  @PutMapping
+  @TrackExecutionTime
+  public ResponseEntity<StringValueResponse> updateJourney(
+      @RequestBody @Valid final Journey journey, final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+
+    return ResponseEntity.status(HttpStatus.OK)
+        .body(new StringValueResponse(journeyService.updateJourney(journey, principal)));
+  }
 
   @GetMapping("/{journey-id}/steps")
   @TrackExecutionTime
