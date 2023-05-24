@@ -1924,7 +1924,7 @@ public class ProcurementEventService implements EventService {
     										
     										OcdsTenderStatus ocdsStateMapping =getOcdsStateMapping(e.getRfxSetting().getStatusCode().toString(),
     																					e.getRfxSetting().getStatus(),
-    																					null);
+    																					e.getRfxSetting().getCloseDate());
     										r.setTag(ocdsStateMapping.getReleaseTag());
     										r.setInitiationType(InitiationType.TENDER);
     										
@@ -1996,7 +1996,9 @@ public class ProcurementEventService implements EventService {
     * @paramtenderPeriodEndDate
     * @returnOcdsTenderStatus
     */
-    private OcdsTenderStatus getOcdsStateMapping(final String statusCode, final String status, final Date tenderPeriodEndDate) {
+    private OcdsTenderStatus getOcdsStateMapping(final String statusCode, final String status, final OffsetDateTime tenderPeriodEndDate) {
+    	
+    	OffsetDateTime nowDateTime = OffsetDateTime.now();
     	
     	if (( status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_PUBLISHED) &&
     			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_PUBLISHED))) {
@@ -2008,36 +2010,41 @@ public class ProcurementEventService implements EventService {
     				.build();    				
     	}
 
-    	// TODO: Today < "tenderPeriod": "endDate"
-		if (( status.equalsIgnoreCase(JAGGAER_STATUS_RUNNING) &&
-    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_RUNNING))) {
+    	// Now < "tenderPeriod": "endDate"    	
+		if (nowDateTime.isBefore(tenderPeriodEndDate) && 
+				status.equalsIgnoreCase(JAGGAER_STATUS_RUNNING) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_RUNNING)) {
+    		return OcdsTenderStatus.builder()
+    				.tenderStatus(TenderStatus.ACTIVE)
+    				.releaseTag(ReleaseTag.TENDER)
+    				.build();    				
+		}
+    	
+
+    	// Now >= "tenderPeriod": "endDate"
+		if ( (nowDateTime.isEqual(tenderPeriodEndDate) || nowDateTime.isAfter(tenderPeriodEndDate)) &&
+				status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_EVALUATED) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_EVALUATED)) {
     		return OcdsTenderStatus.builder()
     				.tenderStatus(TenderStatus.ACTIVE)
     				.releaseTag(ReleaseTag.TENDER)
     				.build();    				
     	}
 
-    	// TODO: Today >= "tenderPeriod": "endDate"
-		if (( status.equalsIgnoreCase(JAGGAER_STATUS_TO_BE_EVALUATED) &&
-    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TO_BE_EVALUATED))) {
+    	// Now >= "tenderPeriod": "endDate"
+		if ( (nowDateTime.isEqual(tenderPeriodEndDate) || nowDateTime.isAfter(tenderPeriodEndDate)) &&
+				status.equalsIgnoreCase(JAGGAER_STATUS_TECHNICAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TECHNICAL_EVALUATION)) {
     		return OcdsTenderStatus.builder()
     				.tenderStatus(TenderStatus.ACTIVE)
     				.releaseTag(ReleaseTag.TENDER)
     				.build();    				
     	}
 
-    	// TODO: Today >= "tenderPeriod": "endDate"
-		if (( status.equalsIgnoreCase(JAGGAER_STATUS_TECHNICAL_EVALUATION) &&
-    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_TECHNICAL_EVALUATION))) {
-    		return OcdsTenderStatus.builder()
-    				.tenderStatus(TenderStatus.ACTIVE)
-    				.releaseTag(ReleaseTag.TENDER)
-    				.build();    				
-    	}
-
-    	// TODO: Today >= "tenderPeriod": "endDate"
-		if (( status.equalsIgnoreCase(JAGGAER_STATUS_COMMERCIAL_EVALUATION) &&
-    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_COMMERCIAL_EVALUATION))) {
+    	// Now >= "tenderPeriod": "endDate"
+		if ( (nowDateTime.isEqual(tenderPeriodEndDate) || nowDateTime.isAfter(tenderPeriodEndDate)) &&
+				status.equalsIgnoreCase(JAGGAER_STATUS_COMMERCIAL_EVALUATION) &&
+    			statusCode.equalsIgnoreCase(JAGGAER_STATUS_CODE_COMMERCIAL_EVALUATION)) {
     		return OcdsTenderStatus.builder()
     				.tenderStatus(TenderStatus.ACTIVE)
     				.releaseTag(ReleaseTag.TENDER)
