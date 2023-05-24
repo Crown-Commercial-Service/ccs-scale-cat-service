@@ -1778,18 +1778,6 @@ public class ProcurementEventService implements EventService {
   	  var ownerUser = OwnerUser.builder().login(projectTender.getRfx().getOwnerUserLogin()).build();
       var jaggaerBuyerCompanyId =  jaggaerAPIConfig.getAssistedProcurementId();
       var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
-
-      // Retrieve template reference code from rfx_template_mapping table
-	  log.debug("call findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber() with arg {}, {}", 
-			  	projectTender.getRfx().getFrameworkRMNumber(), projectTender.getRfx().getFrameworkLotNumber());
-      Optional<RfxTemplateMapping> rfxTemplateMapping = 
-       		retryableTendersDBDelegate.findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber(
-       								projectTender.getRfx().getFrameworkRMNumber(),
-       								projectTender.getRfx().getFrameworkLotNumber());
-      log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
-
-      String rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();
-      log.debug("rfxTemplateReferenceCode {}", rfxTemplateReferenceCode);
       
       var additionalInfoProcurementRoute = AdditionalInfo.builder()
       		.name(ADDITIONAL_INFO_PROCUREMENT_ROUTE)
@@ -1819,67 +1807,54 @@ public class ProcurementEventService implements EventService {
 
       String rfxType = "";
       Integer rfiFlag = 0;
+      OperationCode operationCode=null;
+      String rfxTemplateReferenceCode=null;
       
       if (projectTender.getRfx().getRfiFlag() != null && projectTender.getRfx().getRfiFlag().equals("1"))
       {
-      	rfxType = "STANDARD_PQQ";
-      	rfiFlag = 1;
+		rfxType = "STANDARD_PQQ";
+		rfiFlag = 1;
+		rfxTemplateReferenceCode=null;
+		operationCode = OperationCode.CREATE;
+		
       } else {
-      	rfxType = "STANDARD_ITT";
+
+    	log.debug("call findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber() with arg {}, {}", 
+				  	projectTender.getRfx().getFrameworkRMNumber(), projectTender.getRfx().getFrameworkLotNumber());
+		Optional<RfxTemplateMapping> rfxTemplateMapping = 
+		   		retryableTendersDBDelegate.findRfxTemplateMappingByCommercialAgreementNumberAndLotNumber(
+		   								projectTender.getRfx().getFrameworkRMNumber(),
+		   								projectTender.getRfx().getFrameworkLotNumber());
+		log.debug("rfxTemplateMapping {}", rfxTemplateMapping);
+		
+		rfxTemplateReferenceCode = rfxTemplateMapping.map(RfxTemplateMapping::getRfxReferenceCode).get();
+		log.debug("rfxTemplateReferenceCode {}", rfxTemplateReferenceCode);
+
+        rfxType = "STANDARD_ITT";
+      	operationCode = OperationCode.CREATE_FROM_TEMPLATE;
       }
       
-      OperationCode operationCode;
-      RfxSetting rfxSetting = null;
-      if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
-    	  
-    	  operationCode = OperationCode.CREATE_FROM_TEMPLATE;
+      RfxSetting rfxSetting =
+          RfxSetting.builder()
+				.shortDescription(projectTender.getRfx().getShortDescription())
+				.longDescription(projectTender.getRfx().getShortDescription())
+          		.rfiFlag(rfiFlag)
+          		.value(Integer.valueOf(projectTender.getRfx().getValue()))
+  				.templateReferenceCode(rfxTemplateReferenceCode)
+  				.tenderReferenceCode(project.getExternalReferenceId())
+  				.rfxReferenceCode(project.getExternalReferenceId())
+                .buyerCompany(buyerCompany)
+                .ownerUser(ownerUser)
+                .rfxType(rfxType)
+          		.qualEnvStatus(Integer.valueOf(projectTender.getRfx().getQualEnvStatus()))                    
+          		.techEnvStatus(Integer.valueOf(projectTender.getRfx().getTechEnvStatus()))                    
+          		.commEnvStatus(Integer.valueOf(projectTender.getRfx().getCommEnvStatus()))
+          		.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
+          		.rankingStrategy(projectTender.getRfx().getRankingStrategy())
+          		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
+          		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
+          		.build();  
 
-    	  rfxSetting =
-              RfxSetting.builder()
-  					.shortDescription(projectTender.getRfx().getShortDescription())
-  					.longDescription(projectTender.getRfx().getShortDescription())
-              		.rfiFlag(rfiFlag)
-              		.value(Integer.valueOf(projectTender.getRfx().getValue()))
-      				.templateReferenceCode(rfxTemplateReferenceCode)
-      				.tenderReferenceCode(project.getExternalReferenceId())
-      				.rfxReferenceCode(project.getExternalReferenceId())
-                    .buyerCompany(buyerCompany)
-                    .ownerUser(ownerUser)
-                    .rfxType(rfxType)
-              		.qualEnvStatus(Integer.valueOf(projectTender.getRfx().getQualEnvStatus()))                    
-              		.techEnvStatus(Integer.valueOf(projectTender.getRfx().getTechEnvStatus()))                    
-              		.commEnvStatus(Integer.valueOf(projectTender.getRfx().getCommEnvStatus()))
-              		.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
-              		.rankingStrategy(projectTender.getRfx().getRankingStrategy())
-              		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
-              		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
-              		.build();  
-
-      } else {
-    	  operationCode = OperationCode.CREATEUPDATE;
-
-    	  rfxSetting =
-                  RfxSetting.builder()
-      					.shortDescription(projectTender.getRfx().getShortDescription())
-      					.longDescription(projectTender.getRfx().getShortDescription())
-                  		.rfiFlag(rfiFlag)
-                  		.value(Integer.valueOf(projectTender.getRfx().getValue()))
-          				.templateReferenceCode(rfxTemplateReferenceCode)
-          				//.tenderReferenceCode(project.getExternalReferenceId())
-          				.rfxReferenceCode(projectTender.getTenderReferenceCode())
-                        .buyerCompany(buyerCompany)
-                        .ownerUser(ownerUser)
-                        .rfxType(rfxType)
-                  		.qualEnvStatus(Integer.valueOf(projectTender.getRfx().getQualEnvStatus()))                    
-                  		.techEnvStatus(Integer.valueOf(projectTender.getRfx().getTechEnvStatus()))                    
-                  		.commEnvStatus(Integer.valueOf(projectTender.getRfx().getCommEnvStatus()))
-                  		.visibilityEGComments(Integer.valueOf(projectTender.getRfx().getVisibilityEGComments()))
-                  		.rankingStrategy(projectTender.getRfx().getRankingStrategy())
-                  		.publishDate(OffsetDateTime.parse(projectTender.getRfx().getPublishDate()))
-                  		.closeDate(OffsetDateTime.parse(projectTender.getRfx().getCloseDate()))
-                  		.build();  
-      }
-      
       log.debug("rfxSetting {}", rfxSetting);
       log.debug("rfxAdditionalInfoList {}", rfxAdditionalInfoList);
 
@@ -1889,7 +1864,6 @@ public class ProcurementEventService implements EventService {
               .rfxAdditionalInfoList(rfxAdditionalInfoList)
               .build();
             
-      //return new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
       return new CreateUpdateRfx(operationCode, rfx);
     }
     
