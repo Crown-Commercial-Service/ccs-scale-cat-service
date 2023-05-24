@@ -721,7 +721,7 @@ public class ProcurementProjectService {
 	  
 	  ProcurementProject procurementProject;
 
-      // if no tenderReferenceCode provided then create new project otherwise update RFx for project
+      // if no tenderReferenceCode provided then create new project otherwise create RFx for project
       if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
  
     	  var operationCode = OperationCode.CREATE_FROM_TEMPLATE;
@@ -795,23 +795,17 @@ public class ProcurementProjectService {
     	  
           log.info("projectTender.getTenderReferenceCode(): {}", projectTender.getTenderReferenceCode());
   
-    	  List<ProcurementEvent> procurementEvent =
-    			  retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(projectTender.getTenderReferenceCode());
-    			  
-          log.info("procurementEvent: {}", procurementEvent);
-          var projectId = procurementEvent.get(0).getProject().getId();
-
     	  procurementProject = 
-    			  retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-
+    			  retryableTendersDBDelegate.findProcurementProjectByExternalReferenceId(projectTender.getTenderReferenceCode())
+    			  		.orElseThrow(() -> new ResourceNotFoundException("Project '" + projectTender.getTenderReferenceCode() + "' not found"));
     	  
           log.info("Procurement project: {}", procurementProject.toString());
     	  
       }
           
-      // Create/Update RFx for new project
+      // Create RFx for new project
       var newRfx = procurementEventService.createSalesforceRfxRequest(procurementProject, projectTender, principal);
-      log.info("Rfx to create/update: {}", newRfx);
+      log.info("Rfx to create: {}", newRfx);
 
       // Call to Jaggaer to create rfx
       var createRfxResponse =
@@ -827,46 +821,32 @@ public class ProcurementProjectService {
                 createRfxResponse.getReturnMessage());
       }
       
-      log.info("Created/updated Rfx response: {}", createRfxResponse);
+      log.info("CreateRfxResponse: {}", createRfxResponse);
       
       // Persist the (new) Jaggaer Rfx details as a new event in the tenders DB
-      ProcurementEvent procurementEvent = null;
-      if (projectTender.getTenderReferenceCode() == null || projectTender.getTenderReferenceCode().isEmpty()) {
-      
-	      // Get project from tenders DB to obtain Jaggaer project id
-	      var projectId = procurementProject.getId();
-	      var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
-	              .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-	
-	      var ocdsAuthority = ocdsConfig.getAuthority();
-	      var ocidPrefix = ocdsConfig.getOcidPrefix();
-	      var eventBuilder = ProcurementEvent.builder();
-	
-	      var tenderStatus = TenderStatus.PLANNING.getValue();
-	
-	      eventBuilder.project(project).eventName(procurementProject.getProjectName()).eventType(ViewEventType.TBD.toString())
-	      		  .externalEventId(createRfxResponse.getRfxId()).externalReferenceId(createRfxResponse.getRfxReferenceCode())
-	              .downSelectedSuppliers(Boolean.FALSE).ocdsAuthorityName(ocdsAuthority)
-	              .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
-	              .updatedAt(Instant.now()).tenderStatus(tenderStatus);
-	
-	      var event = eventBuilder.build();
-	      procurementEvent = retryableTendersDBDelegate.save(event);
-	      
-      } else {
-    	  //retrieve existing event
-    	  List<ProcurementEvent> procurementEvents =
-    			  retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(projectTender.getTenderReferenceCode());
-    			  
-          log.info("procurementEvent: {}", procurementEvent);
-          procurementEvent = procurementEvents.get(0);
-    	  
-      }
-      
+      // Get project from tenders DB to obtain Jaggaer project id
+      var projectId = procurementProject.getId();
+      var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
+              .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+
+      var ocdsAuthority = ocdsConfig.getAuthority();
+      var ocidPrefix = ocdsConfig.getOcidPrefix();
+      var eventBuilder = ProcurementEvent.builder();
+
+      var tenderStatus = TenderStatus.PLANNING.getValue();
+
+      eventBuilder.project(project).eventName(procurementProject.getProjectName()).eventType(ViewEventType.TBD.toString())
+      		  .externalEventId(createRfxResponse.getRfxId()).externalReferenceId(createRfxResponse.getRfxReferenceCode())
+              .downSelectedSuppliers(Boolean.FALSE).ocdsAuthorityName(ocdsAuthority)
+              .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
+              .updatedAt(Instant.now()).tenderStatus(tenderStatus);
+
+      var event = eventBuilder.build();
+      ProcurementEvent procurementEvent = retryableTendersDBDelegate.save(event);
       log.info("procurementEvent: {}", procurementEvent);
 
       return tendersAPIModelUtils.buildSalesforceProjectTender200Response(
-    			createRfxResponse.getRfxId(),
+    			procurementEvent.getProject().getExternalReferenceId(),
     			createRfxResponse.getRfxReferenceCode(),
     			procurementEvent.getEventID(),
     			procurementEvent.getProject().getId());  

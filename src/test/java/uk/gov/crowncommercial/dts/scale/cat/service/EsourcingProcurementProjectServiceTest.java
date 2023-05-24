@@ -331,6 +331,8 @@ class EsourcingProcurementProjectServiceTest {
     	.thenReturn(JAGGAER_USER);
     when(retryableTendersDBDelegate.findProcurementEventByExternalReferenceId(any(String.class)))
     	.thenReturn(procurementEvents);
+    when(retryableTendersDBDelegate.findProcurementProjectByExternalReferenceId(any(String.class)))
+    	.thenReturn(Optional.of(procurementProject));
 
     
     var salesforceProjectTender200Response = procurementProjectService.createFromSalesforceDetails(SALESFORCE_PROJECT_TENDER);
