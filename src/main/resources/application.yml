@@ -223,6 +223,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/openEnvelope  
       invalidateEvent:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/invalidate
+      deleteEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/delete
       award:
         endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/awardRfx
       preAward:

@@ -516,6 +516,21 @@ public class JaggaerService {
     log.debug("Invalidate event response: {}", response);
     return response;
   }
+
+  /**
+   * Delete Salesforce Event Rfx
+   *
+   * @param request
+ * @return 
+   */
+  public WorkflowRfxResponse deleteSalesforceEvent(final InvalidateEventRequest request) {
+    final var endPoint = jaggaerAPIConfig.getDeleteEvent().get(ENDPOINT);
+    final var response = webclientWrapper.postData(request, WorkflowRfxResponse.class,
+        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+    log.debug("Delete event response: {}", response);
+    return response;
+  }
+
   /**
    * Get Project
    *

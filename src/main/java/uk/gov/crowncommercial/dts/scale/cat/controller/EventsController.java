@@ -377,7 +377,7 @@ public class EventsController extends AbstractRestController {
 	} else if (authPrincipal instanceof ApiKeyAuthToken) {
 		    principal = tendersAPIModelUtils.getPrincipalFromApiKey((ApiKeyAuthToken) authPrincipal);
 			log.info("terminateEvent invoked with ApiKeyAuthToken, with principal: {}", principal);	
-			var terminateSalesforceEventResponse = eventTransitionService.terminateSalesforceEvent(procId, eventId, type.getTerminationType(), principal, true);
+			var terminateSalesforceEventResponse = eventTransitionService.terminateSalesforceEvent(procId, eventId, type.getTerminationType(), principal);
 			return new StringValueResponse(terminateSalesforceEventResponse);
 	}
 	
