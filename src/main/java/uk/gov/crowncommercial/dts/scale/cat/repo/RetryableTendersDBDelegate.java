@@ -62,6 +62,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public void delete(final ProcurementEvent procurementevent) {
+     procurementEventRepo.delete(procurementevent);
+  }
+
+  @TendersRetryable
   public Optional<ProcurementProject> findProcurementProjectById(final Integer id) {
     return procurementProjectRepo.findById(id);
   }

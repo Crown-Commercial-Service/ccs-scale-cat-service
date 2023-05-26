@@ -13,6 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.InvalidateEventRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OwnerUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.WorkflowRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import javax.transaction.Transactional;
@@ -139,11 +140,24 @@ public class EventTransitionService {
       final Integer procId,
       final String eventId,
       final TerminationType type,
-      final String principal,
-      boolean openCompletedEvent) {
+      final String principal) {
 
-    var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId);
+	Optional<ProcurementEvent> procurementEvent = validationService.validateEventExists(procId, eventId);
+    log.debug("procurementEvent: {}", procurementEvent);  
 
+	ProcurementEvent terminatingEvent = null;
+	if (procurementEvent.isEmpty()) {
+		return "ERROR: Unable to terminate - Event Id [" + eventId + "] does not exist for Project Id [" + procId + "]";
+	} else {	
+		terminatingEvent = procurementEvent.get();
+	}
+
+    terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    log.debug("terminatingEvent: {}", terminatingEvent);  
+    
+    // update status
+    updateStatusAndDates(principal, terminatingEvent, type);
+    
     final var invalidateEventRequest =
           InvalidateEventRequest.builder()
               .invalidateReason(type.getValue())
@@ -151,25 +165,37 @@ public class EventTransitionService {
               .rfxReferenceCode(terminatingEvent.getExternalReferenceId())
               .operatorUser(OwnerUser.builder().id(jaggaerAPIConfig.getAssistedProcurementUserId()).build())
               .build();
-      
-    log.info("Invalidate event request: {}", invalidateEventRequest);
-      
-    var workflowRfxResponse = jaggaerService.invalidateSalesforceEvent(invalidateEventRequest);
     
-    // update status
-    updateStatusAndDates(principal, terminatingEvent, type);
+    // check Jaggaer status of event
+    var exportRfxResponse = getSingleRfx(terminatingEvent.getExternalEventId());
+    log.debug("exportRfxResponse: {}", exportRfxResponse);  
 
-    if (openCompletedEvent) {
-      openCompletedEvent(procId, terminatingEvent, principal);
-    }
-    
-    // -996 = "Invalid Request Object - User is trying to invalidate rfx without the necessary permission or the rfx can't be invalidate;"
-    if (workflowRfxResponse.getReturnCode() == -996) {
-    	return workflowRfxResponse.getReturnMessage();
+    WorkflowRfxResponse workflowRfxResponse;
+    if (exportRfxResponse.getRfxSetting().getStatusCode() == 0) {
+	    log.info("Delete event request: status 'To be Published': {}", invalidateEventRequest);  
+	    
+	    retryableTendersDBDelegate.delete(terminatingEvent);
+	    
+	    workflowRfxResponse = jaggaerService.deleteSalesforceEvent(invalidateEventRequest);
+
+	    if (workflowRfxResponse.getReturnCode() != 0) {
+	    	return workflowRfxResponse.getReturnMessage();
+	    } else {
+	        return("Event has been deleted as it had not been published");
+	    }
+
     } else {
-        return("OK");
+	    log.info("Invalidate event request: {}", invalidateEventRequest);  
+	    workflowRfxResponse = jaggaerService.invalidateSalesforceEvent(invalidateEventRequest);
+
+	    // -996 = "Invalid Request Object - User is trying to invalidate rfx without the necessary permission or the rfx can't be invalidate;"
+	    if (workflowRfxResponse.getReturnCode() == -996) {
+	    	return workflowRfxResponse.getReturnMessage();
+	    } else {
+	        return("Event has been invalidated");
+	    }
     }
-    
+
   }
   
   @Transactional
@@ -253,6 +279,10 @@ public class EventTransitionService {
     retryableTendersDBDelegate.save(existingEvent);
   }
 
+  private void deleteDbEvent(final ProcurementEvent existingEvent) {
+	    retryableTendersDBDelegate.delete(existingEvent);
+    }
+  
   private void throwExceptionWithMsg(
       String errorMessage, ProcurementEvent existingEvent, DashboardStatus dashboardStatus) {
 

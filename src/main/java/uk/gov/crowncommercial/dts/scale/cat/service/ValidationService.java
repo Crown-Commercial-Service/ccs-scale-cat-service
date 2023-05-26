@@ -67,6 +67,34 @@ public class ValidationService {
   }
 
   /**
+   * Validate the project and event IDs and return the {@link ProcurementEvent} entity
+   *
+   * @param projectId
+   * @param eventId
+   * @return procurement event entity
+   */
+  public Optional<ProcurementEvent> validateEventExists(final Integer projectId,
+      final String eventId) {
+    var eventOCID = validateEventId(eventId);
+
+    // Get event from tenders DB to obtain Jaggaer project id
+    var event = retryableTendersDBDelegate
+        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
+            Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),
+            eventOCID.getPublisherPrefix());
+
+    if (event.isPresent()) {
+    	
+    	ProcurementEvent procurementEvent=event.get();
+    	if (!procurementEvent.getProject().getId().equals(projectId)) {
+    		return Optional.of(ProcurementEvent.builder().build());
+    	}
+    }
+
+    return event;
+  }
+  
+  /**
    * Validate the eventId is a valid {@link OCID}
    *
    * @param eventId
