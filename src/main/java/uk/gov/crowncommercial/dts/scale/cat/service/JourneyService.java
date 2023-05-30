@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DataConflictException;
@@ -34,6 +35,24 @@ public class JourneyService {
     var journeyEntity = JourneyEntity.builder().clientId(CLIENT_ID)
         .externalId(journey.getJourneyId()).journeyDetails(journey.getStates()).createdBy(principal)
         .createdAt(Instant.now()).build();
+
+    retryableTendersDBDelegate.save(journeyEntity);
+    return journey.getJourneyId();
+  }
+  
+  public String updateJourney(final Journey journey, final String principal) {
+
+    Optional<JourneyEntity> findJourneyByExternalId =
+        retryableTendersDBDelegate.findJourneyByExternalId(journey.getJourneyId());
+
+    if (findJourneyByExternalId.isEmpty()) {
+      throw new ResourceNotFoundException("Journey [" + journey.getJourneyId() + "] not exists");
+    }
+    
+    JourneyEntity journeyEntity = findJourneyByExternalId.get();
+    journeyEntity.setJourneyDetails(journey.getStates());
+    journeyEntity.setUpdatedAt(Instant.now());
+    journeyEntity.setUpdatedBy(principal);
 
     retryableTendersDBDelegate.save(journeyEntity);
     return journey.getJourneyId();
