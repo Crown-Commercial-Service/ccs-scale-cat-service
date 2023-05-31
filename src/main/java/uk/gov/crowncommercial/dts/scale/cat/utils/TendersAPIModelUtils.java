@@ -161,7 +161,7 @@ public class TendersAPIModelUtils {
         }
       }
     }
-    log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
+    log.debug("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
   }
 
@@ -226,7 +226,7 @@ public class TendersAPIModelUtils {
         }
       }
     }
-    log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
+    log.debug("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
   }
 

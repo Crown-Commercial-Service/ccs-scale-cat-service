@@ -6,6 +6,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -238,10 +239,11 @@ public class EventsController extends AbstractRestController {
 
   @GetMapping(value = "/{eventID}/documents/{documentID}")
   @TrackExecutionTime
-  public ResponseEntity<byte[]> getDocument(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId,
-      @PathVariable("documentID") final String documentId,
-      final JwtAuthenticationToken authentication) {
+  public void getDocument(@PathVariable("procID") final Integer procId,
+                                              @PathVariable("eventID") final String eventId,
+                                              @PathVariable("documentID") final String documentId,
+                                              HttpServletResponse response,
+                                              final JwtAuthenticationToken authentication) throws IOException {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getDocument invoked on behalf of principal: {}", principal);
@@ -249,10 +251,11 @@ public class EventsController extends AbstractRestController {
     var document = procurementEventService.getDocument(procId, eventId, documentId, principal);
     var documentKey = DocumentKey.fromString(documentId);
 
-    return ResponseEntity.ok().contentType(document.getContentType())
-        .header(HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\"" + documentKey.getFileName() + "\"")
-        .body(document.getData());
+    response.setContentType(document.getContentType().toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + documentKey.getFileName() + "\"");
+    IOUtils.copy(document.getStreamData(), response.getOutputStream());
+    response.flushBuffer();
   }
 
   @DeleteMapping(value = "/{eventID}/documents/{documentID}")

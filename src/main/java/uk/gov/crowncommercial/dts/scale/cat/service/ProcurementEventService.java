@@ -955,8 +955,8 @@ public class ProcurementEventService implements EventService {
         log.debug("Retrieving Document {}", documentKey.getFileName());
 
         return DocumentAttachment.builder()
-                .data(documentUploadService.retrieveDocument(documentUpload, principal))
                 .fileName(documentKey.getFileName())
+                .streamData(documentUploadService.retrieveDocumentStream(documentUpload, principal))
                 .contentType(MediaType.parseMediaType(documentUpload.getMimetype())).build();
     }
 
