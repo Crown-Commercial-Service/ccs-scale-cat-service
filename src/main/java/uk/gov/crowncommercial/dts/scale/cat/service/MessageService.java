@@ -10,11 +10,13 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections.CollectionUtils;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
+import org.springframework.web.bind.annotation.RequestParam;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -28,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.repo.MessageTaskRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerMessagePush;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.MessageTaskData;
@@ -51,6 +54,7 @@ public class MessageService {
   private static final String OBJECT_TYPE = "RFQ";
 
   private static final String MESSAGE_TASK = "JaggerMessagePush";
+  private final MessageTaskRepo messageTaskRepo;
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
       "Organisation [%s] not found in Conclave";
@@ -387,4 +391,26 @@ public class MessageService {
             receiver -> new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
             .collect(Collectors.toList()));
   }
+
+    public List<Message> getMessageListByEeventId(MessageRequestInfo messageRequestInfo, String messageId,String page , String pageSize) {
+      // REM Assumption that user is buyer only
+      var jaggaerUserId = userProfileService
+              .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
+              .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+      var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
+              messageRequestInfo.getEventId());
+
+
+      var messagesResponse =
+              jaggaerService.getMessages(event.getExternalEventId(), Integer.valueOf(pageSize));
+
+      var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
+                                              == Integer.valueOf(messageId)).collect(Collectors.toList());
+
+
+      var allTenderDbMessageAsync = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(messageRequestInfo.getEventId()));
+      var allTenderDbMessages = allTenderDbMessageAsync.stream().map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
+      //allTenderDbMessages.stream().forEach(message ->  allJaggerMessages.add(message));
+      return allTenderDbMessages;
+    }
 }
