@@ -399,8 +399,6 @@ public class MessageService {
               .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
       var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
               messageRequestInfo.getEventId());
-
-
       var messagesResponse =
               jaggaerService.getMessages(event.getExternalEventId(), Integer.valueOf(pageSize));
 
@@ -408,9 +406,33 @@ public class MessageService {
                                               == Integer.valueOf(messageId)).collect(Collectors.toList());
 
 
-      var allTenderDbMessageAsync = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(messageRequestInfo.getEventId()));
-      var allTenderDbMessages = allTenderDbMessageAsync.stream().map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
-      //allTenderDbMessages.stream().forEach(message ->  allJaggerMessages.add(message));
+      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(messageRequestInfo.getEventId())).stream().filter(message -> message.getMessageId() == Integer.valueOf(messageId));
+      var allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
+      var convertedMessages = allJaggerMessages.stream().map(message ->  convertJaggerMessage(message)).collect(Collectors.toList());
+      allTenderDbMessages.addAll(convertedMessages);
+
       return allTenderDbMessages;
     }
+
+
+
+
+    private Message convertJaggerMessage(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message){
+      MessageOCDS ocds = this.getMessageOCDS(message);
+      MessageNonOCDS nonOcds = this.getMessageNonOCDS(message);
+      var returnMessage =  new Message();
+      returnMessage.setOCDS(ocds);
+      returnMessage.setNonOCDS(nonOcds);
+      return returnMessage;
+    }
+
+
+
+
+
+
+
+
+
+
 }
