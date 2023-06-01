@@ -393,7 +393,6 @@ public class MessageService {
   }
 
     public List<Message> getMessageListByEeventId(MessageRequestInfo messageRequestInfo, String messageId,String page , String pageSize) {
-      // REM Assumption that user is buyer only
       var jaggaerUserId = userProfileService
               .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
               .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
@@ -405,17 +404,12 @@ public class MessageService {
       var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
                                               == Integer.valueOf(messageId)).collect(Collectors.toList());
 
-
       var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(messageRequestInfo.getEventId())).stream().filter(message -> message.getMessageId() == Integer.valueOf(messageId));
       var allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
       var convertedMessages = allJaggerMessages.stream().map(message ->  convertJaggerMessage(message)).collect(Collectors.toList());
       allTenderDbMessages.addAll(convertedMessages);
-
       return allTenderDbMessages;
     }
-
-
-
 
     private Message convertJaggerMessage(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message){
       MessageOCDS ocds = this.getMessageOCDS(message);
