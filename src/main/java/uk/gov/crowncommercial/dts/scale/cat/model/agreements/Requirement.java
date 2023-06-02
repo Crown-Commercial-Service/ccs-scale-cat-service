@@ -62,12 +62,17 @@ public class Requirement {
     DataTemplateInheritanceType inheritance;
     String inheritsFrom;
     Dependency dependency;
+    @NonFinal
+    TimelineDependency timelineDependency;
 
     @NonFinal
     List<Option> options; // Maps to QuestionNonOCDSOptions
 
     public void setInheritance(DataTemplateInheritanceType inheritance){
       this.inheritance = inheritance;
+    }
+    public void setTimelineDependency(TimelineDependency timelineDependency){
+      this.timelineDependency = timelineDependency;
     }
 
     public void setAnswered(Boolean answered){
