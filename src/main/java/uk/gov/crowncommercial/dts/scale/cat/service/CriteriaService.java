@@ -153,24 +153,12 @@ public class CriteriaService {
       requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
     if(null != question.getNonOCDS().getTimelineDependency()){
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(options.stream()
-                     .map(questionNonOCDSOptions -> Requirement.Option.builder()
-                             .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
-                                     : questionNonOCDSOptions.getSelected())
-                             .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-                             .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
-                     .collect(Collectors.toList()));
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(options));
              requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
     validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
-        .updateOptions(options.stream()
-            .map(questionNonOCDSOptions -> Requirement.Option.builder()
-                .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
-                    : questionNonOCDSOptions.getSelected())
-                .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-                .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
-            .collect(Collectors.toList()));
+        .updateOptions(getUpdatedOptions(options));
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
@@ -198,6 +186,16 @@ public class CriteriaService {
     retryableTendersDBDelegate.save(event);
 
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
+  }
+
+  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
+    return options.stream()
+            .map(questionNonOCDSOptions -> Option.builder()
+                    .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                            : questionNonOCDSOptions.getSelected())
+                    .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                    .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
+            .collect(Collectors.toList());
   }
 
 
