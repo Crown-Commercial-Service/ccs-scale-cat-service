@@ -482,7 +482,7 @@ public class ProcurementProjectService {
       projectPackageSummary.setLotName(lotDetails.getName());
     } catch (Exception e) {
       // ignore for the moment, replace when single method to get all data from agreement service
-      log.error("Error retrieving agreement and lots: " + e.getMessage());
+      log.trace("Error retrieving agreement and lots: " + e.getMessage());
     }
     // TODO no value for Uri
     // projectPackageSummary.setUri(getProjectUri);
