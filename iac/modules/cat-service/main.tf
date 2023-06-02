@@ -174,11 +174,11 @@ data "aws_ssm_parameter" "gov_uk_notify_user_reg_target_email" {
 
 # RollBar Logs
 data "aws_ssm_parameter" "rollbar_access_token" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-access-token"
+  name = "/cat/${var.environment}/rollbar-access-token"
 }
 
 data "aws_ssm_parameter" "rollbar_environment" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-environment"
+  name = "/cat/${var.environment}/rollbar-environment"
 }
 
 resource "cloudfoundry_app" "cat_service" {
