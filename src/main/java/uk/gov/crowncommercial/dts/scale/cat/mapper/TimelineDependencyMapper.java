@@ -7,7 +7,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 import java.lang.reflect.InvocationTargetException;
+<<<<<<< HEAD
 import java.util.stream.Collectors;
+=======
+>>>>>>> 00082b0e (Added the new timelinequestion)
 
 @RequiredArgsConstructor
 @Component
@@ -21,6 +24,7 @@ public class TimelineDependencyMapper {
         timelineDependency.nonOCDS(new TimelineDependencyNonOCDS().answered(timeline.getNonOCDS().getAnswered())
                 .options(timeline.getNonOCDS().getOptions().stream().map(option -> new QuestionNonOCDSOptions().value(option.getValue()).text(option.getText()).selected(option.getSelect())).collect(Collectors.toList())));
         timelineDependency.OCDS( new Requirement1().title(timeline.getOcds().getTitle()).description(timeline.getOcds().getDescription()));
+
         return timelineDependency;
     }
 }
