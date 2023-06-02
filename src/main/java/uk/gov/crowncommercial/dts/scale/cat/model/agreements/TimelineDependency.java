@@ -50,13 +50,10 @@ public class TimelineDependency {
                 }else {
                     options.stream().forEach(o -> o.setSelect(Boolean.FALSE));
                     updatedOptions.stream().forEach(updateOption -> {
-                        log.debug("updatedOption: " + updateOption);
                           var optionToUpdate = options.stream()
                                 .filter(option -> Objects.equals(option.getValue(), updateOption.getValue()))
                                 .findFirst().orElseThrow(() -> new ValidationException(
                                         "Could not find updateOption '" + updateOption.getValue() + "' to " + "update."));
-
-                        log.debug("optionToUpdate: " + updateOption);
                         optionToUpdate.setSelect(updateOption.getSelect());
                     });
                 }
