@@ -48,14 +48,7 @@ public class TimelineDependency {
                     options = new ArrayList<>();
                     options.addAll(updatedOptions);
                 }else {
-                    options.stream().forEach(o -> o.setSelect(Boolean.FALSE));
-                    updatedOptions.stream().forEach(updateOption -> {
-                          var optionToUpdate = options.stream()
-                                .filter(option -> Objects.equals(option.getValue(), updateOption.getValue()))
-                                .findFirst().orElseThrow(() -> new ValidationException(
-                                        "Could not find updateOption '" + updateOption.getValue() + "' to " + "update."));
-                        optionToUpdate.setSelect(updateOption.getSelect());
-                    });
+                    options = Requirement.NonOCDS.populateOptions(updatedOptions, options);
                 }
         }
     }

@@ -92,24 +92,7 @@ public class Requirement {
 
       if (selectionQuestionTypes.contains(questionType)) {
 
-        // Deselect all options before applying the selection
-        // Caters for scenario where only the selected options are supplied
-        options.stream().forEach(o -> o.setSelect(Boolean.FALSE));
-
-        updatedOptions.stream().forEach(updateOption -> {
-
-          log.debug("updatedOption: " + updateOption);
-
-          // Update the existing updateOption's 'select' flag (user selecting / de-selecting one or
-          // more options in a single or multi-select, for example
-          var optionToUpdate = options.stream()
-              .filter(option -> Objects.equals(option.getValue(), updateOption.getValue()))
-              .findFirst().orElseThrow(() -> new ValidationException(
-                  "Could not find updateOption '" + updateOption.getValue() + "' to " + "update."));
-
-          log.debug("optionToUpdate: " + updateOption);
-          optionToUpdate.setSelect(updateOption.getSelect());
-        });
+       options =  populateOptions(updatedOptions, options);
       } else {
         if (options == null) {
           options = new ArrayList<>();
@@ -117,6 +100,28 @@ public class Requirement {
         options.clear();
         options.addAll(updatedOptions);
       }
+    }
+
+    public static List<Option> populateOptions(List<Option> updatedOptions, List<Option> options) {
+      // Deselect all options before applying the selection
+      // Caters for scenario where only the selected options are supplied
+      options.stream().forEach(o -> o.setSelect(Boolean.FALSE));
+
+      updatedOptions.stream().forEach(updateOption -> {
+
+        log.debug("updatedOption: " + updateOption);
+
+        // Update the existing updateOption's 'select' flag (user selecting / de-selecting one or
+        // more options in a single or multi-select, for example
+        var optionToUpdate = options.stream()
+            .filter(option -> Objects.equals(option.getValue(), updateOption.getValue()))
+            .findFirst().orElseThrow(() -> new ValidationException(
+                "Could not find updateOption '" + updateOption.getValue() + "' to " + "update."));
+
+        log.debug("optionToUpdate: " + updateOption);
+        optionToUpdate.setSelect(updateOption.getSelect());
+      });
+      return options;
     }
   }
 
