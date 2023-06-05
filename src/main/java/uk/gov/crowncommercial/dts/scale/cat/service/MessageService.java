@@ -403,11 +403,13 @@ public class MessageService {
 
       var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
                                               == Integer.valueOf(messageId)).collect(Collectors.toList());
-
-      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(messageRequestInfo.getEventId())).stream().filter(message -> message.getMessageId() == Integer.valueOf(messageId));
+      var evntNameSplit = messageRequestInfo.getEventId().split("-");
+      var tenderEventId = evntNameSplit[evntNameSplit.length -1];
+      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(tenderEventId)).stream().filter(message -> message.getMessageId() == Integer.valueOf(messageId) && message.getStatus() == MessageTaskStatus.INPROGRESS);
       var allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
       var convertedMessages = allJaggerMessages.stream().map(message ->  convertJaggerMessage(message)).collect(Collectors.toList());
       allTenderDbMessages.addAll(convertedMessages);
+      sortAllMessages(allTenderDbMessages, messageRequestInfo.getMessageSort(), messageRequestInfo.getMessageSortOrder());
       return allTenderDbMessages;
     }
 
@@ -415,10 +417,35 @@ public class MessageService {
       MessageOCDS ocds = this.getMessageOCDS(message);
       MessageNonOCDS nonOcds = this.getMessageNonOCDS(message);
       var returnMessage =  new Message();
-      returnMessage.setOCDS(ocds);
-      returnMessage.setNonOCDS(nonOcds);
+      if(!ObjectUtils.isEmpty(ocds)){
+        returnMessage.setOCDS(ocds);
+      }
+      if(!ObjectUtils.isEmpty(nonOcds)){
+        returnMessage.setNonOCDS(nonOcds);
+      }
       return returnMessage;
     }
+
+  private void sortAllMessages(
+          final List<Message> messages,
+          final MessageSort messageSort, final MessageSortOrder messageSortOrder) {
+
+    Comparator<Message> comparator;
+    switch (messageSort) {
+      case TITLE:
+        comparator = Comparator
+                .comparing(message -> message.getOCDS().getTitle());
+        break;
+      case AUTHOR:
+        comparator = Comparator.comparing(message -> message.getOCDS().getAuthor().getName());
+        break;
+      default:
+        comparator = Comparator.comparing(message -> message.getOCDS().getDescription());
+    }
+
+    Collections.sort(messages,
+            MessageSortOrder.ASCENDING.equals(messageSortOrder) ? comparator : comparator.reversed());
+  }
 
 
 

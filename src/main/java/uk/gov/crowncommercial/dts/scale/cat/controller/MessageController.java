@@ -115,6 +115,9 @@ public class MessageController extends AbstractRestController {
   public List<Message> getMessagesForMessageTaskId(@PathVariable("proc-id") final Integer procId,
                                                    @PathVariable("event-id") final String eventId,
                                                    @PathVariable("message-id") final String messageId,
+                                                   @RequestParam(name = "sort", required = false, defaultValue = "DATE") MessageSort messageSort,
+                                                   @RequestParam(name = "sort-order", required = false,
+                                                           defaultValue = "ASCENDING") MessageSortOrder messageSortOrder,
                                                    @RequestParam(name = "page", defaultValue ="0", required = false) final String page,
                                                    @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
                                                    final JwtAuthenticationToken authentication) {
@@ -123,7 +126,7 @@ public class MessageController extends AbstractRestController {
     MessageAsync messageAsync = null;
     log.info("getMessagesSummaries invoked on behalf of principal: {}", principal);
 
-    var messageRequestInfo = MessageRequestInfo.builder().procId(procId).eventId(eventId)
+    var messageRequestInfo = MessageRequestInfo.builder().procId(procId).eventId(eventId).messageSort(messageSort).messageSortOrder(messageSortOrder)
             .principal(principal)
             .build();
     return messageService.getMessageListByEeventId(messageRequestInfo, messageId, page , pageSize );
