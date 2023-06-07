@@ -34,4 +34,7 @@ public class MessageAsync {
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     MessageTaskStatus status;
+
+    @Column(name = "jagger_message_id")
+    String jaggerMessageId;
 }

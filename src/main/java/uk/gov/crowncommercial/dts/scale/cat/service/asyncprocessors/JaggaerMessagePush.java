@@ -37,6 +37,7 @@ public class JaggaerMessagePush implements AsyncConsumer<MessageTaskData> {
         try {
              messageId = messageService.publishMessage(messageTask.getTimestamps().getCreatedBy(), event.get(), messageTask.getMessageRequest());
              messageTask.setStatus(MessageTaskStatus.COMPLETE);
+             messageTask.setJaggerMessageId(messageId);
             updateMessages(messageTask);
         }catch(JaggaerApplicationException e)
         {
