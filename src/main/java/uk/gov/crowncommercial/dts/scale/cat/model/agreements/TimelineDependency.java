@@ -34,6 +34,9 @@ public class TimelineDependency {
         @NonFinal
         List<Requirement.Option> options;
 
+        @NonFinal
+        Conditional conditional;
+
         public void setAnswered(Boolean answered){
             this.answered = answered;
         }
