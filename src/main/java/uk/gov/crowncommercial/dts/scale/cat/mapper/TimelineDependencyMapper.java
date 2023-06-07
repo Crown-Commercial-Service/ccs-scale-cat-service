@@ -7,6 +7,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Component
@@ -17,14 +18,9 @@ public class TimelineDependencyMapper {
         final var timelineDependency = new TimelineDependency();
         final var timeline = requirement.getNonOCDS().getTimelineDependency();
 
-        try {
-            BeanUtils.copyProperties(timelineDependency, timeline);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-
+        timelineDependency.nonOCDS(new TimelineDependencyNonOCDS().answered(timeline.getNonOCDS().getAnswered())
+                .options(timeline.getNonOCDS().getOptions().stream().map(option -> new QuestionNonOCDSOptions().value(option.getValue()).text(option.getText()).selected(option.getSelect())).collect(Collectors.toList())));
+        timelineDependency.OCDS( new Requirement1().title(timeline.getOcds().getTitle()).description(timeline.getOcds().getDescription()));
         return timelineDependency;
     }
 }
