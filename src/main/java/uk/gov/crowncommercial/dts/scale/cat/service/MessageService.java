@@ -392,20 +392,20 @@ public class MessageService {
             .collect(Collectors.toList()));
   }
 
-    public List<Message> getMessageListByEeventId(MessageRequestInfo messageRequestInfo, String messageId,String page , String pageSize) {
+    public List<Message> getMessageListByEeventId(MessageRequestInfo messageRequestInfo, String messageId) {
       var jaggaerUserId = userProfileService
               .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
               .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
       var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
               messageRequestInfo.getEventId());
       var messagesResponse =
-              jaggaerService.getMessages(event.getExternalEventId(), Integer.valueOf(pageSize));
-
-      var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
-                                              == Integer.valueOf(messageId)).collect(Collectors.toList());
+              jaggaerService.getMessages(event.getExternalEventId(), messageRequestInfo.getPageSize());
       var evntNameSplit = messageRequestInfo.getEventId().split("-");
       var tenderEventId = evntNameSplit[evntNameSplit.length -1];
-      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(tenderEventId)).stream().filter(message -> message.getMessageId() == Integer.valueOf(messageId) && message.getStatus() == MessageTaskStatus.INPROGRESS);
+      var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
+                                              == Integer.valueOf(messageId)).collect(Collectors.toList());
+
+      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(tenderEventId)).stream().filter(message -> message.getStatus() == MessageTaskStatus.INPROGRESS);
       var allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
       var convertedMessages = allJaggerMessages.stream().map(message ->  convertJaggerMessage(message)).collect(Collectors.toList());
       allTenderDbMessages.addAll(convertedMessages);

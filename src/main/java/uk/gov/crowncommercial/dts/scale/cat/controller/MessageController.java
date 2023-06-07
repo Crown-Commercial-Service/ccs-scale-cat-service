@@ -126,10 +126,14 @@ public class MessageController extends AbstractRestController {
     MessageAsync messageAsync = null;
     log.info("getMessagesSummaries invoked on behalf of principal: {}", principal);
 
-    var messageRequestInfo = MessageRequestInfo.builder().procId(procId).eventId(eventId).messageSort(messageSort).messageSortOrder(messageSortOrder)
+    var messageRequestInfo = MessageRequestInfo.builder()
+            .procId(procId).eventId(eventId)
+            .messageSort(messageSort).messageSortOrder(messageSortOrder)
+            .page(Integer.valueOf(page))
+            .pageSize(Integer.valueOf(pageSize))
             .principal(principal)
             .build();
-    return messageService.getMessageListByEeventId(messageRequestInfo, messageId, page , pageSize );
+    return messageService.getMessageListByEeventId(messageRequestInfo, messageId );
 
 
   }
