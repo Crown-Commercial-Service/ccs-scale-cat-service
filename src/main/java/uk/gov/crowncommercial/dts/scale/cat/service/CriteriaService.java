@@ -152,15 +152,9 @@ public class CriteriaService {
     if(null != question.getNonOCDS() && null != question.getNonOCDS().getAnswered()){
       requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
-    if(null != question.getNonOCDS().getTimelineDependency()){
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(options.stream()
-                     .map(questionNonOCDSOptions -> Requirement.Option.builder()
-                             .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
-                                     : questionNonOCDSOptions.getSelected())
-                             .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-                             .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
-                     .collect(Collectors.toList()));
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
+    if(null != question.getNonOCDS().getTimelineDependency() && null != question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()){
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()));
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getTimelineDependency().getNonOCDS().getAnswered());
     }
     validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
