@@ -152,9 +152,9 @@ public class CriteriaService {
     if(null != question.getNonOCDS() && null != question.getNonOCDS().getAnswered()){
       requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
-    if(null != question.getNonOCDS().getTimelineDependency()){
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(options));
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
+    if(null != question.getNonOCDS().getTimelineDependency() && null != question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()){
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()));
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getTimelineDependency().getNonOCDS().getAnswered());
     }
     validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
