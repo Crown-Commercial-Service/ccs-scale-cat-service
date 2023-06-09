@@ -9,6 +9,6 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class ScoringRequest {
   private String rfxReferenceCode;
-  private OperatorUser operatorUser;
+  private OwnerUser operatorUser;
   private SupplierScoreList supplierScoreList;
 }
