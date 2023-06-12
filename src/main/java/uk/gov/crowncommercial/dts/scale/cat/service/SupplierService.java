@@ -24,20 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperatorUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ParameterList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoreParameter;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoringRequest;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoringTechEnvelope;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Section;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SectionList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EnvelopeType;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierIdentification;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScore;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScoreList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -174,7 +161,7 @@ public class SupplierService {
     }
 
     var scoringRequest = ScoringRequest.builder().rfxReferenceCode(procurementEvent.getExternalReferenceId())
-        .operatorUser(OperatorUser.builder().login(profile).build())
+        .operatorUser(OwnerUser.builder().id(buyerUser.getUserId()).build())
         .supplierScoreList(SupplierScoreList.builder().supplierScore(supplierScoresList).build()).build();
     
     log.info("Scoring Request {}", scoringRequest);
