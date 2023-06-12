@@ -392,7 +392,120 @@ class MessageServiceTest {
     assertEquals(2, response.size());
   }
 
+  //multiple messages from jagger
+  @Test
+  void testGetMessageListMultipleJaggerMessages() throws Exception {
 
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messageTwo = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message Two").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(Arrays.asList(message, messageTwo)).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    //Aceessing the private methodconvertMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(message);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+    when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
+    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(3, response.size());
+  }
+
+
+//Multiple messages from Jagger and Message task table.
+  @Test
+  void testGetMessageListMultipleJaggerAndMessageTaskMessages() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messageTwo = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message Two").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(Arrays.asList(message, messageTwo)).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    //Aceessing the private methodconvertMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(message);
+    Message convertedMessageTwo = (Message)convertMessage.invoke(messageTwo);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
+    var asyncMessageTwo = MessageAsync.builder().messageId(3)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessageTwo).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+    when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage, asyncMessageTwo));
+    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(4, response.size());
+  }
   //No messages are returned from Jagger and Message Task Table
   @Test
   void testFetMessagesListFailure() throws Exception {
@@ -421,5 +534,6 @@ class MessageServiceTest {
     // Verify
     assertNotNull(response);
     assertEquals(0, response.size());
+
   }
 }
