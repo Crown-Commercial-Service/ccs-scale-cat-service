@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.inheritance;
 
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType;
 
 import java.util.Map;
 
@@ -22,5 +23,17 @@ public interface InheritanceProcessor <T>{
             req.getNonOCDS().updateOptions(question.getNonOCDS().getOptions());
         if(null != question.getNonOCDS().getTimelineDependency())
             req.getNonOCDS().setTimelineDependency(question.getNonOCDS().getTimelineDependency());
+    }
+
+    default void processRequirments(RequirementGroup requirementGroup, Map<String, Requirement> questions, DataTemplateInheritanceType inheritance) {
+        for(Requirement req : requirementGroup.getOcds().getRequirements()) {
+            Requirement question = getQuestion(requirementGroup, req, questions);
+            if(null != question) {
+                req.getNonOCDS().setInheritance(inheritance);
+                copyOptions(req, question);
+            }else{
+                req.getNonOCDS().setInheritance(null);
+            }
+        }
     }
 }
