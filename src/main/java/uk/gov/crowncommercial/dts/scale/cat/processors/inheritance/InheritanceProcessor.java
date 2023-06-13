@@ -16,4 +16,11 @@ public interface InheritanceProcessor <T>{
         }
         return null;
     }
+
+    default  void copyOptions(Requirement req, Requirement question) {
+        if(null != question.getNonOCDS().getOptions())
+            req.getNonOCDS().updateOptions(question.getNonOCDS().getOptions());
+        if(null != question.getNonOCDS().getTimelineDependency())
+            req.getNonOCDS().setTimelineDependency(question.getNonOCDS().getTimelineDependency());
+    }
 }

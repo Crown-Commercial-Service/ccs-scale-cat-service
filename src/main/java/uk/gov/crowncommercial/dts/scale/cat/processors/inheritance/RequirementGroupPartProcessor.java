@@ -25,10 +25,7 @@ public class RequirementGroupPartProcessor implements InheritanceProcessor<Requi
                     Requirement question = getQuestion(requirementGroup, req, questions);
                     if(null != question) {
                         req.getNonOCDS().setInheritance(inheritanceType);
-                        if(null != question.getNonOCDS().getOptions())
-                            req.getNonOCDS().updateOptions(question.getNonOCDS().getOptions());
-                        if(null != question.getNonOCDS().getTimelineDependency())
-                            req.getNonOCDS().setTimelineDependency(question.getNonOCDS().getTimelineDependency());
+                        copyOptions(req, question);
                     }else{
                         req.getNonOCDS().setInheritance(null);
                     }
