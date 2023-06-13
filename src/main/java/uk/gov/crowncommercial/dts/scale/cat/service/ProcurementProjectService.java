@@ -566,6 +566,9 @@ public class ProcurementProjectService {
     try {
       var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId)
           .orElseThrow(() -> new ResourceNotFoundException("Jaggaer"));
+      if (Objects.isNull(jaggaerUser.getSsoCodeData())){
+        throw new ResourceNotFoundException("Conclave");
+      }
       var conclaveUser = conclaveService.getUserProfile(jaggaerUser.getSsoCodeData()
                       .getSsoCode().stream().findFirst().get().getSsoUserLogin())
           .orElseThrow(() -> new ResourceNotFoundException("Conclave"));
