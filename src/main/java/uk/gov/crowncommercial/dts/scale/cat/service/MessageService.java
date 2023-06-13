@@ -10,11 +10,13 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections.CollectionUtils;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
+import org.springframework.web.bind.annotation.RequestParam;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -28,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
+import uk.gov.crowncommercial.dts.scale.cat.repo.MessageTaskRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerMessagePush;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.MessageTaskData;
@@ -51,6 +54,7 @@ public class MessageService {
   private static final String OBJECT_TYPE = "RFQ";
 
   private static final String MESSAGE_TASK = "JaggerMessagePush";
+  private final MessageTaskRepo messageTaskRepo;
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   static final String ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING =
       "Organisation [%s] not found in Conclave";
@@ -387,4 +391,69 @@ public class MessageService {
             receiver -> new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
             .collect(Collectors.toList()));
   }
+
+    public List<Message> getMessageListByEeventId(MessageRequestInfo messageRequestInfo, String messageId) {
+      var jaggaerUserId = userProfileService
+              .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
+              .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+      var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
+              messageRequestInfo.getEventId());
+      var messagesResponse =
+              jaggaerService.getMessages(event.getExternalEventId(), messageRequestInfo.getPageSize());
+      var evntNameSplit = messageRequestInfo.getEventId().split("-");
+      var tenderEventId = evntNameSplit[evntNameSplit.length -1];
+      var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
+                                              == Integer.valueOf(messageId)).collect(Collectors.toList());
+
+      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(tenderEventId)).stream().filter(message -> message.getStatus() == MessageTaskStatus.INPROGRESS);
+      var allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
+      var convertedMessages = allJaggerMessages.stream().map(message ->  convertJaggerMessage(message)).collect(Collectors.toList());
+      allTenderDbMessages.addAll(convertedMessages);
+      sortAllMessages(allTenderDbMessages, messageRequestInfo.getMessageSort(), messageRequestInfo.getMessageSortOrder());
+      return allTenderDbMessages;
+    }
+
+    private Message convertJaggerMessage(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message){
+      MessageOCDS ocds = this.getMessageOCDS(message);
+      MessageNonOCDS nonOcds = this.getMessageNonOCDS(message);
+      var returnMessage =  new Message();
+      if(!ObjectUtils.isEmpty(ocds)){
+        returnMessage.setOCDS(ocds);
+      }
+      if(!ObjectUtils.isEmpty(nonOcds)){
+        returnMessage.setNonOCDS(nonOcds);
+      }
+      return returnMessage;
+    }
+
+  private void sortAllMessages(
+          final List<Message> messages,
+          final MessageSort messageSort, final MessageSortOrder messageSortOrder) {
+
+    Comparator<Message> comparator;
+    switch (messageSort) {
+      case TITLE:
+        comparator = Comparator
+                .comparing(message -> message.getOCDS().getTitle());
+        break;
+      case AUTHOR:
+        comparator = Comparator.comparing(message -> message.getOCDS().getAuthor().getName());
+        break;
+      default:
+        comparator = Comparator.comparing(message -> message.getOCDS().getDescription());
+    }
+
+    Collections.sort(messages,
+            MessageSortOrder.ASCENDING.equals(messageSortOrder) ? comparator : comparator.reversed());
+  }
+
+
+
+
+
+
+
+
+
+
 }

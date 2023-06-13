@@ -67,6 +67,11 @@ public class RetryableTendersDBDelegate {
   public Optional<MessageAsync> findMessageTaskById(final Integer id) {
     return messageTaskRepo.findById(id);
   }
+
+  @TendersRetryable
+  public List<MessageAsync> getMessagesByEventId(final Integer id) {
+    return messageTaskRepo.findAllByEventId(id);
+  }
   @TendersRetryable
   public Optional<ProcurementProject> findProcurementProjectById(final Integer id) {
     return procurementProjectRepo.findById(id);
