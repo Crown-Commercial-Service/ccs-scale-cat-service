@@ -10,6 +10,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
@@ -60,6 +61,9 @@ class CriteriaServiceTest {
 
   @MockBean
   private DependencyMapper dependencyMapper;
+
+  @MockBean
+  private TimelineDependencyMapper timelineDependencyMapper;
 
   @Autowired
   private CriteriaService criteriaService;
