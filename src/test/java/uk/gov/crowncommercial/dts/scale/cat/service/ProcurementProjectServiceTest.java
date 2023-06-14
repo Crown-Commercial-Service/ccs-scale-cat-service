@@ -81,7 +81,11 @@ class ProcurementProjectServiceTest {
       .organisationId(CONCLAVE_ORG_ID).build();
   private static final AgreementDetails AGREEMENT_DETAILS = new AgreementDetails();
   private static final Optional<SubUser> JAGGAER_USER =
-      Optional.of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).build());
+      Optional.of(SubUser.builder().userId(JAGGAER_USER_ID)
+                      .ssoCodeData(SSOCodeData.builder().
+                              ssoCode(Set.of(SSOCodeData.SSOCode.builder()
+                                      .ssoUserLogin(PRINCIPAL).build())).build())
+              .email(PRINCIPAL).phoneNumber("123456789").build());
   private static final CompanyInfo BUYER_COMPANY_INFO =
       CompanyInfo.builder().bravoId(JAGGAER_BUYER_COMPANY_ID).build();
 
@@ -460,7 +464,7 @@ class ProcurementProjectServiceTest {
     when(retryableTendersDBDelegate.findProjectUserMappingByProjectIdAndUserId(PROC_PROJECT_ID,
         "12345")).thenReturn(Optional.of(userMapping));
     when(userProfileService.resolveBuyerUserByUserId(any()))
-        .thenReturn(Optional.of(SubUsers.SubUser.builder().phoneNumber("123456").build()));
+        .thenReturn(JAGGAER_USER);
     when(conclaveService.getUserProfile(any()))
         .thenReturn(Optional.of(new UserProfileResponseInfo()));
 

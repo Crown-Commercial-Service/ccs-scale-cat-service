@@ -26,6 +26,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_JAGGAER_USER_NOT_FOUND;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.UNLIMITED_VALUE;
 /**
  *
@@ -74,6 +76,9 @@ public class MessageService {
   public String createOrReplyMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(profile)
+            .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
+            .getUserId();
     var ocds = message.getOCDS();
     var nonOCDS = message.getNonOCDS();
 
@@ -86,7 +91,7 @@ public class MessageService {
         .broadcast(Boolean.TRUE.equals(nonOCDS.getIsBroadcast()) ? "1" : "0")
         .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
         .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
-        .operatorUser(OperatorUser.builder().loginid(profile).build());
+        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build());
     
     // Adding supplier details
     if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
@@ -125,6 +130,7 @@ public class MessageService {
     var jaggaerUserId = userProfileService
         .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
+
     var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
         messageRequestInfo.getEventId());
 
@@ -228,11 +234,11 @@ public class MessageService {
   public uk.gov.crowncommercial.dts.scale.cat.model.generated.Message getMessageSummary(
       final Integer procId, final String eventId, final String messageId, final String principal) {
 
-     userProfileService.resolveBuyerUserProfile(principal)
+    var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
     ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var updateMessage = jaggaerService.updateMessage(MessageUpdate.builder().messageId(Integer.parseInt(messageId))
-            .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE).operatorUser(OperatorUser.builder().loginid(principal).build()).build());
+            .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE).operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build());
     var response = jaggaerService.getMessage(messageId);
 
     return new uk.gov.crowncommercial.dts.scale.cat.model.generated.Message()
