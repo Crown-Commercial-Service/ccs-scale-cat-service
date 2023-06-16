@@ -9,10 +9,9 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ValidationService;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.JaggaerPublishEventData;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.DocumentPushTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.EventPublishTask;
-import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.PublishPrevalidationTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.SupplierPushTask;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import java.util.Arrays;
 import java.util.List;
 

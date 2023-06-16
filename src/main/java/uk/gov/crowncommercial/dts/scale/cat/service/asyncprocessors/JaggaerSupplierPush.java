@@ -14,11 +14,9 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.async.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.TaskUtils;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 
-import javax.transaction.Transactional;
-import java.util.Arrays;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import static java.util.Map.entry;

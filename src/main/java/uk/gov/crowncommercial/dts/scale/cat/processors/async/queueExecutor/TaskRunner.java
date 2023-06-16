@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskHistoryEntity;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.*;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import java.util.List;
 
 @Component

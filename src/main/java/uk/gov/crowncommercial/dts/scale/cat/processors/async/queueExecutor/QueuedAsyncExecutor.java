@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.swagger.models.auth.In;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -15,25 +14,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.ExperimentalFlagsConfig;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskHistoryEntity;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.TaskScheduler;
-import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 
-import javax.transaction.Transactional;
-import java.lang.reflect.Array;
+import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j

@@ -12,7 +12,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ExperimentalFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;

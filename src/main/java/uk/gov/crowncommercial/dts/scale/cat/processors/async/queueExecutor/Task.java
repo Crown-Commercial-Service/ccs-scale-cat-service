@@ -3,7 +3,6 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.persistence.Column;
 import java.time.Instant;
 import java.util.Objects;
 
