@@ -2,10 +2,11 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "message_task")
@@ -21,7 +22,7 @@ public class MessageAsync {
     @Column(name = "message_id")
     Integer messageId;
 
-    @Type(type = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "message_request")
     Message messageRequest;
 

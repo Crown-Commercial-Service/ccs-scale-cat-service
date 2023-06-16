@@ -20,7 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;

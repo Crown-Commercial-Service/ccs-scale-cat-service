@@ -4,9 +4,9 @@ import static org.springframework.http.HttpStatus.*;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.ValidationException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ValidationException;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
@@ -46,7 +46,7 @@ public class GlobalErrorHandler implements ErrorController {
   public ResponseEntity<Errors> handleError(final HttpServletRequest request,
       final HttpServletResponse response) {
 
-    var exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
+    var exception = (Throwable) request.getAttribute("jakarta.servlet.error.exception");
 
     log.error("Unknown container/filter exception", exception);
 

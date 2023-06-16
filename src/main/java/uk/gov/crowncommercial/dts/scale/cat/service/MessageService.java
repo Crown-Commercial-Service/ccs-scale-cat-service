@@ -32,7 +32,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerMessagePush;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.input.MessageTaskData;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.UNLIMITED_VALUE;
 /**

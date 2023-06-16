@@ -2,11 +2,9 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.WhereJoinTable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
-import javax.persistence.*;
-import java.time.Instant;
+import jakarta.persistence.*;
 import java.util.List;
 
 /**
