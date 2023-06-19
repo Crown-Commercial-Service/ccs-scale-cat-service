@@ -35,6 +35,7 @@ public class DimensionSubmissionType {
   private String selectionType;
 
   @Column (name ="submission_mandatory")
+  @Builder.Default
   private Boolean mandatory = true;
 
   @Embedded
