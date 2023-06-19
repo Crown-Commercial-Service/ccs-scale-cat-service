@@ -19,7 +19,7 @@
 		<java.version>17</java.version>
 		<swagger-parser.version>2.1.15</swagger-parser.version>
 		<guava.version>32.0.1-jre</guava.version>
-		<openapi-generator.version>6.6.0</openapi-generator.version>
+		<openapi-generator.version>5.2.1</openapi-generator.version>
 		<hibernate-types.version>2.21.1</hibernate-types.version>
 		<modelmapper.version>3.1.1</modelmapper.version>
 		<simple-odf.version>0.9.0</simple-odf.version>
@@ -435,6 +435,38 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>com.google.code.maven-replacer-plugin</groupId>
+				<artifactId>replacer</artifactId>
+				<version>1.5.3</version>
+				<executions>
+					<execution>
+						<id>replace-import-javax-by-jakarta</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>replace</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<basedir>
+						${project.build.directory}/generated-sources/openapi/src/gen/java/main/uk/gov/crowncommercial/dts/scale/cat/model
+					</basedir>
+					<includes>
+						<include>**/*.java</include>
+					</includes>
+					<replacements>
+						<replacement>
+							<token>import javax</token>
+							<value>import jakarta</value>
+						</replacement>
+						<replacement>
+							<token>javax.annotation</token>
+							<value>jakarta.annotation</value>
+						</replacement>
+					</replacements>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
