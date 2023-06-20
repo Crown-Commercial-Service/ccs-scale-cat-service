@@ -62,7 +62,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 class MessageServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
-  private static final String BUYER_USER_NAME = "Venki Bathula";
   private static final String BUYER_PASSWORD = "PASS12345";
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
@@ -339,16 +338,27 @@ class MessageServiceTest {
   }
 
   @Test
-  void testGetMessageListByEeventId() throws Exception {
+  void testGetMessageListByEventId() throws Exception {
 
     var event = new ProcurementEvent();
     event.setExternalReferenceId(RFX_ID);
+    event.setExternalEventId(RFX_ID);
+
     var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
             .category(MessageCategory.builder().categoryName("Technical Clarification").build())
             .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
             .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .body("Description for test message")
+            .attachmentList(AttachmentList.builder()
+                    .attachment(Arrays
+                            .asList(Attachment.builder().fileId(FILE_ID + "").fileName(FILE_NAME).build()))
+                    .build())
             .receiverList(ReceiverList.builder()
                     .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .readingList(ReadingList.builder()
+                    .reading(Arrays
+                            .asList(Reading.builder().readerId(READER_ID).readerName(READER_NAME).build()))
+                    .build())
             .build();
 
     var messagesResponse = MessagesResponse.builder()
@@ -361,21 +371,23 @@ class MessageServiceTest {
                     .pageSize(20).principal(PRINCIPAL).build();
     var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
 
-    //Aceessing the private methodconvertMessage
-    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
-    convertMessage.setAccessible(true);
-    Message convertedMessage = (Message)convertMessage.invoke(message);
-
-    var asyncMessage = MessageAsync.builder().messageId(2)
-                                          .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
             .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(jaggaerService.getMessages(RFX_ID, 20)).thenReturn(messagesResponse);
     when(retryableTendersDBDelegate
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
+
+    // Accessing the private method convertJaggerMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage", uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.class);
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(messageService, message);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+                                          .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
+
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
     var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
@@ -467,20 +479,39 @@ class MessageServiceTest {
 
     var event = new ProcurementEvent();
     event.setExternalReferenceId(RFX_ID);
+    event.setExternalEventId(RFX_ID);
     var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
             .category(MessageCategory.builder().categoryName("Technical Clarification").build())
             .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
             .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .body("Description for test message")
+            .attachmentList(AttachmentList.builder()
+                    .attachment(Arrays
+                            .asList(Attachment.builder().fileId(FILE_ID + "").fileName(FILE_NAME).build()))
+                    .build())
             .receiverList(ReceiverList.builder()
                     .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .readingList(ReadingList.builder()
+                    .reading(Arrays
+                            .asList(Reading.builder().readerId(READER_ID).readerName(READER_NAME).build()))
+                    .build())
             .build();
 
     var messageTwo = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
             .category(MessageCategory.builder().categoryName("Technical Clarification").build())
             .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
             .subject("Test message Two").direction(MessageDirection.RECEIVED.getValue())
+            .body("Description for second test message")
+            .attachmentList(AttachmentList.builder()
+                    .attachment(Arrays
+                            .asList(Attachment.builder().fileId(FILE_ID + "").fileName(FILE_NAME).build()))
+                    .build())
             .receiverList(ReceiverList.builder()
                     .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .readingList(ReadingList.builder()
+                    .reading(Arrays
+                            .asList(Reading.builder().readerId(READER_ID).readerName(READER_NAME).build()))
+                    .build())
             .build();
 
     var messagesResponse = MessagesResponse.builder()
@@ -493,25 +524,26 @@ class MessageServiceTest {
                     .pageSize(20).principal(PRINCIPAL).build();
     var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
 
-    //Aceessing the private methodconvertMessage
-    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 20)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+
+    // Accessing the private method convertJaggerMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage", uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.class);
     convertMessage.setAccessible(true);
-    Message convertedMessage = (Message)convertMessage.invoke(message);
-    Message convertedMessageTwo = (Message)convertMessage.invoke(messageTwo);
+    Message convertedMessage = (Message)convertMessage.invoke(messageService, message);
+    Message convertedMessageTwo = (Message)convertMessage.invoke(messageService, messageTwo);
 
     var asyncMessage = MessageAsync.builder().messageId(2)
             .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
     var asyncMessageTwo = MessageAsync.builder().messageId(3)
             .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessageTwo).build();
 
-    // Mock behaviours
-    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
-            .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
-    when(retryableTendersDBDelegate
-            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
-            .thenReturn(Optional.of(ORG_MAPPING));
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage, asyncMessageTwo));
     var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
