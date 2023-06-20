@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
@@ -20,14 +21,13 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 @Slf4j
 public class OAuth2Config {
 
   private final UnauthorizedResponseDecorator unauthorizedResponseDecorator;
   private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
-
-  // TODO: Verify and move to SSM
   private static final String[] CAT_ROLES =
       new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
 
@@ -40,7 +40,6 @@ public class OAuth2Config {
 
     log.info("Configuring resource server...");
 
-    // @formatter:off
     http.authorizeHttpRequests(authz ->
       authz
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)

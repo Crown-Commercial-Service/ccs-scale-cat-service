@@ -43,10 +43,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.ExperimentalFlagsConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
@@ -74,7 +71,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
         QueuedAsyncExecutor.class, AsyncExecutionConfig.class, ExperimentalFlagsConfig.class,
     TaskEntityService.class, TaskRetryManager.class, EnvironmentConfig.class,TaskRunner.class,
         JaggaerEventPublish.class,
-        PublishPrevalidationTask.class,  DocumentPushTask.class, SupplierPushTask.class, EventPublishTask.class})
+        PublishPrevalidationTask.class,  DocumentPushTask.class, SupplierPushTask.class, EventPublishTask.class, OAuth2Config.class})
 @ActiveProfiles("test")
 class EventsControllerTest {
 
