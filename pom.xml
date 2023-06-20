@@ -343,7 +343,7 @@
                             <verbose>false</verbose>
                             <configOptions>
                                 <sourceFolder>src/gen/java/main</sourceFolder>
-                                <useBeanValidation>false</useBeanValidation>
+                                <useBeanValidation>true</useBeanValidation>
                                 <performBeanValidation>true</performBeanValidation>
                                 <dateLibrary>java8</dateLibrary>
                                 <hideGenerationTimestamp>true</hideGenerationTimestamp>
@@ -373,7 +373,7 @@
                             <verbose>false</verbose>
                             <configOptions>
                                 <sourceFolder>src/gen/java/main</sourceFolder>
-                                <useBeanValidation>false</useBeanValidation>
+                                <useBeanValidation>true</useBeanValidation>
                                 <performBeanValidation>true</performBeanValidation>
                                 <dateLibrary>java8</dateLibrary>
                                 <hideGenerationTimestamp>true</hideGenerationTimestamp>
@@ -403,7 +403,7 @@
                             <verbose>false</verbose>
                             <configOptions>
                                 <sourceFolder>src/gen/java/main</sourceFolder>
-                                <useBeanValidation>false</useBeanValidation>
+                                <useBeanValidation>true</useBeanValidation>
                                 <performBeanValidation>true</performBeanValidation>
                                 <dateLibrary>java8</dateLibrary>
                                 <hideGenerationTimestamp>true</hideGenerationTimestamp>
@@ -435,7 +435,7 @@
                             <verbose>false</verbose>
                             <configOptions>
                                 <sourceFolder>src/gen/java/main</sourceFolder>
-                                <useBeanValidation>false</useBeanValidation>
+                                <useBeanValidation>true</useBeanValidation>
                                 <performBeanValidation>true</performBeanValidation>
                                 <dateLibrary>java8</dateLibrary>
                                 <hideGenerationTimestamp>true</hideGenerationTimestamp>
