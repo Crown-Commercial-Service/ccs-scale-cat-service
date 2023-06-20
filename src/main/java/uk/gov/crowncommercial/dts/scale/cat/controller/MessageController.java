@@ -129,7 +129,7 @@ public class MessageController extends AbstractRestController {
             .pageSize(Integer.valueOf(pageSize))
             .principal(principal)
             .build();
-    return messageService.getMessageListByEeventId(messageRequestInfo, messageId );
+    return messageService.getMessageListByEventId(messageRequestInfo, messageId );
 
 
   }

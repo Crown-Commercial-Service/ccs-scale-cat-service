@@ -385,7 +385,7 @@ class MessageServiceTest {
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
-    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+    var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
     // Verify
     assertNotNull(response);
@@ -440,7 +440,7 @@ class MessageServiceTest {
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
-    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+    var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
     // Verify
     assertNotNull(response);
@@ -500,7 +500,7 @@ class MessageServiceTest {
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage, asyncMessageTwo));
-    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+    var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
     // Verify
     assertNotNull(response);
@@ -529,7 +529,7 @@ class MessageServiceTest {
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(new ArrayList<>());
-    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+    var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
     // Verify
     assertNotNull(response);

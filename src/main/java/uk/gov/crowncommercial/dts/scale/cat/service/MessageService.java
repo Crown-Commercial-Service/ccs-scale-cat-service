@@ -7,16 +7,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.collections.CollectionUtils;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
-import org.springframework.web.bind.annotation.RequestParam;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -392,25 +391,42 @@ public class MessageService {
             .collect(Collectors.toList()));
   }
 
-    public List<Message> getMessageListByEeventId(MessageRequestInfo messageRequestInfo, String messageId) {
-      var jaggaerUserId = userProfileService
-              .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
-              .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-      var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
-              messageRequestInfo.getEventId());
-      var messagesResponse =
-              jaggaerService.getMessages(event.getExternalEventId(), messageRequestInfo.getPageSize());
-      var evntNameSplit = messageRequestInfo.getEventId().split("-");
-      var tenderEventId = evntNameSplit[evntNameSplit.length -1];
-      var allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
-                                              == Integer.valueOf(messageId)).collect(Collectors.toList());
+    public List<Message> getMessageListByEventId(MessageRequestInfo messageRequestInfo, String messageId) {
+      List<Message> messageList = new ArrayList<>();
 
-      var allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(tenderEventId)).stream().filter(message -> message.getStatus() == MessageTaskStatus.INPROGRESS);
-      var allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
-      var convertedMessages = allJaggerMessages.stream().map(message ->  convertJaggerMessage(message)).collect(Collectors.toList());
-      allTenderDbMessages.addAll(convertedMessages);
-      sortAllMessages(allTenderDbMessages, messageRequestInfo.getMessageSort(), messageRequestInfo.getMessageSortOrder());
-      return allTenderDbMessages;
+      if (messageRequestInfo != null) {
+        ProcurementEvent event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
+                messageRequestInfo.getEventId());
+
+        if (event != null) {
+          MessagesResponse messagesResponse = jaggaerService.getMessages(event.getExternalEventId(), messageRequestInfo.getPageSize());
+          String[] evntNameSplit = messageRequestInfo.getEventId().split("-");
+          String tenderEventId = evntNameSplit[evntNameSplit.length - 1];
+
+          if (messagesResponse != null) {
+            List<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> allJaggerMessages = messagesResponse.getMessageList().getMessage().stream().filter(message -> message.getMessageId()
+                    == Integer.valueOf(messageId)).collect(Collectors.toList());
+
+            Stream<MessageAsync> allTenderDbMessageAsyncStream = retryableTendersDBDelegate.getMessagesByEventId(Integer.valueOf(tenderEventId)).stream().filter(message -> message.getStatus() == MessageTaskStatus.INPROGRESS);
+
+            if (allTenderDbMessageAsyncStream != null) {
+              List<Message> allTenderDbMessages = allTenderDbMessageAsyncStream.map(messageAsync -> messageAsync.getMessageRequest()).collect(Collectors.toList());
+
+              if (allJaggerMessages != null) {
+                List<Message> convertedMessages = allJaggerMessages.stream().map(message -> convertJaggerMessage(message)).collect(Collectors.toList());
+
+                if (convertedMessages != null) {
+                  allTenderDbMessages.addAll(convertedMessages);
+                  sortAllMessages(allTenderDbMessages, messageRequestInfo.getMessageSort(), messageRequestInfo.getMessageSortOrder());
+                  messageList = allTenderDbMessages;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return messageList;
     }
 
     private Message convertJaggerMessage(uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message message){
