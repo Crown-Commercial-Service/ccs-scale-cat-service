@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
@@ -9,7 +8,6 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.builder
 import java.lang.reflect.Method;
 import java.time.OffsetDateTime;
 import java.util.*;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -40,7 +37,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageAsync;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
@@ -71,8 +67,6 @@ class MessageServiceTest {
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String JAGGAER_USER_ID = "12345";
-  private static final String CREATE_MESSAGE = "Create";
-  private static final String EXTERNAL_EVENT_ID = "itt_8673";
 
   private static final String RFX_ID = "rfq_0001";
 
@@ -89,7 +83,6 @@ class MessageServiceTest {
 
   static final String SUPPLIER_ORG_ID_1 = "GB-COH-1234567";
   static final String SUPPLIER_ORG_ID = "1234567";
-  static final String SUPPLIER_ORG_ID_2 = "GB-COH-7654321";
 
   static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
@@ -97,11 +90,10 @@ class MessageServiceTest {
 
   static final Integer FILE_ID = 1234567;
   static final String FILE_NAME = "filename.dox";
+  static final Integer READER_ID = 1234;
+  static final String READER_NAME = "John Smith";
 
   static final ProcurementProject project = ProcurementProject.builder().build();
-
-  private static final Optional<SubUser> JAGGAER_USER = Optional
-      .of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).name(BUYER_USER_NAME).build());
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;
@@ -398,20 +390,39 @@ class MessageServiceTest {
 
     var event = new ProcurementEvent();
     event.setExternalReferenceId(RFX_ID);
+    event.setExternalEventId(RFX_ID);
     var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
             .category(MessageCategory.builder().categoryName("Technical Clarification").build())
             .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
             .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .body("Description for test message")
+            .attachmentList(AttachmentList.builder()
+                    .attachment(Arrays
+                            .asList(Attachment.builder().fileId(FILE_ID + "").fileName(FILE_NAME).build()))
+                    .build())
             .receiverList(ReceiverList.builder()
                     .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .readingList(ReadingList.builder()
+                    .reading(Arrays
+                            .asList(Reading.builder().readerId(READER_ID).readerName(READER_NAME).build()))
+                    .build())
             .build();
 
     var messageTwo = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
             .category(MessageCategory.builder().categoryName("Technical Clarification").build())
             .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
             .subject("Test message Two").direction(MessageDirection.RECEIVED.getValue())
+            .body("Description for second test message")
+            .attachmentList(AttachmentList.builder()
+                    .attachment(Arrays
+                            .asList(Attachment.builder().fileId(FILE_ID + "").fileName(FILE_NAME).build()))
+                    .build())
             .receiverList(ReceiverList.builder()
                     .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .readingList(ReadingList.builder()
+                    .reading(Arrays
+                            .asList(Reading.builder().readerId(READER_ID).readerName(READER_NAME).build()))
+                    .build())
             .build();
 
     var messagesResponse = MessagesResponse.builder()
@@ -424,22 +435,24 @@ class MessageServiceTest {
                     .pageSize(20).principal(PRINCIPAL).build();
     var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
 
-    //Aceessing the private methodconvertMessage
-    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
-    convertMessage.setAccessible(true);
-    Message convertedMessage = (Message)convertMessage.invoke(message);
-
-    var asyncMessage = MessageAsync.builder().messageId(2)
-            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
             .thenReturn(event);
-    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(jaggaerService.getMessages(RFX_ID, 20)).thenReturn(messagesResponse);
     when(retryableTendersDBDelegate
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
+
+    // Accessing the private method convertJaggerMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage", uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.class);
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(messageService, message);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
     when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
+
     var response = messageService.getMessageListByEventId(messageRequestInfo, "1");
 
     // Verify
