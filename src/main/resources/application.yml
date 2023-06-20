@@ -300,7 +300,7 @@ config:
       
   flags:
     # Prod env set to true
-    resolveUsersBySSO: false
+    resolveUsersBySSO: true
     # devMode: "SET IN ENV"
 ---
 spring:

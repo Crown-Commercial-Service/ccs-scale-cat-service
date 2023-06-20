@@ -10,7 +10,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.SerializationUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicati
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
@@ -56,6 +60,9 @@ public class CriteriaService {
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
   private final DependencyMapper dependencyMapper;
+
+  private final TimelineDependencyMapper timelineDependencyMapper;
+
 
   private final DataTemplateProcessor templateProcessor;
   private final ProcurementEventHelperService eventHelperService;
@@ -145,7 +152,11 @@ public class CriteriaService {
     if(null != question.getNonOCDS() && null != question.getNonOCDS().getAnswered()){
       requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
+    if(null != question.getNonOCDS().getTimelineDependency() && null != question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()){
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()));
+             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getTimelineDependency().getNonOCDS().getAnswered());
 
+    }
     validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
         .updateOptions(options.stream()
@@ -345,6 +356,9 @@ public class CriteriaService {
     if (Objects.nonNull(r.getNonOCDS().getDependency())) {
       questionNonOCDS.dependency(dependencyMapper.convertToQuestionNonOCDSDependency(r));
     }
+    if (Objects.nonNull(r.getNonOCDS().getTimelineDependency())) {
+      questionNonOCDS.timelineDependency(timelineDependencyMapper.convertToTimelineDependency(r));
+    }
 
     var description = r.getOcds().getDescription();
     if (Objects.nonNull(description) && description.contains(END_DATE)) {
@@ -383,5 +397,15 @@ public class CriteriaService {
               .titles(o.getTableDefinition().getTitles()).data(o.getTableDefinition().getData()));
     }
     return questionNonOCDSOptions;
+  }
+
+  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
+    return options.stream()
+            .map(questionNonOCDSOptions -> Option.builder()
+                    .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                            : questionNonOCDSOptions.getSelected())
+                    .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                    .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
+            .collect(Collectors.toList());
   }
 }
