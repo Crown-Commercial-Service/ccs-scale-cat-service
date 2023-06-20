@@ -28,7 +28,7 @@ public class ProjectsController extends AbstractRestController {
 
 
   //search-type=projectName&search-term=My%20search%20term&page=1&page-size=20'
-  @GetMapping
+  @GetMapping(value={"", "/"})
   @TrackExecutionTime
   public Collection<ProjectPackageSummary> getProjects(@RequestParam(name = "search-type", required = false) final String searchType,
                                                        @RequestParam(name = "search-term", required = false) final String searchTerm,
