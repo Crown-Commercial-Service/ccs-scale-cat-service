@@ -14,7 +14,7 @@ import java.util.List;
 public interface TaskRepo  extends JpaRepository<TaskEntity, Long> {
 
     String orphanJobsQuery = "select task from TaskEntity task\n" +
-            " WHERE status in :statusList and node != :node and " +
+            " WHERE status in :statusList and node <> :node and " +
             " timestamps.updatedAt < :lastAccessTime" +
             " and tobeExecutedAt < :scheduleTime " +
             " order by id ";
