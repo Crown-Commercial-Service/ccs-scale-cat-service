@@ -6,8 +6,8 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.6</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<version>2.7.11</version>
+		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>uk.gov.crowncommercial.dts</groupId>
 	<artifactId>ccs-scale-cat-service</artifactId>
@@ -17,25 +17,27 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<swagger-parser.version>2.1.9</swagger-parser.version>
-		<guava.version>30.1.1-jre</guava.version>
+		<swagger-parser.version>2.1.15</swagger-parser.version>
+		<guava.version>32.0.1-jre</guava.version>
 		<openapi-generator.version>5.2.1</openapi-generator.version>
-		<hibernate-types.version>2.17.1</hibernate-types.version>
-		<modelmapper.version>2.4.5</modelmapper.version>
+		<hibernate-types.version>2.21.1</hibernate-types.version>
+		<modelmapper.version>3.1.1</modelmapper.version>
 		<simple-odf.version>0.9.0</simple-odf.version>
-		<jena-core.version>4.5.0</jena-core.version>
-		<commons-io.version>2.11.0</commons-io.version>
-		<aws-java-sdk-s3.version>1.12.347</aws-java-sdk-s3.version>
-		<tika-core.version>2.4.1</tika-core.version>
-		<java-cfenv-boot.version>2.4.0</java-cfenv-boot.version>
-		<notifications-java-client.version>3.17.3-RELEASE</notifications-java-client.version>
-		<poi-ooxml.version>5.2.2</poi-ooxml.version>
+		<jena-core.version>4.8.0</jena-core.version>
+		<commons-io.version>2.13.0</commons-io.version>
+		<aws-java-sdk-s3.version>1.12.489</aws-java-sdk-s3.version>
+		<tika-core.version>2.8.0</tika-core.version>
+		<java-cfenv-boot.version>2.4.2</java-cfenv-boot.version>
+		<notifications-java-client.version>4.1.0-RELEASE</notifications-java-client.version>
+		<poi-ooxml.version>5.2.3</poi-ooxml.version>
 		<xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-		<snakeyaml.version>1.32</snakeyaml.version>
-		<spring-security-oauth2-client.version>5.7.5</spring-security-oauth2-client.version>
-		<spring-security-web.version>5.7.5</spring-security-web.version>
-		<hsql.version>2.7.1</hsql.version>
-
+		<snakeyaml.version>2.0</snakeyaml.version>
+		<spring-security-oauth2-client.version>5.8.3</spring-security-oauth2-client.version>
+		<spring-security-web.version>5.8.3</spring-security-web.version>
+		<hsql.version>2.7.2</hsql.version>
+		<spring-security-core.version>5.8.3</spring-security-core.version>
+		<rollbar.version>1.10.0</rollbar.version>
+		<jsoup.version>1.16.1</jsoup.version>
 	</properties>
 
 	<dependencies>
@@ -48,7 +50,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
-
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-core</artifactId>
+			<version>${spring-security-core.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>
@@ -61,6 +67,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+			<exclusions>
+				<exclusion>
+					<artifactId>spring-security-core</artifactId>
+					<groupId>org.springframework.security</groupId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -73,6 +85,10 @@
 				<exclusion>
 					<groupId>org.springframework.security</groupId>
 					<artifactId>spring-security-web</artifactId>
+				</exclusion>
+				<exclusion>
+					<artifactId>spring-security-core</artifactId>
+					<groupId>org.springframework.security</groupId>
 				</exclusion>
 			</exclusions>
 
@@ -193,7 +209,11 @@
 		    <artifactId>notifications-java-client</artifactId>
 		    <version>${notifications-java-client.version}</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+			<version>2.15.0</version>
+		</dependency>
 
 		<!-- Snyk recommended -->
 		<dependency>
@@ -234,11 +254,23 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-client</artifactId>
 			<version>${spring-security-oauth2-client.version}</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>spring-security-core</artifactId>
+					<groupId>org.springframework.security</groupId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-web</artifactId>
 			<version>${spring-security-web.version}</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>spring-security-core</artifactId>
+					<groupId>org.springframework.security</groupId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<!-- Test dependencies -->
@@ -257,10 +289,22 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<artifactId>spring-security-core</artifactId>
+					<groupId>org.springframework.security</groupId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-params</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>5.7.1</version>
 			<scope>test</scope>
 		</dependency>
 		
@@ -268,7 +312,14 @@
 		<dependency>
 			<groupId>com.rollbar</groupId>
 			<artifactId>rollbar-logback</artifactId>
-			<version>1.9.0</version>
+			<version>${rollbar.version}</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.jsoup/jsoup -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>${jsoup.version}</version>
 		</dependency>
 	</dependencies>
 

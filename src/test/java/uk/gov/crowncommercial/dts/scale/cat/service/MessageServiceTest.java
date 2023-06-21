@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.builder;
+
+import java.lang.reflect.Method;
 import java.time.OffsetDateTime;
 import java.util.*;
 import org.junit.jupiter.api.Assertions;
@@ -34,6 +36,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageAsync;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.MessageTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
@@ -44,7 +48,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.MessageTaskRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -69,6 +75,8 @@ class MessageServiceTest {
   private static final String EXTERNAL_EVENT_ID = "itt_8673";
 
   private static final String RFX_ID = "rfq_0001";
+
+  private static final Integer EVT_ID = 0001;
   private static final Integer JAGGAER_SUPPLIER_ID = 123456;
   private static final String JAGGAER_SUPPLIER_NAME = "Bathula Consulting";
 
@@ -126,7 +134,13 @@ class MessageServiceTest {
   private MessageService messageService;
 
   @MockBean
+  private AsyncExecutor asyncExecutor;
+
+  @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
+
+  @MockBean
+  private MessageTaskRepo messageTaskRepo;
 
   private RPAGenericData request = new RPAGenericData();
   private RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
@@ -330,5 +344,196 @@ class MessageServiceTest {
     // Verify
     assertNotNull(response);
     assertEquals(FILE_NAME, response.getFileName());
+  }
+
+  @Test
+  void testGetMessageListByEeventId() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(Arrays.asList(message)).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    //Aceessing the private methodconvertMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(message);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+                                          .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+    when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
+    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(2, response.size());
+  }
+
+  //multiple messages from jagger
+  @Test
+  void testGetMessageListMultipleJaggerMessages() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messageTwo = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message Two").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(Arrays.asList(message, messageTwo)).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    //Aceessing the private methodconvertMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(message);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+    when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage));
+    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(3, response.size());
+  }
+
+
+//Multiple messages from Jagger and Message task table.
+  @Test
+  void testGetMessageListMultipleJaggerAndMessageTaskMessages() throws Exception {
+
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var message = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messageTwo = builder().messageId(1).sender(Sender.builder().id(SUPPLIER_ORG_ID).build())
+            .category(MessageCategory.builder().categoryName("Technical Clarification").build())
+            .sendDate(OffsetDateTime.now()).senderUser(SenderUser.builder().build())
+            .subject("Test message Two").direction(MessageDirection.RECEIVED.getValue())
+            .receiverList(ReceiverList.builder()
+                    .receiver(Arrays.asList(Receiver.builder().id(JAGGAER_USER_ID).build())).build())
+            .build();
+
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(Arrays.asList(message, messageTwo)).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+
+    //Aceessing the private methodconvertMessage
+    Method convertMessage = MessageService.class.getDeclaredMethod("convertJaggerMessage");
+    convertMessage.setAccessible(true);
+    Message convertedMessage = (Message)convertMessage.invoke(message);
+    Message convertedMessageTwo = (Message)convertMessage.invoke(messageTwo);
+
+    var asyncMessage = MessageAsync.builder().messageId(2)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessage).build();
+    var asyncMessageTwo = MessageAsync.builder().messageId(3)
+            .status(MessageTaskStatus.INPROGRESS).eventId(EVT_ID).messageRequest(convertedMessageTwo).build();
+
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+    when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(List.of(asyncMessage, asyncMessageTwo));
+    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(4, response.size());
+  }
+  //No messages are returned from Jagger and Message Task Table
+  @Test
+  void testFetMessagesListFailure() throws Exception {
+    var event = new ProcurementEvent();
+    event.setExternalReferenceId(RFX_ID);
+    var messagesResponse = MessagesResponse.builder()
+            .messageList(MessageList.builder().message(new ArrayList<>()).build()).returnCode(0)
+            .returnMessage("").returnedRecords(100).startAt(1).totRecords(120).build();
+    var messageRequestInfo =
+            MessageRequestInfo.builder().procId(PROC_PROJECT_ID).eventId(EVENT_OCID)
+                    .messageDirection(MessageDirection.RECEIVED).messageRead(MessageRead.ALL)
+                    .messageSort(MessageSort.DATE).messageSortOrder(MessageSortOrder.ASCENDING).page(1)
+                    .pageSize(20).principal(PRINCIPAL).build();
+    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
+    // Mock behaviours
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+            .thenReturn(event);
+    when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
+    when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+            .thenReturn(Optional.of(ORG_MAPPING));
+    when(retryableTendersDBDelegate.getMessagesByEventId(EVT_ID)).thenReturn(new ArrayList<>());
+    var response = messageService.getMessageListByEeventId(messageRequestInfo, "1");
+
+    // Verify
+    assertNotNull(response);
+    assertEquals(0, response.size());
+
   }
 }

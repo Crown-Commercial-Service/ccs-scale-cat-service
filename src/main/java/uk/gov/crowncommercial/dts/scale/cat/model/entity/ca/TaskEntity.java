@@ -29,6 +29,10 @@ public class TaskEntity {
   @Column(name = "task_name")
   private String name;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "group_id", referencedColumnName = "task_group_id")
+  private TaskGroupEntity group;
+
   @Column(name = "task_object")
   private String recordType;
 
@@ -61,6 +65,9 @@ public class TaskEntity {
 
   @Column(name = "task_node")
   private String node;
+
+  @Column(name = "task_stage")
+  private String stage;
 
   @Column(name = "task_response")
   private String Response;

@@ -10,6 +10,8 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
+import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.AsyncPublishedStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentUpload;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
@@ -21,7 +23,6 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
-
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 
 /**
@@ -155,20 +156,45 @@ public class TendersAPIModelUtils {
           && Constants.TENDER_NON_DB_EVENT_TYPES.contains(
               ViewEventType.fromValue(procurementEvent.getEventType()))
           && Objects.nonNull(rfxSetting)) {
-
-        if (Objects.isNull(rfxSetting.getPublishDate())) {
+        if (Objects.isNull(rfxSetting.getPublishDate()) && Objects.isNull(procurementEvent.getAsyncPublishedStatus())) {
           return DashboardStatus.IN_PROGRESS;
-        } else if (Objects.nonNull(rfxSetting.getCloseDate())
-            && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now())) {
-          return DashboardStatus.PUBLISHED;
         } else {
-          return evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
+          return deriveAsyncPublishStatus(rfxSetting, procurementEvent);
         }
       }
     }
-    log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
   }
+
+  private static DashboardStatus deriveAsyncPublishStatus(final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
+    if (isAsyncPublishing(procurementEvent)) {
+      return DashboardStatus.PUBLISHING;
+    }
+    if (isAsyncPublishFailed(procurementEvent)) {
+      return DashboardStatus.PUBLISH_FAILED;
+    }
+    if (isPublished(rfxSetting)) {
+      return DashboardStatus.PUBLISHED;
+    }
+    return evaluateDashboardStatusFromRfxSettingStatus(rfxSetting);
+  }
+
+  private static boolean isAsyncPublishing(ProcurementEvent procurementEvent) {
+    return Objects.nonNull(procurementEvent.getAsyncPublishedStatus()) && ASYNC_PUBLISH_STATUS_TYPES
+        .contains(AsyncPublishedStatus.valueOf(procurementEvent.getAsyncPublishedStatus()));
+  }
+
+  private static boolean isAsyncPublishFailed(ProcurementEvent procurementEvent) {
+    return Objects.nonNull(procurementEvent.getAsyncPublishedStatus())
+        && AsyncPublishedStatus.FAILED.name()
+            .equalsIgnoreCase(procurementEvent.getAsyncPublishedStatus());
+  }
+
+  private static boolean isPublished(RfxSetting rfxSetting) {
+    return Objects.nonNull(rfxSetting.getCloseDate())
+        && rfxSetting.getCloseDate().isAfter(OffsetDateTime.now());
+  }
+
 
   private static DashboardStatus deriveDashboardStatusBasedOnTenderStatus(String tenderStatus) {
 
@@ -201,7 +227,6 @@ public class TendersAPIModelUtils {
         }
       }
     }
-    log.error("DashboardStatus is not determined , returning UNKNOWN Status ");
     return DashboardStatus.UNKNOWN;
   }
 
@@ -246,7 +271,19 @@ public class TendersAPIModelUtils {
 
   public static Instant getInstantFromDate(OffsetDateTime  offsetDateTime) {
     return null!=offsetDateTime?offsetDateTime.toInstant():null;
-
+  }
+  
+  public static OffsetDateTime getOffsetDateTimeFromInstant(Instant instant) {
+    return null != instant ? OffsetDateTime.ofInstant(instant, ZoneId.systemDefault()) : null;
+  }
+  
+  public static Map<String, SchemeType> validateSchemeType() {
+    var schemeMapping = new HashMap<String, SchemeType>();
+    schemeMapping.put("US-DUN", SchemeType.DUNS);
+    schemeMapping.put("GB-COH", SchemeType.COH);
+    schemeMapping.put("VAT", SchemeType.VAT);
+    schemeMapping.put("NHS", SchemeType.NHS);
+    return schemeMapping;
   }
   
   public SalesforceProjectTender200Response buildSalesforceProjectTender200Response(

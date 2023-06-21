@@ -44,6 +44,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.RfxTemplateMappingRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
+import uk.gov.crowncommercial.dts.scale.cat.service.validators.ProcurementEventValidator;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -103,6 +104,8 @@ class ProcurementEventServiceTest {
   @MockBean
   private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
 
+  @MockBean
+  private ProcurementEventValidator procurementEventValidator;
   @MockBean
   private ProcurementProjectRepo procurementProjectRepo;
 
@@ -187,6 +190,8 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
+  @MockBean
+  private MessageTaskRepo messageTaskRepo;
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
@@ -205,6 +210,8 @@ class ProcurementEventServiceTest {
   
   @MockBean
   private RfxTemplateMappingRepo rfxTemplateMappingRepo;
+
+
 
   @Autowired
   private SupplierStoreFactory storeFactory;
@@ -1346,6 +1353,40 @@ class ProcurementEventServiceTest {
         eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
     assertEquals(DashboardStatus.PUBLISHED, eventDetail.getNonOCDS().getDashboardStatus());
+  }
+  
+  @Test
+  void shouldReturnPublishingDashboardStatus()
+      throws Exception {
+    var procurementEventBuilder = ProcurementEvent.builder().assessmentId(ASSESSMENT_ID)
+        .asyncPublishedStatus(AsyncPublishedStatus.IN_FLIGHT.name())
+        .assessmentSupplierTarget(ASSESSMENT_SUPPLIER_TARGET).tenderStatus(null);
+
+    var rfxSetting = RfxSetting.builder().rfxId(RFX_ID).shortDescription(ORIGINAL_EVENT_NAME)
+        .longDescription(DESCRIPTION)
+        .build();
+
+    var procurementProject =
+        ProcurementProject.builder().caNumber(CA_NUMBER).lotNumber(LOT_NUMBER).build();
+    var procurementEvent =
+        procurementEventBuilder.project(procurementProject).eventType(ViewEventType.FC.name())
+            .externalEventId(RFX_ID).externalReferenceId(RFX_REF_CODE).build();
+
+    var rfxResponse = new ExportRfxResponse();
+    rfxResponse.setRfxSetting(rfxSetting);
+
+    // Mock behaviours
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
+        .thenReturn(procurementEvent);
+    when(jaggaerService.getSingleRfx(RFX_ID)).thenReturn(rfxResponse);
+
+    var eventDetail = procurementEventService.getEvent(PROC_PROJECT_ID, PROC_EVENT_ID);
+
+    assertEquals(ASSESSMENT_ID, eventDetail.getNonOCDS().getAssessmentId());
+    assertEquals(ASSESSMENT_SUPPLIER_TARGET,
+        eventDetail.getNonOCDS().getAssessmentSupplierTarget());
+
+    assertEquals(DashboardStatus.PUBLISHING, eventDetail.getNonOCDS().getDashboardStatus());
   }
 
   @Test

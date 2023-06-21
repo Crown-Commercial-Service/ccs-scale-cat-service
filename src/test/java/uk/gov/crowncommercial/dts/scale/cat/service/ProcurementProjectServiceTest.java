@@ -168,7 +168,7 @@ class ProcurementProjectServiceTest {
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
 
-    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+    when(conclaveService.getOrganisationIdentity(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
             .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
                 .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
@@ -205,7 +205,7 @@ class ProcurementProjectServiceTest {
     // Verify
     verify(userProfileService).resolveBuyerUserProfile(PRINCIPAL);
     verify(userProfileService).resolveBuyerUserCompany(PRINCIPAL);
-    verify(conclaveService).getOrganisation(CONCLAVE_ORG_ID);
+    verify(conclaveService).getOrganisationIdentity(CONCLAVE_ORG_ID);
 
     var captor = ArgumentCaptor.forClass(ProcurementProject.class);
     verify(retryableTendersDBDelegate, times(1)).save(captor.capture());
@@ -229,7 +229,7 @@ class ProcurementProjectServiceTest {
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(userProfileService.resolveBuyerUserCompany(PRINCIPAL)).thenReturn(BUYER_COMPANY_INFO);
-    when(conclaveService.getOrganisation(CONCLAVE_ORG_ID))
+    when(conclaveService.getOrganisationIdentity(CONCLAVE_ORG_ID))
         .thenReturn(Optional.of(new OrganisationProfileResponseInfo()
             .identifier(new OrganisationIdentifier().legalName(CONCLAVE_ORG_NAME)
                 .scheme(CONCLAVE_ORG_SCHEME).id(CONCLAVE_ORG_SCHEME_ID))
@@ -395,29 +395,48 @@ class ProcurementProjectServiceTest {
   void testDeleteUserMapping() {
     var procurementProject = ProcurementProject.builder().externalProjectId(TENDER_CODE)
         .externalReferenceId(TENDER_REF_CODE).projectName(PROJ_NAME).createdBy(PRINCIPAL)
-        .procurementEvents(Set.of(ProcurementEvent.builder().eventType("FC").id(1).build()))
+        .procurementEvents(Set.of(
+            ProcurementEvent.builder().eventType("FC").id(1).externalEventId("itt_123").build()))
         .build();
     procurementProject.setId(PROC_PROJECT_ID);
     var tender = Tender.builder().projectOwner(ProjectOwner.builder().id("2").build()).build();
     var pro = Project.builder().tender(tender).build();
 
-    var userMapping = ProjectUserMapping.builder().id(1).userId("12345").project(procurementProject)
+    var userMapping = ProjectUserMapping.builder().id(1).userId("6").project(procurementProject)
         .timestamps(Timestamps.createTimestamps(PRINCIPAL)).build();
 
+    Optional<SubUser> JAGGAER_USER_1 =
+        Optional.of(SubUser.builder().userId("6").email(PRINCIPAL).build());
+    
     // Mock behaviours
-    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
+    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER_1);
     when(retryableTendersDBDelegate.findProcurementProjectById(PROC_PROJECT_ID))
         .thenReturn(Optional.of(procurementProject));
     when(retryableTendersDBDelegate.save(any(ProjectUserMapping.class))).thenReturn(userMapping);
     when(jaggaerService.getProject(procurementProject.getExternalProjectId())).thenReturn(pro);
     when(retryableTendersDBDelegate.findProjectUserMappingByProjectIdAndUserId(PROC_PROJECT_ID,
-        "12345")).thenReturn(Optional.of(userMapping));
+        "6")).thenReturn(Optional.of(userMapping));
+    
+    var exportRfxResponse = new ExportRfxResponse();
+    exportRfxResponse.setRfxSetting(RfxSetting.builder().statusCode(0).build());
+    exportRfxResponse.setEmailRecipientList(EmailRecipientList.builder()
+        .emailRecipient(
+            Arrays.asList(EmailRecipient.builder().user(User.builder().id("6").build()).build()))
+        .build());
+
+    when(jaggaerService.getRfxWithEmailRecipients("itt_123")).thenReturn(exportRfxResponse);
 
     procurementProjectService.deleteTeamMember(PROC_PROJECT_ID, PRINCIPAL, PRINCIPAL);
+    
+    var rfxRequest = Rfx.builder()
+        .rfxSetting(RfxSetting.builder().rfxId("itt_123").rfxReferenceCode(null).build())
+        .emailRecipientList(EmailRecipientList.builder().emailRecipient(new ArrayList<>()).build())
+        .build();
 
     // Verify
+    verify(jaggaerService).createUpdateRfx(rfxRequest, OperationCode.UPDATE_RESET);
     verify(retryableTendersDBDelegate).findProjectUserMappingByProjectIdAndUserId(
-        procurementProject.getId(), JAGGAER_USER.get().getUserId());
+        procurementProject.getId(), JAGGAER_USER_1.get().getUserId());
     verify(retryableTendersDBDelegate).save(any(ProjectUserMapping.class));
   }
 

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.http.MediaType;
 import lombok.experimental.UtilityClass;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.AsyncPublishedStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
@@ -69,6 +70,9 @@ public class Constants {
 
   public static final Set<ViewEventType> FC_DA_NON_COMPLETE_EVENT_TYPES =
           Set.of(ViewEventType.FC,ViewEventType.DA);
+  
+  public static final Set<AsyncPublishedStatus> ASYNC_PUBLISH_STATUS_TYPES =
+      Set.of(AsyncPublishedStatus.IN_FLIGHT,AsyncPublishedStatus.SCHEDULED);
 
   public static final String UNLIMITED_VALUE = "1000000";
 
@@ -82,5 +86,5 @@ public class Constants {
   public static final String COMPLETE_STATUS = "COMPLETE";
 
   public static final List<String> CLOSED_STATUS_LIST = Arrays.asList(CLOSED_STATUS.toLowerCase(), TerminationType.CANCELLED.getValue(),TerminationType.WITHDRAWN.getValue(),
-          TerminationType.UNSUCCESSFUL.getValue());
+          TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS.toLowerCase());
 }

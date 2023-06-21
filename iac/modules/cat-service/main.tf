@@ -200,7 +200,7 @@ data "aws_ssm_parameter" "rollbar_access_token" {
 }
 
 data "aws_ssm_parameter" "rollbar_environment" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/rollbar-environment"
+  name = "/cat/${var.environment}/rollbar-environment"
 }
 
 resource "cloudfoundry_app" "cat_service" {
