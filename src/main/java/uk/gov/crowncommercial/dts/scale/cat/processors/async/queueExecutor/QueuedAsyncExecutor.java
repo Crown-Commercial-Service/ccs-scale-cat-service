@@ -24,7 +24,6 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncTaskStatus;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.TaskScheduler;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 
-import javax.transaction.Transactional;
 import java.lang.reflect.Array;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -91,7 +90,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
             AsyncConsumer consumer = ctx.getBean(task.getRunner(), AsyncConsumer.class);
             taskEntityService.persist(principal, task, recordType, recordId, writeData(task.getData()));
             consumer.onStatusChange(principal, data, AsyncTaskStatus.SCHEDULED);
-//            if(taskEntityService.isSchedulable(task))  --  this should be uncommented after group behavior is verified
+            if(taskEntityService.isSchedulable(task))
                 schedule(task);
         } else {
             execute(principal, clazz, data);
@@ -112,15 +111,13 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
         return null == task.getTobeExecutedAt() || task.getTobeExecutedAt().isBefore(Instant.now());
     }
 
-    @Transactional
     public void loadFromDataStore(List<TaskEntity> taskEntities) {
         for (TaskEntity taskEntity : taskEntities) {
             if(queueFull())
                 break;
 
             if(taskRetryManager.canSchedule(taskEntity)){
-                TaskEntity scheduledEntity = taskEntityService.assignToSelf(taskEntity);
-                Task task = getTask(scheduledEntity);
+                Task task = getTask(taskEntity);
                 schedule(task);
             }
         }

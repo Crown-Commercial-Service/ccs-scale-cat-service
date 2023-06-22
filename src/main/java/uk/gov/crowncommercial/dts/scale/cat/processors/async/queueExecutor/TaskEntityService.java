@@ -21,7 +21,8 @@ import java.util.List;
 public class TaskEntityService {
     private final TaskRepo taskRepo;
     private final TaskGroupRepo taskGroupRepo;
-    private final TaskUtils taskUtils;
+    private final EnvironmentConfig environmentConfig;
+    private final TaskRetryManager taskRetryManager;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persist(String principal, Task task, String recordType, String recordId, String data) {
@@ -35,7 +36,7 @@ public class TaskEntityService {
         Instant instant = Instant.now();
         entity.setTobeExecutedAt(instant);
         entity.setScheduledOn(instant);
-        entity.setGroup(groupEntity);
+        entity.setGroupId(groupEntity.getId());
         entity.setRecordType(recordType);
         entity.setRecordId(recordId);
         entity.setStatus(Task.SCHEDULED);
@@ -43,7 +44,7 @@ public class TaskEntityService {
         if(null != groupEntity.getNode())
             entity.setNode(groupEntity.getNode());
         else
-            entity.setNode(taskUtils.getNodeName());
+            entity.setNode(environmentConfig.getServiceInstance());
 
         entity.setTimestamps(Timestamps.createTimestamps(principal));
         Timestamps.updateTimestamps(entity.getTimestamps(), principal);
@@ -59,7 +60,7 @@ public class TaskEntityService {
         entity.setName(recordType);
         entity.setReference(recordId);
         entity.setStatus('A');
-        entity.setNode(taskUtils.getNodeName());
+        entity.setNode(environmentConfig.getServiceInstance());
         entity.setTimestamps(Timestamps.createTimestamps(principal));
         taskGroupRepo.saveAndFlush(entity);
         return entity;
@@ -141,7 +142,7 @@ public class TaskEntityService {
 
     private void updateHistory(TaskEntity entity, char taskExecutionStatus, String response) {
         TaskHistoryEntity history = getLatestHistory(entity);
-        if(!taskUtils.isClosed(history)) {
+        if(!isClosed(history)) {
             history.setStatus(taskExecutionStatus);
             history.setResponse(response);
             Timestamps.updateTimestamps(history.getTimestamps(), entity.getPrincipal());
@@ -160,7 +161,10 @@ public class TaskEntityService {
         }
     }
 
-
+    private boolean isClosed(TaskHistoryEntity entity){
+        char status = entity.getStatus();
+        return (status == 'C' || status == 'F' || status == 'A');
+    }
 
 
     private void addHistory(TaskEntity entity) {
@@ -202,7 +206,26 @@ public class TaskEntityService {
         if (null == task.getId())
             return null;
 
-        return taskUtils.get(()-> taskRepo.findById(task.getId()).orElse(null), 6);
+        TaskEntity entity = taskRepo.findById(task.getId()).orElse(null);
+
+        if (null != entity)
+            return entity;
+
+        int i = 0;
+        while (null == entity && i < 6) {
+            sleep(1000);
+            i++;
+            entity = taskRepo.findById(task.getId()).orElse(null);
+        }
+        return entity;
+    }
+
+
+    private void sleep(int i) {
+        try {
+            Thread.sleep(i);
+        } catch (InterruptedException e) {
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -217,7 +240,11 @@ public class TaskEntityService {
 
     public boolean isSchedulable(Task task){
         TaskEntity entity = getEntity(task);
-        return taskUtils.isSchedulable(entity);
+        if(entity.getStatus() == Task.SCHEDULED &&
+                (null == entity.getNode() || entity.getNode().equalsIgnoreCase(environmentConfig.getServiceInstance()))){
+                    return true;
+        }
+        return false;
     }
 
     private void markTaskStatus(Task task, String response, char status) {
@@ -227,17 +254,5 @@ public class TaskEntityService {
         update(entity);
         updateHistory(entity, entity.getStatus(), response);
         taskRepo.save(entity);
-    }
-
-    public TaskEntity assignToSelf(TaskEntity taskEntity) {
-        TaskEntity entity = taskRepo.findById(taskEntity.getId()).orElseThrow();
-        entity.setNode(taskUtils.getNodeName());
-        entity.getTimestamps().setUpdatedAt(Instant.now());
-        TaskGroupEntity groupEntity =  entity.getGroup();
-        if(null != groupEntity){
-            groupEntity.setNode(taskUtils.getNodeName());
-        }
-        taskRepo.saveAndFlush(entity);
-        return entity;
     }
 }

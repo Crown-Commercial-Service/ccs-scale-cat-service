@@ -11,7 +11,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.*;
-import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.TaskUtils;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
@@ -81,7 +80,17 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
 
     @SneakyThrows
     private ProcurementEvent getEvent(JaggaerSupplierEventData data) {
-        return TaskUtils.get(()-> dbDelegate.findProcurementEventById(data.getEventId()).orElse(null), 6);
+        var event = dbDelegate.findProcurementEventById(data.getEventId()).orElse(null);
+        if (null != event)
+            return event;
+
+        int i = 0;
+        while (null == event && i < 6) {
+            Thread.sleep(1000);
+            i++;
+            event = dbDelegate.findProcurementEventById(data.getEventId()).orElse(null);
+        }
+        return event;
     }
 //
 //    @Override
