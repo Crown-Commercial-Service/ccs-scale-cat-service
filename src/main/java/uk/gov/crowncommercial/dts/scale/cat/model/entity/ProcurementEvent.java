@@ -33,7 +33,7 @@ public class ProcurementEvent {
   @Column(name = "event_id")
   Integer id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
