@@ -1,16 +1,24 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
-import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.WriteTimeoutHandler;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.springframework.http.HttpHeaders.ACCEPT;
+import static org.springframework.http.HttpHeaders.ACCEPT_CHARSET;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.HttpHeaders.WWW_AUTHENTICATE;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.http.HttpField;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
@@ -26,17 +34,9 @@ import org.springframework.security.oauth2.core.http.converter.OAuth2AccessToken
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
-
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.springframework.http.HttpHeaders.*;
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
  * Configure and expose a non-reactive Jaggaer {@link WebClient} instance for use in calls to
@@ -94,15 +94,22 @@ public class JaggaerClientConfig {
         new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
+    var sslContextFactory = new SslContextFactory.Client(true);
 
-    HttpClient reactorClient =  HttpClient.create()
-            .keepAlive(true)
-            .doOnConnected(conn -> conn
-                    .addHandler(new ReadTimeoutHandler(jaggaerAPIConfig.getTimeoutDuration(), TimeUnit.SECONDS))
-                    .addHandler(new WriteTimeoutHandler(jaggaerAPIConfig.getTimeoutDuration(), TimeUnit.SECONDS)))
-            .responseTimeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()));
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    sslContextFactory.setExcludeProtocols("TLSv1.3");
 
-    return WebClient.builder().clientConnector(new ReactorClientHttpConnector(reactorClient))
+    // TODO: Refactor out / investigate why default netty library causes 30 second delay
+    var client = new HttpClient(sslContextFactory) {
+
+      @Override
+      public Request newRequest(final URI uri) {
+        return enhance(super.newRequest(uri));
+      }
+    };
+    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
+
+    return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
         .apply(oauth2Client.oauth2Configuration())

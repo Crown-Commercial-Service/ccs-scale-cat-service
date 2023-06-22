@@ -41,11 +41,14 @@ import java.util.stream.Collectors;
 public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     private final ThreadPoolTaskExecutor taskExecutor;
     private final ApplicationContext ctx;
-    private final QueueManager queueManager;
+
+    private final List<Task> scheduledTasks = new ArrayList<>(16);
+    private final List<Task> inflightTasks = new ArrayList<>(16);
     private final Consumer<Task> onSyncTaskComplete = (task) -> {};
     private final ApplicationFlagsConfig applicationFlags;
     private final ExperimentalFlagsConfig experimentalFlags;
     private final TaskEntityService taskEntityService;
+    private final BlockingQueue<Runnable> queue;
     private final TaskRetryManager taskRetryManager;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -54,6 +57,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     public QueuedAsyncExecutor(@Qualifier("comExecutor") ThreadPoolTaskExecutor executor, ApplicationContext ctx,
                                ApplicationFlagsConfig applicationFlags, ExperimentalFlagsConfig flags, TaskEntityService taskEntityService, TaskRetryManager taskRetryManager) {
         this.taskExecutor = executor;
+        queue = executor.getThreadPoolExecutor().getQueue();
         this.ctx = ctx;
         this.taskRetryManager = taskRetryManager;
         this.experimentalFlags = flags;
@@ -61,16 +65,12 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
         this.taskEntityService = taskEntityService;
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         mapper.registerModule(new JavaTimeModule());
-
-        queueManager = new QueueManager(executor);
-
         onAsyncTaskComplete = (task) -> {
-            queueManager.removeInflightTask(task);
+            inflightTasks.remove(task);
             if(taskEntityService.isSchedulable(task)){
                 schedule(task);
             }
         };
-
     }
 
     public void startup() {
@@ -98,10 +98,10 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
         }
     }
 
-    @Scheduled(fixedRate = 15 * 1000)
+    @Scheduled(fixedRate = 60 * 1000)
     public void loadFromScheduled(){
-        if(queueManager.scheduleSize() > 0) {
-            List<Task> tempList = new ArrayList(queueManager.getScheduledTasks());
+        if(scheduledTasks.size() > 0) {
+            ArrayList<Task> tempList = new ArrayList<>(scheduledTasks);
             for (Task task : tempList) {
                 schedule(task);
             }
@@ -115,7 +115,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     @Transactional
     public void loadFromDataStore(List<TaskEntity> taskEntities) {
         for (TaskEntity taskEntity : taskEntities) {
-            if(queueManager.queueFull())
+            if(queueFull())
                 break;
 
             if(taskRetryManager.canSchedule(taskEntity)){
@@ -126,7 +126,13 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
         }
     }
 
+    private boolean queueFull(){
+        return queue.size() > AsyncExecutionConfig.poolSize * 3;
+    }
 
+    private boolean inFlight(RunnableTask runnableTask) {
+        return queue.contains(runnableTask);
+    }
 
     @SneakyThrows
     private Task getTask(TaskEntity entity) {
@@ -134,9 +140,6 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
         Task task = new Task(entity.getPrincipal(),
                 entity.getTaskExecutor(), entity.getDataClass(), data);
         task.setId(entity.getId());
-        task.setTobeExecutedAt(entity.getTobeExecutedAt());
-        if(null != entity.getGroup())
-            task.setGroupId(entity.getGroup().getId());
         task.setTaskStage(entity.getStage());
         return task;
     }
@@ -152,33 +155,46 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
 
     @SneakyThrows
     public boolean schedule(Task task) {
-        boolean executeNow = false;
-        if(canExecuteNow(task)) {
-            executeNow = (executeNow(task));
+        if(!queueFull()) {
+            if(canExecuteNow(task)) {
+                return (executeNow(task));
+            }else
+                return addSchedule(task);
         }
-        if(!executeNow)
-            return addSchedule(task);
         return false;
     }
 
     private static boolean canExecuteAfter(Task task, int minutes) {
-        return null == task.getTobeExecutedAt()
-                || task.getTobeExecutedAt().minus(minutes, ChronoUnit.MINUTES).isBefore(Instant.now());
+        return task.getTobeExecutedAt().minus(minutes, ChronoUnit.MINUTES).isBefore(Instant.now());
     }
 
     private boolean addSchedule( Task task) {
         if(canExecuteAfter(task, 15)) {
-            return queueManager.addScheduledTasks(task);
+            if (!scheduledTasks.contains(task)) {
+                scheduledTasks.add(task);
+                return true;
+            }
         }
         return false;
     }
 
     private boolean executeNow(Task task) {
         RunnableTask runnableTask = new RunnableTask(task, ctx, onAsyncTaskComplete);
-        return queueManager.addToInflight(task, runnableTask);
+        if(addToInflight(task)) {
+            taskExecutor.execute(runnableTask);
+            scheduledTasks.remove(task);
+            return true;
+        }
+        return false;
     }
 
-
+    private boolean addToInflight(Task task) {
+        if(!inflightTasks.contains(task)){
+            inflightTasks.add(task);
+            return true;
+        }
+        return false;
+    }
 
     private String writeData(Object data) {
         try {
@@ -213,7 +229,7 @@ public class QueuedAsyncExecutor implements AsyncExecutor, TaskScheduler {
     class AsyncOnComplete implements Consumer<Task> {
         @Override
         public void accept(Task task) {
-            queueManager.removeInflightTask(task);
+            inflightTasks.remove(task);
         }
     }
 }

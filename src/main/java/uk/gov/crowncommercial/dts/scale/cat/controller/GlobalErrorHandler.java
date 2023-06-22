@@ -24,7 +24,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.exception.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.ApiError;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
-import uk.gov.crowncommercial.dts.scale.cat.service.validators.ErrorDetails;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -100,12 +99,6 @@ public class GlobalErrorHandler implements ErrorController {
 
     return tendersAPIModelUtils
         .buildErrors(Arrays.asList(new ApiError(CONFLICT.toString(), exception.getMessage(), "")));
-  }
-
-  @ResponseStatus(PRECONDITION_FAILED)
-  @ExceptionHandler({PreConditionFailedException.class})
-  public ErrorDetails handlePreconditionFailed(final PreConditionFailedException e) {
-    return new ErrorDetails(e.getErrorCode(), e.getMessage());
   }
 
   @ResponseStatus(CONFLICT)

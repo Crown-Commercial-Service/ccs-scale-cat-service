@@ -37,7 +37,6 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.DocumentUploadCallable;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.RetrieveDocumentCallable;
-import uk.gov.crowncommercial.dts.scale.cat.service.validators.ProcurementEventValidator;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -104,7 +103,6 @@ public class ProcurementEventService implements EventService {
     private final ValidationService validationService;
     private final SupplierService supplierService;
     private final DocumentConfig documentConfig;
-    private final ProcurementEventValidator eventValidator;
     private final AssessmentService assessmentService;
     private final DocumentUploadService documentUploadService;
     private final DocumentTemplateService dTemplateService;
@@ -993,7 +991,6 @@ public class ProcurementEventService implements EventService {
                     "You cannot publish an event unless it is in a 'planned' state");
         }
         validationService.validatePublishDates(publishDates);
-        eventValidator.checkPreConditions(procurementEvent);
         return procurementEvent;
     }
 
