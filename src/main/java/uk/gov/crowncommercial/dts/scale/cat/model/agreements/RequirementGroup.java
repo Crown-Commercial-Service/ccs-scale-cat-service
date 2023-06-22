@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -21,6 +22,7 @@ public class RequirementGroup {
     @Value
     @Builder
     @Jacksonized
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class NonOCDS {
 
         String prompt;
