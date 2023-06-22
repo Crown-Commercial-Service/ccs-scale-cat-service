@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Repository
-public interface TaskGroupRepo extends JpaRepository<TaskGroupEntity, Integer> {
+public interface TaskGroupRepo extends JpaRepository<TaskGroupEntity, Long> {
     String activeTaskGroup = "select taskGroup from TaskGroupEntity taskGroup\n" +
             " WHERE status = 'A' and name = :groupName and reference = :groupReference";
 

@@ -30,7 +30,7 @@ public class TaskEntity {
   private String name;
 
   @Column(name="group_id")
-  private Integer groupId;
+  private Long groupId;
 
   @Column(name = "task_object")
   private String recordType;

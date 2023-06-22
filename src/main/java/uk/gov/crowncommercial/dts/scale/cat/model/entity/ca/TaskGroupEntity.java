@@ -25,7 +25,7 @@ public class TaskGroupEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "task_group_id")
-  Integer id;
+  Long id;
 
   @Column(name = "group_name")
   private String name;
@@ -43,6 +43,13 @@ public class TaskGroupEntity {
   @OrderBy("tobe_executed_at DESC")
   @JoinColumn(name = "group_id", referencedColumnName="task_group_id" )
   private List<TaskEntity> tasks;
+
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OrderBy("tobe_executed_at DESC")
+  @JoinTable(name="task_entity")
+  @WhereJoinTable(clause="task_status in ('I', 'S')")
+  @JoinColumn(name = "group_id", referencedColumnName="task_group_id" )
+  private List<TaskEntity> activeTasks;
 
   @Embedded
   private Timestamps timestamps;
