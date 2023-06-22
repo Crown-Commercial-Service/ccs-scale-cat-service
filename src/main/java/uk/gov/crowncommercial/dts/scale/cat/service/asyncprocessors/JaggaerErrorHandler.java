@@ -14,9 +14,7 @@ public class JaggaerErrorHandler implements ErrorHandler {
     @Override
     public boolean canRetry(Throwable t) {
         JaggaerApplicationException jae = (JaggaerApplicationException)t;
-        if(jae.getMessage().contains("Code: [-998]")
-                || jae.getMessage().contains("Code: [-999]")
-        ){
+        if(jae.getMessage().contains("Code: [-998]")){
             return true;
         }else
             return false;

@@ -26,8 +26,6 @@ public class TaskRunner{
         }
         AsyncConsumer consumer = ctx.getBean(task.getRunner(), AsyncConsumer.class);
         if(consumer instanceof AsyncMultiConsumer<?>){
-            if(null == task.getTaskStage())
-                task.setTaskStage(((AsyncMultiConsumer<?>) consumer).getAllTasks().get(0));
             execMultiConsumer(task, (AsyncMultiConsumer) consumer);
         }else{
             execSingleConsumer(task, consumer);
@@ -70,7 +68,7 @@ public class TaskRunner{
     private String executeStage(Task task, AsyncMultiConsumer consumer, String identifier, String taskName) {
         String response;
         task.setTaskStage(taskName);
-        taskEntityService.markInProgress(task, false);
+        taskEntityService.markInProgress(task);
         TaskConsumer taskConsumer = consumer.getTaskConsumer(taskName);
         response = execute(task, taskConsumer, identifier);
         taskEntityService.markStageComplete(task, response);
@@ -133,7 +131,7 @@ public class TaskRunner{
     }
 
     private void markInProgress(Task task, AsyncConsumer consumer) {
-        taskEntityService.markInProgress(task, true);
+        taskEntityService.markInProgress(task);
         consumer.onStatusChange(task.getPrincipal(), task.getData(), AsyncTaskStatus.IN_FLIGHT);
     }
 

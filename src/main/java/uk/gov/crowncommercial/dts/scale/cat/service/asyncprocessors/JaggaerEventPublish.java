@@ -33,7 +33,7 @@ public class JaggaerEventPublish extends AsyncMultiConsumer<JaggaerPublishEventD
 
     @Override
     public List<ErrorHandler> getErrorHandlers() {
-        return ErrorHandlers.jaggaerHandlers;
+        return Arrays.asList(JaggaerErrorHandler.INSTANCE, NoopErrorHandler.INSTANCE);
     }
 
     @Override

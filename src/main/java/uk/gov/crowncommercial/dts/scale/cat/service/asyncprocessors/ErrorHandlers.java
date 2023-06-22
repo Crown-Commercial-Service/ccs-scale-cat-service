@@ -8,6 +8,6 @@ import java.util.Collections;
 import java.util.List;
 
 public final class ErrorHandlers {
-    public static final List<ErrorHandler> jaggaerHandlers = Collections.unmodifiableList(Arrays.asList(NoopErrorHandler.INSTANCE));
+    public static final List<ErrorHandler> jaggaerHandlers = Collections.unmodifiableList(Arrays.asList(JaggaerErrorHandler.INSTANCE, NoopErrorHandler.INSTANCE));
 
 }

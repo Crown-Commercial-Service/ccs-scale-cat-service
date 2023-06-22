@@ -75,7 +75,7 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
 
     @Override
     public List<ErrorHandler> getErrorHandlers() {
-        return ErrorHandlers.jaggaerHandlers;
+        return Arrays.asList(JaggaerErrorHandler.INSTANCE, NoopErrorHandler.INSTANCE);
     }
 
 

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.TaskGroupEntity;
@@ -82,13 +83,12 @@ public class TaskEntityService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public TaskEntity markInProgress(Task task, boolean abortHistory) {
+    public TaskEntity markInProgress(Task task) {
         TaskEntity entity = getEntity(task);
         TaskUtils.checkProceed(entity);
-        if(abortHistory)
-            markHistoryAborted(entity);
+        markHistoryAborted(entity);
         entity.setStage(task.getTaskStage());
-        addHistory(entity, abortHistory);
+        addHistory(entity);
         entity.setStatus(Task.INFLIGHT);
         entity.setLastExecutedOn(Instant.now());
         taskRepo.save(entity);
@@ -128,7 +128,7 @@ public class TaskEntityService {
         timestamps.setUpdatedBy(entity.getPrincipal());
     }
 
-    public void markHistoryAborted(TaskEntity entity) {
+    private void markHistoryAborted(TaskEntity entity) {
         for (TaskHistoryEntity history : entity.getHistory()) {
             switch (history.getStatus()) {
                 case Task.INFLIGHT:
@@ -164,38 +164,24 @@ public class TaskEntityService {
 
 
 
-    private void addHistory(TaskEntity entity, boolean abortHistory) {
+    private void addHistory(TaskEntity entity) {
         List<TaskHistoryEntity> history = entity.getHistory();
-        if (history.size() > 0) {
-            addCheckHistory(entity, abortHistory);
-        }
-        else
-            addHistory(entity);
-    }
+        TaskHistoryEntity historyEntity = null;
 
-    private void addCheckHistory(TaskEntity entity, boolean abortHistory) {
-        List<TaskHistoryEntity> history = entity.getHistory();
-        TaskHistoryEntity recentEntity = history.get(0);
-
-        switch (recentEntity.getStatus()){
-            case Task.SCHEDULED:
+        if (0 > history.size()) {
+            TaskHistoryEntity recentEntity = history.get(0);
+            if (recentEntity.getStatus() == Task.SCHEDULED) {
                 recentEntity.setStatus(Task.INFLIGHT);
                 recentEntity.setExecutedOn(Instant.now());
                 return;
-            case Task.INFLIGHT:
-                if(!abortHistory)
-                    return;
-                else {
-                    recentEntity.setStatus(Task.ABORTED);
-                    Timestamps.updateTimestamps(recentEntity.getTimestamps(), entity.getPrincipal());
-                }
-            default: addHistory(entity);
+            }
+            if (recentEntity.getStatus() == Task.INFLIGHT) {
+                recentEntity.setStatus(Task.ABORTED);
+                Timestamps.updateTimestamps(recentEntity.getTimestamps(), entity.getPrincipal());
+            }
         }
-    }
 
-    private static void addHistory(TaskEntity entity) {
-        List<TaskHistoryEntity> history = entity.getHistory();
-        TaskHistoryEntity historyEntity = createTaskHistory(entity);
+        historyEntity = createTaskHistory(entity);
         history.add(historyEntity);
         historyEntity.setExecutedOn(Instant.now());
     }
