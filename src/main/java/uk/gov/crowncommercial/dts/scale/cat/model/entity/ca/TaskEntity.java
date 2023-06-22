@@ -29,9 +29,6 @@ public class TaskEntity {
   @Column(name = "task_name")
   private String name;
 
-  @Column(name="group_id")
-  private Long groupId;
-
   @Column(name = "task_object")
   private String recordType;
 
@@ -64,9 +61,6 @@ public class TaskEntity {
 
   @Column(name = "task_node")
   private String node;
-
-  @Column(name = "task_stage")
-  private String stage;
 
   @Column(name = "task_response")
   private String Response;

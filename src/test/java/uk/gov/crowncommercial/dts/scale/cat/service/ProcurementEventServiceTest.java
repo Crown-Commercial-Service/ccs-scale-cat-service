@@ -186,8 +186,6 @@ class ProcurementEventServiceTest {
   @MockBean
   private DocumentTemplateService documentTemplateService;
 
-  @MockBean
-  private MessageTaskRepo messageTaskRepo;
 
   @MockBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;

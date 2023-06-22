@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.web.context.annotation.RequestScope;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
@@ -53,56 +52,56 @@ public class DocGenValueAdaptors {
   }
 
   @Bean("DocumentValueAdaptorOrgIDType")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgIDType() {
     return (event, requestCache) -> List
         .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getScheme());
   }
 
   @Bean("DocumentValueAdaptorOrgID")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgID() {
     return (event, requestCache) -> List
         .of(getProjectOrgFromConclave(event, requestCache).getIdentifier().getId());
   }
 
   @Bean("DocumentValueAdaptorOrgName")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorOrgName() {
     return (event, requestCache) -> List
         .of(getBuyerOrgName(event, requestCache).getIdentifier().getLegalName());
   }
 
   @Bean("DocumentValueAdaptorPublishDate")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorPublishDate() {
     var formattedDatetime = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     return (event, requestCache) -> List.of(formattedDatetime);
   }
 
   @Bean("DocumentValueAdaptorPublishDateAndTime")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorPublishDateAndTime() {
 
     return (event, requestCache) -> List.of(getPublishDate(event, requestCache));
   }
 
   @Bean("DocumentValueAdaptorProcLead")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLead() {
     return (event, requestCache) -> List
         .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getName());
   }
 
   @Bean("DocumentValueAdaptorProcLeadTel")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLeadTel() {
     return (event, requestCache) -> List
         .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getTelephone());
   }
 
   @Bean("DocumentValueAdaptorProcLeadEmail")
-  @Scope("prototype")
+  @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLeadEmail() {
     return (event, requestCache) -> List
         .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getEmail());

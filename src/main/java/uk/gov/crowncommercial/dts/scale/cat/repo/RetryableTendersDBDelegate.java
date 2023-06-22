@@ -47,17 +47,11 @@ public class RetryableTendersDBDelegate {
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
 
-  private final MessageTaskRepo messageTaskRepo;
-
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
     return procurementProjectRepo.saveAndFlush(procurementProject);
   }
 
-  @TendersRetryable
-  public MessageTask save(final MessageTask messageTask) {
-    return messageTaskRepo.save(messageTask);
-  }
   @TendersRetryable
   public ProcurementEvent save(final ProcurementEvent procurementevent) {
     return procurementEventRepo.save(procurementevent);
