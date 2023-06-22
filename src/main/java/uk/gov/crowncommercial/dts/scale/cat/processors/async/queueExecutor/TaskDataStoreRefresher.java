@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.repository.query.Param;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.config.EnvironmentConfig;
@@ -37,7 +36,14 @@ public class TaskDataStoreRefresher {
 
         char[] status = {'I', 'S'};
         Instant checkTime = Instant.now().minus(ORPHAN_LOAD_INTERVAL , ChronoUnit.MINUTES);
-        loadData(status, checkTime, checkTime, "orphan");
+        List<TaskEntity> orphanTasks = taskRepo.findOrphanTasks(environmentConfig.getServiceInstance(), status, checkTime, checkTime);
+        if(orphanTasks.size() > 0) {
+            log.info("Retrieved {} orphan tasks from the database ", orphanTasks.size());
+            asyncExecutor.loadFromDataStore(orphanTasks);
+        }else{
+            log.trace("No orphan tasks loaded from the database");
+        }
+
     }
 
     @Scheduled(fixedRate = TASK_LOAD_INTERVAL * 60 * 1000, initialDelay = 5*1000)
@@ -48,8 +54,14 @@ public class TaskDataStoreRefresher {
 
         char[] status = {'I', 'S'};
         Instant checkTime = Instant.now().minus(TASK_LOAD_INTERVAL, ChronoUnit.MINUTES);
-        Instant tobeExecutedAt = Instant.now().plus(TASK_LOAD_INTERVAL, ChronoUnit.MINUTES);
-        loadData(status, checkTime, tobeExecutedAt, "pending");
+        Instant tobeExecutedAt = Instant.now().plus(TASK_LOAD_INTERVAL * 60, ChronoUnit.SECONDS);
+        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), status, checkTime, tobeExecutedAt);
+        if (taskEntities.size() > 0) {
+            log.info("Retrieved {}  tasks from the database ", taskEntities.size());
+            asyncExecutor.loadFromDataStore(taskEntities);
+        }else{
+            log.trace("No pending tasks loaded from the database");
+        }
     }
 
     @Transactional
@@ -59,21 +71,14 @@ public class TaskDataStoreRefresher {
 
         char[] status = {'I', 'S'};
         Instant checkTime = Instant.now().minus(1, ChronoUnit.SECONDS);
-        Instant tobeExecutedAt = Instant.now().plus(TASK_LOAD_INTERVAL, ChronoUnit.MINUTES);
-        loadData(status, checkTime, tobeExecutedAt, "initial");
-    }
-
-
-    public void loadData(char[] statusList,
-                         @Param("lastAccessTime")Instant lastAccessTime, @Param("scheduleTime") Instant scheduledAt, String category) {
-
-        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), statusList, lastAccessTime, scheduledAt);
+        Instant tobeExecutedAt = Instant.now().plus(TASK_LOAD_INTERVAL * 60, ChronoUnit.SECONDS);
+        List<TaskEntity> taskEntities = taskRepo.findByNodeAndStatusIn(environmentConfig.getServiceInstance(), status, checkTime, tobeExecutedAt);
         if (taskEntities.size() > 0) {
-            log.info("Retrieved {} {}  tasks from the database ", taskEntities.size(), category);
+            log.info("loading {} pending tasks from the database ", taskEntities.size());
             asyncExecutor.loadFromDataStore(taskEntities);
-        }else{
-            log.trace("No {} tasks loaded from the database", category);
-        }
+        } else
+            log.info("No pending tasks from the database");
+
     }
 
     @EventListener(ApplicationReadyEvent.class)

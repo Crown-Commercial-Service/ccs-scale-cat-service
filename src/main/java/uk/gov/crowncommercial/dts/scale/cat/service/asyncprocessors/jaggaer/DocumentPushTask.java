@@ -35,9 +35,4 @@ public class DocumentPushTask implements TaskConsumer<JaggaerPublishEventData> {
     public String getTaskName() {
         return "DocumentPush";
     }
-
-    @Override
-    public String getTaskCode() {
-        return "publishDocumentPush";
-    }
 }

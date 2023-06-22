@@ -50,13 +50,11 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.*;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskGroupRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.TaskRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ValidationService;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerEventPublish;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.DocumentPushTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.jaggaer.EventPublishTask;
@@ -72,8 +70,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class,
         QueuedAsyncExecutor.class, AsyncExecutionConfig.class, ExperimentalFlagsConfig.class,
     TaskEntityService.class, TaskRetryManager.class, EnvironmentConfig.class,TaskRunner.class,
-        JaggaerEventPublish.class,
-        PublishPrevalidationTask.class,  DocumentPushTask.class, SupplierPushTask.class, EventPublishTask.class})
+        JaggaerEventPublish.class, PublishPrevalidationTask.class,  DocumentPushTask.class, SupplierPushTask.class, EventPublishTask.class})
 @ActiveProfiles("test")
 class EventsControllerTest {
 
@@ -113,13 +110,9 @@ class EventsControllerTest {
   private TaskRepo taskRepo;
 
   @MockBean
-  private RetryableTendersDBDelegate dbDelegate;
-
-  @MockBean
   private TaskGroupRepo taskGroupRepo;
 
-  @MockBean
-  private ValidationService validationService;
+
   @MockBean
   private ProcurementEventService procurementEventService;
 

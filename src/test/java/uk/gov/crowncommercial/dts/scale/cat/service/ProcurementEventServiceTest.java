@@ -204,8 +204,6 @@ class ProcurementEventServiceTest {
   @MockBean
   private EventTransitionService eventTransitionService;
 
-
-
   @Autowired
   private SupplierStoreFactory storeFactory;
 

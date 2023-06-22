@@ -33,9 +33,4 @@ public class EventPublishTask implements TaskConsumer<JaggaerPublishEventData> {
     public String getTaskName() {
         return "SupplierPush";
     }
-
-    @Override
-    public String getTaskCode() {
-        return "publishEvent";
-    }
 }

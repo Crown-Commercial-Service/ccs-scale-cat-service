@@ -6,6 +6,7 @@ import org.hibernate.annotations.Type;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import javax.persistence.*;
+import java.time.Instant;
 
 @Entity
 @Table(name = "message_task")
@@ -14,7 +15,7 @@ import javax.persistence.*;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class MessageAsync {
+public class MessageTask {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +27,7 @@ public class MessageAsync {
     Message messageRequest;
 
     @Column(name = "event_id")
-    Integer eventId;
+    Integer eventType;
 
     @Embedded
     private Timestamps timestamps;
