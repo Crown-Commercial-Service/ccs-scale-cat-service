@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jsoup.Jsoup;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.jsoup.Jsoup;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
@@ -96,8 +96,8 @@ public class GCloudAssessmentsController extends AbstractRestController {
                     // Start with the generic information
                     SimpleDateFormat dateFormat = new SimpleDateFormat(CSV_DATE_FORMAT);
                     String exportTime = dateFormat.format(new Date());
-
                     // Sanitise the results summary to remove the HTML tags
+
                     String sanitisedResultsSummary = StringUtils.normalizeSpace(Jsoup.parse(assessmentModel.getResultsSummary()).text());
                     if (sanitisedResultsSummary.contains(",") || sanitisedResultsSummary.contains("\"") || sanitisedResultsSummary.contains("'")) {
                         sanitisedResultsSummary = sanitisedResultsSummary.replace("\"", "\"\"");
