@@ -36,4 +36,8 @@ public interface InheritanceProcessor <T>{
             }
         }
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> release/int
 }

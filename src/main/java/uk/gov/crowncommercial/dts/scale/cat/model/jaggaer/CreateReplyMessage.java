@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer;
 
+import com.amazonaws.services.s3.model.Owner;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -26,7 +27,7 @@ public class CreateReplyMessage {
   
   private SuppliersList supplierList;
   
-  private OperatorUser operatorUser;
+  private OwnerUser operatorUser;
   
   private String parentMessageId;
   

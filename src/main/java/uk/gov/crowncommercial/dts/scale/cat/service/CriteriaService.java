@@ -155,6 +155,10 @@ public class CriteriaService {
     if(null != question.getNonOCDS().getTimelineDependency() && null != question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()){
              requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()));
              requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getTimelineDependency().getNonOCDS().getAnswered());
+<<<<<<< HEAD
+=======
+
+>>>>>>> release/int
     }
     validateQuestionsValues(group, requirement, options);
     requirement.getNonOCDS()
@@ -400,5 +404,15 @@ public class CriteriaService {
               .titles(o.getTableDefinition().getTitles()).data(o.getTableDefinition().getData()));
     }
     return questionNonOCDSOptions;
+  }
+
+  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
+    return options.stream()
+            .map(questionNonOCDSOptions -> Option.builder()
+                    .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                            : questionNonOCDSOptions.getSelected())
+                    .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                    .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
+            .collect(Collectors.toList());
   }
 }
