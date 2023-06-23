@@ -14,7 +14,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
-import javax.validation.ValidationException;
+import jakarta.validation.ValidationException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;

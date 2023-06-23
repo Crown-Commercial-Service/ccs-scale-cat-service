@@ -11,14 +11,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
-import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.RetryableException;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import static java.util.Map.entry;

@@ -11,9 +11,7 @@ import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.SerializationUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +38,7 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 /**
  *

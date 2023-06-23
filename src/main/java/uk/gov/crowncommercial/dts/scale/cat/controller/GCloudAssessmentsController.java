@@ -13,7 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAss
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
