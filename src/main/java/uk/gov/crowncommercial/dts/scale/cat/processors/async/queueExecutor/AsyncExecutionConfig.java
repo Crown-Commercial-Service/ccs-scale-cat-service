@@ -6,14 +6,14 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 public class AsyncExecutionConfig {
-    public static final int poolSize = 4;
+
     @Bean("comExecutor")
     public ThreadPoolTaskExecutor getJaggaerExecutor(){
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(poolSize);
-        executor.setMaxPoolSize(poolSize);
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
         executor.setThreadGroupName("JGR");
-        executor.setQueueCapacity(poolSize * 4);
+        executor.setQueueCapacity(128);
         executor.setRejectedExecutionHandler(new BlockCallerExecutionPolicy());
         executor.initialize();
         return executor;

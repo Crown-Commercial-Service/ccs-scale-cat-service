@@ -1,13 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.mapper;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-
-import java.lang.reflect.InvocationTargetException;
 import java.util.stream.Collectors;
+
 
 @RequiredArgsConstructor
 @Component

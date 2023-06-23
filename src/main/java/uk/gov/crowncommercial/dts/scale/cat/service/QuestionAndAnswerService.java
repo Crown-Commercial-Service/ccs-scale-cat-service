@@ -122,6 +122,26 @@ public class QuestionAndAnswerService {
     response.setQandA(covertedQandAList);
     return response;
   }
+  
+  //CAS-1066
+  public QandAWithProjectDetails getQuestionAndAnswerForSupplierByEvent(final Integer projectId,
+      final String eventId) {
+    //Validate event
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var covertedQandAList =
+        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+    var agreementNo = procurementEvent.getProject().getCaNumber();
+    var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
+    var lotDetails =
+        agreementsService.getLotDetails(agreementNo, procurementEvent.getProject().getLotNumber());
+    var response = new QandAWithProjectDetails().agreementId(agreementNo)
+        .projectId(procurementEvent.getProject().getId())
+        .projectName(procurementEvent.getProject().getProjectName())
+        .agreementName(agreementDetails.getName())
+        .lotId(procurementEvent.getProject().getLotNumber()).lotName(lotDetails.getName());
+    response.setQandA(covertedQandAList);
+    return response;
+  }
 
   private QandA convertQandA(QuestionAndAnswer questionAndAnswer) {
     return new QandA().id(BigDecimal.valueOf(questionAndAnswer.getId()))

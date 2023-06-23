@@ -10,8 +10,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
-import uk.gov.crowncommercial.dts.scale.cat.processors.async.*;
-import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.TaskUtils;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.RetryableException;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventService;
 import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
@@ -58,8 +58,6 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
             }catch(JaggaerApplicationException jae){
                 if(jae.getMessage().contains("Code: [-998]")){
                     throw new RetryableException("-998", jae.getMessage(), jae);
-                }else if(jae.getMessage().contains("Code: [-999]")){
-                    throw new RetryableException("-999", jae.getMessage(), jae);
                 }else
                     throw jae;
             }
@@ -71,21 +69,26 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
         }
     }
 
-    @Override
-    public List<ErrorHandler> getErrorHandlers() {
-        return ErrorHandlers.jaggaerHandlers;
-    }
-
 
     @SneakyThrows
     private ProcurementEvent getEvent(JaggaerSupplierEventData data) {
-        return TaskUtils.get(()-> dbDelegate.findProcurementEventById(data.getEventId()).orElse(null), 6);
+        var event = dbDelegate.findProcurementEventById(data.getEventId()).orElse(null);
+        if (null != event)
+            return event;
+
+        int i = 0;
+        while (null == event && i < 6) {
+            Thread.sleep(1000);
+            i++;
+            event = dbDelegate.findProcurementEventById(data.getEventId()).orElse(null);
+        }
+        return event;
     }
-//
-//    @Override
-//    public boolean canRetry(String errorCode, RetryableException re) {
-//        return re.getErrorCode().equals("-998");
-//    }
+
+    @Override
+    public boolean canRetry(String errorCode, RetryableException re) {
+        return re.getErrorCode().equals("-998");
+    }
 
     @Override
     public String getIdentifier(JaggaerSupplierEventData data) {

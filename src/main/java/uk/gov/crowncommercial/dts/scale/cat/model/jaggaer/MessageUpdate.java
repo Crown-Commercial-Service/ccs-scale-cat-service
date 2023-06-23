@@ -11,5 +11,5 @@ public class MessageUpdate {
     Integer messageId;
     String objectReferenceCode;
     String objectType;
-    OperatorUser operatorUser;
+    OwnerUser operatorUser;
 }
