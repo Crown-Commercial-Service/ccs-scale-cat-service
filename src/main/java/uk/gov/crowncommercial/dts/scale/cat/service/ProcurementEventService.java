@@ -37,7 +37,6 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.DocumentUploadCallable;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.RetrieveDocumentCallable;
-import uk.gov.crowncommercial.dts.scale.cat.service.validators.ProcurementEventValidator;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -104,7 +103,6 @@ public class ProcurementEventService implements EventService {
     private final ValidationService validationService;
     private final SupplierService supplierService;
     private final DocumentConfig documentConfig;
-    private final ProcurementEventValidator eventValidator;
     private final AssessmentService assessmentService;
     private final DocumentUploadService documentUploadService;
     private final DocumentTemplateService dTemplateService;
@@ -980,62 +978,6 @@ public class ProcurementEventService implements EventService {
     }
 
 
-    @Transactional
-    public ProcurementEvent preValidatePublish(final Integer procId, final String eventId,
-                             final PublishDates publishDates, final String principal) {
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = getRfxWithSuppliers(procurementEvent.getExternalEventId());
-        var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-                .get(exportRfxResponse.getRfxSetting().getStatusCode());
-
-        if (TenderStatus.PLANNED != status) {
-            throw new IllegalArgumentException(
-                    "You cannot publish an event unless it is in a 'planned' state");
-        }
-        validationService.validatePublishDates(publishDates);
-        eventValidator.checkPreConditions(procurementEvent);
-        return procurementEvent;
-    }
-
-    @Transactional
-    public void publish(final Integer procId, final String eventId,
-                             final PublishDates publishDates, final String principal) {
-
-        var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
-                .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
-                .getUserId();
-
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = getRfxWithSuppliers(procurementEvent.getExternalEventId());
-        var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-                .get(exportRfxResponse.getRfxSetting().getStatusCode());
-
-        if (TenderStatus.PLANNED != status) {
-            throw new IllegalArgumentException(
-                    "You cannot publish an event unless it is in a 'planned' state");
-        }
-        jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
-        updateStatusAndDates(principal, procurementEvent);
-    }
-
-    @Transactional
-    public int jaggaerSupplierRefresh(final Integer procId, final String eventId,
-                              final String principal) {
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = getRfxWithSuppliers(procurementEvent.getExternalEventId());
-
-        if(procurementEvent.getRefreshSuppliers()){
-            return jaggaerSupplierRefresh(procId, eventId, principal, procurementEvent, exportRfxResponse);
-        }
-        return 0;
-    }
-
-    @Transactional
-    public void uploadDocument(final Integer procId, final String eventId, final String principal) {
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        retrieveAndUploadDocuments(principal, procurementEvent);
-    }
-
     /**
      * Publish an Rfx in Jaggaer
      *
@@ -1071,7 +1013,7 @@ public class ProcurementEventService implements EventService {
         updateStatusAndDates(principal, procurementEvent);
     }
 
-    public int jaggaerSupplierRefresh(Integer procId, String eventId, String principal, ProcurementEvent procurementEvent, ExportRfxResponse exportRfxResponse) {
+    public void jaggaerSupplierRefresh(Integer procId, String eventId, String principal, ProcurementEvent procurementEvent, ExportRfxResponse exportRfxResponse) {
         Set<OrganisationMapping> agreementSuppliers = supplierService.getSuppliersForLot(procurementEvent.getProject().getCaNumber(), procurementEvent.getProject().getLotNumber());
         List<Supplier> jaggaerSuppliers = Objects.nonNull(exportRfxResponse.getSuppliersList()) ? exportRfxResponse.getSuppliersList().getSupplier() : new ArrayList();
 
@@ -1092,18 +1034,15 @@ public class ProcurementEventService implements EventService {
 
                 EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
                 addSuppliers(procId, eventId, newEventSuppliers, false, principal);
-                return newEventSuppliers.getSuppliers().size();
             } else {
                 log.debug("{} suppliers will be re-pushed to Jaggaer", agreementSuppliers.size());
                 List<OrganisationMapping> newAggrementSuppliers = agreementSuppliers.stream().collect(Collectors.toList());
                 EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
                 newEventSuppliers.setOverwriteSuppliers(Boolean.TRUE);
                 addSuppliers(procId, eventId, newEventSuppliers, true, principal);
-                return agreementSuppliers.size();
             }
         }else{
             log.info("No change in suppliers detected, suppliers will not be refreshed in Jaggaer {}/{}", agreementSuppliers.size(), jaggaerSuppliers.size());
-            return 0;
         }
     }
 

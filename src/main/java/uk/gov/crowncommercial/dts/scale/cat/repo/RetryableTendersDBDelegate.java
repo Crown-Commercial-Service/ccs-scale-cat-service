@@ -47,31 +47,16 @@ public class RetryableTendersDBDelegate {
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
 
-  private final MessageTaskRepo messageTaskRepo;
-
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
     return procurementProjectRepo.saveAndFlush(procurementProject);
   }
 
   @TendersRetryable
-  public MessageAsync save(final MessageAsync messageAsync) {
-    return messageTaskRepo.save(messageAsync);
-  }
-  @TendersRetryable
   public ProcurementEvent save(final ProcurementEvent procurementevent) {
     return procurementEventRepo.save(procurementevent);
   }
 
-  @TendersRetryable
-  public Optional<MessageAsync> findMessageTaskById(final Integer id) {
-    return messageTaskRepo.findById(id);
-  }
-
-  @TendersRetryable
-  public List<MessageAsync> getMessagesByEventId(final Integer id) {
-    return messageTaskRepo.findAllByEventId(id);
-  }
   @TendersRetryable
   public Optional<ProcurementProject> findProcurementProjectById(final Integer id) {
     return procurementProjectRepo.findById(id);

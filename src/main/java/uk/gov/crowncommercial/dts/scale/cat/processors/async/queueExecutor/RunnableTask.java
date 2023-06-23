@@ -4,24 +4,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 
-import java.util.Objects;
-import java.util.function.Consumer;
-
 @RequiredArgsConstructor
 @Slf4j
 public class RunnableTask implements Runnable {
     private final Task task;
     private final ApplicationContext ctx;
-    private final Consumer<Task> onComplete;
 
     @Override
     public void run() {
-        try {
-            TaskRunner runner = ctx.getBean(TaskRunner.class);
-            runner.runTask(task);
-        }finally {
-            onComplete.accept(task);
-        }
+        TaskRunner runner = ctx.getBean(TaskRunner.class);
+        runner.runTask(task);
     }
 
     public void execute() {
@@ -33,7 +25,11 @@ public class RunnableTask implements Runnable {
     public boolean equals(Object obj) {
         if(null != obj && obj instanceof RunnableTask){
             RunnableTask cmp = (RunnableTask) obj;
-            return Objects.equals(task.getId(), cmp.task.getId());
+            if(null == task.getId() || null == cmp.task.getId()){
+                return false;
+            }else{
+                return task.getId().longValue() == cmp.task.getId().longValue();
+            }
         }
         return false;
     }
