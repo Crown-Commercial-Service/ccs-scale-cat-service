@@ -55,10 +55,6 @@ public class TimelineDependency {
                 }
         }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> release/int
     }
 
     @Value

@@ -15,10 +15,4 @@ public class RequirementGroupAsIsProcessor implements InheritanceProcessor<Requi
         processRequirments(requirementGroup, questions,ASIS);
     }
 
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> release/int
 }
