@@ -1,7 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
@@ -24,6 +26,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(exclude = {"project","capabilityAssessmentSuppliers"})
 public class ProcurementEvent {
@@ -96,7 +99,7 @@ public class ProcurementEvent {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "procurement_template_payload")
-  DataTemplate procurementTemplatePayload;
+  String procurementTemplatePayload;
 
   @Column(name="template_id")
   Integer templateId;
@@ -114,6 +117,38 @@ public class ProcurementEvent {
 
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
+  }
+
+  public DataTemplate getProcurementTemplatePayload() {
+    DataTemplate templateModel = null;
+
+    if (procurementTemplatePayload != null) {
+      try {
+        ObjectMapper objectMapper = new ObjectMapper();
+        templateModel = objectMapper.readValue(procurementTemplatePayload, DataTemplate.class);
+      }
+      catch (Exception ex) {
+        log.error("Error converting JSON to DataTemplate", ex);
+      }
+    }
+
+    return templateModel;
+  }
+
+  public String setProcurementTemplatePayload(DataTemplate templateModel) {
+    String json = null;
+
+    if (templateModel != null) {
+      try {
+        ObjectMapper objectMapper = new ObjectMapper();
+        json = objectMapper.writeValueAsString(templateModel);
+      }
+      catch (Exception ex) {
+        log.error("Error converting DataTemplate to JSON", ex);
+      }
+    }
+
+    return json;
   }
 
   /**
