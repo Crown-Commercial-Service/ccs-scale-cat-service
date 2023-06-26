@@ -5,9 +5,10 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.creat
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updateTimestamps;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
-import jakarta.validation.ValidationException;
+import javax.validation.ValidationException;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

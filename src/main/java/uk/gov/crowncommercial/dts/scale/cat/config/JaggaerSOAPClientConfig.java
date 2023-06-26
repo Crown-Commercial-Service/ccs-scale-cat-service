@@ -3,8 +3,6 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import java.util.Base64;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.dynamic.HttpClientTransportDynamic;
-import org.eclipse.jetty.io.ClientConnector;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,14 +35,13 @@ public class JaggaerSOAPClientConfig {
   @Bean("jaggaerSOAPWebClient")
   public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
 
-    SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
     sslContextFactory.setExcludeProtocols("TLSv1.3");
 
-    ClientConnector clientConnector = new ClientConnector();
-    clientConnector.setSslContextFactory(sslContextFactory);
-
-    HttpClient httpClient = new HttpClient(new HttpClientTransportDynamic(clientConnector));
-    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
+    ClientHttpConnector jettyHttpClientConnector =
+        new JettyClientHttpConnector(new HttpClient(sslContextFactory));
 
     var authHeader =
         "Basic " + Base64.getEncoder().encodeToString((clientId + ':' + clientSecret).getBytes());

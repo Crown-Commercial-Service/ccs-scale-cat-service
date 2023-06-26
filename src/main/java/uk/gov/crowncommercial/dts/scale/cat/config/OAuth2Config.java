@@ -5,29 +5,28 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * OAuth2 / JWT web security configuration
  */
-@Configuration
+// @EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity
-@EnableMethodSecurity
 @RequiredArgsConstructor
 @Slf4j
-public class OAuth2Config {
+public class OAuth2Config extends WebSecurityConfigurerAdapter {
 
   private final UnauthorizedResponseDecorator unauthorizedResponseDecorator;
   private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
+
+  // TODO: Verify and move to SSM
   private static final String[] CAT_ROLES =
       new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
 
@@ -35,21 +34,22 @@ public class OAuth2Config {
 
   private static final String[] LD_AND_CAT_ROLES = ArrayUtils.addAll(CAT_ROLES, LD_ROLES);
 
-  @Bean
-  protected SecurityFilterChain configure(final HttpSecurity http) throws Exception {
+  @Override
+  protected void configure(final HttpSecurity http) throws Exception {
 
     log.info("Configuring resource server...");
 
-    http.authorizeHttpRequests(authz ->
+    // @formatter:off
+    http.authorizeRequests(authz ->
       authz
-        .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
-        .requestMatchers("/tenders/supplier/**").permitAll()
-        .requestMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
-        .requestMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
-        .requestMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
-        .requestMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
-        .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_ROLES)
-        .requestMatchers("/error/**").hasAnyAuthority(
+        .antMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/tenders/supplier/**").permitAll()
+        .antMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
+        .antMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
+        .antMatchers("/tenders/orgs/**").hasAnyAuthority(LD_ROLES)
+        .antMatchers("/error/**").hasAnyAuthority(
             Stream.concat(Arrays.stream(CAT_ROLES), Arrays.stream(LD_ROLES)).toArray(String[]::new))
         .anyRequest().denyAll()
     )
@@ -59,7 +59,7 @@ public class OAuth2Config {
       .accessDeniedHandler(accessDeniedResponseDecorator)
       .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
 
-    return http.build();
+    // @formatter:on
   }
 
   @Bean

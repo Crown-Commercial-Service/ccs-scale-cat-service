@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+//import org.w3c.dom.events.Event;
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
 
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -39,8 +40,8 @@ import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.Ret
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
-import jakarta.transaction.Transactional;
-import jakarta.validation.ValidationException;
+import javax.transaction.Transactional;
+import javax.validation.ValidationException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;

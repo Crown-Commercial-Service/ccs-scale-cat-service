@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 

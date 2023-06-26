@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.documentupload;
 
-import jakarta.transaction.Transactional;
+import javax.transaction.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;

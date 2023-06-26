@@ -26,7 +26,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentKey;
@@ -40,7 +39,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @WebMvcTest(DocumentTemplatesController.class)
 @Import({GlobalErrorHandler.class, TendersAPIModelUtils.class, JaggaerAPIConfig.class,
-    ApplicationFlagsConfig.class, OAuth2Config.class})
+    ApplicationFlagsConfig.class})
 @ActiveProfiles("test")
 class DocumentTemplatesControllerTest {
 

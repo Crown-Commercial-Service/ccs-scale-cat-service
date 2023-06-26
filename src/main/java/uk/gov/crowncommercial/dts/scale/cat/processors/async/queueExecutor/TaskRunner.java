@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncConsumer;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.RetryableException;
 
-import jakarta.transaction.Transactional;
+import javax.transaction.Transactional;
 
 @Component
 @Scope("prototype")

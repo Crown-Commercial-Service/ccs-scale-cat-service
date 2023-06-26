@@ -1,7 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import java.util.Set;
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
@@ -22,6 +22,10 @@ public class AssessmentTaxon {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "assessment_taxon_id")
   Integer id;
+
+//  @ManyToOne(fetch = FetchType.EAGER)
+//  @JoinColumn(name = "assessment_tool_id", insertable = false, updatable = false)
+//  AssessmentTool tool;
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "submission_group_id", referencedColumnName = "submission_group_id")

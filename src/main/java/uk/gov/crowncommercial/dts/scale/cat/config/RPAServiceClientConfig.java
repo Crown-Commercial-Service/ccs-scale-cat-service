@@ -8,9 +8,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
-import org.eclipse.jetty.client.dynamic.HttpClientTransportDynamic;
 import org.eclipse.jetty.http.HttpField;
-import org.eclipse.jetty.io.ClientConnector;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,20 +33,20 @@ public class RPAServiceClientConfig {
   @Bean("rpaServiceWebClient")
   public WebClient webClient() {
 
-    SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
+    var sslContextFactory = new SslContextFactory.Client(true);
+
+    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
     sslContextFactory.setExcludeProtocols("TLSv1.3");
 
-    ClientConnector clientConnector = new ClientConnector();
-    clientConnector.setSslContextFactory(sslContextFactory);
+    // delay
+    var client = new HttpClient(sslContextFactory) {
 
-    HttpClient httpClient = new HttpClient(new HttpClientTransportDynamic(clientConnector)) {
       @Override
       public Request newRequest(final URI uri) {
         return enhance(super.newRequest(uri));
       }
     };
-
-    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
+    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .baseUrl(rpaAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)

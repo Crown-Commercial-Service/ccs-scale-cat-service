@@ -1,14 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import java.time.Instant;
 import java.util.Set;
 
@@ -26,6 +27,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(exclude = {"project","capabilityAssessmentSuppliers"})
+@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 public class ProcurementEvent {
 
   @Id
@@ -37,7 +39,7 @@ public class ProcurementEvent {
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
-  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
   Set<SupplierSelection> capabilityAssessmentSuppliers;
 
   @Column(name = "ocds_authority_name")
@@ -94,7 +96,7 @@ public class ProcurementEvent {
   @Column(name = "updated_at")
   Instant updatedAt;
 
-  @JdbcTypeCode(SqlTypes.JSON)
+  @Type(type = "jsonb")
   @Column(name = "procurement_template_payload")
   DataTemplate procurementTemplatePayload;
 

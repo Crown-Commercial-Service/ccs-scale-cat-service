@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.*;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldDefaults;
