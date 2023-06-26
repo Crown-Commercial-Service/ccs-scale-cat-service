@@ -135,7 +135,7 @@ public class ProcurementEvent {
     return templateModel;
   }
 
-  public String setProcurementTemplatePayload(DataTemplate templateModel) {
+  public void setProcurementTemplatePayload(DataTemplate templateModel) {
     String json = null;
 
     if (templateModel != null) {
@@ -148,7 +148,7 @@ public class ProcurementEvent {
       }
     }
 
-    return json;
+    procurementTemplatePayload = json;
   }
 
   /**
