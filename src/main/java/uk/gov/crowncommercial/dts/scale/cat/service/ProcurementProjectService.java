@@ -3,8 +3,18 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.opensearch.data.client.orhlc.NativeSearchQuery;
+import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.index.query.MultiMatchQueryBuilder;
+import org.opensearch.index.query.QueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.index.similarity.ScriptedSimilarity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
+import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -17,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -57,6 +68,12 @@ public class ProcurementProjectService {
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
+
+  private final ElasticsearchOperations elasticsearchOperations;
+
+  private static final String PROJECT_NAME = "projectName";
+  private static final String PROJECT_DESCRIPTION = "description";
+  private static final String BOOTFULSEARCH = "bootfulsearch";
 
   /**
    * SCC-440/441
@@ -627,6 +644,7 @@ public class ProcurementProjectService {
         "Could not find current event for project " + project.getId());
   }
 
+
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
       final String principal) {
     retryableTendersDBDelegate
@@ -710,5 +728,20 @@ public class ProcurementProjectService {
                     projectId, event.getEventID(), terminationType, principal, false);
               });
     }
+  }
+
+  public ProjectPublicSearchResult getProjectSummery(final String principal, final String agreementId,final String keyword,
+                                            String page, String pageSize) {
+    ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
+    ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
+    searchCriteria.setKeyword(keyword);
+    PageRequest pageRequest = new PageRequest(page.isEmpty() ? 1:Integer.parseInt(page),pageSize.isEmpty() ? 10:Integer.parseInt(pageSize), new Sort(Order.));
+    if(!keyword.isEmpty()) {
+      QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(keyword, PROJECT_NAME, PROJECT_DESCRIPTION);
+      Query searchQuery= new NativeSearchQueryBuilder().withFilter(queryBuilder).withPageable(new PageRequest(Inte)).build();
+      SearchHits<ProcurementEventSearch>  procurementEventSearchSearchHits = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class, IndexCoordinates.of(BOOTFULSEARCH));
+    }
+    projectPublicSearchResult.setSearchCriteria(searchCriteria);
+  return projectPublicSearchResult;
   }
 }
