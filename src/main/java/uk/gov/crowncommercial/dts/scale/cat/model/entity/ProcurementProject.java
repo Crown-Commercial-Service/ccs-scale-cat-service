@@ -17,12 +17,17 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "procurementEvents")
 public class ProcurementProject {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "project_id")
   Integer id;
+
+  @ToString.Exclude
+  @OneToMany(fetch = FetchType.EAGER, mappedBy = "project")
+  Set<ProcurementEvent> procurementEvents;
 
   @Column(name = "commercial_agreement_number")
   String caNumber;
