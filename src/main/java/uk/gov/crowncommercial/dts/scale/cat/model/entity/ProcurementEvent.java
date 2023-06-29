@@ -36,11 +36,11 @@ public class ProcurementEvent {
   @Column(name = "event_id")
   Integer id;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
-  @OneToMany(mappedBy = "procurementEvent", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
   Set<SupplierSelection> capabilityAssessmentSuppliers;
 
   @Column(name = "ocds_authority_name")
