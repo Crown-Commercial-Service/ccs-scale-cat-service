@@ -145,8 +145,10 @@ public class ProcurementEventService implements EventService {
         var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
+        Set<ProcurementEvent> projectEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+
         // check any valid events existed before
-        Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
+        Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(projectEvents) ? getExistingValidEvents(projectEvents) : Optional.empty();
 
 
         if (!existingEventOptional.isPresent()) {
@@ -261,8 +263,8 @@ public class ProcurementEventService implements EventService {
             eventBuilder.templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue());
         }
 
-        if(CollectionUtils.isNotEmpty(project.getProcurementEvents())){
-            setRefreshSuppliersForEvent(eventBuilder, project.getProcurementEvents());
+        if(CollectionUtils.isNotEmpty(projectEvents)){
+            setRefreshSuppliersForEvent(eventBuilder, projectEvents);
         }
 
 
@@ -368,9 +370,9 @@ public class ProcurementEventService implements EventService {
 
     private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
         // Find a list of any existing, valid events for this project and return the first found (as there should never be more than one)
-        ProcurementProject project = retryableTendersDBDelegate.findProcurementProjectById(projectId).orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+        Set<ProcurementEvent> projectEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
 
-        Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
+        Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(projectEvents) ? getExistingValidEvents(projectEvents) : Optional.empty();
 
         if (existingEventOptional.isPresent()) {
             return existingEventOptional.get();

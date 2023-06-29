@@ -444,9 +444,17 @@ public class ProcurementProjectService {
                                                       PageRequest.of(Objects.nonNull(page)?Integer.valueOf(page):0, Objects.nonNull(pageSize)?Integer.valueOf(pageSize):20, Sort.by("project.procurementEvents.updatedAt").descending()));
 
     if (!CollectionUtils.isEmpty(projectUserMappings)) {
-      var externalEventIdsAllProjects = projectUserMappings.stream()
-          .flatMap(pum -> pum.getProject().getProcurementEvents().stream())
-          .map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+      Set<String> externalEventIdsAllProjects = new HashSet<>();
+
+      projectUserMappings.forEach(pum -> {
+        Integer projectId = pum.getProject().getId();
+        Set<ProcurementEvent> projectEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(projectId);
+
+        if (projectEvents != null) {
+          externalEventIdsAllProjects.addAll(projectEvents.stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet()));
+        }
+      });
+
       var projectUserRfxs = jaggaerService.searchRFx(externalEventIdsAllProjects);
       
       return projectUserMappings.stream()
@@ -618,13 +626,15 @@ public class ProcurementProjectService {
    * status is not captured in the Tenders DB currently).
    */
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
+    Set<ProcurementEvent> projectEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(project.getId());
 
-    var event = project.getProcurementEvents().stream().findFirst();
-    if (event.isPresent()) {
-      return event.get();
+    if (projectEvents != null) {
+      var event = projectEvents.stream().findFirst();
+      if (event.isPresent()) {
+        return event.get();
+      }
     }
-    throw new UnhandledEdgeCaseException(
-        "Could not find current event for project " + project.getId());
+    throw new UnhandledEdgeCaseException("Could not find current event for project " + project.getId());
   }
 
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,

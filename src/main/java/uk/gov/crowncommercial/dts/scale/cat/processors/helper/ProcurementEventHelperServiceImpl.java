@@ -1,11 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.processors.helper;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType;
 import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import java.util.Comparator;
 import java.util.Optional;
@@ -14,12 +16,15 @@ import java.util.Set;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.CLOSED_STATUS_LIST;
 
 @Component
+@RequiredArgsConstructor
 public class ProcurementEventHelperServiceImpl implements ProcurementEventHelperService {
+    private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+
     @Override
     public Optional<ProcurementEvent> getParentEvent(ProcurementEvent event, Integer parentTemplate){
         ProcurementProject project = event.getProject();
-        Set<ProcurementEvent> events = project.getProcurementEvents();
-        return events.stream().sorted(Comparator.comparing(ProcurementEvent::getCreatedAt).reversed()).
+        Set<ProcurementEvent> projectEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(project.getId());
+        return projectEvents.stream().sorted(Comparator.comparing(ProcurementEvent::getCreatedAt).reversed()).
                 filter(t-> filterByTemplateId(t, event.getEventType(), parentTemplate)).findFirst();
     }
 
