@@ -442,7 +442,7 @@ public class JaggaerService {
     this.uploadDocument(multipartFile, update);
     Instant retrieveDocEnd= Instant.now();
 
-      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ",event.getProject().getId(), event.getEventID(),fileName,
+      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ", event.getProject().getId(), event.getEventID(),fileName,
               Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
 
 

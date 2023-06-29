@@ -40,7 +40,7 @@ public class ProcurementEvent {
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
-  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
   Set<SupplierSelection> capabilityAssessmentSuppliers;
 
   @Column(name = "ocds_authority_name")

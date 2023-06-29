@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.hibernate.Hibernate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -1187,6 +1188,7 @@ public class ProcurementEventService implements EventService {
     private ProcurementEvent addSuppliersToTendersDB(final ProcurementEvent event,
                                                      final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite,
                                                      final String principal) {
+        Hibernate.initialize(event.getCapabilityAssessmentSuppliers());
 
         if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
             event.getCapabilityAssessmentSuppliers()
@@ -1206,58 +1208,6 @@ public class ProcurementEventService implements EventService {
 
         return retryableTendersDBDelegate.save(event);
     }
-
-    /**
-     * Add/overwrite suppliers in Jaggaer.
-     *
-     * @param event
-     * @param supplierOrgMappings
-     * @param overwrite
-     */
-//  private void addSuppliersToJaggaer(final ProcurementEvent event,
-//      final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite) {
-//
-//    OperationCode operationCode;
-//    if (overwrite) {
-//      operationCode = OperationCode.UPDATE_RESET;
-//    } else {
-//      operationCode = OperationCode.CREATEUPDATE;
-//    }
-//
-//    var suppliersList = supplierOrgMappings.stream().map(org -> {
-//      var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-//      return Supplier.builder().companyData(companyData).build();
-//    }).collect(Collectors.toList());
-//
-//    // Build Rfx and update
-//    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-//        .rfxReferenceCode(event.getExternalReferenceId()).build();
-//    var rfx = Rfx.builder().rfxSetting(rfxSetting)
-//        .suppliersList(SuppliersList.builder().supplier(suppliersList).build()).build();
-//    jaggaerService.createUpdateRfx(rfx, operationCode);
-//  }
-
-    /**
-     * Get suppliers on an event from Tenders DB.
-     *
-     * @param event
-     * @return
-     */
-//  private EventSuppliers getSuppliersFromTendersDB(final ProcurementEvent event) {
-//
-//    var suppliers = event.getCapabilityAssessmentSuppliers().stream().map(s -> {
-//      var orgIdentity =
-//          conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getCasOrganisationId());
-//
-//      var orgRef = new OrganizationReference1().id(s.getOrganisationMapping().getCasOrganisationId());
-//      orgIdentity.ifPresentOrElse(or -> orgRef.name(or.getIdentifier().getLegalName()),
-//          () -> log.warn(String.format(ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE,
-//              s.getOrganisationMapping().getCasOrganisationId())));
-//      return orgRef;
-//    }).collect(Collectors.toList());
-//    return new EventSuppliers().suppliers(suppliers)
-//        .justification(event.getSupplierSelectionJustification());
-//  }
 
     /**
      * Get suppliers on an event from Jaggaer.
@@ -1330,50 +1280,6 @@ public class ProcurementEventService implements EventService {
         throw new ResourceNotFoundException(
                 String.format("Supplier not found with the given id {}", supplierId));
     }
-
-    /**
-     * Delete supplier from Tenders DB.
-     *
-     * @param event
-     * @param supplierOrgMapping
-     * @param principal
-     */
-//  private void deleteSupplierFromTendersDB(final ProcurementEvent event,
-//      final OrganisationMapping supplierOrgMapping, final String principal) {
-//
-//    event.setUpdatedAt(Instant.now());
-//    event.setUpdatedBy(principal);
-//    retryableTendersDBDelegate.save(event);
-//
-//    var supplierSelection = event.getCapabilityAssessmentSuppliers().stream()
-//        .filter(s -> s.getOrganisationMapping().getId().equals(supplierOrgMapping.getId()))
-//        .findFirst().orElseThrow();
-//
-//    retryableTendersDBDelegate.delete(supplierSelection);
-//  }
-
-    /**
-     * Delete supplier from Jaggaer.
-     *
-     * @param event
-     */
-//  private void deleteSupplierFromJaggaer(final ProcurementEvent event,
-//      final OrganisationMapping supplierOrgMapping) {
-//
-//    // Get all current suppliers on Rfx and remove the one we want to delete
-//    var existingRfx = jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
-//    List<Supplier> updatedSuppliersList = existingRfx.getSuppliersList().getSupplier().stream()
-//        .filter(
-//            s -> !s.getCompanyData().getId().equals(supplierOrgMapping.getExternalOrganisationId()))
-//        .collect(Collectors.toList());
-//    var suppliersList = SuppliersList.builder().supplier(updatedSuppliersList).build();
-//
-//    // Build Rfx and update
-//    var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-//        .rfxReferenceCode(event.getExternalReferenceId()).build();
-//    var rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(suppliersList).build();
-//    jaggaerService.createUpdateRfx(rfx, OperationCode.UPDATE_RESET);
-//  }
 
     DocumentUpload findDocumentUploadInEvent(final ProcurementEvent event, final String documentId) {
         return event.getDocumentUploads().stream()
