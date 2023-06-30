@@ -141,8 +141,9 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjectsSummary invoked on behalf of principal: {}", principal);
-
+    int pageNo = page != null ? Integer.parseInt(page) : 0;
+    int size = pageSize != null ? Integer.parseInt(pageSize) : 0;
     return procurementProjectService.getProjectSummery(principal, agreementId, keyword,
-     page, pageSize);
+     pageNo, size);
   }
 }
