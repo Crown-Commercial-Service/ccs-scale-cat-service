@@ -136,7 +136,7 @@ public class ProjectsController extends AbstractRestController {
   public ProjectPublicSearchResult getProjectsSummary(@RequestParam(name = "agreement-id", required = true) final String agreementId,
                                                    @RequestParam(name = "keyword", required = false) final String keyword,
                                                    @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
-                                                   @RequestParam(name = "page-size",  defaultValue = "50",required = false) final String pageSize,
+                                                   @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
                                                 final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
