@@ -135,14 +135,14 @@ public class ProjectsController extends AbstractRestController {
   @TrackExecutionTime
   public ProjectPublicSearchResult getProjectsSummary(@RequestParam(name = "agreement-id", required = true) final String agreementId,
                                                    @RequestParam(name = "keyword", required = false) final String keyword,
-                                                   @RequestParam(name = "page", defaultValue ="0", required = false) final String page,
-                                                   @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
+                                                   @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
+                                                   @RequestParam(name = "page-size",  defaultValue = "50",required = false) final String pageSize,
                                                 final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getProjectsSummary invoked on behalf of principal: {}", principal);
-    int pageNo = page != null ? Integer.parseInt(page) : 0;
-    int size = pageSize != null ? Integer.parseInt(pageSize) : 0;
+    int pageNo = Integer.parseInt(page);
+    int size = Integer.parseInt(pageSize);
     return procurementProjectService.getProjectSummery(principal, agreementId, keyword,
      pageNo, size);
   }

@@ -83,7 +83,7 @@ public class ProcurementProjectService {
 
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
-  private static final String SEARCH_URI = "/tenders/projects/search?keyword=%s&page=%s&page-size=%s";
+  private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
 
 
   /**
@@ -746,7 +746,7 @@ public class ProcurementProjectService {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     NativeSearchQuery searchQuery;
-    if(keyword != null) {
+    if(keyword != null && !keyword.isEmpty()) {
       searchCriteria.setKeyword(keyword);
        searchQuery = new NativeSearchQueryBuilder()
               .withQuery(QueryBuilders
@@ -755,19 +755,19 @@ public class ProcurementProjectService {
                       .field(PROJECT_DESCRIPTION)
                       .fuzziness(Fuzziness.ONE)
                       .type(MultiMatchQueryBuilder.Type.BEST_FIELDS))
-               .withPageable(PageRequest.of(page,pageSize))
+               .withPageable(PageRequest.of(page-1,pageSize))
               .build();
     }else {
       searchQuery = new NativeSearchQueryBuilder()
               .withQuery(QueryBuilders.matchAllQuery())
-              .withPageable(PageRequest.of(page,pageSize))
+              .withPageable(PageRequest.of(page-1,pageSize))
               .build();
     }
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
-   // projectPublicSearchResult.setLinks();
+    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
   return projectPublicSearchResult;
   }
 
@@ -790,13 +790,16 @@ public class ProcurementProjectService {
 
   }
 
-  private Links1 generateLinks(String keyword, int page, int pageSize)
+  private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
   {
+    int last = Math.round(totalsize/pageSize);
+    int next = page < last ? page + 1 : 0;
+    int previous = page <= 1 ? 0 : page - 1;
      Links1 links1= new Links1();
-     links1.setFirst(URI.create(SEARCH_URI+""));
-     links1.setLast(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
-     links1.setNext(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
-     links1.setPrev(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+     links1.setFirst(URI.create(String.format(SEARCH_URI,keyword,1,pageSize)));
+     links1.setLast(last ==0 ? null : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
+     links1.setNext(next == 0 ? null : URI.create(String.format(SEARCH_URI,keyword,next,pageSize)));
+     links1.setPrev(previous == 0 ? null : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
      links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
     return links1;
   }
