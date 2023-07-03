@@ -1,20 +1,26 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.data.transparancy;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Period;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.env.Environment;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
@@ -23,14 +29,14 @@ import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.RPATransferS3Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementEventRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
@@ -43,34 +49,41 @@ import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 @Slf4j
 public class ProjectsGenerationScheduledTask {
 
-  private ProcurementEventRepo procurementEventRepo;
-  private AgreementsService agreementsService;
-  private ConclaveService conclaveService;
-  private JaggaerService jaggaerService;
-  private QuestionAndAnswerRepo questionAndAnswerRepo;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final AgreementsService agreementsService;
+  private final ConclaveService conclaveService;
+  private final JaggaerService jaggaerService;
   private final ObjectMapper objectMapper;
-  private Environment env;
+  private final Environment env;
+  private final AmazonS3 rpaTransferS3Client;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final String AWARD_STATUS = "complete";
-  private static final String JAGGAER_SUPPLIER_WINNER_STATUS = "Successful";
+  private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
+  private static final String PERIOD_FMT = "%d years, %d months, %d days";
+  private static final String CSV_FILE_NAME = "oppertunity_data.csv";
 
-//  @Scheduled(fixedDelayString = "PT1M")
+  // @Scheduled(fixedDelayString = "PT1M")
   @Transactional
   public void generateCSV() {
-    log.info("Successfully started Projects CSV generation");
+    log.info("Started Projects CSV generation");
     writeEmployeesToCsv();
   }
 
   public void writeEmployeesToCsv() {
 
-    Set<ProcurementEvent> events =
-        procurementEventRepo.findEventsByTenderStatusAndAgreementId("planning", DOS6_AGREEMENT_ID);
+    Set<ProcurementEvent> events = retryableTendersDBDelegate
+        .findEventsByTenderStatusAndAgreementId("planning", DOS6_AGREEMENT_ID);
+
+    log.info("Dos6 agreements count: {}", events.size());
     AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
 
     try {
+      // Resource resource = resourceService.getResource("classpath:/CSV/oppertunities.csv");
       Path tempFile = Files.createTempFile("temp", ".csv");
       PrintWriter writer =
           new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
+
+      // PrintWriter writer = new PrintWriter(new FileWriter(resource.getFile()));
       CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
       csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category",
           "Organization Name", "Buyer Domain", "Published At", "Open For",
@@ -98,21 +111,30 @@ public class ProjectsGenerationScheduledTask {
 
         csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
             env.getProperty("link"), agreementDetails.getName(), lotName, orgName, domainName,
-            event.getPublishDate(),
-            ChronoUnit.DAYS.between(event.getPublishDate(), event.getCloseDate()),
-            getExpectedContractLength(event), getBudgetRangeData(event), "Applications from SMEs",
+            event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
+            getBudgetRangeData(event), "Applications from SMEs",
             "Applications from Large Organisations", "Total Organisations",
             defineStatus(event.getTenderStatus()), getWinningSupplier(event), "Size of supplier",
             " ", this.geContractStartData(event),
-            questionAndAnswerRepo.countByEventId(event.getId()), "Employment status");
+            retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
+            "Employment status");
+        // questionAndAnswerRepo.countByEventId(event.getId())
 
-        csvPrinter.flush();
-        csvPrinter.close();
       }
-      // transferToS3(tempFile);
+      csvPrinter.flush();
+      csvPrinter.close();
+      transferToS3(tempFile);
+      log.info("Successfully generated CSV data");
     } catch (IOException e) {
       log.error("Error While generating Projects CSV ", e);
     }
+  }
+
+  private Long getOpenForCount(ProcurementEvent event) {
+    if (Objects.nonNull(event.getPublishDate()) && Objects.nonNull(event.getCloseDate())) {
+      return ChronoUnit.DAYS.between(event.getPublishDate(), event.getCloseDate());
+    }
+    return null;
   }
 
   private String defineStatus(String status) {
@@ -123,22 +145,35 @@ public class ProjectsGenerationScheduledTask {
   }
 
   private String getWinningSupplier(final ProcurementEvent event) {
-    if (event.getTenderStatus() == AWARD_STATUS) {
-      ExportRfxResponse rfxWithSuppliers =
-          jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
-      Optional<Supplier> winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
-          .stream().filter(e -> e.getStatus().equals(JAGGAER_SUPPLIER_WINNER_STATUS)).findFirst();
-      if (winningSupplier.isPresent()) {
-        return winningSupplier.get().getCompanyData().getName();
+    try {
+      if (event.getTenderStatus().equals(AWARD_STATUS)) {
+        ExportRfxResponse rfxWithSuppliers =
+            jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
+        Optional<Supplier> winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
+            .stream().filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
+        if (winningSupplier.isPresent()) {
+          return winningSupplier.get().getCompanyData().getName();
+        }
       }
+    } catch (Exception e) {
+      // TODO: handle exception
     }
     return "";
   }
 
   private String getExpectedContractLength(final ProcurementEvent event) {
     // lot 1 & lot 3-> Contract Length
-    return getDataFromJSONDataTemplate(event,
-        "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 18')].OCDS.requirements[?(@.OCDS.id == 'Question 12')].nonOCDS.options[*].value");
+    try {
+      String dataFromJSONDataTemplate = getDataFromJSONDataTemplate(event,
+          "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 18')].OCDS.requirements[?(@.OCDS.id == 'Question 12')].nonOCDS.options[*].value");
+      if (Objects.nonNull(dataFromJSONDataTemplate)) {
+        var period = Period.parse(dataFromJSONDataTemplate);
+        return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+      }
+    } catch (DateTimeParseException e) {
+      // TODO: handle exception
+    }
+    return "";
   }
 
 
@@ -169,6 +204,7 @@ public class ProjectsGenerationScheduledTask {
       minValue = getDataFromJSONDataTemplate(event,
           "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 18')].OCDS.requirements[?(@.OCDS.id == 'Question 3')].nonOCDS.options[?(@.select == true)].value");
     }
+    log.info("MaxValue: {} - MinValue: {}", maxValue, minValue);
 
     if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
       return "£" + minValue + "-£" + maxValue;
@@ -180,33 +216,40 @@ public class ProjectsGenerationScheduledTask {
 
   private String getDataFromJSONDataTemplate(final ProcurementEvent event,
       final String sourcePath) {
-    var eventData = event.getProcurementTemplatePayloadRaw();
-    var jsonPathConfig =
-        Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST)
-            .jsonProvider(new JacksonJsonProvider(objectMapper))
-            .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
-    TypeRef<String> typeRef = new TypeRef<>() {};
-    return JsonPath.using(jsonPathConfig).parse(eventData).read(sourcePath, typeRef);
+    try {
+      var eventData = event.getProcurementTemplatePayloadRaw();
+      var jsonPathConfig =
+          Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST)
+              .jsonProvider(new JacksonJsonProvider(objectMapper))
+              .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
+      TypeRef<List<String>> typeRef = new TypeRef<>() {};
+      List<String> read = JsonPath.using(jsonPathConfig).parse(eventData).read(sourcePath, typeRef);
+      log.info(read.toString());
+      return read.get(0);
+    } catch (Exception e) {
+      // log.error(e.getMessage());
+    }
+    return null;
   }
 
-  // private void transferToS3(Path tempFile) {
-  // InputStream inputStream = Files.newInputStream(tempFile);
-  // var filename = DateTimeFormatter.ISO_DATE_TIME
-  // .format(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)).replace(":", "") + ".csv";
-  // var objectKey = "oppertunity_data" + filename;
-  // try {
-  // // Upload the file to S3
-  // InputStream fileStream = Files.newInputStream(tempFile);
-  // var objectMetadata = new ObjectMetadata();
-  // objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
-  // objectMetadata.setContentType("text/csv");
-  //
-  // s3client.putObject("bucket name", objectKey, inputStream, objectMetadata);
-  // log.info("Put file in S3: {}", objectKey);
-  // // Delete the temporary file
-  // Files.delete(tempFile);
-  // } catch (IOException e) {
-  // log.error("Error in transfer to S3", e);
-  // }
-  // }
+  private final RPATransferS3Config rpaTransferS3Config;
+
+  private void transferToS3(Path tempFile) throws IOException {
+    var objectKey = CSV_FILE_NAME;
+    try {
+      // Upload the file to S3
+      InputStream fileStream = Files.newInputStream(tempFile);
+      var objectMetadata = new ObjectMetadata();
+      objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
+      objectMetadata.setContentType("text/csv");
+
+      rpaTransferS3Client.putObject(rpaTransferS3Config.getBucket(), objectKey, fileStream,
+          objectMetadata);
+      log.info("Successfully uploaded file in S3: {}", objectKey);
+      // Delete the temporary file
+      Files.delete(tempFile);
+    } catch (IOException e) {
+      log.error("Error in transfer to S3", e);
+    }
+  }
 }
