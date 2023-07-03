@@ -26,10 +26,7 @@ public class ApplicationConfig {
     return Clock.systemUTC();
   }
 
-  @Bean
-  public ModelMapper modelMapper() {
-    return new ModelMapper();
-  }
+
 
   @Bean
   public VCAPServices vcapServices() throws Exception {

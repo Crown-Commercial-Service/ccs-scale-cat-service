@@ -103,9 +103,9 @@ public class OcdsRecordMapper  implements InitializingBean {
         handlers.put(OcdsSections.COMPILED_RELEASE_AWARDS,  (pq, re) -> {
             return compiledAwardsService.populateGeneral(re, pq);
         });
-        handlers.put(OcdsSections.COMPILED_RELEASE_AWARDS_SUPPLIERS,  (pq, re) -> {
-            return compiledAwardsService.populateSuppliers(re, pq);
-        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_AWARDS_SUPPLIERS,  (pq, re) -> {
+//            return compiledAwardsService.populateSuppliers(re, pq);
+//        });
         handlers.put(OcdsSections.COMPILED_RELEASE_AWARDS_ITEMS,  (pq, re) -> {
             return compiledAwardsService.populateItems(re, pq);
         });

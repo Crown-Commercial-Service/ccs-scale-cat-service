@@ -5,8 +5,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 @Setter
@@ -17,4 +19,5 @@ public class ProjectRequest implements ProjectQuery{
     private Integer procId;
     private List<String> sections;
     private String principal;
+    private CompletableFuture<ExportRfxResponse> latestEventRFXWithSuppliers;
 }
