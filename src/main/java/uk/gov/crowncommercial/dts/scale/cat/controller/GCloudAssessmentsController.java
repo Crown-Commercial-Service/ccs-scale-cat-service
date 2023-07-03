@@ -96,13 +96,13 @@ public class GCloudAssessmentsController extends AbstractRestController {
                     // Start with the generic information
                     SimpleDateFormat dateFormat = new SimpleDateFormat(CSV_DATE_FORMAT);
                     String exportTime = dateFormat.format(new Date());
+
                     // Sanitise the results summary to remove the HTML tags
 
                     String sanitisedResultsSummary = StringUtils.normalizeSpace(Jsoup.parse(assessmentModel.getResultsSummary()).text());
                     if (sanitisedResultsSummary.contains(",") || sanitisedResultsSummary.contains("\"") || sanitisedResultsSummary.contains("'")) {
                         sanitisedResultsSummary = sanitisedResultsSummary.replace("\"", "\"\"");
                     }
-
                     writer.write(CSV_GENERIC_HEADERS);
                     writer.write(CSV_STATIC_NAME + "," + exportTime + ",\"" + sanitisedResultsSummary + "\"\n");
 
