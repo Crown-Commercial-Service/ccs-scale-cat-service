@@ -20,6 +20,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        enable_lazy_load_no_trans: true
     hibernate:
       ddl-auto: validate
   datasource:
