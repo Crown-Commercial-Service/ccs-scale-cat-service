@@ -40,6 +40,8 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import jakarta.transaction.Transactional;
+
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -81,6 +83,7 @@ public class ProcurementProjectService {
 
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
+  private static final String SEARCH_URI = "/tenders/projects/search?keyword=%s&page=%s&page-size=%s";
 
 
   /**
@@ -785,5 +788,16 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setLocation(object.getLocation());
       return projectPublicSearchSummary;}).collect(Collectors.toList());
 
+  }
+
+  private Links1 generateLinks(String keyword, int page, int pageSize)
+  {
+     Links1 links1= new Links1();
+     links1.setFirst(URI.create(SEARCH_URI+""));
+     links1.setLast(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+     links1.setNext(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+     links1.setPrev(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+     links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+    return links1;
   }
 }
