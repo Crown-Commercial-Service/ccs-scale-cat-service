@@ -1,13 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.builder;
 import java.time.OffsetDateTime;
 import java.util.*;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -36,7 +33,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
@@ -60,13 +56,10 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 class MessageServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
-  private static final String BUYER_USER_NAME = "Venki Bathula";
   private static final String BUYER_PASSWORD = "PASS12345";
   private static final String EVENT_OCID = "ocds-abc123-1";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String JAGGAER_USER_ID = "12345";
-  private static final String CREATE_MESSAGE = "Create";
-  private static final String EXTERNAL_EVENT_ID = "itt_8673";
 
   private static final String RFX_ID = "rfq_0001";
   private static final Integer JAGGAER_SUPPLIER_ID = 123456;
@@ -81,7 +74,6 @@ class MessageServiceTest {
 
   static final String SUPPLIER_ORG_ID_1 = "GB-COH-1234567";
   static final String SUPPLIER_ORG_ID = "1234567";
-  static final String SUPPLIER_ORG_ID_2 = "GB-COH-7654321";
 
   static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
@@ -89,11 +81,10 @@ class MessageServiceTest {
 
   static final Integer FILE_ID = 1234567;
   static final String FILE_NAME = "filename.dox";
+  static final Integer READER_ID = 1234;
+  static final String READER_NAME = "John Smith";
 
   static final ProcurementProject project = ProcurementProject.builder().build();
-
-  private static final Optional<SubUser> JAGGAER_USER = Optional
-      .of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).name(BUYER_USER_NAME).build());
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;

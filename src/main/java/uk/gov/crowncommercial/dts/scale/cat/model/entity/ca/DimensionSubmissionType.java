@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
@@ -35,6 +35,7 @@ public class DimensionSubmissionType {
   private String selectionType;
 
   @Column (name ="submission_mandatory")
+  @Builder.Default
   private Boolean mandatory = true;
 
   @Embedded

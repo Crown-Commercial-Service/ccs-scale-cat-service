@@ -2,12 +2,11 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import java.util.List;
-import javax.persistence.*;
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.TypeDef;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.type.SqlTypes;
 import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.JourneyStepState;
 
 /**
@@ -20,7 +19,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.Jour
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 public class JourneyEntity {
 
   @Id
@@ -37,7 +35,7 @@ public class JourneyEntity {
   @Column(name = "external_id")
   String externalId;
 
-  @Type(type = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "journey_details")
   List<JourneyStepState> journeyDetails;
 

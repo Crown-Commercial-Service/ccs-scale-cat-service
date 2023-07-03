@@ -1,15 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.TypeDef;
+import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Set;
 
@@ -25,9 +26,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(exclude = {"project","capabilityAssessmentSuppliers"})
-@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 public class ProcurementEvent {
 
   @Id
@@ -39,7 +40,7 @@ public class ProcurementEvent {
   @JoinColumn(name = "project_id")
   ProcurementProject project;
 
-  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
   Set<SupplierSelection> capabilityAssessmentSuppliers;
 
   @Column(name = "ocds_authority_name")
@@ -94,9 +95,9 @@ public class ProcurementEvent {
   @Column(name = "updated_at")
   Instant updatedAt;
 
-  @Type(type = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "procurement_template_payload")
-  DataTemplate procurementTemplatePayload;
+  String procurementTemplatePayload;
 
   @Column(name="template_id")
   Integer templateId;
@@ -114,6 +115,38 @@ public class ProcurementEvent {
 
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
+  }
+
+  public DataTemplate getProcurementTemplatePayload() {
+    DataTemplate templateModel = null;
+
+    if (procurementTemplatePayload != null) {
+      try {
+        ObjectMapper objectMapper = new ObjectMapper();
+        templateModel = objectMapper.readValue(procurementTemplatePayload, DataTemplate.class);
+      }
+      catch (Exception ex) {
+        log.error("Error converting JSON to DataTemplate", ex);
+      }
+    }
+
+    return templateModel;
+  }
+
+  public void setProcurementTemplatePayload(DataTemplate templateModel) {
+    String json = null;
+
+    if (templateModel != null) {
+      try {
+        ObjectMapper objectMapper = new ObjectMapper();
+        json = objectMapper.writeValueAsString(templateModel);
+      }
+      catch (Exception ex) {
+        log.error("Error converting DataTemplate to JSON", ex);
+      }
+    }
+
+    procurementTemplatePayload = json;
   }
 
   /**
