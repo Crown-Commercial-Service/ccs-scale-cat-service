@@ -64,6 +64,7 @@ public class ProcurementEvent {
   @Column(name = "down_selected_suppliers_ind")
   Boolean downSelectedSuppliers;
 
+
   @Column(name = "refresh_suppliers_ind")
   private Boolean refreshSuppliers;
 
@@ -75,9 +76,6 @@ public class ProcurementEvent {
 
   @Column(name = "tender_status")
   String tenderStatus;
-  
-  @Column(name = "async_published_status")
-  String asyncPublishedStatus;
 
   @Column(name = "publish_date")
   Instant publishDate;
