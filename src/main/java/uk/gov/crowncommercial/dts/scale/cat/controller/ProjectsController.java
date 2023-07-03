@@ -13,6 +13,8 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
 
 /**
  *
@@ -25,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 public class ProjectsController extends AbstractRestController {
 
   private final ProcurementProjectService procurementProjectService;
+  private final ProjectPackageService projectPackageService;
 
 
   //search-type=projectName&search-term=My%20search%20term&page=1&page-size=20'
@@ -53,6 +56,14 @@ public class ProjectsController extends AbstractRestController {
 
     return procurementProjectService.createFromAgreementDetails(agreementDetails, principal,
         conclaveOrgId);
+  }
+  
+  @GetMapping("/{procID}")
+  @TrackExecutionTime
+  public ProjectPackage getProject(@PathVariable("procID") final Integer procId,
+                                   final JwtAuthenticationToken authentication) {
+    var principal = null != authentication ? getPrincipalFromJwt(authentication) : "";
+    return projectPackageService.getProjectPackage(procId, principal, OcdsSections.SUMMARY_SECTIONS);
   }
 
   @PutMapping("/{procID}/name")

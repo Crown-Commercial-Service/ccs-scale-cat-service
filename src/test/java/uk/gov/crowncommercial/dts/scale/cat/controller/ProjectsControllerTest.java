@@ -46,6 +46,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMemberType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -86,6 +87,8 @@ class ProjectsControllerTest {
   @MockBean
   private UserProfileService userProfileService;
 
+  @MockBean
+  private ProjectPackageService projectPackageService;
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 
   @BeforeEach

@@ -106,20 +106,6 @@ public class CompiledReleaseTenderService{
         return ref;
     }
 
-//    public MapperResponse populateTenderers(Record1 re, ProjectQuery pq) {
-//        log.debug("populating Tenderers");
-//        CompletableFuture cf = CompletableFuture.runAsync(()-> {
-//            ProcurementProject pp = pq.getProject();
-//            Collection<LotSupplier> suppliers = agreementsService.getLotSuppliers(pp.getCaNumber(), pp.getLotNumber());
-//            Tender1 tender = OcdsHelper.getTender(re);
-//            List<OrganizationReference1> tenderers = suppliers.stream()
-//                    .limit(2) // TODO  remove this artificial limit
-//                    .map(this::convertLotSuppliers).toList();
-//            tender.setTenderers(tenderers);
-//        });
-//        return new MapperResponse(re, cf);
-//    }
-
     public MapperResponse populateDocuments(Record1 re, ProjectQuery pq) {
         log.debug("populating Documents");
         return new MapperResponse(re);
@@ -169,16 +155,12 @@ public class CompiledReleaseTenderService{
 
     private Value1 getMinValue(ProcurementProject pp) {
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        Value1 amount = getValue1(pe, "Group 18", "Set your budget ", "Question 3");
-        if (amount != null) return amount;
-        return null;
+        return getValue1(pe, "Group 18", "Set your budget ", "Question 3");
     }
 
     private Value1 getMaxValue(ProcurementProject pp) {
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        Value1 amount = getValue1(pe, "Group 18", "Set your budget ", "Question 2");
-        if (amount != null) return amount;
-        return null;
+        return getValue1(pe, "Group 18", "Set your budget ", "Question 2");
     }
 
     private static Value1 getValue1(ProcurementEvent pe, String groupId, String groupDesc, String reqId) {

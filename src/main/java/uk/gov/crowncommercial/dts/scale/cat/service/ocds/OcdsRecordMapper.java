@@ -59,6 +59,14 @@ public class OcdsRecordMapper  implements InitializingBean {
             return releaseService.populateContracts(re, pq);
         });
 
+        mapCompiledReleasePlanning();
+
+        mapCompiledReleaseTender();
+
+        mapCompiledReleaseAward();
+    }
+
+    private void mapCompiledReleasePlanning() {
         handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING,  (pq, re) -> {
             return compiledPlanningService.populateGeneral(re, pq);
         });
@@ -71,35 +79,39 @@ public class OcdsRecordMapper  implements InitializingBean {
         handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING_MILESTONES,  (pq, re) -> {
             return compiledPlanningService.populateMilestones(re, pq);
         });
+    }
 
+    private void mapCompiledReleaseTender() {
         handlers.put(OcdsSections.COMPILED_RELEASE_TENDER,  (pq, re) -> {
             return compiledTenderService.populateGeneral(re, pq);
         });
         handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_TENDERERS,  (pq, re) -> {
             return compiledTenderService.populateTenderers(re, pq);
         });
-        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_DOCUMENTS,  (pq, re) -> {
-            return compiledTenderService.populateDocuments(re, pq);
-        });
-        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_MILESTONES,  (pq, re) -> {
-            return compiledTenderService.populateMilestones(re, pq);
-        });
-        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_AMENDMENTS,  (pq, re) -> {
-            return compiledTenderService.populateAmendments(re, pq);
-        });
-        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_ENQUIRIES,  (pq, re) -> {
-            return compiledTenderService.populateEnquiries(re, pq);
-        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_DOCUMENTS,  (pq, re) -> {
+//            return compiledTenderService.populateDocuments(re, pq);
+//        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_MILESTONES,  (pq, re) -> {
+//            return compiledTenderService.populateMilestones(re, pq);
+//        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_AMENDMENTS,  (pq, re) -> {
+//            return compiledTenderService.populateAmendments(re, pq);
+//        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_ENQUIRIES,  (pq, re) -> {
+//            return compiledTenderService.populateEnquiries(re, pq);
+//        });
         handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_CRITERIA,  (pq, re) -> {
             return compiledTenderService.populateCriteria(re, pq);
         });
-        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_SELECTIONCRITERIA,  (pq, re) -> {
-            return compiledTenderService.populateSelectionCriteria(re, pq);
-        });
-        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_TECHNIQUES,  (pq, re) -> {
-            return compiledTenderService.populateTechniques(re, pq);
-        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_SELECTIONCRITERIA,  (pq, re) -> {
+//            return compiledTenderService.populateSelectionCriteria(re, pq);
+//        });
+//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_TECHNIQUES,  (pq, re) -> {
+//            return compiledTenderService.populateTechniques(re, pq);
+//        });
+    }
 
+    private void mapCompiledReleaseAward() {
         handlers.put(OcdsSections.COMPILED_RELEASE_AWARDS,  (pq, re) -> {
             return compiledAwardsService.populateGeneral(re, pq);
         });
