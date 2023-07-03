@@ -741,35 +741,36 @@ public class ProcurementProjectService {
     }
   }
 
-  public ProjectPublicSearchResult getProjectSummery(final String principal, final String agreementId,final String keyword,
+  public ProjectPublicSearchResult getProjectSummery(final String keyword,
                                             int page, int pageSize) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
+    searchCriteria.setKeyword(keyword);
     NativeSearchQuery searchQuery;
-    if(keyword != null && !keyword.isEmpty()) {
-      searchCriteria.setKeyword(keyword);
-       searchQuery = new NativeSearchQueryBuilder()
-              .withQuery(QueryBuilders
-                      .multiMatchQuery(keyword)
-                      .field(PROJECT_NAME)
-                      .field(PROJECT_DESCRIPTION)
-                      .fuzziness(Fuzziness.ONE)
-                      .type(MultiMatchQueryBuilder.Type.BEST_FIELDS))
-               .withPageable(PageRequest.of(page-1,pageSize))
-              .build();
-    }else {
-      searchCriteria.setKeyword(null);
-      searchQuery = new NativeSearchQueryBuilder()
-              .withQuery(QueryBuilders.matchAllQuery())
-              .withPageable(PageRequest.of(page-1,pageSize))
-              .build();
-    }
+    searchQuery = getSearchQuery (keyword, page, pageSize, searchCriteria);
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
   return projectPublicSearchResult;
+  }
+
+  private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, ProjectSearchCriteria searchCriteria) {
+    NativeSearchQuery searchQuery;
+    if(keyword != null && !keyword.isEmpty()) {
+       searchQuery = new NativeSearchQueryBuilder().withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+                      .fuzziness(Fuzziness.ONE)
+                      .type(MultiMatchQueryBuilder.Type.BEST_FIELDS))
+               .withPageable(PageRequest.of(page -1, pageSize))
+              .build();
+    }else {
+      searchQuery = new NativeSearchQueryBuilder()
+              .withQuery(QueryBuilders.matchAllQuery())
+              .withPageable(PageRequest.of(page -1, pageSize))
+              .build();
+    }
+    return searchQuery;
   }
 
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)

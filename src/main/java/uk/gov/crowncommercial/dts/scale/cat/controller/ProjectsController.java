@@ -143,7 +143,7 @@ public class ProjectsController extends AbstractRestController {
     log.info("getProjectsSummary invoked on behalf of principal: {}", principal);
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
-    return procurementProjectService.getProjectSummery(principal, agreementId, keyword,
+    return procurementProjectService.getProjectSummery(keyword,
      pageNo, size);
   }
 }
