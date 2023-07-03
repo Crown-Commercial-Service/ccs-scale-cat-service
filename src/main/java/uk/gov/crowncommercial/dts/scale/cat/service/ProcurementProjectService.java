@@ -758,6 +758,7 @@ public class ProcurementProjectService {
                .withPageable(PageRequest.of(page-1,pageSize))
               .build();
     }else {
+      searchCriteria.setKeyword(null);
       searchQuery = new NativeSearchQueryBuilder()
               .withQuery(QueryBuilders.matchAllQuery())
               .withPageable(PageRequest.of(page-1,pageSize))
@@ -783,7 +784,7 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setDescription(object.getDescription());
       projectPublicSearchSummary.setBuyerName(object.getBuyerName());
       projectPublicSearchSummary.setLot(object.getLot());
-      //projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.valueOf(object.getStatus()));
+      projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       projectPublicSearchSummary.setSubStatus(object.getSubStatus());
       projectPublicSearchSummary.setLocation(object.getLocation());
       return projectPublicSearchSummary;}).collect(Collectors.toList());
