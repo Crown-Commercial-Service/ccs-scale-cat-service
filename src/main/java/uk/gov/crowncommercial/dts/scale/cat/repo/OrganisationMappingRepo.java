@@ -14,7 +14,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 @Repository
 public interface OrganisationMappingRepo extends JpaRepository<OrganisationMapping, Integer> {
   @Query("select om from  OrganisationMapping om " +
-          " where om.primaryInd is true and om.organisationId in (:organisationIds) " )
+          " where om.primaryInd = true and om.organisationId in (:organisationIds) " )
   Set<OrganisationMapping> findByOrganisationIdIn(@Param("organisationIds")Set<String> organisationIds);
 
   /**
@@ -34,15 +34,15 @@ public interface OrganisationMappingRepo extends JpaRepository<OrganisationMappi
    * @return optional org mapping
    */
   @Query("select om from  OrganisationMapping om " +
-          " where om.primaryInd is true and organisationId = :organisationId ")
+          " where om.primaryInd = true and organisationId = :organisationId ")
   Optional<OrganisationMapping> findByOrganisationId(@Param("organisationId") String organisationId);
 
   @Query("select om from  OrganisationMapping om " +
-          " where om.primaryInd is true and casOrganisationId = :casOrganisationId ")
+          " where om.primaryInd = true and casOrganisationId = :casOrganisationId ")
   Optional<OrganisationMapping> findByCasOrganisationId(@Param("casOrganisationId") String casOrganisationId);
 
   @Query("select om from  OrganisationMapping om " +
-          " where om.primaryInd is true and om.casOrganisationId in (:casOrganisationIds) " )
+          " where om.primaryInd = true and om.casOrganisationId in (:casOrganisationIds) " )
   Set<OrganisationMapping> findByCasOrganisationIdIn(@Param("casOrganisationIds")Set<String> casOrganisationIds);
 
 }

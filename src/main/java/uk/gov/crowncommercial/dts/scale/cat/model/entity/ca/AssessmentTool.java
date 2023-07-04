@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
@@ -35,7 +35,6 @@ public class AssessmentTool {
 
   @Column(name = "downselect_suppliers_ind")
   private Boolean downSelectSuppliers;
-
 
   @EqualsAndHashCode.Exclude
   @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)

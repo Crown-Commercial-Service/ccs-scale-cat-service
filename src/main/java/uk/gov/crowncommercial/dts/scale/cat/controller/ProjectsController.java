@@ -2,7 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.Collection;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +28,7 @@ public class ProjectsController extends AbstractRestController {
 
 
   //search-type=projectName&search-term=My%20search%20term&page=1&page-size=20'
-  @GetMapping
+  @GetMapping(value={"", "/"})
   @TrackExecutionTime
   public Collection<ProjectPackageSummary> getProjects(@RequestParam(name = "search-type", required = false) final String searchType,
                                                        @RequestParam(name = "search-term", required = false) final String searchTerm,
