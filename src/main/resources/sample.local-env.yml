@@ -62,5 +62,18 @@ VCAP_SERVICES:
 spring:
   datasource:
     url:
+    jdbc-url:
     username:
     password:
+    driverClassName: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    database: postgresql
+    hibernate:
+      ddl-auto: none
+  agreementsource:
+    url:
+    jdbc-url:
+    username:
+    password: 
+    driverClassName: org.postgresql.Driver
