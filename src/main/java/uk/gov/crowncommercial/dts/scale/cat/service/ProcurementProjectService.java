@@ -86,6 +86,7 @@ public class ProcurementProjectService {
 
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
+  private static final String LOT = "lot";
   private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
 
 
@@ -745,11 +746,11 @@ public class ProcurementProjectService {
   }
 
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
-                                            int page, int pageSize,ProjectFilters projectFilters) {
+                                            int page, int pageSize, ProjectFilters projectFilters) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
-    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, searchCriteria);
+    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId);
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
@@ -766,20 +767,21 @@ public class ProcurementProjectService {
     return countResults.getAggregations().aggregations();
   }*/
 
-  private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, ProjectSearchCriteria searchCriteria) {
-    NativeSearchQuery searchQuery;
-    if(keyword != null && !keyword.isEmpty()) {
-       searchQuery = new NativeSearchQueryBuilder().withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                      .fuzziness(Fuzziness.ONE)
-                      .type(MultiMatchQueryBuilder.Type.BEST_FIELDS))
-               .withPageable(PageRequest.of(page -1, pageSize))
-              .build();
-    }else {
-      searchQuery = new NativeSearchQueryBuilder()
-              .withQuery(QueryBuilders.matchAllQuery())
-              .withPageable(PageRequest.of(page -1, pageSize))
-              .build();
+  private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, String lotId) {
+    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
+   if(keyword != null  && !keyword.isEmpty()) {
+      searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .fuzziness(Fuzziness.ONE)
+              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
+    }if(lotId !=null && !lotId.isEmpty()) {
+      searchQueryBuilder.withQuery(QueryBuilders.matchQuery(LOT, lotId));
     }
+   if(keyword == null && lotId == null)
+   {
+     searchQueryBuilder.withQuery(QueryBuilders.matchAllQuery());
+    }
+   searchQueryBuilder.withPageable(PageRequest.of(page -1, pageSize));
+    NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
 
