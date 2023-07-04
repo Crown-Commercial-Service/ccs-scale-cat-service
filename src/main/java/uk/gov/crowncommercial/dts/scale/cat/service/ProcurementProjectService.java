@@ -83,7 +83,6 @@ public class ProcurementProjectService {
 
   private final ElasticsearchOperations elasticsearchOperations;
 
-  private final SearchProjectRepo searchProjectRepo;
 
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
