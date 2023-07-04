@@ -7,7 +7,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,8 +22,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_JAGGAER_USER_NOT_FOUND;

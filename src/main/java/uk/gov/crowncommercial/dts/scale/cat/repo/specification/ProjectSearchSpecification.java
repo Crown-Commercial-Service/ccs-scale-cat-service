@@ -6,7 +6,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 
-import javax.persistence.criteria.*;
+import jakarta.persistence.criteria.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
