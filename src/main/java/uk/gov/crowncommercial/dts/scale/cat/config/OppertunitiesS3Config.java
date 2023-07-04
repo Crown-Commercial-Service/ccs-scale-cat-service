@@ -8,16 +8,13 @@ import lombok.Data;
  *
  */
 @Configuration
-@ConfigurationProperties(prefix = "config.external.s3.rpa", ignoreUnknownFields = true)
+@ConfigurationProperties(prefix = "config.external.s3", ignoreUnknownFields = true)
 @Data
-public class RPATransferS3Config {
+public class OppertunitiesS3Config {
 
-  String region;
   String bucket;
   String accessKeyId;
   String secretAccessKey;
   String objectPrefix;
-  String workbookPassword;
-  String exportSchedule;
 
 }

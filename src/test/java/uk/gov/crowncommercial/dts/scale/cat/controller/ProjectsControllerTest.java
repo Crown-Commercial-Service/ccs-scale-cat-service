@@ -19,7 +19,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.Arrays;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -46,6 +45,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectNa
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMemberType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ProjectsGenerationScheduledTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
@@ -87,6 +87,9 @@ class ProjectsControllerTest {
 
   @MockBean
   private ProcurementProjectService procurementProjectService;
+  
+  @MockBean
+  private ProjectsGenerationScheduledTask projectsGenerationScheduledTask;
 
   @MockBean
   private UserProfileService userProfileService;

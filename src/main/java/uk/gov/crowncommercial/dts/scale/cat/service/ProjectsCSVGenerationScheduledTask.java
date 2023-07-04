@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.service.data.transparancy;
+package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,6 +17,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.amazonaws.services.s3.AmazonS3;
@@ -29,7 +30,7 @@ import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.config.RPATransferS3Config;
+import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
@@ -37,9 +38,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
-import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 
 /**
  *
@@ -47,7 +45,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class ProjectsGenerationScheduledTask {
+public class ProjectsCSVGenerationScheduledTask {
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AgreementsService agreementsService;
@@ -55,21 +53,22 @@ public class ProjectsGenerationScheduledTask {
   private final JaggaerService jaggaerService;
   private final ObjectMapper objectMapper;
   private final Environment env;
-  private final AmazonS3 rpaTransferS3Client;
+  private final AmazonS3 oppertunitiesS3Client;
+  private final OppertunitiesS3Config oppertunitiesS3Config;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final String AWARD_STATUS = "complete";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
   private static final String PERIOD_FMT = "%d years, %d months, %d days";
   private static final String CSV_FILE_NAME = "oppertunity_data.csv";
 
-  // @Scheduled(fixedDelayString = "PT1M")
+  @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @Transactional
   public void generateCSV() {
-    log.info("Started Projects CSV generation");
-    writeEmployeesToCsv();
+    log.info("Started oppertunities CSV generation");
+    writeOppertunitiesToCsv();
   }
 
-  public void writeEmployeesToCsv() {
+  public void writeOppertunitiesToCsv() {
 
     Set<ProcurementEvent> events = retryableTendersDBDelegate
         .findEventsByTenderStatusAndAgreementId("planning", DOS6_AGREEMENT_ID);
@@ -78,13 +77,11 @@ public class ProjectsGenerationScheduledTask {
     AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
 
     try {
-      // Resource resource = resourceService.getResource("classpath:/CSV/oppertunities.csv");
       Path tempFile = Files.createTempFile("temp", ".csv");
       PrintWriter writer =
           new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
-
-      // PrintWriter writer = new PrintWriter(new FileWriter(resource.getFile()));
       CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+
       csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category",
           "Organization Name", "Buyer Domain", "Published At", "Open For",
           "Expected Contract Length", "Budget range", "Applications from SMEs",
@@ -118,12 +115,12 @@ public class ProjectsGenerationScheduledTask {
             " ", this.geContractStartData(event),
             retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
             "Employment status");
-        // questionAndAnswerRepo.countByEventId(event.getId())
-
       }
       csvPrinter.flush();
       csvPrinter.close();
+
       transferToS3(tempFile);
+
       log.info("Successfully generated CSV data");
     } catch (IOException e) {
       log.error("Error While generating Projects CSV ", e);
@@ -161,6 +158,9 @@ public class ProjectsGenerationScheduledTask {
     return "";
   }
 
+  /**
+   * TODO This method output will only work for DOS6. This should be refactor as generic one
+   */
   private String getExpectedContractLength(final ProcurementEvent event) {
     // lot 1 & lot 3-> Contract Length
     try {
@@ -176,7 +176,9 @@ public class ProjectsGenerationScheduledTask {
     return "";
   }
 
-
+  /**
+   * TODO This method output will only work for DOS6. This should be refactor as generic one
+   */
   private String geContractStartData(final ProcurementEvent event) {
     if (event.getProject().getLotNumber() == "1") {
       return getDataFromJSONDataTemplate(event,
@@ -186,6 +188,9 @@ public class ProjectsGenerationScheduledTask {
         "$.criteria[?(@.id == 'Criterion 1')].requirementGroups[?(@.OCDS.id == 'Key Dates')].OCDS.requirements[?(@.OCDS.id == 'Question 11')].nonOCDS.options[*].value");
   }
 
+  /**
+   * TODO This method output will only work for DOS6. This should be refactor as generic one
+   */
   private String getBudgetRangeData(final ProcurementEvent event) {
     String maxValue = null;
     String minValue = null;
@@ -227,29 +232,25 @@ public class ProjectsGenerationScheduledTask {
       log.info(read.toString());
       return read.get(0);
     } catch (Exception e) {
-      // log.error(e.getMessage());
+      // TODO: handle exception
     }
     return null;
   }
 
-  private final RPATransferS3Config rpaTransferS3Config;
-
   private void transferToS3(Path tempFile) throws IOException {
     var objectKey = CSV_FILE_NAME;
     try {
-      // Upload the file to S3
       InputStream fileStream = Files.newInputStream(tempFile);
       var objectMetadata = new ObjectMetadata();
       objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
       objectMetadata.setContentType("text/csv");
-
-      rpaTransferS3Client.putObject(rpaTransferS3Config.getBucket(), objectKey, fileStream,
+      oppertunitiesS3Client.putObject(oppertunitiesS3Config.getBucket(), objectKey, fileStream,
           objectMetadata);
-      log.info("Successfully uploaded file in S3: {}", objectKey);
+      log.info("Successfully uploaded oppertunies file to S3: {}", objectKey);
       // Delete the temporary file
       Files.delete(tempFile);
     } catch (IOException e) {
-      log.error("Error in transfer to S3", e);
+      log.error("Error in transfer oppertunies to S3", e);
     }
   }
 }

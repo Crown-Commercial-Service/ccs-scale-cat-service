@@ -13,17 +13,15 @@ import lombok.RequiredArgsConstructor;
  */
 @Configuration
 @RequiredArgsConstructor
-public class RPATransferS3ClientConfig {
+public class OppertunitiesS3ClientConfig {
 
-  private final RPATransferS3Config rpaTransferS3Config;
+  private final OppertunitiesS3Config oppertunitiesS3Config;
 
-  @Bean("rpaTransferS3Client")
-  public AmazonS3 amazonS3() {
+  @Bean("oppertunitiesS3Client")
+  AmazonS3 amazonS3() {
     var awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-        rpaTransferS3Config.getAccessKeyId(), rpaTransferS3Config.getSecretAccessKey()));
-
-    return AmazonS3ClientBuilder.standard().withRegion(rpaTransferS3Config.getRegion())
-        .withCredentials(awsCredentials).build();
+        oppertunitiesS3Config.getAccessKeyId(), oppertunitiesS3Config.getSecretAccessKey()));
+    return AmazonS3ClientBuilder.standard().withCredentials(awsCredentials).build();
   }
 
 }

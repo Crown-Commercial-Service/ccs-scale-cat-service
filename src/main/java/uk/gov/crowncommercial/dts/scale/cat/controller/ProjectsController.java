@@ -23,6 +23,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackage;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationEvent;
@@ -43,7 +44,6 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProjectPackageService projectPackageService;
   private final ProcurementProjectService procurementProjectService;
-//  private final ProjectsGenerationScheduledTask service;
 
   //search-type=projectName&search-term=My%20search%20term&page=1&page-size=20'
   @GetMapping(value={"", "/"})
@@ -161,9 +161,7 @@ public class ProjectsController extends AbstractRestController {
   @TrackExecutionTime
   public void downloadOppertunities(
      final JwtAuthenticationToken authentication) {
-
-    log.info("download csv");
-
+    log.info("Downloading oppertunities csv from s3");
 //    service.generateCSV();
   }
 
