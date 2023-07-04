@@ -27,11 +27,6 @@ public class ApplicationConfig {
   }
 
   @Bean
-  public ModelMapper modelMapper() {
-    return new ModelMapper();
-  }
-
-  @Bean
   public VCAPServices vcapServices() throws Exception {
     var envVCAPServices = environment.getProperty("VCAP_SERVICES");
     return objectMapper.readValue(envVCAPServices, VCAPServices.class);
