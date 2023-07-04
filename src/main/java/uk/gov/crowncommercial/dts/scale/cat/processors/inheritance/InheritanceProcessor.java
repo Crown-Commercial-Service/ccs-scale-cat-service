@@ -36,5 +36,4 @@ public interface InheritanceProcessor <T>{
             }
         }
     }
-
 }

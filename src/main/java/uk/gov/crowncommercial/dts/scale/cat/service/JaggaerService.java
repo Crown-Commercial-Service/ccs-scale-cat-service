@@ -11,9 +11,11 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -375,21 +377,15 @@ public class JaggaerService {
                 "Unexpected error retrieving messages"));
   }
   
-  /**
-   * Read Message
-   *
-   * @param event
-   * @param jaggaerUserId
-   */
   @Async
-  public MessageResponse updateMessage(final MessageUpdate messageUpdate) {
+  public Future<MessageResponse> updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
 
-    return ofNullable(jaggaerWebClient.put().uri(updateMessageUrl).body(Mono.just(messageUpdate), MessageUpdate.class).retrieve()
+    return new AsyncResult<>(ofNullable(jaggaerWebClient.put().uri(updateMessageUrl).body(Mono.just(messageUpdate), MessageUpdate.class).retrieve()
             .bodyToMono(MessageResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error retrieving messages"));
+                    "Unexpected error retrieving messages")));
   }
   /**
    * Start Evaluation Rfx
@@ -449,7 +445,7 @@ public class JaggaerService {
     this.uploadDocument(multipartFile, update);
     Instant retrieveDocEnd= Instant.now();
 
-      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ",event.getProject().getId(), event.getEventID(),fileName,
+      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ", event.getProject().getId(), event.getEventID(),fileName,
               Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
 
 
