@@ -181,23 +181,6 @@ data "aws_ssm_parameter" "rollbar_environment" {
   name = "/cat/${var.environment}/rollbar-environment"
 }
 
-# Opensearch config
-
-data "aws_ssm_parameter" "opensearch_hostname" {
-  name = "/cat/${var.environment}/opensearch-hostname"
-}
-
-data "aws_ssm_parameter" "opensearch_port_no" {
-  name = "/cat/${var.environment}/opensearch-port-no"
-}
-
-data "aws_ssm_parameter" "opensearch_username" {
-  name = "/cat/${var.environment}/opensearch-username"
-}
-
-data "aws_ssm_parameter" "opensearch_password" {
-  name = "/cat/${var.environment}/opensearch-password"
-}
 resource "cloudfoundry_app" "cat_service" {
   annotations = {}
   buildpack   = var.buildpack
@@ -264,12 +247,6 @@ resource "cloudfoundry_app" "cat_service" {
     # Rollbar Logs
     "config.rollbar.access-token": data.aws_ssm_parameter.rollbar_access_token.value
     "config.rollbar.environment": data.aws_ssm_parameter.rollbar_environment.value
-
-    # OpenSearch
-    "config.external.opensearch.hostname": data.aws_ssm_parameter.opensearch_hostname.value
-    "config.external.opensearch.password": data.aws_ssm_parameter.opensearch_password.value
-    "config.external.opensearch.port": data.aws_ssm_parameter.opensearch_port_no.value
-    "config.external.opensearch.username": data.aws_ssm_parameter.opensearch_username.value
     
   }
   health_check_timeout = var.healthcheck_timeout

@@ -753,12 +753,17 @@ public class ProcurementProjectService {
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+    //searchCriteria.setLots(getProjectLots(countResults));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
   return projectPublicSearchResult;
   }
+
+ /* private List<ProjectLots> getProjectLots(SearchHits<ProcurementEventSearch> countResults) {
+    return countResults.getAggregations().aggregations();
+  }*/
 
   private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, ProjectSearchCriteria searchCriteria) {
     NativeSearchQuery searchQuery;
@@ -781,7 +786,7 @@ public class ProcurementProjectService {
     NativeSearchQuery searchQuery;
       searchQuery = new NativeSearchQueryBuilder()
               .withQuery(QueryBuilders.matchAllQuery())
-              .withAggregations(AggregationBuilders.terms("count_lot").field("Lot.keyword"))
+              .withAggregations(AggregationBuilders.terms("count_lot").field("lot.raw"))
               .build();
     return searchQuery;
   }
@@ -800,6 +805,7 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       projectPublicSearchSummary.setSubStatus(object.getSubStatus());
       projectPublicSearchSummary.setLocation(object.getLocation());
+
       return projectPublicSearchSummary;}).collect(Collectors.toList());
 
   }
