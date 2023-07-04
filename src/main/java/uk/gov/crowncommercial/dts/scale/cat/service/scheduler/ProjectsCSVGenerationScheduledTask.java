@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.service;
+package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +38,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
+import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 
 /**
  *
