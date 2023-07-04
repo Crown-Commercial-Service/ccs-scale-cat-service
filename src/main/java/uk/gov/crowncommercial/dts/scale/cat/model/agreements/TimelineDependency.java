@@ -1,19 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType;
 
-import javax.validation.ValidationException;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 @Value
@@ -54,7 +51,6 @@ public class TimelineDependency {
                     options = Requirement.NonOCDS.populateOptions(updatedOptions, options);
                 }
         }
-
 
     }
 

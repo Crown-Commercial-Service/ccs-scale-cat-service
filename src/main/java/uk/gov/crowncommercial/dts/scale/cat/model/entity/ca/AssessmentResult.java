@@ -1,7 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import java.math.BigDecimal;
-import javax.persistence.*;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;

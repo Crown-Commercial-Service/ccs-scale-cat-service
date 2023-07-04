@@ -11,7 +11,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.dynamic.HttpClientTransportDynamic;
 import org.eclipse.jetty.http.HttpField;
+import org.eclipse.jetty.io.ClientConnector;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -94,20 +96,20 @@ public class JaggaerClientConfig {
         new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
-    var sslContextFactory = new SslContextFactory.Client(true);
-
-    // SCAT-2463: https://webtide.com/openjdk-11-and-tls-1-3-issues/
+    SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
     sslContextFactory.setExcludeProtocols("TLSv1.3");
 
-    // TODO: Refactor out / investigate why default netty library causes 30 second delay
-    var client = new HttpClient(sslContextFactory) {
+    ClientConnector clientConnector = new ClientConnector();
+    clientConnector.setSslContextFactory(sslContextFactory);
+
+    HttpClient httpClient = new HttpClient(new HttpClientTransportDynamic(clientConnector)) {
 
       @Override
       public Request newRequest(final URI uri) {
         return enhance(super.newRequest(uri));
       }
     };
-    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(client);
+    ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())

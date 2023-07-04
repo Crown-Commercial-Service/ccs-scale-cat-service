@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
