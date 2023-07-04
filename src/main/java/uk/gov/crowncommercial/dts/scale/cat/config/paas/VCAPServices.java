@@ -18,6 +18,6 @@ public class VCAPServices {
   Set<AWSS3Service> awsS3Services;
 
   @JsonProperty("opensearch")
-  Set<OpensearchCredentials> opensearch;
+  Set<OpensearchService> opensearch;
 
 }

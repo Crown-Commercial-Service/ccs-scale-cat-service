@@ -10,15 +10,15 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class OpensearchCredentials {
 
-    @JsonProperty("opensearch_hostname")
+    @JsonProperty("hostname")
     String hostname;
 
-    @JsonProperty("opensearch_username")
+    @JsonProperty("username")
     String username;
 
-    @JsonProperty("opensearch_password")
+    @JsonProperty("password")
     String password;
 
-    @JsonProperty("opensearch_port")
+    @JsonProperty("port")
     String port;
 }

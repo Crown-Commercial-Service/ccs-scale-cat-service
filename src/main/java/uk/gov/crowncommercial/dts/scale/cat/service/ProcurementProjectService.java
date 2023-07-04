@@ -753,6 +753,7 @@ public class ProcurementProjectService {
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+    //countResults.getAggregations()
     //searchCriteria.setLots(getProjectLots(countResults));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
@@ -805,7 +806,6 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       projectPublicSearchSummary.setSubStatus(object.getSubStatus());
       projectPublicSearchSummary.setLocation(object.getLocation());
-
       return projectPublicSearchSummary;}).collect(Collectors.toList());
 
   }

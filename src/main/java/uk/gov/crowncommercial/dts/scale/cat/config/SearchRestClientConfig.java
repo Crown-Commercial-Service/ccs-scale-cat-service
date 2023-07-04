@@ -12,7 +12,9 @@ import org.opensearch.data.client.orhlc.RestClients;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.OpensearchCredentials;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.OpensearchService;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 
 import javax.net.ssl.HostnameVerifier;
@@ -22,8 +24,9 @@ import javax.net.ssl.SSLContext;
 
 @Data
 public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
-
+    static final String OPEN_SEARCH_PATTERN = "[a-z0-9]+-ccs-scale-cat-opensearch";
     private final VCAPServices vcapServices;
+
 
     @SneakyThrows
     @Override
@@ -33,7 +36,8 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
          SSLContext sslContext = SSLContexts.custom()
                 .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
                 .build();
-        OpensearchCredentials opensearchCredentials = vcapServices.getOpensearch().stream().findFirst().get();
+        OpensearchCredentials opensearchCredentials = vcapServices.getOpensearch().stream()
+                .filter(b -> b.getName().matches(OPEN_SEARCH_PATTERN)).findFirst().orElseThrow().getCredentials();
         String hostnameurl = opensearchCredentials.getHostname()+":"+opensearchCredentials.getPort();
         final ClientConfiguration clientConfiguration = ClientConfiguration.builder()
                 .connectedTo(hostnameurl)
