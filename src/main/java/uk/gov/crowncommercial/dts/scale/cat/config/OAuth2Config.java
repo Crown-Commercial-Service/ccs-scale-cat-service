@@ -45,7 +45,7 @@ public class OAuth2Config {
       authz
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*").permitAll()
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
-        .requestMatchers("/tenders/supplier/**").hasAnyAuthority(CAT_ROLES)
+        .requestMatchers("/tenders/supplier/**").permitAll()
         .requestMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
