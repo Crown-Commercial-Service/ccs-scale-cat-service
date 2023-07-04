@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -42,6 +43,7 @@ public class OAuth2Config {
 
     http.authorizeHttpRequests(authz ->
       authz
+        .requestMatchers(HttpMethod.GET,"/tenders/projects/*").permitAll()
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/supplier/**").permitAll()
         .requestMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)

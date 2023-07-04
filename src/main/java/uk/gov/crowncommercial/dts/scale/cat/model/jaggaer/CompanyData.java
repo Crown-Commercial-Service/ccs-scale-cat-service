@@ -11,4 +11,8 @@ public class CompanyData {
 
   Integer id;
   String name;
+
+  String code;
+
+  String extUniqueCode;
 }
