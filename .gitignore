@@ -55,3 +55,6 @@ build/
 
 # Local secrets
 /src/main/resources/local-env-local-pg.yml
+
+# Redis files
+dump.rdb

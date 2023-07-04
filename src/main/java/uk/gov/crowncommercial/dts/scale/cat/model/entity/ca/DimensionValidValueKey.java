@@ -1,8 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import java.io.Serializable;
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import lombok.Data;
 
 /**

@@ -20,8 +20,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -232,10 +232,11 @@ public class EventsController extends AbstractRestController {
 
   @GetMapping(value = "/{eventID}/documents/{documentID}")
   @TrackExecutionTime
-  public ResponseEntity<byte[]> getDocument(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId,
-      @PathVariable("documentID") final String documentId,
-      final JwtAuthenticationToken authentication) {
+  public void getDocument(@PathVariable("procID") final Integer procId,
+                                              @PathVariable("eventID") final String eventId,
+                                              @PathVariable("documentID") final String documentId,
+                                              HttpServletResponse response,
+                                              final JwtAuthenticationToken authentication) throws IOException {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("getDocument invoked on behalf of principal: {}", principal);
@@ -243,10 +244,11 @@ public class EventsController extends AbstractRestController {
     var document = procurementEventService.getDocument(procId, eventId, documentId, principal);
     var documentKey = DocumentKey.fromString(documentId);
 
-    return ResponseEntity.ok().contentType(document.getContentType())
-        .header(HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\"" + documentKey.getFileName() + "\"")
-        .body(document.getData());
+    response.setContentType(document.getContentType().toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + documentKey.getFileName() + "\"");
+    IOUtils.copy(document.getStreamData(), response.getOutputStream());
+    response.flushBuffer();
   }
 
   @DeleteMapping(value = "/{eventID}/documents/{documentID}")
