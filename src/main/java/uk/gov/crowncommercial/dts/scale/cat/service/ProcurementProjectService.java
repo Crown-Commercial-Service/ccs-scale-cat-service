@@ -13,6 +13,8 @@ import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.MultiMatchQueryBuilder;
 
 import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.aggregations.AggregationBuilders;
+import org.opensearch.search.aggregations.Aggregations;
 import org.springframework.data.domain.PageRequest;
 
 
@@ -80,6 +82,8 @@ public class ProcurementProjectService {
   private final AgreementsService agreementsService;
 
   private final ElasticsearchOperations elasticsearchOperations;
+
+  private final SearchProjectRepo searchProjectRepo;
 
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
@@ -741,14 +745,15 @@ public class ProcurementProjectService {
     }
   }
 
-  public ProjectPublicSearchResult getProjectSummery(final String keyword,
-                                            int page, int pageSize) {
+  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
+                                            int page, int pageSize,ProjectFilters projectFilters) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
-    NativeSearchQuery searchQuery;
-    searchQuery = getSearchQuery (keyword, page, pageSize, searchCriteria);
+    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, searchCriteria);
+    NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
+    SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
@@ -773,12 +778,20 @@ public class ProcurementProjectService {
     return searchQuery;
   }
 
+  private  NativeSearchQuery getLotCount () {
+    NativeSearchQuery searchQuery;
+      searchQuery = new NativeSearchQueryBuilder()
+              .withQuery(QueryBuilders.matchAllQuery())
+              .withAggregations(AggregationBuilders.terms("count_lot").field("Lot.keyword"))
+              .build();
+    return searchQuery;
+  }
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
   {
     return results.stream().map(SearchHit::getContent).map(object ->
     {
       ProjectPublicSearchSummary projectPublicSearchSummary=new ProjectPublicSearchSummary();
-      projectPublicSearchSummary.setProjectId(object.getId());
+      projectPublicSearchSummary.setProjectId(object.getProjectId());
       projectPublicSearchSummary.setProjectName(object.getProjectName());
       projectPublicSearchSummary.setAgreement(object.getAgreement());
       projectPublicSearchSummary.setBudgetRange(object.getBudgetRange());
@@ -794,14 +807,14 @@ public class ProcurementProjectService {
 
   private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
   {
-    int last = Math.round(totalsize/pageSize);
+      int last = Math.round(totalsize/pageSize);
     int next = page < last ? page + 1 : 0;
     int previous = page <= 1 ? 0 : page - 1;
      Links1 links1= new Links1();
      links1.setFirst(URI.create(String.format(SEARCH_URI,keyword,1,pageSize)));
-     links1.setLast(last ==0 ? null : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
-     links1.setNext(next == 0 ? null : URI.create(String.format(SEARCH_URI,keyword,next,pageSize)));
-     links1.setPrev(previous == 0 ? null : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
+     links1.setLast(last ==0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
+     links1.setNext(next == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,next,pageSize)));
+     links1.setPrev(previous == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
      links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
     return links1;
   }

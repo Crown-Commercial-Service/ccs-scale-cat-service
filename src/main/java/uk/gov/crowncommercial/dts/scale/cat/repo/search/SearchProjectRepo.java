@@ -10,4 +10,6 @@ import java.util.List;
 
 public interface SearchProjectRepo extends ElasticsearchRepository<ProcurementEventSearch, String> {
    List<ProcurementEventSearch> findByProjectNameOrDescriptionContaining(String projectName, String description);
+   List<ProcurementEventSearch> countByLot();
+
 }
