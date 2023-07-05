@@ -44,4 +44,13 @@ public class OcdsHelper {
         }
         return release;
     }
+
+    public static Bids1 getBids(Record1 record){
+        Release release = getRelease(record);
+        if(null != release.getBids() && release.getBids().size() > 0)
+            return release.getBids().get(0);
+        Bids1 result = new Bids1();
+        release.addBidsItem(result);
+        return result;
+    }
 }
