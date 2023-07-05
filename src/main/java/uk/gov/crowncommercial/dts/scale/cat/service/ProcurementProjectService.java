@@ -10,16 +10,21 @@ import org.modelmapper.ModelMapper;
 import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.data.client.orhlc.OpenSearchAggregations;
 import org.opensearch.index.query.MultiMatchQueryBuilder;
 
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.range.Range;
+import org.opensearch.search.aggregations.bucket.terms.Terms;
+import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.springframework.data.domain.PageRequest;
 
 
 import org.springframework.data.domain.Sort;
 
+import org.springframework.data.elasticsearch.core.AggregationsContainer;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
@@ -87,6 +92,8 @@ public class ProcurementProjectService {
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
   private static final String LOT = "lot";
+
+  private static final String COUNT_AGGREGATION = "count_lot";
   private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
 
 
@@ -754,8 +761,8 @@ public class ProcurementProjectService {
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
-    //countResults.getAggregations()
-    //searchCriteria.setLots(getProjectLots(countResults));
+    Aggregations aggregations = (Aggregations) countResults.getAggregations().aggregations();
+    searchCriteria.setLots(getProjectLots(aggregations, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
@@ -763,9 +770,16 @@ public class ProcurementProjectService {
   return projectPublicSearchResult;
   }
 
- /* private List<ProjectLots> getProjectLots(SearchHits<ProcurementEventSearch> countResults) {
-    return countResults.getAggregations().aggregations();
-  }*/
+  private List<ProjectLots> getProjectLots(Aggregations aggregations, String lotId) {
+     Terms terms = (Terms) aggregations.get(COUNT_AGGREGATION);
+     return terms.getBuckets().stream().map(bucket -> {
+       ProjectLots projectLots= new ProjectLots();
+        projectLots.setCount((int)bucket.getDocCount());
+        projectLots.setText(bucket.getKeyAsString());
+        projectLots.setSelected(bucket.getKeyAsString().equalsIgnoreCase(lotId));
+       return projectLots;
+     }).collect(Collectors.toList());
+  }
 
   private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, String lotId) {
     NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
@@ -789,7 +803,7 @@ public class ProcurementProjectService {
     NativeSearchQuery searchQuery;
       searchQuery = new NativeSearchQueryBuilder()
               .withQuery(QueryBuilders.matchAllQuery())
-              .withAggregations(AggregationBuilders.terms("count_lot").field("lot.raw"))
+              .withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").minDocCount(1))
               .build();
     return searchQuery;
   }
