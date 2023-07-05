@@ -19,6 +19,7 @@ public class OcdsRecordMapper  implements InitializingBean {
     private final CompiledReleasePlanningService compiledPlanningService;
     private final CompiledReleaseTenderService compiledTenderService;
     private final CompiledReleaseAwardsService compiledAwardsService;
+    private final StatisticsService statisticsService;
 
 
     public Record1 populate(ProjectQuery query, Record1 record){
@@ -64,6 +65,14 @@ public class OcdsRecordMapper  implements InitializingBean {
         mapCompiledReleaseTender();
 
         mapCompiledReleaseAward();
+
+        mapCompiledReleaseStatistics();
+    }
+
+    private void mapCompiledReleaseStatistics() {
+        handlers.put(OcdsSections.COMPILED_RELEASE_STATISTICS,  (pq, re) -> {
+            return statisticsService.populate(re, pq);
+        });
     }
 
     private void mapCompiledReleasePlanning() {

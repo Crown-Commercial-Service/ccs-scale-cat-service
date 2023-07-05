@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -42,7 +43,7 @@ public class CompiledReleaseService{
         release.setTitle(pp.getProjectName());
         release.setLanguage("en");
         release.setOcid("ocid");
-
+        ensureProjectPublished(pp);
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
         if(null != pe) {
             release.setDate(OffsetDateTime.ofInstant(pe.getPublishDate(), ZoneId.systemDefault()));
@@ -53,6 +54,12 @@ public class CompiledReleaseService{
         release.setInitiationType(InitiationType.TENDER);
 
         return new MapperResponse(record);
+    }
+
+    private void ensureProjectPublished(ProcurementProject pp) {
+        if(null == EventsHelper.getFirstPublishedEvent(pp)){
+            throw new ValidationException("Project is not published");
+        }
     }
 
     public MapperResponse populateParties(Record1 re, ProjectQuery pq) {

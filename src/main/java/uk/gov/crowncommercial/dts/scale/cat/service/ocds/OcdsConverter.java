@@ -42,7 +42,7 @@ public final class OcdsConverter {
         Requirement1 result = modelMapper.map(r.getOcds(), Requirement1.class);
         result.setDescription(r.getOcds().getDescription());
         if(null!= r.getNonOCDS().getOptions() && r.getNonOCDS().getOptions().size() > 0)
-            result.setPattern(r.getNonOCDS().getOptions().stream().filter(t->t.getSelect()).findFirst(). map(t->null != t? t.getValue() : null).orElseGet(()-> null));
+            result.setPattern(EventsHelper.serializeValue(r.getNonOCDS().getOptions()));
         return result;
     }
 

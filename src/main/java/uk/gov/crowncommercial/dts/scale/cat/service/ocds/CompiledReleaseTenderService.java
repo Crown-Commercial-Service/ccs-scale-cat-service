@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
+import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -100,7 +101,7 @@ public class CompiledReleaseTenderService{
             if(orgMap.isPresent()){
                 ref.setId(orgMap.get().getCasOrganisationId());
             }
-            
+            ref.setContactPoint(new ContactPoint1().name(supplier.getStatusCode() +":"+ supplier.getStatus()));
             ref.setName(cData.getName());
         }
         return ref;
