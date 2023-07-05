@@ -54,6 +54,9 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
@@ -761,21 +764,28 @@ public class ProcurementProjectService {
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
-    Aggregations aggregations = (Aggregations) countResults.getAggregations().aggregations();
-    searchCriteria.setLots(getProjectLots(aggregations, lotId));
+    searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
   return projectPublicSearchResult;
   }
-
-  private List<ProjectLots> getProjectLots(Aggregations aggregations, String lotId) {
+  public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
+  {
+    Map<Object, Boolean> map = new ConcurrentHashMap<>();
+    return t -> map.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
+  }
+  private List<ProjectLots> getProjectLots(SearchHits<ProcurementEventSearch> countResults, String lotId) {
+    Map<String, String> lotAndDescription = countResults.stream().map(SearchHit::getContent).filter(distinctByKey(project -> project.getLot())).collect(Collectors.toMap(ProcurementEventSearch::getLot, ProcurementEventSearch::getLotDescription));
+    Aggregations aggregations = (Aggregations) countResults.getAggregations().aggregations();
      Terms terms = (Terms) aggregations.get(COUNT_AGGREGATION);
      return terms.getBuckets().stream().map(bucket -> {
+       int lotnumber = Character.getNumericValue(bucket.getKeyAsString().charAt(bucket.getKeyAsString().length() - 1));
        ProjectLots projectLots= new ProjectLots();
+       projectLots.setId(lotnumber);
         projectLots.setCount((int)bucket.getDocCount());
-        projectLots.setText(bucket.getKeyAsString());
+        projectLots.setText(lotAndDescription.get(bucket.getKeyAsString()));
         projectLots.setSelected(bucket.getKeyAsString().equalsIgnoreCase(lotId));
        return projectLots;
      }).collect(Collectors.toList());

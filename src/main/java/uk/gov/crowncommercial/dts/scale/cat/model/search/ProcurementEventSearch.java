@@ -33,6 +33,7 @@ public class ProcurementEventSearch {
     String lot;
     @JsonProperty("lotDescription")
     String lotDescription;
+
     @JsonProperty("status")
     String status;
     @JsonProperty("subStatus")
