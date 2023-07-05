@@ -118,7 +118,7 @@ public class ProjectsCSVGenerationScheduledTask {
       transferToS3(tempFile);
 
       log.info("Successfully generated CSV data");
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.error("Error While generating Projects CSV ", e);
     }
   }
@@ -149,7 +149,6 @@ public class ProjectsCSVGenerationScheduledTask {
         }
       }
     } catch (Exception e) {
-      // TODO: handle exception
     }
     return "";
   }
@@ -159,15 +158,16 @@ public class ProjectsCSVGenerationScheduledTask {
    */
   private String getExpectedContractLength(final ProcurementEvent event) {
     // lot 1 & lot 3-> Contract Length
-    try {
-      String dataFromJSONDataTemplate = EventsHelper.getData("Criterion 3", "Group 18", "Question 12",
-          event.getProcurementTemplatePayload().getCriteria());
-      if (Objects.nonNull(dataFromJSONDataTemplate)) {
-        var period = Period.parse(dataFromJSONDataTemplate);
-        return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+      try {
+        String dataFromJSONDataTemplate = EventsHelper.getData("Criterion 3", "Group 18",
+            "Question 12", event.getProcurementTemplatePayload().getCriteria());
+        if (Objects.nonNull(dataFromJSONDataTemplate)) {
+          var period = Period.parse(dataFromJSONDataTemplate);
+          return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+        }
+      } catch (DateTimeParseException e) {
       }
-    } catch (DateTimeParseException e) {
-      // TODO: handle exception
     }
     return "";
   }
@@ -176,12 +176,16 @@ public class ProjectsCSVGenerationScheduledTask {
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
   private String geContractStartData(final ProcurementEvent event) {
-    if (event.getProject().getLotNumber() == "1") {
-      return EventsHelper.getData("Criterion 1", "Key Dates", "Question 13",
-          event.getProcurementTemplatePayload().getCriteria());
+    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+      if (event.getProject().getLotNumber() == "1") {
+        return EventsHelper.getData("Criterion 1", "Key Dates", "Question 13",
+            event.getProcurementTemplatePayload().getCriteria());
+      } else if (event.getProject().getLotNumber() == "3") {
+        return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
+            event.getProcurementTemplatePayload().getCriteria());
+      }
     }
-    return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
-        event.getProcurementTemplatePayload().getCriteria());
+    return "";
   }
 
 
@@ -191,27 +195,29 @@ public class ProjectsCSVGenerationScheduledTask {
   private String getBudgetRangeData(final ProcurementEvent event) {
     String maxValue = null;
     String minValue = null;
+    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+      if (event.getProject().getLotNumber() == "1") {
+        maxValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 2",
+            event.getProcurementTemplatePayload().getCriteria());
+        minValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 3",
+            event.getProcurementTemplatePayload().getCriteria());
+      }
+      if (event.getProject().getLotNumber() == "3") {
+        maxValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 2",
+            event.getProcurementTemplatePayload().getCriteria());
+        minValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 3",
+            event.getProcurementTemplatePayload().getCriteria());
+      }
+      log.info("MaxValue: {} - MinValue: {}", maxValue, minValue);
 
-    if (event.getProject().getLotNumber() == "1") {
-      maxValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 2",
-          event.getProcurementTemplatePayload().getCriteria());
-      minValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 3",
-          event.getProcurementTemplatePayload().getCriteria());
+      if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
+        return "£" + minValue + "-£" + maxValue;
+      } else if (!StringUtils.isBlank(maxValue)) {
+        return "up to £" + maxValue;
+      } else
+        return "not prepared to share details";
     }
-    if (event.getProject().getLotNumber() == "3") {
-      maxValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 2",
-          event.getProcurementTemplatePayload().getCriteria());
-      minValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 3",
-          event.getProcurementTemplatePayload().getCriteria());
-    }
-    log.info("MaxValue: {} - MinValue: {}", maxValue, minValue);
-
-    if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
-      return "£" + minValue + "-£" + maxValue;
-    } else if (!StringUtils.isBlank(maxValue)) {
-      return "up to £" + maxValue;
-    } else
-      return "not prepared to share details";
+    return "";
   }
 
   private void transferToS3(Path tempFile) throws IOException {

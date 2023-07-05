@@ -21,7 +21,8 @@ public class OppertunitiesS3ClientConfig {
   AmazonS3 amazonS3() {
     var awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
         oppertunitiesS3Config.getAccessKeyId(), oppertunitiesS3Config.getSecretAccessKey()));
-    return AmazonS3ClientBuilder.standard().withCredentials(awsCredentials).build();
+    return AmazonS3ClientBuilder.standard().withCredentials(awsCredentials)
+        .withRegion(oppertunitiesS3Config.getAwsRegion()).build();
   }
 
 }

@@ -12,6 +12,7 @@ import lombok.Data;
 @Data
 public class OppertunitiesS3Config {
 
+  String awsRegion;
   String bucket;
   String accessKeyId;
   String secretAccessKey;

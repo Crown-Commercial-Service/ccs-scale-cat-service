@@ -47,7 +47,7 @@ public class CompiledReleaseService{
         release.setOcid(pe.getOcdsAuthorityName() + "-"+ pe.getOcidPrefix()+ "-" + pe.getId());
         if(null != pe) {
             release.setDate(OffsetDateTime.ofInstant(pe.getPublishDate(), ZoneId.systemDefault()));
-            release.setDescription(EventsHelper.getData("Group 3","Summary of work", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
+            release.setDescription(EventsHelper.getData("Criterion 3", "Group 3", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
         }
 
         release.setTag(ReleaseTag.TENDER); // TODO get the status from Jaggaer ?
