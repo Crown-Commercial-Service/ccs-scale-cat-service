@@ -42,9 +42,9 @@ public class CompiledReleaseService{
         ProcurementProject pp = query.getProject();
         release.setTitle(pp.getProjectName());
         release.setLanguage("en");
-        release.setOcid("ocid");
         ensureProjectPublished(pp);
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+        release.setOcid(pe.getOcdsAuthorityName() + "-"+ pe.getOcidPrefix()+ "-" + pe.getId());
         if(null != pe) {
             release.setDate(OffsetDateTime.ofInstant(pe.getPublishDate(), ZoneId.systemDefault()));
             release.setDescription(EventsHelper.getData("Group 3","Summary of work", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));

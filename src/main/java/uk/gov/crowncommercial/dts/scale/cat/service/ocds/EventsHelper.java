@@ -36,7 +36,7 @@ public class EventsHelper {
         for(TemplateCriteria tc : criteria){
             String result = getData(groupId, groupDescription, requirementId, tc.getRequirementGroups());
             if(null != result)
-                return null;
+                return result;
         }
         return null;
     }
@@ -46,7 +46,7 @@ public class EventsHelper {
             if(isReqGroupMatch(rg, groupId, groupDescription)){
                 String result = getData(requirementId, rg.getOcds().getRequirements());
                 if(null != result)
-                    return null;
+                    return result;
             }
         }
         return null;
