@@ -3,8 +3,32 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+
+
+
+
+import org.opensearch.common.unit.Fuzziness;
+import org.opensearch.data.client.orhlc.NativeSearchQuery;
+import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.data.client.orhlc.OpenSearchAggregations;
+import org.opensearch.index.query.MultiMatchQueryBuilder;
+
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.aggregations.AggregationBuilders;
+import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.range.Range;
+import org.opensearch.search.aggregations.bucket.terms.Terms;
+import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.springframework.data.domain.PageRequest;
+
+
 import org.springframework.data.domain.Sort;
+
+import org.springframework.data.elasticsearch.core.AggregationsContainer;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -17,15 +41,22 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import jakarta.transaction.Transactional;
+
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
@@ -57,6 +88,17 @@ public class ProcurementProjectService {
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
+
+  private final ElasticsearchOperations elasticsearchOperations;
+
+
+  private static final String PROJECT_NAME = "projectName";
+  private static final String PROJECT_DESCRIPTION = "description";
+  private static final String LOT = "lot";
+
+  private static final String COUNT_AGGREGATION = "count_lot";
+  private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
+
 
   /**
    * SCC-440/441
@@ -627,6 +669,7 @@ public class ProcurementProjectService {
         "Could not find current event for project " + project.getId());
   }
 
+
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
       final String principal) {
     retryableTendersDBDelegate
@@ -710,5 +753,100 @@ public class ProcurementProjectService {
                     projectId, event.getEventID(), terminationType, principal, false);
               });
     }
+  }
+
+  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
+                                            int page, int pageSize, ProjectFilters projectFilters) {
+    ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
+    ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
+    searchCriteria.setKeyword(keyword);
+    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId);
+    NativeSearchQuery searchCountQuery = getLotCount();
+    SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
+    SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+    searchCriteria.setLots(getProjectLots(countResults, lotId));
+    projectPublicSearchResult.setSearchCriteria(searchCriteria);
+    projectPublicSearchResult.setResults(convertResults(results));
+    projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
+    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
+  return projectPublicSearchResult;
+  }
+  public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
+  {
+    Map<Object, Boolean> map = new ConcurrentHashMap<>();
+    return t -> map.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
+  }
+  private List<ProjectLots> getProjectLots(SearchHits<ProcurementEventSearch> countResults, String lotId) {
+    Map<String, String> lotAndDescription = countResults.stream().map(SearchHit::getContent).filter(distinctByKey(project -> project.getLot())).collect(Collectors.toMap(ProcurementEventSearch::getLot, ProcurementEventSearch::getLotDescription));
+    Aggregations aggregations = (Aggregations) countResults.getAggregations().aggregations();
+     Terms terms = (Terms) aggregations.get(COUNT_AGGREGATION);
+     return terms.getBuckets().stream().map(bucket -> {
+       int lotnumber = Character.getNumericValue(bucket.getKeyAsString().charAt(bucket.getKeyAsString().length() - 1));
+       ProjectLots projectLots= new ProjectLots();
+       projectLots.setId(lotnumber);
+        projectLots.setCount((int)bucket.getDocCount());
+        projectLots.setText(lotAndDescription.get(bucket.getKeyAsString()));
+        projectLots.setSelected(bucket.getKeyAsString().equalsIgnoreCase(lotId));
+       return projectLots;
+     }).collect(Collectors.toList());
+  }
+
+  private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, String lotId) {
+    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
+   if(keyword != null  && !keyword.isEmpty()) {
+      searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .fuzziness(Fuzziness.ONE)
+              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
+    }if(lotId !=null && !lotId.isEmpty()) {
+      searchQueryBuilder.withQuery(QueryBuilders.matchQuery(LOT, lotId));
+    }
+   if(keyword == null && lotId == null)
+   {
+     searchQueryBuilder.withQuery(QueryBuilders.matchAllQuery());
+    }
+   searchQueryBuilder.withPageable(PageRequest.of(page -1, pageSize));
+    NativeSearchQuery searchQuery = searchQueryBuilder.build();
+    return searchQuery;
+  }
+
+  private  NativeSearchQuery getLotCount () {
+    NativeSearchQuery searchQuery;
+      searchQuery = new NativeSearchQueryBuilder()
+              .withQuery(QueryBuilders.matchAllQuery())
+              .withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").minDocCount(1))
+              .build();
+    return searchQuery;
+  }
+  private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
+  {
+    return results.stream().map(SearchHit::getContent).map(object ->
+    {
+      ProjectPublicSearchSummary projectPublicSearchSummary=new ProjectPublicSearchSummary();
+      projectPublicSearchSummary.setProjectId(object.getProjectId());
+      projectPublicSearchSummary.setProjectName(object.getProjectName());
+      projectPublicSearchSummary.setAgreement(object.getAgreement());
+      projectPublicSearchSummary.setBudgetRange(object.getBudgetRange());
+      projectPublicSearchSummary.setDescription(object.getDescription());
+      projectPublicSearchSummary.setBuyerName(object.getBuyerName());
+      projectPublicSearchSummary.setLot(object.getLot());
+      projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
+      projectPublicSearchSummary.setSubStatus(object.getSubStatus());
+      projectPublicSearchSummary.setLocation(object.getLocation());
+      return projectPublicSearchSummary;}).collect(Collectors.toList());
+
+  }
+
+  private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
+  {
+      int last = Math.round(totalsize/pageSize);
+    int next = page < last ? page + 1 : 0;
+    int previous = page <= 1 ? 0 : page - 1;
+     Links1 links1= new Links1();
+     links1.setFirst(URI.create(String.format(SEARCH_URI,keyword,1,pageSize)));
+     links1.setLast(last ==0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
+     links1.setNext(next == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,next,pageSize)));
+     links1.setPrev(previous == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
+     links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+    return links1;
   }
 }

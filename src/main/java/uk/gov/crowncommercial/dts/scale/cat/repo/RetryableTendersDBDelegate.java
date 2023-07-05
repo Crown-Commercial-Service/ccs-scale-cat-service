@@ -10,8 +10,10 @@ import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 import java.time.Instant;
@@ -46,6 +48,7 @@ public class RetryableTendersDBDelegate {
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
+
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -404,7 +407,8 @@ public class RetryableTendersDBDelegate {
   public Optional<ContractDetails> findByEventId(final Integer eventId) {
     return contractDetailsRepo.findByEventId(eventId);
   }
-  
+
+
   public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
     procurementEvent.setUpdatedBy(profile);
     procurementEvent.setUpdatedAt(Instant.now());
