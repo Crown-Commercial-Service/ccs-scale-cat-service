@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -42,7 +43,12 @@ public class CompiledReleaseTenderService{
         CompletableFuture cf = CompletableFuture.runAsync(()->{
             populateLots(pq, tender);
         });
+
         ProcurementProject pp = pq.getProject();
+        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+        List<TemplateCriteria> criters = pe.getProcurementTemplatePayload().getCriteria();
+        tender.setDescription(EventsHelper.getData("Group 3", "Summary of work", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
+        tender.setTitle(pp.getProjectName());
         tender.setValue(getMaxValue(pp));
         tender.setMinValue(getMinValue(pp));
         tender.setSubmissionMethod(Arrays.asList(SubmissionMethod.ELECTRONICSUBMISSION));
@@ -83,11 +89,6 @@ public class CompiledReleaseTenderService{
             Set<Integer> bravoIds = sdf.stream().map(t -> t.getCompanyData().getId()).collect(Collectors.toSet());
             Set<OrganisationMapping> orgMappings = tendersDBDelegate.findOrganisationMappingByExternalOrganisationIdIn(bravoIds);
             List<OrganizationReference1> tenderers = rfxResponse.getSuppliersList().getSupplier().stream().map(t -> this.convertSuppliers(t, orgMappings)).toList();
-
-
-//            List<OrganizationReference1> tenderers = suppliers.stream()
-//                    .limit(2) // TODO  remove this artificial limit
-//                    .map(this::convertLotSuppliers).toList();
             tender.setTenderers(tenderers);
         });
         return new MapperResponse(re, cf);
