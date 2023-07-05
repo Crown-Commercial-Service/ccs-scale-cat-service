@@ -9,7 +9,6 @@ import java.nio.file.StandardOpenOption;
 import java.time.Period;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -22,12 +21,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.TypeRef;
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
@@ -41,6 +34,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 /**
  *
@@ -54,7 +48,6 @@ public class ProjectsCSVGenerationScheduledTask {
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
-  private final ObjectMapper objectMapper;
   private final Environment env;
   private final AmazonS3 oppertunitiesS3Client;
   private final OppertunitiesS3Config oppertunitiesS3Config;
@@ -62,7 +55,7 @@ public class ProjectsCSVGenerationScheduledTask {
   private static final String AWARD_STATUS = "complete";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
   private static final String PERIOD_FMT = "%d years, %d months, %d days";
-  private static final String CSV_FILE_NAME = "oppertunity_data.csv";
+  public static final String CSV_FILE_NAME = "oppertunity_data.csv";
 
   @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @Transactional
@@ -167,8 +160,8 @@ public class ProjectsCSVGenerationScheduledTask {
   private String getExpectedContractLength(final ProcurementEvent event) {
     // lot 1 & lot 3-> Contract Length
     try {
-      String dataFromJSONDataTemplate = getDataFromJSONDataTemplate(event,
-          "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 18')].OCDS.requirements[?(@.OCDS.id == 'Question 12')].nonOCDS.options[*].value");
+      String dataFromJSONDataTemplate = EventsHelper.getData("Criterion 3", "Group 18", "Question 12",
+          event.getProcurementTemplatePayload().getCriteria());
       if (Objects.nonNull(dataFromJSONDataTemplate)) {
         var period = Period.parse(dataFromJSONDataTemplate);
         return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
@@ -184,12 +177,13 @@ public class ProjectsCSVGenerationScheduledTask {
    */
   private String geContractStartData(final ProcurementEvent event) {
     if (event.getProject().getLotNumber() == "1") {
-      return getDataFromJSONDataTemplate(event,
-          "$.criteria[?(@.id == 'Criterion 1')].requirementGroups[?(@.OCDS.id == 'Key Dates')].OCDS.requirements[?(@.OCDS.id == 'Question 13')].nonOCDS.options[*].value");
+      return EventsHelper.getData("Criterion 1", "Key Dates", "Question 13",
+          event.getProcurementTemplatePayload().getCriteria());
     }
-    return getDataFromJSONDataTemplate(event,
-        "$.criteria[?(@.id == 'Criterion 1')].requirementGroups[?(@.OCDS.id == 'Key Dates')].OCDS.requirements[?(@.OCDS.id == 'Question 11')].nonOCDS.options[*].value");
+    return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
+        event.getProcurementTemplatePayload().getCriteria());
   }
+
 
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
@@ -199,18 +193,16 @@ public class ProjectsCSVGenerationScheduledTask {
     String minValue = null;
 
     if (event.getProject().getLotNumber() == "1") {
-      maxValue = getDataFromJSONDataTemplate(event,
-          "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 20')].OCDS.requirements[?(@.OCDS.id == 'Question 2')].nonOCDS.options[?(@.select == true)].value");
-
-      minValue = getDataFromJSONDataTemplate(event,
-          "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 20')].OCDS.requirements[?(@.OCDS.id == 'Question 3')].nonOCDS.options[?(@.select == true)].value");
+      maxValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 2",
+          event.getProcurementTemplatePayload().getCriteria());
+      minValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 3",
+          event.getProcurementTemplatePayload().getCriteria());
     }
     if (event.getProject().getLotNumber() == "3") {
-      maxValue = getDataFromJSONDataTemplate(event,
-          "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 18')].OCDS.requirements[?(@.OCDS.id == 'Question 2')].nonOCDS.options[?(@.select == true)].value");
-
-      minValue = getDataFromJSONDataTemplate(event,
-          "$.criteria[?(@.id == 'Criterion 3')].requirementGroups[?(@.OCDS.id == 'Group 18')].OCDS.requirements[?(@.OCDS.id == 'Question 3')].nonOCDS.options[?(@.select == true)].value");
+      maxValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 2",
+          event.getProcurementTemplatePayload().getCriteria());
+      minValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 3",
+          event.getProcurementTemplatePayload().getCriteria());
     }
     log.info("MaxValue: {} - MinValue: {}", maxValue, minValue);
 
@@ -220,24 +212,6 @@ public class ProjectsCSVGenerationScheduledTask {
       return "up to £" + maxValue;
     } else
       return "not prepared to share details";
-  }
-
-  private String getDataFromJSONDataTemplate(final ProcurementEvent event,
-      final String sourcePath) {
-    try {
-      var eventData = event.getProcurementTemplatePayloadRaw();
-      var jsonPathConfig =
-          Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST)
-              .jsonProvider(new JacksonJsonProvider(objectMapper))
-              .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
-      TypeRef<List<String>> typeRef = new TypeRef<>() {};
-      List<String> read = JsonPath.using(jsonPathConfig).parse(eventData).read(sourcePath, typeRef);
-      log.info(read.toString());
-      return read.get(0);
-    } catch (Exception e) {
-      // TODO: handle exception
-    }
-    return null;
   }
 
   private void transferToS3(Path tempFile) throws IOException {

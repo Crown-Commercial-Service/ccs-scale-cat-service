@@ -45,9 +45,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectNa
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMemberType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ProjectsGenerationScheduledTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
+import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -89,7 +89,7 @@ class ProjectsControllerTest {
   private ProcurementProjectService procurementProjectService;
   
   @MockBean
-  private ProjectsGenerationScheduledTask projectsGenerationScheduledTask;
+  private ProjectsCSVGenerationScheduledTask projectsGenerationScheduledTask;
 
   @MockBean
   private UserProfileService userProfileService;

@@ -1,7 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
+import org.apache.commons.io.IOUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -157,12 +166,14 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
   
-  @GetMapping("/download")
-  @TrackExecutionTime
-  public void downloadOppertunities(
-     final JwtAuthenticationToken authentication) {
-    log.info("Downloading oppertunities csv from s3");
-//    service.generateCSV();
+  @GetMapping(value = "/download")
+  public void downloadFile(HttpServletResponse response) throws IOException {
+    var downloadProjectsData = procurementProjectService.downloadProjectsData();
+    response.setContentType(MediaType.TEXT_PLAIN.toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+        "attachment; filename=\"" + CSV_FILE_NAME + "\"");
+    IOUtils.copy(downloadProjectsData, response.getOutputStream());
+    response.flushBuffer();
   }
 
   @GetMapping("/search")
