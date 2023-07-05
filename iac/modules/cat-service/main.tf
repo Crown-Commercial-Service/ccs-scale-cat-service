@@ -94,6 +94,10 @@ data "aws_ssm_parameter" "oppertunities_s3_bucket" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-bucket"
 }
 
+data "aws_ssm_parameter" "oppertunities_s3_region" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-region"
+}
+
 data "aws_ssm_parameter" "oppertunities_s3_access_key_id" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-access-key-id"
 }
@@ -199,6 +203,7 @@ resource "cloudfoundry_app" "cat_service" {
 
     # Oppertunities S3 export
     "config.external.s3.bucket" : data.aws_ssm_parameter.oppertunities_s3_bucket.value
+    "config.external.s3.aws-region" : data.aws_ssm_parameter.oppertunities_s3_region.value
     "config.external.s3.access-key-id" : data.aws_ssm_parameter.oppertunities_s3_access_key_id.value
     "config.external.s3.secret-access-key" : data.aws_ssm_parameter.oppertunities_s3_aws_secret_key.value
     # No directory/object prefix required in PRD
