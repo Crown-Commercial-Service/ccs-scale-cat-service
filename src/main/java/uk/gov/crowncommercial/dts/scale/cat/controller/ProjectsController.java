@@ -29,7 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackage;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;

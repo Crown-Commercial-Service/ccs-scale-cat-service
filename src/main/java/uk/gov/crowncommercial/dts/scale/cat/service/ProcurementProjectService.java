@@ -73,6 +73,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProj
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Links1;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectLots;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;

@@ -117,12 +117,10 @@ public class ProjectsCSVGenerationScheduledTask {
 
       csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
           env.getProperty("link"), agreementDetails.getName(), lotName, orgName, domainName,
-          event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
-          getBudgetRangeData(event), "Applications from SMEs",
+          event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event), getBudgetRangeData(event), "Applications from SMEs",
           "Applications from Large Organisations", "Total Organisations",
           defineStatus(event.getTenderStatus()), getWinningSupplier(event), "Size of supplier", " ",
-          this.geContractStartData(event),
-          retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
+          this.geContractStartData(event), retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
           "Employment status");
     }
   }
