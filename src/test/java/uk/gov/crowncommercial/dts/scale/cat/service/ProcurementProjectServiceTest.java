@@ -26,10 +26,12 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.web.reactive.function.client.WebClient;
+import com.amazonaws.services.s3.AmazonS3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
@@ -124,9 +126,14 @@ class ProcurementProjectServiceTest {
   @Autowired
   private ProcurementProjectService procurementProjectService;
 
+  @MockBean
+  private AmazonS3 oppertunitiesS3Client;
+  
+  @MockBean
+  private OppertunitiesS3Config oppertunitiesS3Config;
 
-@MockBean
-private ElasticsearchOperations elasticsearchOperations;
+  @MockBean
+  private ElasticsearchOperations elasticsearchOperations;
 
   @MockBean
   private JaggaerService jaggaerService;

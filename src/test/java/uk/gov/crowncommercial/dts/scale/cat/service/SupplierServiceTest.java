@@ -1,42 +1,30 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.config.RPAAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAAPIResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -46,7 +34,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 @SpringBootTest(classes = {SupplierService.class},
     webEnvironment = WebEnvironment.NONE)
 @Slf4j
-@EnableConfigurationProperties({RPAAPIConfig.class})
 @ContextConfiguration(classes = {ObjectMapper.class})
 class SupplierServiceTest {
 
@@ -70,20 +57,7 @@ class SupplierServiceTest {
   static final Supplier EXT_SUPPLIER_2 =
       Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_2).build()).build();
 
-  private static final String PRINCIPAL = "venki@bric.org.uk";
-  private static final String BUYER_USER_NAME = "Venki Bathula";
-  private static final String BUYER_PASSWORD = "PASS12345";
-  private static final String EVENT_OCID = "ocds-abc123-1";
-  private static final Integer PROC_PROJECT_ID = 1;
-  private static final String JAGGAER_USER_ID = "12345";
-  private static final String EXTERNAL_EVENT_ID = "itt_8673";
 
-  private static final Double SCORE_1 = 90.02;
-  private static final Double SCORE_2 = 70.45;
-  private static final String COMMENT_1 = "comment-1";
-  private static final String COMMENT_2 = "comment-2";
-
-  private static final String RFX_ID = "rfq_0001";
   private static final Integer JAGGAER_SUPPLIER_ID = 2345678;
   private static final String JAGGAER_SUPPLIER_NAME = "Bathula Consulting";
 
@@ -91,9 +65,6 @@ class SupplierServiceTest {
   private static final String JAGGAER_SUPPLIER_NAME_1 = "Doshi Industries";
 
   static final ProcurementProject project = ProcurementProject.builder().build();
-
-  private static final Optional<SubUser> JAGGAER_USER = Optional
-      .of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).name(BUYER_USER_NAME).build());
 
   @MockBean
   private AgreementsService agreementsService;
@@ -110,9 +81,6 @@ class SupplierServiceTest {
   @MockBean
   private ValidationService validationService;
 
-  @Autowired
-  private RPAAPIConfig rpaAPIConfig;
-
   @MockBean
   private JaggaerService jaggaerService;
 
@@ -125,8 +93,6 @@ class SupplierServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
-  private static RPAGenericData request = new RPAGenericData();
-  private final RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
   @BeforeAll
   static void beforeClass() {
@@ -183,10 +149,6 @@ class SupplierServiceTest {
     verify(agreementsService).getLotSuppliers(AGREEMENT_NUMBER, LOT_NUMBER);
     verify(retryableTendersDBDelegate).findOrganisationMappingByCasOrganisationIdIn(anySet());
   }
-
-
-
-
 
   private ExportRfxResponse prepareSupplierDetails() {
     var companyData =

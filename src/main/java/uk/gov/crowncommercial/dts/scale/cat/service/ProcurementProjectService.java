@@ -1,71 +1,111 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
-
-
-
-
-import org.opensearch.common.unit.Fuzziness;
-import org.opensearch.data.client.orhlc.NativeSearchQuery;
-import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
-import org.opensearch.data.client.orhlc.OpenSearchAggregations;
-import org.opensearch.index.query.MultiMatchQueryBuilder;
-
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.search.aggregations.AggregationBuilders;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.range.Range;
-import org.opensearch.search.aggregations.bucket.terms.Terms;
-import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import org.springframework.data.domain.PageRequest;
-
-
-import org.springframework.data.domain.Sort;
-
-import org.springframework.data.elasticsearch.core.AggregationsContainer;
-import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.SearchHits;
-
-import org.springframework.stereotype.Service;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-import org.springframework.web.reactive.function.client.WebClient;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.exception.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
-import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
-import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
-
-import jakarta.transaction.Transactional;
-
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
-
-import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import org.modelmapper.ModelMapper;
+import org.opensearch.common.unit.Fuzziness;
+import org.opensearch.data.client.orhlc.NativeSearchQuery;
+import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.index.query.MultiMatchQueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.aggregations.AggregationBuilders;
+import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.terms.Terms;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.reactive.function.client.WebClient;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserNotExistException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Links1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectLots;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectSearchCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ReleaseTag;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipient;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipientList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectOwner;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectTeam;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -88,6 +128,8 @@ public class ProcurementProjectService {
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
+  private final AmazonS3 oppertunitiesS3Client;
+  private final OppertunitiesS3Config oppertunitiesS3Config;
 
   private final ElasticsearchOperations elasticsearchOperations;
 
@@ -849,5 +891,20 @@ public class ProcurementProjectService {
      links1.setPrev(previous == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
      links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
     return links1;
+
+  }
+  /**
+   * Download all oppertunities data from s3
+   * 
+   */
+  public InputStream downloadProjectsData() {
+    try {
+      S3Object s3object = oppertunitiesS3Client
+          .getObject(new GetObjectRequest(oppertunitiesS3Config.getBucket(), CSV_FILE_NAME));
+      return s3object.getObjectContent();
+    } catch (Exception exception) {
+      log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
+    }
+    return null;
   }
 }

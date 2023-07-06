@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
@@ -48,6 +49,7 @@ public class RetryableTendersDBDelegate {
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
+  private final QuestionAndAnswerRepo questionAndAnswerRepo;
 
 
   @TendersRetryable
@@ -407,8 +409,20 @@ public class RetryableTendersDBDelegate {
   public Optional<ContractDetails> findByEventId(final Integer eventId) {
     return contractDetailsRepo.findByEventId(eventId);
   }
-
-
+  
+  @TendersRetryable
+  @Transactional(readOnly = true)
+  public Set<ProcurementEvent> findEventsByTenderStatusAndAgreementId(final String status,
+      final String agreementId) {
+    return procurementEventRepo.findEventsByTenderStatusAndAgreementId(status, agreementId);
+  }
+  
+  @TendersRetryable
+  @Transactional(readOnly = true)
+  public long findQuestionsCountByEventId(final Integer eventId) {
+    return questionAndAnswerRepo.countByEventId(eventId);
+  }
+  
   public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
     procurementEvent.setUpdatedBy(profile);
     procurementEvent.setUpdatedAt(Instant.now());

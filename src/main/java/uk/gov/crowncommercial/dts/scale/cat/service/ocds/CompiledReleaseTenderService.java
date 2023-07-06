@@ -150,16 +150,16 @@ public class CompiledReleaseTenderService{
 
     private Value1 getMinValue(ProcurementProject pp) {
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        return getValue1(pe, "Group 18", "Set your budget ", "Question 3");
+        return getValue1(pe, "Criterion 3", "Group 18", "Question 3");
     }
 
     private Value1 getMaxValue(ProcurementProject pp) {
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        return getValue1(pe, "Group 18", "Set your budget ", "Question 2");
+        return getValue1(pe, "Criterion 3", "Group 18", "Question 2");
     }
 
-    private static Value1 getValue1(ProcurementEvent pe, String groupId, String groupDesc, String reqId) {
-        String maxBudget = EventsHelper.getData(groupId, groupDesc,  reqId, pe.getProcurementTemplatePayload().getCriteria());
+    private static Value1 getValue1(ProcurementEvent pe, String criterionId, String groupId, String reqId) {
+        String maxBudget = EventsHelper.getData(criterionId, groupId,  reqId, pe.getProcurementTemplatePayload().getCriteria());
         if(null != maxBudget && maxBudget.trim().length() > 0){
             BigDecimal bd = BigDecimal.valueOf(Double.parseDouble(maxBudget));
             Value1 amount = new Value1();

@@ -28,7 +28,7 @@ public class CompiledReleasePlanningService {
 
     private Budget1 getBudget(ProcurementProject pp) {
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        String maxBudget = EventsHelper.getData("Group 18", "Set your budget ",  "Question 2", pe.getProcurementTemplatePayload().getCriteria());
+        String maxBudget = EventsHelper.getData("Criterion 3", "Group 20", "Question 2", pe.getProcurementTemplatePayload().getCriteria());
         if(null != maxBudget && maxBudget.trim().length() > 0){
             BigDecimal bd = BigDecimal.valueOf(Double.parseDouble(maxBudget));
             Budget1 result = new Budget1();
