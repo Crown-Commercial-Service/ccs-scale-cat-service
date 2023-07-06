@@ -756,10 +756,11 @@ public class ProcurementProjectService {
   }
 
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
-                                            int page, int pageSize, ProjectFilters projectFilters) {
+                                            int page, int pageSize, ProjectFilter projectFilter) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
+    searchCriteria.setFilters(Arrays.asList(projectFilter));
     NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId);
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);

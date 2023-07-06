@@ -149,14 +149,10 @@ public class ProjectsController extends AbstractRestController {
                                                    @RequestParam(name= "lot-id", required = false) final String lotId,
                                                    @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
                                                    @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
-                                                   ProjectFilters projectFilters,
-                                                final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
-    log.info("getProjectsSummary invoked on behalf of principal: {}", principal);
+                                                   ProjectFilter projectFilter) {
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
     return procurementProjectService.getProjectSummery(keyword,lotId,
-     pageNo, size, projectFilters);
+     pageNo, size, projectFilter);
   }
 }
