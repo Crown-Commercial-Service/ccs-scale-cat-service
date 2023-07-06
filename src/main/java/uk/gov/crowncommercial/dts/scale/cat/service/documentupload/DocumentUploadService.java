@@ -3,8 +3,11 @@ package uk.gov.crowncommercial.dts.scale.cat.service.documentupload;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.DocumentUploadAPIConfig.KEY_URI_TEMPLATE;
+
+import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -149,43 +152,42 @@ public class DocumentUploadService {
    */
   @SneakyThrows
   public byte[] retrieveDocument(final DocumentUpload documentUpload, final String principal) {
+    return IOUtils.toByteArray(retrieveDocumentStream(documentUpload, principal));
+  }
+
+  @SneakyThrows
+  public InputStream retrieveDocumentStream(final DocumentUpload documentUpload, final String principal) {
     var documentId = documentUpload.getDocumentId();
     var event = documentUpload.getProcurementEvent();
     var tendersS3ObjectKey =
-        tendersS3ObjectKey(event.getProject().getId(), event.getEventID(), documentId);
-
+            tendersS3ObjectKey(event.getProject().getId(), event.getEventID(), documentId);
     switch (documentUpload.getExternalStatus()) {
       case SAFE:
         // Get document from Tenders S3
         log.info("Getting Document from TenderS3 {} ", documentId);
-
-
-        Instant retrieveDocStart= Instant.now();
-        byte[] tenderDbDoc=getFromTendersS3(tendersS3ObjectKey, documentId, principal);
-        Instant retrieveDocEnd= Instant.now();
+        Instant retrieveDocStart = Instant.now();
+        var tenderDbDoc= getFromTendersS3Stream(tendersS3ObjectKey, documentId, principal);
+        Instant retrieveDocEnd = Instant.now();
         log.info("retrieveDocument : Total time taken to retrieveDocument service for procID {} : eventId :{} , Timetaken : {}  ",
-                  documentUpload.getProcurementEvent().getProject().getId(),documentUpload.getProcurementEvent().getEventID(),
-                      Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
+              documentUpload.getProcurementEvent().getProject().getId(),documentUpload.getProcurementEvent().getEventID(),
+              Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
         return tenderDbDoc;
-
       case PROCESSING:
         // Invoke processing of remote S3 / throw error if still processing / unsafe?
         processDocuments(Set.of(documentUpload), principal);
         if (documentUpload.getExternalStatus() == VirusCheckStatus.SAFE) {
-          return getFromTendersS3(tendersS3ObjectKey, documentId, principal);
+          return getFromTendersS3Stream(tendersS3ObjectKey, documentId, principal);
         } else {
           throw new DocumentUploadApplicationException(
-              "Requested document is still being processed and is unavilable to download");
+                  "Requested document is still being processed and is unavilable to download");
         }
-
       case UNSAFE:
         throw new DocumentUploadApplicationException(
-            "Requested document was found to contain threats (viruses) and is unavilable to download");
-
+                "Requested document was found to contain threats (viruses) and is unavilable to download");
       default:
         throw new TendersDBDataException(
-            format("Document upload has unknown state [%s] in Tenders DB",
-                documentUpload.getExternalStatus()));
+                format("Document upload has unknown state [%s] in Tenders DB",
+                        documentUpload.getExternalStatus()));
     }
   }
 
@@ -265,12 +267,17 @@ public class DocumentUploadService {
 
   private byte[] getFromTendersS3(final String tendersS3ObjectKey, final String documentId, final String principal)
       throws IOException {
+     return IOUtils.toByteArray(getFromTendersS3Stream(tendersS3ObjectKey,documentId, principal));
+  }
+
+  private InputStream getFromTendersS3Stream(final String tendersS3ObjectKey, final String documentId, final String principal)
+          throws IOException {
     try {
       S3Object tendersS3Object = tendersS3Client
-          .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
-      return IOUtils.toByteArray(tendersS3Object.getObjectContent());
+              .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
+      return tendersS3Object.getObjectContent();
     } catch (AmazonServiceException e) {
-      var objectData = processFailedS3Documents(tendersS3ObjectKey, documentId, principal);
+      var objectData = processFailedS3DocumentsStream(tendersS3ObjectKey, documentId, principal);
       if (Objects.isNull(objectData))
         throw e;
       return objectData;
@@ -279,6 +286,15 @@ public class DocumentUploadService {
   
   private byte[] processFailedS3Documents(final String tendersS3ObjectKey, final String documentId, final String principal)
       throws AmazonServiceException, SdkClientException, IOException {
+    var failedDoc = processFailedS3DocumentsStream(tendersS3ObjectKey, documentId, principal);
+    if (failedDoc != null) {
+      return IOUtils.toByteArray(failedDoc);
+    }
+    return null;
+  }
+
+  private InputStream processFailedS3DocumentsStream(final String tendersS3ObjectKey, final String documentId, final String principal)
+          throws AmazonServiceException, SdkClientException, IOException {
     // reference of doc key format - tendersS3ObjectKey();
     log.debug("Processing failed s3 documents");
     log.debug("Document Id: {}", documentId);
@@ -289,9 +305,9 @@ public class DocumentUploadService {
       docStatus = documentUploadRepo.save(docStatus);
       this.processDocuments(Set.of(docStatus), principal);
       var tendersS3Object = tendersS3Client
-          .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
+              .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
       log.debug("Document processed successfully and found in s3 bucket");
-      return IOUtils.toByteArray(tendersS3Object.getObjectContent());
+      return tendersS3Object.getObjectContent();
     }
     log.debug("Document upload data not found with id: {}", documentId);
     return null;

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.processors.store;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -14,7 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 
-import javax.validation.ValidationException;
+import jakarta.validation.ValidationException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -94,6 +95,8 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
                                                      final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite,
                                                      final String principal) {
         log.debug("Saving Suppliers for the event {} from Database", event.getId());
+        Hibernate.initialize(event.getCapabilityAssessmentSuppliers());
+
         if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
             event.getCapabilityAssessmentSuppliers()
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
@@ -123,6 +126,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         event.setUpdatedBy(principal);
         event.setRefreshSuppliers(false);
         retryableTendersDBDelegate.save(event);
+        Hibernate.initialize(event.getCapabilityAssessmentSuppliers());
 
         var supplierSelection = event.getCapabilityAssessmentSuppliers().stream()
                 .filter(s -> s.getOrganisationMapping().getId().equals(supplierOrgMapping.getId()))
@@ -146,6 +150,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
 
     private EventSuppliers getSuppliersFromTendersDB(final ProcurementEvent event) {
         log.debug("Getting Suppliers from Database");
+        Hibernate.initialize(event.getCapabilityAssessmentSuppliers());
         var suppliers = event.getCapabilityAssessmentSuppliers().stream().map(s -> {
             var orgIdentity =
                     conclaveService.getOrganisationIdentity(s.getOrganisationMapping().getOrganisationId());

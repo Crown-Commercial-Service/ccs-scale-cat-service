@@ -6,15 +6,43 @@ This is the Java 11+ SpringBoot implementation of the CaT (Tenders) API [Open AP
 
 It is deployed via Travis CI & Terraform to the GOV.UK PaaS environments.
 
+## Deployment
+
+This application is hosted on [GOV.UK PaaS](https://www.cloud.service.gov.uk/) and we use [Travis CI](https://www.travis-ci.com/) to deploy the code.
+When your code changes are merged they will automatically be deployed to the relevant environment.
+
+The environments are mapped as follows:
+
+| Environment     | Branch              |
+|-----------------|---------------------|
+| Sandbox 4       | `release/sbx4`      |
+| Development     | `develop`           |
+| Integration     | `release/int`       |
+| NFT             | `release/nft`    |
+| UAT             | `release/uat`    |
+| Pre-Production  | `release/pre`  |
+| Production      | `release/prod`      |
+
+So, for example, if you merge your changes into `release/nft` the code changes will be deployed into the NFT environment.
+
+### Deploying to Sandbox
+
+The Sandbox environment, specifically Sandbox 2, does not have a "main" branch so to speak of.
+Instead, if you push a branch that matches the following regular expression:
+
+```sh
+^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-(upgrade|fix)-[a-z0-9]+$
+```
+
 ## Prerequisites
 
 The [Terraform CaT infra](https://github.com/Crown-Commercial-Service/ccs-scale-cat-paas-infra) should have been provisioned against the target environment(s) prior to provisioning of this service infrastructure. This will ensure the Tenders DB is created and initialised with the necessary schema.
 
-## Local initialisation & provisioning (sandbox spaces only)
+## Local initialisation & provisioning
 
 Terraform state for each space (environment) is persisted to a dedicated AWS account. Access keys for an account in this environment with the appropriate permissions must be obtained before provisioning any infrastructure from a local development machine. The S3 state bucket name and Dynamo DB locaking table name must also be known.
 
-1. The AWS credentials, state bucket name and DDB locking table name must be supplied during the `terraform init` operation to setup the backend. `cd` to the `iac/environments/{env}` folder corresponding to the environment you are provisioning, and execute the following command to initialise the backend :
+1. The AWS credentials, state bucket name and DDB locking table name must be supplied during the `terraform init` operation to setup the backend. `cd` to the `iac/environments/{env}` folder corresponding to the environment you are provisioning, and execute the following command to initialise the backend:
 
    ```
    terraform init \
@@ -43,21 +71,3 @@ Terraform state for each space (environment) is persisted to a dedicated AWS acc
 
 5. Run `terraform plan` to confirm the changes look ok
 6. Run `terraform apply` to deploy to UK.Gov PaaS
-
-## Provision the service via Travis
-
-The main environments are provisioned automatically via Travis CI. Merges to key branches will trigger an automatic deployment to certain environments - mapped below:
-
-- `develop` branch -> `development` space
-- `release/int` branch -> `int` space
-- `release/nft` branch -> `nft` space
-- `release/uat` branch -> `uat` space
-
-* other environments TBD (these mappings may change as we evolve the process as more environments come online)
-* feature branches can be deployed to specific sandboxes by making minor changes in the `travis.yml` file (follow instructions)
-
-## SBX3 provision with Travis
-
-This environment can be specifically provisioned automatically via Travis CI, by using the below branch
-
-- `sbx3feature.*` branch -> sbx3

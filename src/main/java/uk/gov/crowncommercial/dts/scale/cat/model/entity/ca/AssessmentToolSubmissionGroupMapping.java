@@ -4,8 +4,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
-import javax.persistence.*;
-import java.util.List;
+import jakarta.persistence.*;
 
 /**
 *

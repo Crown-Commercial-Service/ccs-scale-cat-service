@@ -13,7 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.InvalidateEventRequest
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OwnerUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import java.time.Instant;
 import java.util.Comparator;

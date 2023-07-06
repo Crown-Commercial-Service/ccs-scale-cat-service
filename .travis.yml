@@ -1,113 +1,111 @@
+dist: bionic
+os: linux
 language: java
 jdk: openjdk17
-script: 
+
+cache:
+  directories:
+    - "$HOME/.m2"
+
+before_script:
   # Install latest version of Maven compatible with JDK 17. Use archives for permalink to fixed version
   - wget https://archive.apache.org/dist/maven/maven-3/3.8.5/binaries/apache-maven-3.8.5-bin.tar.gz -P /tmp
   - sudo tar xf /tmp/apache-maven-*.tar.gz -C /usr/local/bin/
   - export M2_HOME=/usr/local/bin/apache-maven-3.8.5
   - export PATH=${M2_HOME}/bin:${PATH}
-  - mvn package
-cache:
-  directories:
-    - "$HOME/.m2"
-branches:
-  only:
-    - "/^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$/"
-    - "/^(release)\\/.*$/"
-    - "/^snyk-(upgrade|fix)-[a-z0-9]+$/"
-    - "/^(sbx3feature)\\/.*$/"
-    - develop
-    - main
 
-# Install dependencies
-before_install:
-  - sudo rm -Rf terraform_"$TF_VERSION"_linux_amd64.zip
-  - sudo rm -Rf terraform
-  - wget https://releases.hashicorp.com/terraform/"$TF_VERSION"/terraform_"$TF_VERSION"_linux_amd64.zip
-  - unzip terraform_"$TF_VERSION"_linux_amd64.zip
-  - sudo mv terraform /usr/local/bin/
-  - rm terraform_"$TF_VERSION"_linux_amd64.zip
+script:
+  - mvn package
+
+after_success:
+  - echo "Determine deployment environment"
+  - |
+    case $TRAVIS_BRANCH in
+      "release/sbx4")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=sandbox-4
+        ;;
+      "develop")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=development
+        ;;
+      "release/int")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=INT
+        ;;
+      "release/nft")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=nft
+        ;;
+      "release/uat")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=uat
+        ;;
+      "release/pre")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=pre-production
+        ;;
+      "release/prd")
+        DEPLOY_BRANCH=TRUE
+        SPACE_NAME=production
+        ;;
+      *)
+        echo "No deployment environment found"
+        ;;
+    esac
+  - |
+    if [ $DEPLOY_BRANCH == "TRUE" ]; then
+      echo "Deploying to the $SPACE_NAME environment"
+    else
+      echo "Checking for a Sandbox deployment"
+    fi
 
 deploy:
-  # SBX - modify CF_ENVIRONMENT as required
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=sbx2 bash ./deploy.sh
+  - edge: true
+    provider: cloudfoundry
+    api: https://api.london.cloud.service.gov.uk
+    username: $CF_USERNAME
+    password: $CF_PASSWORD
+    organization: ccs-scale-cat
+    deployment_strategy: rolling
+    space: sandbox-2
+    manifest: manifest/sandbox-2.yml
     on:
       all_branches: true
       condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(feature|bugfix)\\/(SCC|SCAT|CON|CAS)-[0-9]+.*$ || ${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^snyk-(upgrade|fix)-[a-z0-9]+$"
 
-  # SBX3 - modify CF_ENVIRONMENT as required
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=sbx3 bash ./deploy.sh
+  - edge: true
+    provider: cloudfoundry
+    api: https://api.london.cloud.service.gov.uk
+    username: $CF_USERNAME
+    password: $CF_PASSWORD
+    organization: ccs-scale-cat
+    deployment_strategy: rolling
+    space: sandbox-3
+    manifest: manifest/sandbox-3.yml
     on:
       all_branches: true
       condition: "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} =~ ^(sbx3feature)\\/.*$"
 
-  # SBX4 - modify CF_ENVIRONMENT as required
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=sbx4 bash ./deploy.sh
+  - edge: true
+    provider: cloudfoundry
+    api: https://api.london.cloud.service.gov.uk
+    username: $CF_USERNAME
+    password: $CF_PASSWORD
+    organization: ccs-scale-cat
+    deployment_strategy: rolling
+    space: $SPACE_NAME
+    manifest: manifest/$SPACE_NAME.yml
     on:
-      branch: release/sbx4
+      all_branches: true
+      condition: $DEPLOY_BRANCH = TRUE
 
-  # DEVELOP
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=dev bash ./deploy.sh
-    on:
-      branch: develop
-
-  # INT (SIT)
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=int bash ./deploy.sh
-    on:
-      branch: release/int
-
-  # NFT
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=nft bash ./deploy.sh
-    on:
-      branch: release/nft
-
-
-  # UAT
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=uat bash ./deploy.sh
-    on:
-      branch: release/uat
-
-  # PRE
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=pre bash ./deploy.sh
-    on:
-      branch: release/pre      
-
-  # PRD
-  - provider: script
-    skip_cleanup: true
-    script: CF_ENVIRONMENT=prd bash ./deploy.sh
-    on:
-      branch: release/prd      
-
-# WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments.
+# WARNING! Do NOT use the --add flag of travis cli encrypt - it removes all formatting and comments 
 env:
   global:
-    # ACCESS_KEY_ID
-    - secure: "14yoqArDAwsAI0qcOaI7oEm+NIBQT0OD3qiLXtbqmRaNcz0Sl6s3e4KcKXpCkptTQ83nOnYFTCNjt08H4DSbqIqTY331tGvSTV/zAejL6CRhCzYyrJEt/1a7gKEe1AhLmADmslsXqjC2m9JJPNlGKugCdFBimNTNQMv9hgJh+07YnDoXfpQJV9eszPSifkCQNBeLEq+duNWTBnRtfXnOvArKOFoKv2vO+Q4+7wj5ZTSrmwuGSha7OgSeaWl1E2trqH0CsOK+nKT3/ADxj20HvwheDX20GkgIFEBsJqF4Wu+1KpCpxTSBHGoTnTSF7b2GKsS57jl3MCaAR6fuPYd51kJWcs4lXjF5G/xCiZzJOlfVKj4Sdhxsz04PZPnLGTMZFUmMCZtngiITQPw8hxyk4s3l+VHi8Q6DD3YpkoE984VbTCxLQyc8C46yQQ4kfnfIF/5x7uWmXPYPIjU2f2GwNWFpqnXGNLh9MRVfnpMSpI9aSK4npxt1FIY1V0qI1rky72BDwC/7QyqN0GDF9aoy/TJAwyEgfiHn3IPKANXvAx9RWwsKdsv5nwEyUpGQRdOTYFbePw5Qmb5Jy+xqtNr3rzXPRp5a3FS7Wps0pDgkv+VdFD7NPZf9j9rps1Na5FE1YFnqeLs/DoMww3C7LmPLBD+DGhFjZSICQ406ciwRi6s="
-    # SECRET_ACCESS_KEY
-    - secure: "fD9B3sj+6CPnM4i+wJELrSNbnS7d6sOiiljZLPlgPcuX2KhCWAwCecxx2RLLxn7NGN3LKkD5KnZYs0Y6c3J073O1vGiia426yiZ6H/ey+b4Qzarjv9t2yYk0LHLsS/8yAb5v/bHtOndfWRFiy/AyKMqDs0yvQb01JHwM318jI1282SF+Woj8KGYsXxVi8U5XC50UC7iMb1GK9KBEV1k6SSx1IPDYNcFuVwCO6oM0072IoA1tCNC20ynVVbHbnA5HZ0dxAgokJA6CzMHuFJkLVWFfsv52rgNl0Jhg88R+YU0m3vlUGJ2leWVFZ5Np82mmS+lsQl93LRbF7Fj2+YecC0ewe/dB8G7bFzS62T0ax0RbOVczBzQxX1ueOa9KBoN+L1jcCwlhynJW/d7nGG1OlyxO2fpinRsRqB9NDUVMjQ9yu74Lxc3om/YJP6rEmnNkFpEA9xxWq8NR6rtqTNzqqqITDM4Y3j/LVQSgKqTC5jXnCzGVF8L1oeZAxgXJY52nJfdxuErORHGDzGH25V7QxMsOKIO6gehkEjkCVAyzohhv49vB6HKK9ivI5menldKAPOj6ixh+hY4+ASREftJvSKFJHgojjnMSyuA5/mOGUbHGa5xMhrvzg3zjqAW6dSOL/rYDXARAmhlkH+O+iqYDo2XyZMTSNz+kgH2+ToCC40I="
-    # S3_STATE_BUCKET_NAME
-    - secure: "FbOlT9fo8E6nIdWIjLo7/nuwx340DH2YXO3hZF0+KdxEDcZC5V/KAF1x86qGcLkOlfaxbpqI4nQdWh/ATJRyZe3EU0HiOtTSGnOHdmpDdciHJaQyleoOAdkOcywyTOsPcRgO07NwgnncTY0JFGXI/A0alUxLSApSc0og09SHYK3mjP3uQaOjCQngZf3N55J/EzMQDpk7Fmr/QSx77eZn+m/90ZAT+xRus2JFNbxg56Uaj6e0KC60wgsctUI8KIVP/uKXO8t1q+3j1pBCGGCivR/Yd/a7YP1csj9Z0zKs1/DbB60OxOwr5ZcKAf9m8JN+E76ykW11CmHzQrwjnlFN5gGpJUkAM/AKPzaSP8vQoi7JmTdKSIysQzT7y3dsSMp0QhU5turna4AQ7kqSNCwQl5AQWuZqWw3HiU3cOby98+CMmfY1imCwxV888ByRvXIqzx+O4sS4G9F8tUjvhdddYMoB9PeY7OBYEwP5/on/w98s6JXFPrkdKRHJFub8zjSMYxwpbuYu/EJZWIeNzrqGCx18JF96+64Nj8YNsBwIo0PJ57dB9LajVKTgdwnbEEu7Zkk6xKQSCVIUUUwsT2eO34jVFACbGVR7mEDUioptVFXt8wmvX3ftOG39JQHypRy8uunpYk1G1U6qewYbIMiRrYdwNfvyBcVbeihbhh0SuJQ="
-    # DDB_LOCK_TABLE_NAME
-    - secure: "WfuCos2MaZwFiK+KDUFEkrmxeEJlAvr/KJ0jVv+4HBlWZtiNNeWB+0tbwpUfx/icjNSlW/wvk+FrFEJN6JhUlKXwvjNbLe6CRiBHk8LIhg9DizdPq80pVn5Qn9dAzQCKIn7/sD0uzhOK++LcBjaZPWHBsA6vV+HpBGBFrghPj6Jqe001dm/5fMs9iNCJmPvZyFFNSIh+GxapTyS19onNlLwD7ptuNOd9zMp8ArD0PAD2zOfbqk6FIp5j7Nc3OXa4+mbqW7fCMTOmLHdeli8mL0doo8bJXtv9uwmAb5aefOFBFk3SY/efjoZhCjn+cz24uNnM2pIe5lwFuUvZ0UmcZWp6J7vlPu4JVtto6vpSO7dvMYc1112z75MfksR8THXd5bbHwEEes8SV//X+CdDLJTd60UUqdIAy8kQuDGuGc1U8BF6wC+sSC7wqAqFk/oMOM03gK2XzBj5jQmeXW3fxnzfWoMS2wJNkhWFiF7k9+JIc/E4Y/81+OeJMS+7dMD0l1yQBAceaQPmbEUnrRpLsmfD2K8efjh7xGM2crGNpst/6w40aznDwc3brr+TYU5Z4HTzh09KZBfn+JJRqtxClqZLduLdn7JwUox9bi11ax3v4nQRQUpkB02LJL1+9wMD7ArkO7P8YNvoJb3iI1OgOI9P3EewtgCu/XkyOeYta5j4="
     # CF_USERNAME
     - secure: "OHs3wKC2q3XwGsO8Skqgk4SV4upXltiMPiAIHhTbMqOjSnPa2siOjmrFrkyZwT5gYe4YcENB9amV30GIgSpCkzzNbOPVTMF7tafK+8hXIrlvQuOXMx00zq2ry/XD/lQrxNBZFZlxOxV9mUlJ3bBCHnNwe8oEO6kAZxwmS8QXBhHvM1KKVL4LT/k9MFJQ/DbZEmFHyQByig9TkooTjUNYWgmPxRbP/6Yofkg/kNDUerhwU+PLStIKd61bJBwZbFTEy3hYWdwvjrox3RIhdzsFPREn1pJkNRcgEGQiULGcmpplPe3iAlMp9C48HgiPyK00MTvpiSlRSpO/fJMOFyyq/zn0oxS4f/MbfJ/9x0XQFFyJkns3ioHG6BlGV7A0GOOnvGclov9a3P/423hTvllwuN9sYv0iqpljVJUeJ3wsBhp+ALFZqkMhUltlkGH+ENH5fvtED/u4D5YA1lfogTJOc4C4qBDFC61QAWhyXoiVEaXcKvpSDYLqZUe6HDbFpY7DPIO4HoRiZw+xUaWkmxeymsCU8mQmFMQg6KwUmYXggP+BwGlaaWbbXwffG2yIl2K/JVhshWrzdHfy5wSBREPonkO50X7RROWYJd01zOhggLRybVWsGQyASNunzYAYVrWPoA48NSiCG5iTQrUMxMTzVfIPvRR0aL6eXCB6dbLSzFE="
     # CF_PASSWORD
     - secure: "g8KwewOWAx6KFlQbCYcTHVnQu3UhHjcMxEdxUO8Y/hlHyjvXNrYsVkvc6JXnS4aNER6otOs9+cl2DOGtAiwUTpHyR/kYgk+I/FaOCf7pEMSUIIw8JL6SckH4hqAZcR/z49IABvN1YRSPI7x4mW6OVxRQ/6eKGJByhj/dM1dZ2AMQ45+SbriXu6+8/iP/i2fjsSY6WZXROvf8foBkeRW59D8YVn9ZIaHP2JwN+EE2hUJukbakO0xrqO2lptDpkEs7L3FwwwcQ2mSQxF9N7puGqCvKSr+Lx/Fr4aQAU6+xrhn3eQ3svcP5eVr0tMZmDiV5y7neNXfInRvnj9x5W8QwN9frT2axqGE/MK8cJqfpLp6Q6hQ3NL19eOIVaWI6e3F3B70IPn16GqSEqkogwZvpCYWfPmwhW8f/2JdYc1jBACeCfYUJSHD1/qUikN8beQI2ImMJSVQZW/Su8grok6SjU8VAl/ICIibneMPvJ+CbyRx+hSBt2Z3x7A1XwLsMzYBkbK0m9ymAVemYL+A2xz6Y9Zyy7Agj/R/ZHM3sbGLig+eLviG/+7qY081zRtUtO4KsZKte1QpjkrsgTFoiCQIG4nkrd2KRdx8FhopUE9BbgNjk8VJMRVfJkEjgXLgNw2G6qWat+9RTH7xCCOdkx6FjZqU5Qz6RnitUEpKVcesIxDc="
-    - TF_VERSION=1.0.5
+    - DEPLOY_BRANCH=FALSE
+    - SPACE_NAME=""

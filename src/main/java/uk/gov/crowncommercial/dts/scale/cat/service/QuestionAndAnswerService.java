@@ -1,21 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.springframework.util.CollectionUtils.isEmpty;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;

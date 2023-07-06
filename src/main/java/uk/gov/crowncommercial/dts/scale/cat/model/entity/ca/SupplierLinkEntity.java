@@ -1,11 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity.ca;
 
 import lombok.*;
-import lombok.experimental.FieldDefaults;
-import uk.gov.crowncommercial.dts.scale.cat.model.SchemeType;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "supplier_link")
