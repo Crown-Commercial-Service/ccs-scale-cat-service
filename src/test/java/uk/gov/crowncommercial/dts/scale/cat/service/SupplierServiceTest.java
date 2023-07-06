@@ -25,9 +25,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -96,8 +93,6 @@ class SupplierServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
-  private static RPAGenericData request = new RPAGenericData();
-  private final RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
   @BeforeAll
   static void beforeClass() {

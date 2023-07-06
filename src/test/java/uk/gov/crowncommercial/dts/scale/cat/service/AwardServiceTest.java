@@ -33,9 +33,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAGenericData;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput.RPAProcessInputBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -119,8 +116,6 @@ class AwardServiceTest {
   @MockBean
   private DocumentTemplateResourceService documentTemplateResourceService;
 
-  private static RPAGenericData request = new RPAGenericData();
-  private final RPAProcessInputBuilder inputBuilder = RPAProcessInput.builder();
 
   @BeforeAll
   static void beforeClass() {
@@ -129,8 +124,6 @@ class AwardServiceTest {
     ORG_MAPPING_2.setOrganisationId(SUPPLIER_ORG_ID_2);
     ORG_MAPPING_2.setExternalOrganisationId(EXT_ORG_ID_2);
   }
-
-
 
 
   private ExportRfxResponse prepareSupplierDetails() {

@@ -68,10 +68,7 @@ public class ProjectsCSVGenerationScheduledTask {
 
     Set<ProcurementEvent> events = retryableTendersDBDelegate
         .findEventsByTenderStatusAndAgreementId("planning", DOS6_AGREEMENT_ID);
-
     log.info("Dos6 agreements count: {}", events.size());
-    AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
-
     try {
       Path tempFile = Files.createTempFile("temp", ".csv");
       PrintWriter writer =
@@ -85,41 +82,48 @@ public class ProjectsCSVGenerationScheduledTask {
           "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
           "Clarification questions", "Employment status");
 
-      for (ProcurementEvent event : events) {
-        String lotName = null;
-        String orgName = null;
-        String domainName = null;
-        try {
-          LotDetail lotDetails =
-              agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-          lotName = lotDetails.getName();
-          Optional<OrganisationProfileResponseInfo> organisationIdentity =
-              conclaveService.getOrganisationIdentity(
-                  event.getProject().getOrganisationMapping().getOrganisationId());
-          orgName = organisationIdentity.get().getIdentifier().getLegalName();
-          domainName = organisationIdentity.get().getIdentifier().getUri();
-        } catch (Exception e) {
-          log.error("Error while getting lot and org details in CSV generator" + e.getMessage());
-        }
+      generateCSVInfo(events, csvPrinter);
 
-        csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
-            env.getProperty("link"), agreementDetails.getName(), lotName, orgName, domainName,
-            event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
-            getBudgetRangeData(event), "Applications from SMEs",
-            "Applications from Large Organisations", "Total Organisations",
-            defineStatus(event.getTenderStatus()), getWinningSupplier(event), "Size of supplier",
-            " ", this.geContractStartData(event),
-            retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
-            "Employment status");
-      }
       csvPrinter.flush();
       csvPrinter.close();
 
       transferToS3(tempFile);
-
       log.info("Successfully generated CSV data");
     } catch (Exception e) {
       log.error("Error While generating Projects CSV ", e);
+    }
+  }
+
+  private void generateCSVInfo(Set<ProcurementEvent> events, CSVPrinter csvPrinter)
+      throws Exception {
+
+    AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
+    for (ProcurementEvent event : events) {
+      String lotName = null;
+      String orgName = null;
+      String domainName = null;
+      try {
+        LotDetail lotDetails =
+            agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
+        lotName = lotDetails.getName();
+        Optional<OrganisationProfileResponseInfo> organisationIdentity =
+            conclaveService.getOrganisationIdentity(
+                event.getProject().getOrganisationMapping().getOrganisationId());
+        orgName = organisationIdentity.get().getIdentifier().getLegalName();
+        domainName = organisationIdentity.get().getIdentifier().getUri();
+      } catch (Exception e) {
+        log.error("Error while getting lot and org details in CSV generator" + e.getMessage());
+      }
+
+      csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
+          env.getProperty("link"), agreementDetails.getName(), lotName, orgName, domainName,
+          event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
+          getBudgetRangeData(event), "Applications from SMEs",
+          "Applications from Large Organisations", "Total Organisations",
+          defineStatus(event.getTenderStatus()), getWinningSupplier(event), "Size of supplier", " ",
+          this.geContractStartData(event),
+          retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
+          "Employment status");
     }
   }
 
@@ -195,19 +199,12 @@ public class ProjectsCSVGenerationScheduledTask {
   private String getBudgetRangeData(final ProcurementEvent event) {
     String maxValue = null;
     String minValue = null;
+    String groupId = event.getProject().getLotNumber() == "1" ? "Group 20" : "Group 18";
     if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-      if (event.getProject().getLotNumber() == "1") {
-        maxValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 2",
-            event.getProcurementTemplatePayload().getCriteria());
-        minValue = EventsHelper.getData("Criterion 3", "Group 20", "Question 3",
-            event.getProcurementTemplatePayload().getCriteria());
-      }
-      if (event.getProject().getLotNumber() == "3") {
-        maxValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 2",
-            event.getProcurementTemplatePayload().getCriteria());
-        minValue = EventsHelper.getData("Criterion 3", "Group 18", "Question 3",
-            event.getProcurementTemplatePayload().getCriteria());
-      }
+      maxValue = EventsHelper.getData("Criterion 3", groupId, "Question 2",
+          event.getProcurementTemplatePayload().getCriteria());
+      minValue = EventsHelper.getData("Criterion 3", groupId, "Question 3",
+          event.getProcurementTemplatePayload().getCriteria());
       log.info("MaxValue: {} - MinValue: {}", maxValue, minValue);
 
       if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
