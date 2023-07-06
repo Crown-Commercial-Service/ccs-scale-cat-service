@@ -1,5 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 public class EventsHelper {
+    private final static ObjectMapper mapper = new ObjectMapper();
     public static ProcurementEvent getFirstPublishedEvent(ProcurementProject pp){
         return getPublishedEvent(pp, (d, s) -> {return d.getPublishDate().compareTo(s.getPublishDate());});
     }
@@ -22,7 +25,7 @@ public class EventsHelper {
     public static ProcurementEvent getPublishedEvent(ProcurementProject pp, Comparator<ProcurementEvent> comparator){
         return pp.getProcurementEvents().stream().filter(s -> null != s.getPublishDate())
                 .sorted(comparator)
-                .findFirst().orElseGet(null);
+                .findFirst().orElse(null);
     }
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp){
@@ -56,6 +59,11 @@ public class EventsHelper {
             }
         }
         return null;
+    }
+
+    @SneakyThrows
+    public static String serializeValue(List<Requirement.Option> options){
+        return mapper.writeValueAsString(options);
     }
 
     private static String getFirstValue(List<Requirement.Option> options){
