@@ -756,7 +756,7 @@ public class ProcurementProjectService {
   }
 
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
-                                            int page, int pageSize, ProjectFilters projectFilters) {
+                                            int page, int pageSize, ProjectFilter projectFilter) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
@@ -765,6 +765,7 @@ public class ProcurementProjectService {
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
     searchCriteria.setLots(getProjectLots(countResults, lotId));
+    searchCriteria.setFilters(Arrays.asList(projectFilter));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
