@@ -44,7 +44,14 @@ public interface OcdsSections {
             COMPILED_RELEASE_TENDER,
             COMPILED_RELEASE_TENDER_TENDERERS, COMPILED_RELEASE_TENDER_CRITERIA,
             COMPILED_RELEASE_AWARDS, COMPILED_RELEASE_AWARDS_SUPPLIERS,
+            COMPILED_RELEASE_TENDER_ENQUIRIES,
             COMPILED_RELEASE_STATISTICS
+    ));
+
+    List<String> QA_SECTIONS = Collections.unmodifiableList(Arrays.asList(
+            COMPILED_RELEASE,
+            COMPILED_RELEASE_TENDER,
+            COMPILED_RELEASE_TENDER_ENQUIRIES
     ));
 
     List<String> DETAILED_SECTIONS = Collections.unmodifiableList(Arrays.asList(
@@ -54,4 +61,18 @@ public interface OcdsSections {
             COMPILED_RELEASE_TENDER_TENDERERS, COMPILED_RELEASE_TENDER_CRITERIA,
             COMPILED_RELEASE_AWARDS, COMPILED_RELEASE_AWARDS_SUPPLIERS
     ));
+
+    public static List<String> getSection(String group){
+        if(null == group)
+            return SUMMARY_SECTIONS;
+        switch (group){
+            case"summary":
+                return SUMMARY_SECTIONS;
+            case "detail":
+                return DETAILED_SECTIONS;
+            case "qa":
+                return QA_SECTIONS;
+        }
+        return SUMMARY_SECTIONS;
+    }
 }

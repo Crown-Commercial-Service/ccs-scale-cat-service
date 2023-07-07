@@ -1,12 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
-import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -17,43 +16,57 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
-import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class CompiledReleaseTenderService{
+public class CompiledReleaseTenderService extends AbstractOcdsService{
     private final AgreementsService agreementsService;
-    private final JaggaerService jaggaerService;
     private final OcdsConverter ocdsConverter;
     private final RetryableTendersDBDelegate tendersDBDelegate;
+    private final QuestionAndAnswerService questionAndAnswerService;
 
 
     public MapperResponse populateGeneral(Record1 re, ProjectQuery pq) {
         log.debug("populating General");
         Tender1 tender = OcdsHelper.getTender(re);
 
-        CompletableFuture cf = CompletableFuture.runAsync(()->{
-            populateLots(pq, tender);
-        });
-
         ProcurementProject pp = pq.getProject();
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
         List<TemplateCriteria> criters = pe.getProcurementTemplatePayload().getCriteria();
-        tender.setDescription(EventsHelper.getData("Group 3", "Summary of work", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
+        tender.setDescription(EventsHelper.getData("Criterion 3", "Group 3", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
         tender.setTitle(pp.getProjectName());
         tender.setValue(getMaxValue(pp));
         tender.setMinValue(getMinValue(pp));
         tender.setSubmissionMethod(Arrays.asList(SubmissionMethod.ELECTRONICSUBMISSION));
         tender.setTenderPeriod(getTenderPeriod(pp));
+        CompletableFuture cf = CompletableFuture.runAsync(()->{
+            populateStatus(tender, pp, pq);
+            populateLots(pq, tender);
+        });
         return new MapperResponse(re,cf);
+    }
+
+    @SneakyThrows
+    private void populateStatus(Tender1 tender, ProcurementProject pp, ProjectQuery pq) {
+        ProcurementEvent pe = EventsHelper.getLastPublishedEvent(pp);
+
+        ExportRfxResponse exportRfxResponse = getLatestRFXWithSuppliers(pq);
+        if(null != exportRfxResponse) {
+            TenderStatus status = EventStatusHelper.getStatus(exportRfxResponse.getRfxSetting(), pe);
+            tender.setStatus(status);
+        }
     }
 
     private Period1 getTenderPeriod(ProcurementProject pp) {
@@ -80,11 +93,11 @@ public class CompiledReleaseTenderService{
     public MapperResponse populateTenderers(Record1 re, ProjectQuery pq) {
         log.debug("populating Tenderers");
         ProcurementProject pp = pq.getProject();
-        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+
         Tender1 tender = OcdsHelper.getTender(re);
 
         CompletableFuture cf = CompletableFuture.runAsync(()-> {
-            ExportRfxResponse rfxResponse = jaggaerService.getRfxWithSuppliers(pe.getExternalEventId());
+            ExportRfxResponse rfxResponse = getFirstRFXWithSuppliers(pq);
             List<Supplier>  sdf = rfxResponse.getSuppliersList().getSupplier();
             Set<Integer> bravoIds = sdf.stream().map(t -> t.getCompanyData().getId()).collect(Collectors.toSet());
             Set<OrganisationMapping> orgMappings = tendersDBDelegate.findOrganisationMappingByExternalOrganisationIdIn(bravoIds);
@@ -124,8 +137,28 @@ public class CompiledReleaseTenderService{
     }
 
     public MapperResponse populateEnquiries(Record1 re, ProjectQuery pq) {
-        log.warn("populating Enquiries not yet implemented");
+        log.debug("populating Enquiries by Q and A");
+        ProcurementProject pp = pq.getProject();
+        Tender1 tender = OcdsHelper.getTender(re);
+        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+        QandAWithProjectDetails qandAWithProjectDetails = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(pp.getId(), EventsHelper.getEventId(pe));
+        tender.setEnquiries(qandAWithProjectDetails.getQandA().stream().map(t->convertQA(t)).toList());
         return new MapperResponse(re);
+    }
+
+    private Enquiry1 convertQA(QandA t) {
+        Enquiry1 result = new Enquiry1();
+        result.setTitle(t.getQuestion());
+        result.setAnswer(t.getAnswer());
+        result.setDate(t.getCreated());
+
+        if(null != t.getLastUpdated())
+            result.setDateAnswered(t.getLastUpdated());
+        else
+            result.setDateAnswered(t.getCreated());
+
+        result.setId(String.valueOf(t.getId()));
+        return result;
     }
 
     public MapperResponse populateCriteria(Record1 re, ProjectQuery pq) {

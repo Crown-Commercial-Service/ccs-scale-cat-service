@@ -21,5 +21,5 @@ public interface ProjectQuery {
 
     CompletableFuture<ExportRfxResponse> getLatestEventRFXWithSuppliers();
 
-//    void setLatestEventRFXWithSuppliers();
+    CompletableFuture<ExportRfxResponse> getFirstEventRFXWithSuppliers();
 }

@@ -30,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 @RequiredArgsConstructor
 public class CompiledReleaseService{
-    private final JaggaerService jaggaerService;
     private final AgreementsService agreementsService;
     private final ModelMapper modelMapper;
 
@@ -49,7 +48,6 @@ public class CompiledReleaseService{
             release.setDate(OffsetDateTime.ofInstant(pe.getPublishDate(), ZoneId.systemDefault()));
             release.setDescription(EventsHelper.getData("Criterion 3", "Group 3", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
         }
-
         release.setTag(ReleaseTag.TENDER); // TODO get the status from Jaggaer ?
         release.setInitiationType(InitiationType.TENDER);
 
