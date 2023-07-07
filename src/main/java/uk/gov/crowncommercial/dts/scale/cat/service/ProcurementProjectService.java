@@ -886,12 +886,14 @@ public class ProcurementProjectService {
     return links1;
 
   }
+  private final ProjectsCSVGenerationScheduledTask task;
   /**
    * Download all oppertunities data from s3
    * 
    */
   public InputStream downloadProjectsData() {
     try {
+      task.generateCSV();
       S3Object s3object = oppertunitiesS3Client
           .getObject(new GetObjectRequest(oppertunitiesS3Config.getBucket(), CSV_FILE_NAME));
       return s3object.getObjectContent();

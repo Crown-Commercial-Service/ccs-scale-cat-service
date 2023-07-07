@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.persistence.Id;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
+import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsToOpenSearchScheduledTask;
 
 /**
  *
@@ -162,14 +164,19 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
   
+  private final ProjectsToOpenSearchScheduledTask task;
+  
   @GetMapping(value = "/download")
   public void downloadFile(HttpServletResponse response) throws IOException {
-    var downloadProjectsData = procurementProjectService.downloadProjectsData();
-    response.setContentType(MediaType.TEXT_PLAIN.toString());
-    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-        "attachment; filename=\"" + CSV_FILE_NAME + "\"");
-    IOUtils.copy(downloadProjectsData, response.getOutputStream());
-    response.flushBuffer();
+    
+    task.saveProjectsDataToOpenSearch();
+    
+//    var downloadProjectsData = procurementProjectService.downloadProjectsData();
+//    response.setContentType(MediaType.TEXT_PLAIN.toString());
+//    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+//        "attachment; filename=\"" + CSV_FILE_NAME + "\"");
+//    IOUtils.copy(downloadProjectsData, response.getOutputStream());
+//    response.flushBuffer();
   }
 
   @SneakyThrows

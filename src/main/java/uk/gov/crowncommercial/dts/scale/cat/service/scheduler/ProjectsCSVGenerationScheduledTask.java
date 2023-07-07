@@ -16,6 +16,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.env.Environment;
+import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,8 +67,8 @@ public class ProjectsCSVGenerationScheduledTask {
 
   public void writeOppertunitiesToCsv() {
 
-    Set<ProcurementEvent> events = retryableTendersDBDelegate
-        .findEventsByTenderStatusAndAgreementId("planning", DOS6_AGREEMENT_ID);
+    Set<ProcurementEvent> events =
+        retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
     log.info("Dos6 agreements count: {}", events.size());
     try {
       Path tempFile = Files.createTempFile("temp", ".csv");
@@ -114,14 +115,16 @@ public class ProjectsCSVGenerationScheduledTask {
       } catch (Exception e) {
         log.error("Error while getting lot and org details in CSV generator" + e.getMessage());
       }
-
+      Pair<String, String> totalOrganisationsCountAndWinningSupplier =
+          getTotalOrganisationsCountAndWinningSupplier(event);
+      
       csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
           env.getProperty("link"), agreementDetails.getName(), lotName, orgName, domainName,
-          event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event), getBudgetRangeData(event), "Applications from SMEs",
-          "Applications from Large Organisations", "Total Organisations",
-          defineStatus(event.getTenderStatus()), getWinningSupplier(event), "Size of supplier", " ",
-          this.geContractStartData(event), retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
-          "Employment status");
+          event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
+          StringUtils.isBlank(EventsHelper.getBudgetRangeData(event)) ? ""
+              : EventsHelper.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getSecond(),
+          EventsHelper.getEventStatus(event.getTenderStatus()), totalOrganisationsCountAndWinningSupplier.getFirst(), "", "", geContractStartData(event),
+          retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()), getEmploymentStatus(event));
     }
   }
 
@@ -131,28 +134,26 @@ public class ProjectsCSVGenerationScheduledTask {
     }
     return null;
   }
-
-  private String defineStatus(String status) {
-    if (status.equals(AWARD_STATUS)) {
-      return "Closed";
-    }
-    return "Open";
-  }
-
-  private String getWinningSupplier(final ProcurementEvent event) {
+  
+  private Pair<String, String> getTotalOrganisationsCountAndWinningSupplier(
+      final ProcurementEvent event) {
     try {
+      String wSupplier = null;
+      ExportRfxResponse rfxWithSuppliers =
+          jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
       if (event.getTenderStatus().equals(AWARD_STATUS)) {
-        ExportRfxResponse rfxWithSuppliers =
-            jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
         Optional<Supplier> winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
             .stream().filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
         if (winningSupplier.isPresent()) {
-          return winningSupplier.get().getCompanyData().getName();
+          wSupplier = winningSupplier.get().getCompanyData().getName();
         }
       }
+      return Pair.of(wSupplier,
+          rfxWithSuppliers.getSupplierResponseCounters().getLastRound().getNumSupplResponded()+"");
+
     } catch (Exception e) {
     }
-    return "";
+    return Pair.of("", "");
   }
 
   /**
@@ -189,36 +190,30 @@ public class ProjectsCSVGenerationScheduledTask {
     }
     return "";
   }
-
-
+  
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
-  private String getBudgetRangeData(final ProcurementEvent event) {
-    String maxValue = null;
-    String minValue = null;
-    String groupId = event.getProject().getLotNumber() == "1" ? "Group 20" : "Group 18";
+  private String getEmploymentStatus(final ProcurementEvent event) {
     if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-      maxValue = EventsHelper.getData("Criterion 3", groupId, "Question 2",
-          event.getProcurementTemplatePayload().getCriteria());
-      minValue = EventsHelper.getData("Criterion 3", groupId, "Question 3",
-          event.getProcurementTemplatePayload().getCriteria());
-      log.info("MaxValue: {} - MinValue: {}", maxValue, minValue);
-
-      if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
-        return "£" + minValue + "-£" + maxValue;
-      } else if (!StringUtils.isBlank(maxValue)) {
-        return "up to £" + maxValue;
-      } else
-        return "not prepared to share details";
+      if (event.getProject().getLotNumber() == "1") {
+        return EventsHelper.getData("Criterion 1", "Group 21", "Question 1",
+            event.getProcurementTemplatePayload().getCriteria());
+      } else if (event.getProject().getLotNumber() == "3") {
+        return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
+            event.getProcurementTemplatePayload().getCriteria());
+      }
     }
     return "";
   }
 
   private void transferToS3(Path tempFile) throws IOException {
-    var objectKey = CSV_FILE_NAME;
     try {
       InputStream fileStream = Files.newInputStream(tempFile);
+      var objectPrefix = org.springframework.util.StringUtils.hasText(oppertunitiesS3Config.getObjectPrefix())
+          ? oppertunitiesS3Config.getObjectPrefix() + "/"
+          : "";
+      var objectKey = objectPrefix + CSV_FILE_NAME;
       var objectMetadata = new ObjectMetadata();
       objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
       objectMetadata.setContentType("text/csv");
