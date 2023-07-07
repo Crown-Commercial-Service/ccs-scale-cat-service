@@ -84,9 +84,10 @@ public class ProjectsController extends AbstractRestController {
   @GetMapping("/{procID}")
   @TrackExecutionTime
   public ProjectPackage getProject(@PathVariable("procID") final Integer procId,
+                                   @RequestParam(name = "group", required = false, defaultValue = "summary") final String group,
                                    final JwtAuthenticationToken authentication) {
     var principal = null != authentication ? getPrincipalFromJwt(authentication) : "";
-    return projectPackageService.getProjectPackage(procId, principal, OcdsSections.SUMMARY_SECTIONS);
+    return projectPackageService.getProjectPackage(procId, principal, OcdsSections.getSection(group));
   }
 
   @PutMapping("/{procID}/name")

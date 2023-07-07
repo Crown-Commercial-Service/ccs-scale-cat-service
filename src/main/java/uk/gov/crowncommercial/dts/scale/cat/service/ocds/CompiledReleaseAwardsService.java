@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Record1;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
@@ -28,10 +29,10 @@ public class CompiledReleaseAwardsService extends AbstractOcdsService{
             ExportRfxResponse rfxResponse = getLatestRFXWithSuppliers(pq);
             RfxSetting rfxSetting = rfxResponse.getRfxSetting();
 
-            if(500 == rfxResponse.getRfxSetting().getStatusCode()){
+            if(EventStatusHelper.isAwarded(rfxSetting)){
                 List<Supplier> awardedSuppliers = rfxResponse.getSuppliersList().getSupplier().stream().filter(f -> 3 == f.getStatusCode()).toList();
 
-                Award2 award = getAward(re);
+                Award2 award = OcdsHelper.getAward(re);
                 award.setTitle(pp.getProjectName());
                 award.setSuppliers(awardedSuppliers.stream().map(this::convertSuppliers).toList());
                 award.setDescription(null);
@@ -70,16 +71,5 @@ public class CompiledReleaseAwardsService extends AbstractOcdsService{
     public MapperResponse populateRequiremetResponses(Record1 re, ProjectQuery pq) {
         log.warn("populating Enquiries not yet implemented");
         return new MapperResponse(re);
-    }
-
-    public Award2 getAward(Record1 re){
-        List<Award2> awards = OcdsHelper.getAwards(re);
-        if(awards.size() > 0)
-            return awards.get(0);
-        else{
-            Award2 award = new Award2();
-            awards.add(award);
-            return award;
-        }
     }
 }

@@ -53,4 +53,15 @@ public class OcdsHelper {
         release.addBidsItem(result);
         return result;
     }
+
+    public static Award2 getAward(Record1 re){
+        List<Award2> awards = OcdsHelper.getAwards(re);
+        if(awards.size() > 0)
+            return awards.get(0);
+        else{
+            Award2 award = new Award2();
+            awards.add(award);
+            return award;
+        }
+    }
 }

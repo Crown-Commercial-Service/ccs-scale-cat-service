@@ -20,4 +20,5 @@ public class ProjectRequest implements ProjectQuery{
     private List<String> sections;
     private String principal;
     private CompletableFuture<ExportRfxResponse> latestEventRFXWithSuppliers;
+    private CompletableFuture<ExportRfxResponse> firstEventRFXWithSuppliers;
 }

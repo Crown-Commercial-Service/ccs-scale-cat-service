@@ -8,33 +8,31 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class EventsHelper {
     private final static ObjectMapper mapper = new ObjectMapper();
-    
-    public static ProcurementEvent getFirstPublishedEvent(ProcurementProject pp){
-        return getPublishedEvent(pp, (d, s) -> {return d.getPublishDate().compareTo(s.getPublishDate());});
+
+    public static ProcurementEvent getFirstPublishedEvent(ProcurementProject pp) {
+        return getPublishedEvent(pp, (d, s) -> {
+            return d.getPublishDate().compareTo(s.getPublishDate());
+        });
     }
 
     public static ProcurementEvent getLastPublishedEvent(ProcurementProject pp) {
-      return getPublishedEvent(pp, (s, d) -> {
-        return d.getPublishDate().compareTo(s.getPublishDate());
-      });
+        return getPublishedEvent(pp, (s, d) -> {
+            return d.getPublishDate().compareTo(s.getPublishDate());
+        });
     }
 
-    public static ProcurementEvent getPublishedEvent(ProcurementProject pp, Comparator<ProcurementEvent> comparator){
+    public static ProcurementEvent getPublishedEvent(ProcurementProject pp, Comparator<ProcurementEvent> comparator) {
         return pp.getProcurementEvents().stream().filter(s -> null != s.getPublishDate())
                 .sorted(comparator)
                 .findFirst().orElse(null);
     }
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
-      return getLastPublishedEvent(pp);
+        return getLastPublishedEvent(pp);
     }
 
     public static String getData(String criteriaId, String groupId, String requirementId,
@@ -70,13 +68,17 @@ public class EventsHelper {
       return null;
     }
 
+    public static String getEventId(ProcurementEvent pe) {
+        return pe.getOcdsAuthorityName() + "-" + pe.getOcidPrefix() + "-" + pe.getId();
+    }
+
     @SneakyThrows
     public static String serializeValue(List<Requirement.Option> options) {
       return mapper.writeValueAsString(options);
     }
 
-    private static String getFirstValue(List<Requirement.Option> options){
-        return options.stream().filter(t->t.getSelect()).findFirst(). map(t->null != t? t.getValue() : null).orElseGet(()-> null);
+    private static String getFirstValue(List<Requirement.Option> options) {
+        return options.stream().filter(t -> t.getSelect()).findFirst().map(t -> null != t ? t.getValue() : null).orElseGet(() -> null);
     }
 
     private static boolean isReqMatch(Requirement r, String requirementId) {
