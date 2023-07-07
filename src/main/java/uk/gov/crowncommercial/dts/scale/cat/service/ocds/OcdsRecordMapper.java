@@ -106,9 +106,9 @@ public class OcdsRecordMapper  implements InitializingBean {
 //        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_AMENDMENTS,  (pq, re) -> {
 //            return compiledTenderService.populateAmendments(re, pq);
 //        });
-//        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_ENQUIRIES,  (pq, re) -> {
-//            return compiledTenderService.populateEnquiries(re, pq);
-//        });
+        handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_ENQUIRIES,  (pq, re) -> {
+            return compiledTenderService.populateEnquiries(re, pq);
+        });
         handlers.put(OcdsSections.COMPILED_RELEASE_TENDER_CRITERIA,  (pq, re) -> {
             return compiledTenderService.populateCriteria(re, pq);
         });

@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
@@ -13,6 +14,7 @@ import java.util.*;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public final class OcdsConverter {
     private final ModelMapper modelMapper;
 
@@ -59,14 +61,19 @@ public final class OcdsConverter {
         Organization1 orgRef = new Organization1();
         orgRef.id(org.getId());
         orgRef.setName(org.getName());
-        orgRef.setAddress(modelMapper.map(org.getAddress(), Address1.class));
-        Optional<Contact> oContact =  lotSupplier.getLotContacts().stream().findFirst();
-        if(oContact.isPresent()){
-            orgRef.setContactPoint(modelMapper.map(oContact.get().getContactPoint(), ContactPoint1.class));
+        if(null != org.getAddress())
+            orgRef.setAddress(modelMapper.map(org.getAddress(), Address1.class));
+        else{
+            log.trace("Organisation {} does not have Address details", org.getId());
         }
-        OrganizationDetail od = new OrganizationDetail();
-
-        orgRef.setDetails(od);
+        if(null != lotSupplier.getLotContacts()) {
+            Optional<Contact> oContact = lotSupplier.getLotContacts().stream().findFirst();
+            if (oContact.isPresent()) {
+                orgRef.setContactPoint(modelMapper.map(oContact.get().getContactPoint(), ContactPoint1.class));
+            }
+        }
+        //OrganizationDetail od = new OrganizationDetail();
+        //orgRef.setDetails(od);
         return orgRef;
     }
 }

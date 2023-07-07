@@ -24,6 +24,20 @@ public abstract class AbstractOcdsService {
         return cf.get();
     }
 
+    @SneakyThrows
+    public ExportRfxResponse getFirstRFXWithSuppliers(ProjectQuery pq){
+        if(null != pq.getFirstEventRFXWithSuppliers())
+            return pq.getFirstEventRFXWithSuppliers().get();
+
+        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
+
+        CompletableFuture<ExportRfxResponse> cf = CompletableFuture.supplyAsync(()-> {
+            return jaggaerService.getRfxWithSuppliers(pe.getExternalEventId());
+        });
+        ((ProjectRequest)pq).setFirstEventRFXWithSuppliers(cf);
+        return cf.get();
+    }
+
     @Autowired
     public void setJaggaerService(JaggaerService service){
         this.jaggaerService = service;
