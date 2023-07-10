@@ -51,6 +51,7 @@ import com.amazonaws.services.s3.model.S3Object;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.util.UriUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -869,6 +870,7 @@ public class ProcurementProjectService {
       int last = (int) Math.ceil((double)totalsize/pageSize);
     int next = page < last ? page + 1 : 0;
     int previous = page <= 1 ? 0 : page - 1;
+    keyword = UriUtils.encode(keyword,"UTF-8");
      Links1 links1= new Links1();
      links1.setFirst(URI.create(String.format(SEARCH_URI,keyword,1,pageSize)));
      links1.setLast(last ==0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
