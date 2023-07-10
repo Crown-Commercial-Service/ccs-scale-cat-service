@@ -72,6 +72,11 @@ public final class OcdsConverter {
         else{
             log.trace("Organisation {} does not have Address details", org.getId());
         }
+        populateContact(lotSupplier, modelMapper, org, orgRef);
+        return orgRef;
+    }
+
+    private static void populateContact(LotSupplier lotSupplier, ModelMapper modelMapper, Organization org, Organization1 orgRef) {
         if(null != lotSupplier.getLotContacts()) {
             Optional<Contact> oContact = lotSupplier.getLotContacts().stream().findFirst();
             if (oContact.isPresent()) {
@@ -87,7 +92,6 @@ public final class OcdsConverter {
                 }
             }
         }
-        return orgRef;
     }
 
 
