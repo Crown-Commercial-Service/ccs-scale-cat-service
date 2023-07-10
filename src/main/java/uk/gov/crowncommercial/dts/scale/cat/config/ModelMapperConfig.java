@@ -5,6 +5,7 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.spi.MappingContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationScheme1;
 
 @Configuration
@@ -21,8 +22,12 @@ public class ModelMapperConfig {
                 String src = mappingContext.getSource();
                 if(null == src)
                     return null;
-                else
+                else {
+                    if(src.equalsIgnoreCase("US-DUNS") ||
+                            src.equalsIgnoreCase("US-DUN"))
+                        return OrganizationScheme1.XI_DUNS;
                     return OrganizationScheme1.fromValue(src);
+                }
             }
         };
 
