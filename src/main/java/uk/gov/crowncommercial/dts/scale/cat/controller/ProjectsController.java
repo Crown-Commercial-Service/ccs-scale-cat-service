@@ -29,17 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackage;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
@@ -191,13 +181,14 @@ public class ProjectsController extends AbstractRestController {
                                                    @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
                                                    @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
                                                    @RequestParam (name = "filters", required = false) final String filters) {
-    ProjectFilter projectFilter=null;
+    ProjectFilters projectFilters=null;
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
     if(filters != null) {
-       projectFilter = mapper.readValue(Base64.getDecoder().decode(filters).toString(), ProjectFilter.class);
+      String decodedString = new String(Base64.getDecoder().decode(filters));
+       projectFilters = mapper.readValue(decodedString, ProjectFilters.class);
     }
     return procurementProjectService.getProjectSummery(keyword,lotId,
-     pageNo, size, projectFilter);
+     pageNo, size, projectFilters);
   }
 }

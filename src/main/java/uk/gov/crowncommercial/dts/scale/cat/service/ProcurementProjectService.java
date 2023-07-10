@@ -778,12 +778,12 @@ public class ProcurementProjectService {
   }
 
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
-                                            int page, int pageSize, ProjectFilter projectFilter) {
+                                            int page, int pageSize, ProjectFilters projectFilters) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
-    searchCriteria.setFilters(Arrays.asList(projectFilter));
-    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId, projectFilter);
+    searchCriteria.setFilters(projectFilters.getFilters());
+    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId, projectFilters.getFilters().stream().findFirst().get());
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
