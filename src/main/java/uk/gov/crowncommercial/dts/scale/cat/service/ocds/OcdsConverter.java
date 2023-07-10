@@ -1,15 +1,19 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
+import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ContactPoint;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 
 @Component
@@ -61,6 +65,8 @@ public final class OcdsConverter {
         Organization1 orgRef = new Organization1();
         orgRef.id(org.getId());
         orgRef.setName(org.getName());
+        orgRef.setIdentifier(getId(org.getId()));
+
         if(null != org.getAddress())
             orgRef.setAddress(modelMapper.map(org.getAddress(), Address1.class));
         else{
@@ -69,11 +75,35 @@ public final class OcdsConverter {
         if(null != lotSupplier.getLotContacts()) {
             Optional<Contact> oContact = lotSupplier.getLotContacts().stream().findFirst();
             if (oContact.isPresent()) {
-                orgRef.setContactPoint(modelMapper.map(oContact.get().getContactPoint(), ContactPoint1.class));
+                ContactPoint contact = oContact.get().getContactPoint();
+                orgRef.setContactPoint(modelMapper.map(contact, ContactPoint1.class));
+                String url = contact.getUrl();
+                if(null != url) {
+                    try {
+                        orgRef.getContactPoint().setUrl(new URI(url));
+                    } catch (URISyntaxException e) {
+                        log.error("Invalid url {} for the supplier {}", url, org.getId());
+                    }
+                }
             }
         }
-        //OrganizationDetail od = new OrganizationDetail();
-        //orgRef.setDetails(od);
         return orgRef;
+    }
+
+
+    public static Identifier1 getId(String id){
+        if(id.startsWith("US-DUN")){
+            int len = id.indexOf('-', 3);
+            return new Identifier1().id(id.substring(len+1)).scheme(OrganizationScheme1.XI_DUNS);
+        }
+
+        Optional<OrganizationScheme1> orgScheme = Arrays.stream(OrganizationScheme1.values()).filter(t -> id.startsWith(t.getValue())).findFirst();
+
+        if(orgScheme.isPresent()){
+            int len = orgScheme.get().getValue().length();
+            return new Identifier1().id(id.substring(len+1)).scheme(orgScheme.get());
+        }
+
+        return null;
     }
 }
