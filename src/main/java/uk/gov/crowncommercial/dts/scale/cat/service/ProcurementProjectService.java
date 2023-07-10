@@ -783,7 +783,7 @@ public class ProcurementProjectService {
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters.getFilters());
-    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId, projectFilters.getFilters().stream().findFirst().get());
+    NativeSearchQuery searchQuery = getSearchQuery (keyword, PageRequest.of(page,pageSize), lotId, projectFilters.getFilters().stream().findFirst().get());
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
@@ -814,7 +814,7 @@ public class ProcurementProjectService {
      }).collect(Collectors.toList());
   }
 
-  private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, String lotId, ProjectFilter projectFilter) {
+  private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
    if(keyword != null  && !keyword.isEmpty()) {
       searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
@@ -832,7 +832,7 @@ public class ProcurementProjectService {
      if(projectFilter.getName().equalsIgnoreCase(STATUS))
        searchQueryBuilder.withQuery(QueryBuilders.termsQuery(STATUS, projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).map(ProjectFilterOption::getText).collect(Collectors.toList())));
    }
-   searchQueryBuilder.withPageable(PageRequest.of(page -1, pageSize));
+   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber(), pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
