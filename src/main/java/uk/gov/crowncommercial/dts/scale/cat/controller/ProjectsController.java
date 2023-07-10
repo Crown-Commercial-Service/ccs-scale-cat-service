@@ -3,7 +3,11 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.Collection;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -176,6 +180,7 @@ public class ProjectsController extends AbstractRestController {
     response.flushBuffer();
   }
 
+  @SneakyThrows
   @GetMapping("/search")
   @TrackExecutionTime
   public ProjectPublicSearchResult getProjectsSummary(@RequestParam(name = "agreement-id", required = true) final String agreementId,
@@ -183,9 +188,14 @@ public class ProjectsController extends AbstractRestController {
                                                    @RequestParam(name= "lot-id", required = false) final String lotId,
                                                    @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
                                                    @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
-                                                   ProjectFilter projectFilter) {
+                                                   @RequestParam (name = "filters", required = false) final String filters) {
+    ProjectFilter projectFilter=null;
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
+    if(filters != null) {
+      ObjectMapper mapper = new ObjectMapper();
+       projectFilter = mapper.readValue(Base64.getDecoder().decode(filters).toString(), ProjectFilter.class);
+    }
     return procurementProjectService.getProjectSummery(keyword,lotId,
      pageNo, size, projectFilter);
   }
