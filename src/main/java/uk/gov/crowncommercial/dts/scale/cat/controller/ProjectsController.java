@@ -57,6 +57,8 @@ public class ProjectsController extends AbstractRestController {
   private final ProjectPackageService projectPackageService;
   private final ProcurementProjectService procurementProjectService;
 
+  private final ObjectMapper mapper;
+
   //search-type=projectName&search-term=My%20search%20term&page=1&page-size=20'
   @GetMapping(value={"", "/"})
   @TrackExecutionTime
@@ -193,7 +195,6 @@ public class ProjectsController extends AbstractRestController {
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
     if(filters != null) {
-      ObjectMapper mapper = new ObjectMapper();
        projectFilter = mapper.readValue(Base64.getDecoder().decode(filters).toString(), ProjectFilter.class);
     }
     return procurementProjectService.getProjectSummery(keyword,lotId,
