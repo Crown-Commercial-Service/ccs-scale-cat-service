@@ -65,29 +65,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Links1;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectLots;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectSearchCriteria;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ReleaseTag;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberNonOCDS;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDS;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
@@ -137,6 +115,8 @@ public class ProcurementProjectService {
   private static final String PROJECT_NAME = "projectName";
   private static final String PROJECT_DESCRIPTION = "description";
   private static final String LOT = "lot";
+
+  private static final String STATUS = "status";
 
   private static final String COUNT_AGGREGATION = "count_lot";
   private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
@@ -798,12 +778,12 @@ public class ProcurementProjectService {
   }
 
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
-                                            int page, int pageSize, ProjectFilter projectFilter) {
+                                            int page, int pageSize, ProjectFilters projectFilters) {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
-    searchCriteria.setFilters(Arrays.asList(projectFilter));
-    NativeSearchQuery searchQuery = getSearchQuery (keyword, page, pageSize, lotId);
+    searchCriteria.setFilters(projectFilters.getFilters());
+    NativeSearchQuery searchQuery = getSearchQuery (keyword, PageRequest.of(page,pageSize), lotId, projectFilters.getFilters().stream().findFirst().get());
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
@@ -834,7 +814,7 @@ public class ProcurementProjectService {
      }).collect(Collectors.toList());
   }
 
-  private  NativeSearchQuery getSearchQuery (String keyword, int page, int pageSize, String lotId) {
+  private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
    if(keyword != null  && !keyword.isEmpty()) {
       searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
@@ -847,7 +827,12 @@ public class ProcurementProjectService {
    {
      searchQueryBuilder.withQuery(QueryBuilders.matchAllQuery());
     }
-   searchQueryBuilder.withPageable(PageRequest.of(page -1, pageSize));
+   if(projectFilter != null)
+   {
+     if(projectFilter.getName().equalsIgnoreCase(STATUS))
+       searchQueryBuilder.withQuery(QueryBuilders.termsQuery(STATUS, projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).map(ProjectFilterOption::getText).collect(Collectors.toList())));
+   }
+   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber(), pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
@@ -881,7 +866,7 @@ public class ProcurementProjectService {
 
   private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
   {
-      int last = Math.round(totalsize/pageSize);
+      int last = (int) Math.ceil((double)totalsize/pageSize);
     int next = page < last ? page + 1 : 0;
     int previous = page <= 1 ? 0 : page - 1;
      Links1 links1= new Links1();
