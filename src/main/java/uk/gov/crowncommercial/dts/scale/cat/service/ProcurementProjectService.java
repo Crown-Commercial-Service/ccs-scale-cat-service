@@ -824,19 +824,16 @@ public class ProcurementProjectService {
       searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
               .fuzziness(Fuzziness.ONE)
               .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-    }if(lotId !=null && !lotId.isEmpty()) {
-      searchQueryBuilder.withFilter(QueryBuilders.termQuery(LOT, lotId));
     }
-   if(keyword == null && lotId == null)
-   {
-     searchQueryBuilder.withQuery(QueryBuilders.matchAllQuery());
-    }
-     if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS))
+     if(projectFilter !=null || lotId !=null )
      {
        BoolQueryBuilder boolQuery = boolQuery();
+       if(projectFilter.getName().equalsIgnoreCase(STATUS))
        projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
          boolQuery.should(QueryBuilders.termQuery(STATUS,projectFilterOption.getText()));
        });
+       if(lotId != null)
+         boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
        searchQueryBuilder.withFilter(boolQuery);
      }
 
