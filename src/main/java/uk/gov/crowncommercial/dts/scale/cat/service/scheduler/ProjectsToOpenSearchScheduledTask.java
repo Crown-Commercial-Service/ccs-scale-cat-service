@@ -2,10 +2,12 @@ package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,45 +44,46 @@ public class ProjectsToOpenSearchScheduledTask {
   @Transactional
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process");
-
     Set<ProcurementEvent> events =
         retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
-
+    
     Set<ProcurementEventSearch> eventSearchDataList = new HashSet<ProcurementEventSearch>();
     AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
+    this.mapToOpenSearch(events, eventSearchDataList, agreementDetails);
+    
+    searchProjectRepo.saveAll(eventSearchDataList);
+    log.info("Successfully updated projects data in open search");
+  }
+  
+  private Set<ProcurementEventSearch> mapToOpenSearch(Set<ProcurementEvent> events,
+      Set<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
+
     for (ProcurementEvent event : events) {
       try {
-        String lotName = null;
-        String orgName = null;
-        ProcurementEvent stage2Event = null;
         LotDetail lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-        lotName = lotDetails.getDescription();
         Optional<OrganisationProfileResponseInfo> organisationIdentity =
-            conclaveService.getOrganisationIdentity(event.getProject().getOrganisationMapping().getOrganisationId());
-        orgName = organisationIdentity.get().getIdentifier().getLegalName();
+            conclaveService.getOrganisationIdentity(
+                event.getProject().getOrganisationMapping().getOrganisationId());
 
-        if (event.getProject().getProcurementEvents().size() > 1) {
-          event = EventsHelper.getFirstPublishedEvent(event.getProject());
-          stage2Event = EventsHelper.getLastPublishedEvent(event.getProject());
-        }
+        Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
+            EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
+        event = firstAndLastPublishedEvent.getFirst();
 
         ProcurementEventSearch eventSearchData = ProcurementEventSearch.builder().id(event.getId())
             .projectId(event.getProject().getId()).description(getSummaryOfWork(event))
-            .budgetRange(ProjectsCSVGenerationScheduledTask.getBudgetRangeData(event))
-            .status(EventStatusHelper.getEventStatus(Objects.nonNull(stage2Event) ? stage2Event.getTenderStatus()
-                    : event.getTenderStatus())).subStatus(getDashboardStatus(event)).buyerName(orgName)
-            .projectName(event.getProject().getProjectName()).location("")
-            .lot(event.getProject().getLotNumber()).lotDescription(lotName)
-            .agreement(agreementDetails.getName()).build();
+            .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
+            .status(EventStatusHelper.getEventStatus(Objects.nonNull(firstAndLastPublishedEvent.getSecond()) ? firstAndLastPublishedEvent.getSecond().getTenderStatus()
+                    : event.getTenderStatus())).subStatus(getDashboardStatus(event)).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
+            .projectName(event.getProject().getProjectName()).location("").lot(event.getProject().getLotNumber())
+            .lotDescription(lotDetails.getDescription()).agreement(agreementDetails.getName()).build();
 
         eventSearchDataList.add(eventSearchData);
       } catch (Exception e) {
         log.error("Error while saving project details to opensearch" + e.getMessage());
       }
     }
-    searchProjectRepo.saveAll(eventSearchDataList);
-    log.info("Successfully updated projects data in open search");
+    return eventSearchDataList;
   }
 
   private String getDashboardStatus(ProcurementEvent event) {

@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.util.Pair;
 
 public class EventsHelper {
     private final static ObjectMapper mapper = new ObjectMapper();
@@ -39,6 +40,13 @@ public class EventsHelper {
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
         return getLastPublishedEvent(pp);
+    }
+    
+    public static Pair<ProcurementEvent, ProcurementEvent> getFirstAndLastPublishedEvent(ProcurementProject pp) {
+      if (pp.getProcurementEvents().size() > 1) {
+          return Pair.of(EventsHelper.getFirstPublishedEvent(pp), EventsHelper.getLastPublishedEvent(pp));
+      }
+        return Pair.of(EventsHelper.getFirstPublishedEvent(pp), null);
     }
 
     public static String getData(String criteriaId, String groupId, String requirementId,

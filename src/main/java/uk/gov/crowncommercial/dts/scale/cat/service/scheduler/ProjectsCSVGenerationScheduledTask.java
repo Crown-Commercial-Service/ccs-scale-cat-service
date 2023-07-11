@@ -5,8 +5,6 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.Period;
-import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -37,7 +35,6 @@ import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
-import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 /**
@@ -105,50 +102,37 @@ public class ProjectsCSVGenerationScheduledTask {
     try {
       AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
       for (ProcurementEvent event : events) {
-        String lotName = null;
-        String orgName = null;
-        String domainName = null;
-        ProcurementEvent stage2Event = null;
-        String status = null;
-        Pair<String, String> totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
         
-        if (event.getProject().getProcurementEvents().size() > 1) {
-          event = EventsHelper.getFirstPublishedEvent(event.getProject());
-          stage2Event = EventsHelper.getLastPublishedEvent(event.getProject());
-        }
+        Pair<String, String> totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
+        Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
+            EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
+        event = firstAndLastPublishedEvent.getFirst();
         
         LotDetail lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-        lotName = lotDetails.getName();
         Optional<OrganisationProfileResponseInfo> organisationIdentity =
             conclaveService.getOrganisationIdentity(
                 event.getProject().getOrganisationMapping().getOrganisationId());
-        orgName = organisationIdentity.get().getIdentifier().getLegalName();
-        domainName = organisationIdentity.get().getIdentifier().getUri();
         
         totalOrganisationsCountAndWinningSupplier = getTotalOrganisationsCountAndWinningSupplier(
-            Objects.nonNull(stage2Event) ? stage2Event : event);
-        status = EventStatusHelper.getEventStatus(
-            Objects.nonNull(stage2Event) ? stage2Event.getTenderStatus() : event.getTenderStatus());
-
+            Objects.nonNull(firstAndLastPublishedEvent.getSecond())
+                ? firstAndLastPublishedEvent.getSecond()
+                : firstAndLastPublishedEvent.getFirst());
+        
         csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
-            env.getProperty(PROJECT_UI_LINK_KEY), agreementDetails.getName(), lotName, orgName, domainName,
-            getLocation(event), event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
-            StringUtils.isBlank(getBudgetRangeData(event)) ? "" : getBudgetRangeData(event), "", "",
-            totalOrganisationsCountAndWinningSupplier.getSecond(), status,
-            totalOrganisationsCountAndWinningSupplier.getFirst(), "", "", geContractStartData(event),
-            retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()), getEmploymentStatus(event));
+            env.getProperty(PROJECT_UI_LINK_KEY), agreementDetails.getName(), lotDetails.getName(),
+            organisationIdentity.get().getIdentifier().getLegalName(), organisationIdentity.get()
+            .getIdentifier().getUri(), getLocation(event), event.getPublishDate(),TemplateDataExtractor.getOpenForCount(event), 
+            TemplateDataExtractor.getExpectedContractLength(event),
+            StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
+                : TemplateDataExtractor.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getSecond(),
+            TemplateDataExtractor.getStatus(firstAndLastPublishedEvent), totalOrganisationsCountAndWinningSupplier.getFirst(), "", "",
+            TemplateDataExtractor.geContractStartData(event), retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
+            TemplateDataExtractor.getEmploymentStatus(event));
       }
     } catch (Exception e) {
       log.error("Error while generating CSV generator" + e.getMessage());
     }
-  }
-
-  private Long getOpenForCount(ProcurementEvent event) {
-    if (Objects.nonNull(event.getPublishDate()) && Objects.nonNull(event.getCloseDate())) {
-      return ChronoUnit.DAYS.between(event.getPublishDate(), event.getCloseDate());
-    }
-    return null;
   }
   
   private Pair<String, String> getTotalOrganisationsCountAndWinningSupplier(
@@ -165,7 +149,8 @@ public class ProjectsCSVGenerationScheduledTask {
         }
       }
       return Pair.of(wSupplier,
-          rfxWithSuppliers.getSupplierResponseCounters().getLastRound().getNumSupplResponded()+"");
+          rfxWithSuppliers.getSupplierResponseCounters().getLastRound().getNumSupplResponded()
+              + "");
 
     } catch (Exception e) {
       log.warn("Error while getTotalOrganisationsCountAndWinningSupplier" + e.getMessage());
@@ -176,53 +161,6 @@ public class ProjectsCSVGenerationScheduledTask {
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
-  private String getExpectedContractLength(final ProcurementEvent event) {
-    try {
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        String criterionId = event.getProject().getLotNumber().equals("1") ? "Criterion 3" : "Criterion 1";
-        String groupId = event.getProject().getLotNumber().equals("1") ? "Group 18" : "Key Dates";
-        String dataFromJSONDataTemplate = EventsHelper.getData(criterionId, groupId, "Question 12",
-            event.getProcurementTemplatePayload().getCriteria());
-        if (Objects.nonNull(dataFromJSONDataTemplate)) {
-          var period = Period.parse(dataFromJSONDataTemplate);
-          return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
-        }
-      }
-    } catch (Exception e) {
-      log.warn("Error while getExpectedContractLength" + e.getMessage());
-    }
-    return "";
-  }
-  
-  /**
-   * TODO This method output will only work for DOS6. This should be refactor as generic one
-   */
-  public static String getBudgetRangeData(final ProcurementEvent event) {
-    try {
-      String maxValue = null;
-      String minValue = null;
-      String groupId = event.getProject().getLotNumber().equals("1") ? "Group 20" : "Group 18";
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        maxValue = EventsHelper.getData("Criterion 3", groupId, "Question 2",
-            event.getProcurementTemplatePayload().getCriteria());
-        minValue = EventsHelper.getData("Criterion 3", groupId, "Question 3",
-            event.getProcurementTemplatePayload().getCriteria());
-        if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
-          return "£" + minValue + "- £" + maxValue;
-        } else if (!StringUtils.isBlank(maxValue)) {
-          return "up to £" + maxValue;
-        } else
-          return "Not prepared to share details";
-      }
-    } catch (Exception e) {
-      log.warn("Error while getBudgetRangeData" + e.getMessage());
-    }
-    return null;
-  }
-  
-  /**
-   * TODO This method output will only work for DOS6. This should be refactor as generic one
-   */
   public String getLocation(final ProcurementEvent event) {
     try {
       String location = "";
@@ -230,12 +168,9 @@ public class ProjectsCSVGenerationScheduledTask {
       String groupId = event.getProject().getLotNumber().equals("1") ? "Group 5" : "Group 4";
       String questionId = "Question 6";
       if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        Set<Question> evalCriterionGroupQuestions = cService.getEvalCriterionGroupQuestions(
-            event.getProject().getId(), event.getEventID(), criterionId, groupId);
-
-        Optional<Question> question = evalCriterionGroupQuestions.stream()
+        Optional<Question> question = cService.getEvalCriterionGroupQuestions(
+            event.getProject().getId(), event.getEventID(), criterionId, groupId).stream()
             .filter(q -> q.getOCDS().getId().equals(questionId)).findAny();
-
         if (question.isPresent()) {
           location = question.get().getNonOCDS().getOptions().stream().filter(o -> o.getSelected())
               .toList().stream().map(i -> i.getValue()).collect(Collectors.joining(", "));
@@ -244,43 +179,6 @@ public class ProjectsCSVGenerationScheduledTask {
       return Objects.nonNull(location) ? location : "";
     } catch (Exception e) {
       log.warn("Error while getLocation" + e.getMessage());
-    }
-    return "";
-  }
-
-  /**
-   * TODO This method output will only work for DOS6. This should be refactor as generic one
-   */
-  private String geContractStartData(final ProcurementEvent event) {
-    try {
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        if (event.getProject().getLotNumber().equals("1")) {
-          return EventsHelper.getData("Criterion 1", "Key Dates", "Question 13",
-              event.getProcurementTemplatePayload().getCriteria());
-        } else if (event.getProject().getLotNumber().equals("3")) {
-          return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
-              event.getProcurementTemplatePayload().getCriteria());
-        }
-      }
-    } catch (Exception e) {
-      log.warn("Error while geContractStartData" + e.getMessage());
-    }
-    return "";
-  }
-  
-  /**
-   * TODO This method output will only work for DOS6. This should be refactor as generic one
-   */
-  private String getEmploymentStatus(final ProcurementEvent event) {
-    try {
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        if (event.getProject().getLotNumber().equals("1")) {
-          return EventsHelper.getData("Criterion 3", "Group 21", "Question 1",
-              event.getProcurementTemplatePayload().getCriteria());
-        }
-      }
-    } catch (Exception e) {
-      log.warn("Error while getEmploymentStatus" + e.getMessage());
     }
     return "";
   }
