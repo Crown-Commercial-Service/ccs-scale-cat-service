@@ -787,7 +787,7 @@ public class ProcurementProjectService {
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
-    NativeSearchQuery searchQuery = getSearchQuery (keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
     NativeSearchQuery searchCountQuery = getLotCount();
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
@@ -831,9 +831,7 @@ public class ProcurementProjectService {
    {
      searchQueryBuilder.withQuery(QueryBuilders.matchAllQuery());
     }
-   if(projectFilter != null)
-   {
-     if(projectFilter.getName().equalsIgnoreCase(STATUS))
+     if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS))
      {
        BoolQueryBuilder boolQuery = boolQuery();
        projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
@@ -842,7 +840,6 @@ public class ProcurementProjectService {
        searchQueryBuilder.withFilter(boolQuery);
      }
 
-   }
    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
