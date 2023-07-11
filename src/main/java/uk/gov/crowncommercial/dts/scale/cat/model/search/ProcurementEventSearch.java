@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
 
 @Data
 @Builder
@@ -15,8 +16,9 @@ import org.springframework.data.elasticsearch.annotations.Document;
 @NoArgsConstructor
 @Document(indexName = "procurement_event")
 public class ProcurementEventSearch {
+  
     @Id
-    String id;
+    Integer id;
     @JsonProperty("projectId")
     Integer projectId;
     @JsonProperty("projectName")
