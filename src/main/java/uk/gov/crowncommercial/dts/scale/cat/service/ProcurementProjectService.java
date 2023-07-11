@@ -833,7 +833,7 @@ public class ProcurementProjectService {
      if(projectFilter.getName().equalsIgnoreCase(STATUS))
        searchQueryBuilder.withQuery(QueryBuilders.termsQuery(STATUS, projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).map(ProjectFilterOption::getText).collect(Collectors.toList())));
    }
-   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber(), pageRequest.getPageSize()));
+   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
