@@ -18,6 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProjectPackageService {
     private final ProjectRecordService projectRecordService;
+    private final NonOCDSProjectService nonOCDSService;
     private final RetryableTendersDBDelegate dbDelegate;
 
     public ProjectPackage getProjectPackage(Integer procId, String principal, List<String> sections) {
@@ -40,6 +41,7 @@ public class ProjectPackageService {
 
     private ProjectPackage getProjectSummary(ProjectQuery query){
         ProjectPackage procPackage = populateGeneralInfo(query);
+        nonOCDSService.populateCancelled(procPackage, query.getProject());
         return populateRecords(query, procPackage);
     }
 

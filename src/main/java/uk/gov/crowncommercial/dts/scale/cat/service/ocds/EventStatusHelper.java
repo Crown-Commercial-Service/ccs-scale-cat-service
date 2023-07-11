@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
 
@@ -116,5 +117,12 @@ public class EventStatusHelper {
 
     public static boolean isOpen(RfxSetting rfxSetting){
         return hasValue(OPEN_STATUS_LIST, rfxSetting.getStatusCode());
+    }
+    
+    public static String getEventStatus(String status) {
+      if (status.equals(TenderStatus.COMPLETE.getValue())) {
+        return StatusEnum.CLOSED.getValue();
+      }
+      return StatusEnum.OPEN.getValue();
     }
 }

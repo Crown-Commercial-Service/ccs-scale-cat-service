@@ -7,8 +7,15 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-
-import java.util.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.util.Pair;
 
 public class EventsHelper {
     private final static ObjectMapper mapper = new ObjectMapper();
@@ -33,6 +40,13 @@ public class EventsHelper {
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
         return getLastPublishedEvent(pp);
+    }
+    
+    public static Pair<ProcurementEvent, ProcurementEvent> getFirstAndLastPublishedEvent(ProcurementProject pp) {
+      if (pp.getProcurementEvents().size() > 1) {
+          return Pair.of(EventsHelper.getFirstPublishedEvent(pp), EventsHelper.getLastPublishedEvent(pp));
+      }
+        return Pair.of(EventsHelper.getFirstPublishedEvent(pp), null);
     }
 
     public static String getData(String criteriaId, String groupId, String requirementId,
@@ -89,4 +103,5 @@ public class EventsHelper {
       return rg.getOcds().getId().equalsIgnoreCase(groupId)
           && (null != rg.getOcds().getDescription());
     }
+    
 }
