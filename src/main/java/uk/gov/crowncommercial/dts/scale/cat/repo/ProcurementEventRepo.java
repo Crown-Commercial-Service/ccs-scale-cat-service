@@ -21,10 +21,4 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
   @Query("select e from ProcurementEvent e where e.publishDate is not null and (:agreementId IS NULL OR e.project.caNumber = :agreementId)")
   Set<ProcurementEvent> findPublishedEventsByAgreementId(String agreementId);
 
-//  @Query(value = "select e.* from procurement_events e inner join procurement_projects pp on "
-//      + "pp.project_id = e.project_id "
-//      + "and e.publish_date is not null and pp.commercial_agreement_number = ?1 order by updated_at desc limit 1",
-//      nativeQuery = true)
-//  Set<ProcurementEvent> findPublishedEventsByAgreementId(String agreementId);
-
 }

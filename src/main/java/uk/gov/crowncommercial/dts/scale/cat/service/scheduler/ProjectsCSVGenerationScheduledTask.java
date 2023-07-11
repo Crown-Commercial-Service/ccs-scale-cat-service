@@ -1,17 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Period;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
@@ -24,17 +23,21 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
+import uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 /**
@@ -50,13 +53,15 @@ public class ProjectsCSVGenerationScheduledTask {
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
   private final Environment env;
-  private final AmazonS3 oppertunitiesS3Client;
-  private final OppertunitiesS3Config oppertunitiesS3Config;
+  private final AmazonS3 tendersS3Client;
+  private final AWSS3Service tendersS3Service;
+  private final CriteriaService cService;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
-  private static final String AWARD_STATUS = "complete";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
   private static final String PERIOD_FMT = "%d years, %d months, %d days";
   public static final String CSV_FILE_NAME = "oppertunity_data.csv";
+  public static final String CSV_FILE_PREFIX = "/Oppertunity/";
+  public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
 
   @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @Transactional
@@ -77,7 +82,7 @@ public class ProjectsCSVGenerationScheduledTask {
       CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
 
       csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category",
-          "Organization Name", "Buyer Domain", "Published At", "Open For",
+          "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
           "Expected Contract Length", "Budget range", "Applications from SMEs",
           "Applications from Large Organisations", "Total Organisations", "Status",
           "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
@@ -97,13 +102,21 @@ public class ProjectsCSVGenerationScheduledTask {
 
   private void generateCSVInfo(Set<ProcurementEvent> events, CSVPrinter csvPrinter)
       throws Exception {
-
-    AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
-    for (ProcurementEvent event : events) {
-      String lotName = null;
-      String orgName = null;
-      String domainName = null;
-      try {
+    try {
+      AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
+      for (ProcurementEvent event : events) {
+        String lotName = null;
+        String orgName = null;
+        String domainName = null;
+        ProcurementEvent stage2Event = null;
+        String status = null;
+        Pair<String, String> totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
+        
+        if (event.getProject().getProcurementEvents().size() > 1) {
+          event = EventsHelper.getFirstPublishedEvent(event.getProject());
+          stage2Event = EventsHelper.getLastPublishedEvent(event.getProject());
+        }
+        
         LotDetail lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
         lotName = lotDetails.getName();
@@ -112,19 +125,22 @@ public class ProjectsCSVGenerationScheduledTask {
                 event.getProject().getOrganisationMapping().getOrganisationId());
         orgName = organisationIdentity.get().getIdentifier().getLegalName();
         domainName = organisationIdentity.get().getIdentifier().getUri();
-      } catch (Exception e) {
-        log.error("Error while getting lot and org details in CSV generator" + e.getMessage());
+        
+        totalOrganisationsCountAndWinningSupplier = getTotalOrganisationsCountAndWinningSupplier(
+            Objects.nonNull(stage2Event) ? stage2Event : event);
+        status = EventStatusHelper.getEventStatus(
+            Objects.nonNull(stage2Event) ? stage2Event.getTenderStatus() : event.getTenderStatus());
+
+        csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
+            env.getProperty(PROJECT_UI_LINK_KEY), agreementDetails.getName(), lotName, orgName, domainName,
+            getLocation(event), event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
+            StringUtils.isBlank(getBudgetRangeData(event)) ? "" : getBudgetRangeData(event), "", "",
+            totalOrganisationsCountAndWinningSupplier.getSecond(), status,
+            totalOrganisationsCountAndWinningSupplier.getFirst(), "", "", geContractStartData(event),
+            retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()), getEmploymentStatus(event));
       }
-      Pair<String, String> totalOrganisationsCountAndWinningSupplier =
-          getTotalOrganisationsCountAndWinningSupplier(event);
-      
-      csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
-          env.getProperty("link"), agreementDetails.getName(), lotName, orgName, domainName,
-          event.getPublishDate(), getOpenForCount(event), getExpectedContractLength(event),
-          StringUtils.isBlank(EventsHelper.getBudgetRangeData(event)) ? ""
-              : EventsHelper.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getSecond(),
-          EventsHelper.getEventStatus(event.getTenderStatus()), totalOrganisationsCountAndWinningSupplier.getFirst(), "", "", geContractStartData(event),
-          retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()), getEmploymentStatus(event));
+    } catch (Exception e) {
+      log.error("Error while generating CSV generator" + e.getMessage());
     }
   }
 
@@ -138,10 +154,10 @@ public class ProjectsCSVGenerationScheduledTask {
   private Pair<String, String> getTotalOrganisationsCountAndWinningSupplier(
       final ProcurementEvent event) {
     try {
-      String wSupplier = null;
+      String wSupplier = "";
       ExportRfxResponse rfxWithSuppliers =
-          jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
-      if (event.getTenderStatus().equals(AWARD_STATUS)) {
+          jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(event.getExternalEventId());
+      if (event.getTenderStatus().equals(TenderStatus.COMPLETE.getValue())) {
         Optional<Supplier> winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
             .stream().filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
         if (winningSupplier.isPresent()) {
@@ -152,6 +168,7 @@ public class ProjectsCSVGenerationScheduledTask {
           rfxWithSuppliers.getSupplierResponseCounters().getLastRound().getNumSupplResponded()+"");
 
     } catch (Exception e) {
+      log.warn("Error while getTotalOrganisationsCountAndWinningSupplier" + e.getMessage());
     }
     return Pair.of("", "");
   }
@@ -160,17 +177,73 @@ public class ProjectsCSVGenerationScheduledTask {
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
   private String getExpectedContractLength(final ProcurementEvent event) {
-    // lot 1 & lot 3-> Contract Length
-    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-      try {
-        String dataFromJSONDataTemplate = EventsHelper.getData("Criterion 3", "Group 18",
-            "Question 12", event.getProcurementTemplatePayload().getCriteria());
+    try {
+      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+        String criterionId = event.getProject().getLotNumber().equals("1") ? "Criterion 3" : "Criterion 1";
+        String groupId = event.getProject().getLotNumber().equals("1") ? "Group 18" : "Key Dates";
+        String dataFromJSONDataTemplate = EventsHelper.getData(criterionId, groupId, "Question 12",
+            event.getProcurementTemplatePayload().getCriteria());
         if (Objects.nonNull(dataFromJSONDataTemplate)) {
           var period = Period.parse(dataFromJSONDataTemplate);
           return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
         }
-      } catch (DateTimeParseException e) {
       }
+    } catch (Exception e) {
+      log.warn("Error while getExpectedContractLength" + e.getMessage());
+    }
+    return "";
+  }
+  
+  /**
+   * TODO This method output will only work for DOS6. This should be refactor as generic one
+   */
+  public static String getBudgetRangeData(final ProcurementEvent event) {
+    try {
+      String maxValue = null;
+      String minValue = null;
+      String groupId = event.getProject().getLotNumber().equals("1") ? "Group 20" : "Group 18";
+      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+        maxValue = EventsHelper.getData("Criterion 3", groupId, "Question 2",
+            event.getProcurementTemplatePayload().getCriteria());
+        minValue = EventsHelper.getData("Criterion 3", groupId, "Question 3",
+            event.getProcurementTemplatePayload().getCriteria());
+        if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
+          return "£" + minValue + "- £" + maxValue;
+        } else if (!StringUtils.isBlank(maxValue)) {
+          return "up to £" + maxValue;
+        } else
+          return "Not prepared to share details";
+      }
+    } catch (Exception e) {
+      log.warn("Error while getBudgetRangeData" + e.getMessage());
+    }
+    return null;
+  }
+  
+  /**
+   * TODO This method output will only work for DOS6. This should be refactor as generic one
+   */
+  public String getLocation(final ProcurementEvent event) {
+    try {
+      String location = "";
+      String criterionId = "Criterion 3";
+      String groupId = event.getProject().getLotNumber().equals("1") ? "Group 5" : "Group 4";
+      String questionId = "Question 6";
+      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+        Set<Question> evalCriterionGroupQuestions = cService.getEvalCriterionGroupQuestions(
+            event.getProject().getId(), event.getEventID(), criterionId, groupId);
+
+        Optional<Question> question = evalCriterionGroupQuestions.stream()
+            .filter(q -> q.getOCDS().getId().equals(questionId)).findAny();
+
+        if (question.isPresent()) {
+          location = question.get().getNonOCDS().getOptions().stream().filter(o -> o.getSelected())
+              .toList().stream().map(i -> i.getValue()).collect(Collectors.joining(", "));
+        }
+      }
+      return Objects.nonNull(location) ? location : "";
+    } catch (Exception e) {
+      log.warn("Error while getLocation" + e.getMessage());
     }
     return "";
   }
@@ -179,14 +252,18 @@ public class ProjectsCSVGenerationScheduledTask {
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
   private String geContractStartData(final ProcurementEvent event) {
-    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-      if (event.getProject().getLotNumber() == "1") {
-        return EventsHelper.getData("Criterion 1", "Key Dates", "Question 13",
-            event.getProcurementTemplatePayload().getCriteria());
-      } else if (event.getProject().getLotNumber() == "3") {
-        return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
-            event.getProcurementTemplatePayload().getCriteria());
+    try {
+      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+        if (event.getProject().getLotNumber().equals("1")) {
+          return EventsHelper.getData("Criterion 1", "Key Dates", "Question 13",
+              event.getProcurementTemplatePayload().getCriteria());
+        } else if (event.getProject().getLotNumber().equals("3")) {
+          return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
+              event.getProcurementTemplatePayload().getCriteria());
+        }
       }
+    } catch (Exception e) {
+      log.warn("Error while geContractStartData" + e.getMessage());
     }
     return "";
   }
@@ -195,35 +272,34 @@ public class ProjectsCSVGenerationScheduledTask {
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
   private String getEmploymentStatus(final ProcurementEvent event) {
-    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-      if (event.getProject().getLotNumber() == "1") {
-        return EventsHelper.getData("Criterion 1", "Group 21", "Question 1",
-            event.getProcurementTemplatePayload().getCriteria());
-      } else if (event.getProject().getLotNumber() == "3") {
-        return EventsHelper.getData("Criterion 1", "Key Dates", "Question 11",
-            event.getProcurementTemplatePayload().getCriteria());
+    try {
+      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+        if (event.getProject().getLotNumber().equals("1")) {
+          return EventsHelper.getData("Criterion 3", "Group 21", "Question 1",
+              event.getProcurementTemplatePayload().getCriteria());
+        }
       }
+    } catch (Exception e) {
+      log.warn("Error while getEmploymentStatus" + e.getMessage());
     }
     return "";
   }
 
-  private void transferToS3(Path tempFile) throws IOException {
+  private void transferToS3(Path tempFile) {
     try {
       InputStream fileStream = Files.newInputStream(tempFile);
-      var objectPrefix = org.springframework.util.StringUtils.hasText(oppertunitiesS3Config.getObjectPrefix())
-          ? oppertunitiesS3Config.getObjectPrefix() + "/"
-          : "";
-      var objectKey = objectPrefix + CSV_FILE_NAME;
+      var tendersS3ObjectKey = CSV_FILE_PREFIX + CSV_FILE_NAME;
       var objectMetadata = new ObjectMetadata();
       objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
       objectMetadata.setContentType("text/csv");
-      oppertunitiesS3Client.putObject(oppertunitiesS3Config.getBucket(), objectKey, fileStream,
-          objectMetadata);
-      log.info("Successfully uploaded oppertunies file to S3: {}", objectKey);
+      tendersS3Client.putObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey,
+          fileStream, objectMetadata);
+      log.info("Successfully uploaded oppertunies file to S3: {}", tendersS3ObjectKey);
       // Delete the temporary file
       Files.delete(tempFile);
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.error("Error in transfer oppertunies to S3", e);
     }
   }
+  
 }

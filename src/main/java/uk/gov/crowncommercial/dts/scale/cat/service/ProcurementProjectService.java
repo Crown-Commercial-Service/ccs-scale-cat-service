@@ -6,6 +6,7 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
+import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_PREFIX;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import java.io.InputStream;
@@ -49,14 +50,13 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.util.UriUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.OppertunitiesS3Config;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserNotExistException;
@@ -110,10 +110,10 @@ public class ProcurementProjectService {
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
-  private final AmazonS3 oppertunitiesS3Client;
-  private final OppertunitiesS3Config oppertunitiesS3Config;
 
   private final ElasticsearchOperations elasticsearchOperations;
+  private final AmazonS3 tendersS3Client;
+  private final AWSS3Service tendersS3Service;
 
 
   private static final String PROJECT_NAME = "projectName";
@@ -886,17 +886,16 @@ public class ProcurementProjectService {
     return links1;
 
   }
-  private final ProjectsCSVGenerationScheduledTask task;
+  
   /**
    * Download all oppertunities data from s3
    * 
    */
   public InputStream downloadProjectsData() {
     try {
-      task.generateCSV();
-      S3Object s3object = oppertunitiesS3Client
-          .getObject(new GetObjectRequest(oppertunitiesS3Config.getBucket(), CSV_FILE_NAME));
-      return s3object.getObjectContent();
+      S3Object tendersS3Object = tendersS3Client
+          .getObject(tendersS3Service.getCredentials().getBucketName(), CSV_FILE_PREFIX + CSV_FILE_NAME);
+      return tendersS3Object.getObjectContent();
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
     }

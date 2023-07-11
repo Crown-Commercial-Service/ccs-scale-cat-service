@@ -34,6 +34,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
+import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
 import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsToOpenSearchScheduledTask;
 
 /**
@@ -164,19 +165,14 @@ public class ProjectsController extends AbstractRestController {
     return Constants.OK_MSG;
   }
   
-  private final ProjectsToOpenSearchScheduledTask task;
-  
   @GetMapping(value = "/download")
   public void downloadFile(HttpServletResponse response) throws IOException {
-    
-    task.saveProjectsDataToOpenSearch();
-    
-//    var downloadProjectsData = procurementProjectService.downloadProjectsData();
-//    response.setContentType(MediaType.TEXT_PLAIN.toString());
-//    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-//        "attachment; filename=\"" + CSV_FILE_NAME + "\"");
-//    IOUtils.copy(downloadProjectsData, response.getOutputStream());
-//    response.flushBuffer();
+    var downloadProjectsData = procurementProjectService.downloadProjectsData();
+    response.setContentType(MediaType.TEXT_PLAIN.toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+        "attachment; filename=\"" + CSV_FILE_NAME + "\"");
+    IOUtils.copy(downloadProjectsData, response.getOutputStream());
+    response.flushBuffer();
   }
 
   @SneakyThrows

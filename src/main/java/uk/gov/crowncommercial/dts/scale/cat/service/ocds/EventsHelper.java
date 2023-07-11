@@ -7,6 +7,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -94,45 +96,4 @@ public class EventsHelper {
           && (null != rg.getOcds().getDescription());
     }
     
-    /**
-     * TODO This method output will only work for DOS6. This should be refactor as generic one
-     */
-    public static String getBudgetRangeData(final ProcurementEvent event) {
-      String maxValue = null;
-      String minValue = null;
-      String groupId = event.getProject().getLotNumber() == "1" ? "Group 20" : "Group 18";
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        maxValue = getData("Criterion 3", groupId, "Question 2",
-            event.getProcurementTemplatePayload().getCriteria());
-        minValue = getData("Criterion 3", groupId, "Question 3",
-            event.getProcurementTemplatePayload().getCriteria());
-        if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
-          return "£" + minValue + "- £" + maxValue;
-        } else if (!StringUtils.isBlank(maxValue)) {
-          return "up to £" + maxValue;
-        } else
-          return "Not prepared to share details";
-      }
-      return null;
-    }
-    
-    private static final String AWARD_STATUS = "complete";
-    
-    public static String getEventStatus(String status) {
-      if (status.equals(AWARD_STATUS)) {
-        return "Closed";
-      }
-      return "Open";
-    }
-    
-    public static String getSummaryOfWork(ProcurementEvent event) {
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        var summary = getData("Criterion 3", "Group 3", "Question 1",
-            event.getProcurementTemplatePayload().getCriteria());
-        if (!StringUtils.isBlank(summary)) {
-          return summary;
-        }
-      }
-      return null;
-    }
 }
