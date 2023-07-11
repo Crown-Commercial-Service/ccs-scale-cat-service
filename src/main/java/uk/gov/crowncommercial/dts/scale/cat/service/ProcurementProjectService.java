@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.util.Optional.ofNullable;
+import static org.opensearch.index.query.QueryBuilders.boolQuery;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
@@ -31,7 +32,9 @@ import org.modelmapper.ModelMapper;
 import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.index.query.BoolQueryBuilder;
 import org.opensearch.index.query.MultiMatchQueryBuilder;
+import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
@@ -822,7 +825,7 @@ public class ProcurementProjectService {
               .fuzziness(Fuzziness.ONE)
               .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
     }if(lotId !=null && !lotId.isEmpty()) {
-      searchQueryBuilder.withQuery(QueryBuilders.matchQuery(LOT, lotId));
+      searchQueryBuilder.withFilter(QueryBuilders.termQuery(LOT, lotId));
     }
    if(keyword == null && lotId == null)
    {
@@ -831,7 +834,14 @@ public class ProcurementProjectService {
    if(projectFilter != null)
    {
      if(projectFilter.getName().equalsIgnoreCase(STATUS))
-       searchQueryBuilder.withQuery(QueryBuilders.termsQuery(STATUS, projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).map(ProjectFilterOption::getText).collect(Collectors.toList())));
+     {
+       BoolQueryBuilder boolQuery = boolQuery();
+       projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
+         boolQuery.should(QueryBuilders.termQuery(STATUS,projectFilterOption.getText()));
+       });
+       searchQueryBuilder.withFilter(boolQuery);
+     }
+
    }
    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
