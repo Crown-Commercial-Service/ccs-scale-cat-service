@@ -36,6 +36,7 @@ import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.BoolQueryBuilder;
 import org.opensearch.index.query.MultiMatchQueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.terms.Terms;
@@ -808,7 +809,7 @@ public class ProcurementProjectService {
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
     NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-    NativeSearchQuery searchCountQuery = getLotCount();
+    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
     searchCriteria.setLots(getProjectLots(countResults, lotId));
@@ -839,39 +840,41 @@ public class ProcurementProjectService {
   }
 
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
-    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
-   if(keyword != null  && !keyword.isEmpty()) {
-      searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-              .fuzziness(Fuzziness.ONE)
-              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-    }
-     if(projectFilter !=null || lotId !=null )
-     {
-       BoolQueryBuilder boolQuery = boolQuery();
-       BoolQueryBuilder statusboolQuery = boolQuery();
-       if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
-         projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
-           statusboolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
-         });
-         boolQuery.filter(statusboolQuery);
-       }
-       if(lotId != null) {
-         boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
-       }
-       searchQueryBuilder.withFilter(boolQuery);
-     }
-
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
 
-  private  NativeSearchQuery getLotCount () {
-    NativeSearchQuery searchQuery;
-      searchQuery = new NativeSearchQueryBuilder()
-              .withQuery(QueryBuilders.matchAllQuery())
-              .withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").minDocCount(1))
-              .build();
+  private static NativeSearchQueryBuilder getFilterQuery(String lotId, ProjectFilter projectFilter, String keyword) {
+    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
+    BoolQueryBuilder boolQuery = boolQuery();
+    BoolQueryBuilder statusboolQuery = boolQuery();
+    if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
+      projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
+        statusboolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
+      });
+      boolQuery.filter(statusboolQuery);
+    }
+    if(lotId != null) {
+      boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
+    }
+    if(keyword  != null) {
+      boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .fuzziness(Fuzziness.ONE)
+              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
+    }
+    if(projectFilter !=null || lotId !=null || keyword !=null )
+    {
+      searchQueryBuilder.withQuery(boolQuery);
+    }
+    return searchQueryBuilder;
+  }
+
+  private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
+      searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+    NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
