@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.core.env.Environment;
-import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +55,6 @@ public class ProjectsCSVGenerationScheduledTask {
   private final CriteriaService cService;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
-  private static final String PERIOD_FMT = "%d years, %d months, %d days";
   public static final String CSV_FILE_NAME = "oppertunity_data.csv";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
@@ -106,7 +105,7 @@ public class ProjectsCSVGenerationScheduledTask {
         Pair<String, String> totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
         Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
-        event = firstAndLastPublishedEvent.getFirst();
+        event = firstAndLastPublishedEvent.getLeft();
         
         LotDetail lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
@@ -115,9 +114,9 @@ public class ProjectsCSVGenerationScheduledTask {
                 event.getProject().getOrganisationMapping().getOrganisationId());
         
         totalOrganisationsCountAndWinningSupplier = getTotalOrganisationsCountAndWinningSupplier(
-            Objects.nonNull(firstAndLastPublishedEvent.getSecond())
-                ? firstAndLastPublishedEvent.getSecond()
-                : firstAndLastPublishedEvent.getFirst());
+            Objects.nonNull(firstAndLastPublishedEvent.getRight())
+                ? firstAndLastPublishedEvent.getRight()
+                : firstAndLastPublishedEvent.getLeft());
         
         csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
             env.getProperty(PROJECT_UI_LINK_KEY), agreementDetails.getName(), lotDetails.getName(),
@@ -125,13 +124,13 @@ public class ProjectsCSVGenerationScheduledTask {
             .getIdentifier().getUri(), getLocation(event), event.getPublishDate(),TemplateDataExtractor.getOpenForCount(event), 
             TemplateDataExtractor.getExpectedContractLength(event),
             StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
-                : TemplateDataExtractor.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getSecond(),
-            TemplateDataExtractor.getStatus(firstAndLastPublishedEvent), totalOrganisationsCountAndWinningSupplier.getFirst(), "", "",
+                : TemplateDataExtractor.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getRight(),
+            TemplateDataExtractor.getStatus(firstAndLastPublishedEvent), totalOrganisationsCountAndWinningSupplier.getLeft(), "", "",
             TemplateDataExtractor.geContractStartData(event), retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
             TemplateDataExtractor.getEmploymentStatus(event));
       }
     } catch (Exception e) {
-      log.error("Error while generating CSV generator" + e.getMessage());
+      log.error("Error while generating CSV generator " + e.getMessage());
     }
   }
   
@@ -153,7 +152,7 @@ public class ProjectsCSVGenerationScheduledTask {
               + "");
 
     } catch (Exception e) {
-      log.warn("Error while getTotalOrganisationsCountAndWinningSupplier" + e.getMessage());
+      log.warn("Error while getTotalOrganisationsCountAndWinningSupplier " + e.getMessage());
     }
     return Pair.of("", "");
   }
@@ -178,7 +177,7 @@ public class ProjectsCSVGenerationScheduledTask {
       }
       return Objects.nonNull(location) ? location : "";
     } catch (Exception e) {
-      log.warn("Error while getLocation" + e.getMessage());
+      log.warn("Error while getLocation " + e.getMessage());
     }
     return "";
   }
@@ -196,7 +195,7 @@ public class ProjectsCSVGenerationScheduledTask {
       // Delete the temporary file
       Files.delete(tempFile);
     } catch (Exception e) {
-      log.error("Error in transfer oppertunies to S3", e);
+      log.error("Error in transfer oppertunies to S3 ", e);
     }
   }
   
