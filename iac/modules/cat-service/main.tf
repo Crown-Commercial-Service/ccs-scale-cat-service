@@ -88,26 +88,18 @@ data "aws_ssm_parameter" "agreements_service_base_url" {
   name = "/cat/${var.environment}/agreements-service-base-url"
 }
 
-
 # Oppertunities S3 export
-data "aws_ssm_parameter" "oppertunities_s3_bucket" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-bucket"
-}
-
-data "aws_ssm_parameter" "oppertunities_s3_region" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-region"
-}
-
-data "aws_ssm_parameter" "oppertunities_s3_access_key_id" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-access-key-id"
-}
-
-data "aws_ssm_parameter" "oppertunities_s3_aws_secret_key" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-aws-secret-key"
-}
-
 data "aws_ssm_parameter" "oppertunities_s3_export_schedule" {
   name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-export-schedule"
+}
+
+data "aws_ssm_parameter" "oppertunities_s3_export_ui_link" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-export-ui-link"
+}
+
+# Sync Projects to OpenSearch
+data "aws_ssm_parameter" "projects_to_opensearch_sync_schedule" {
+  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/projects-to-opensearch-sync-schedule"
 }
 
 # Document Upload Service
@@ -194,21 +186,10 @@ resource "cloudfoundry_app" "cat_service" {
     # Agreements Service
     "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
 
-    # RPA
-    "config.external.jaggaer.rpa.baseUrl" : data.aws_ssm_parameter.jaggaer_rpa_base_url.value
-    "config.external.jaggaer.rpa.user-name" : data.aws_ssm_parameter.jaggaer_rpa_username.value
-    "config.external.jaggaer.rpa.user-pwd" : data.aws_ssm_parameter.jaggaer_rpa_password.value
-    "config.external.jaggaer.rpa.encryption-key" : data.aws_ssm_parameter.jaggaer_rpa_encryption_key.value
-    "config.external.jaggaer.rpa.encryption-iv" : data.aws_ssm_parameter.jaggaer_rpa_encryption_iv.value
-
-    # Oppertunities S3 export
-    "config.external.s3.bucket" : data.aws_ssm_parameter.oppertunities_s3_bucket.value
-    "config.external.s3.aws-region" : data.aws_ssm_parameter.oppertunities_s3_region.value
-    "config.external.s3.access-key-id" : data.aws_ssm_parameter.oppertunities_s3_access_key_id.value
-    "config.external.s3.secret-access-key" : data.aws_ssm_parameter.oppertunities_s3_aws_secret_key.value
-    # No directory/object prefix required in PRD
-    "config.external.s3.object-prefix" : var.environment == "prd" ? "" : var.environment
-    "config.external.s3.oppertunities.schedule" : data.aws_ssm_parameter.oppertunities_s3_export_schedule.value
+    # Projects to OpenSearch scheduler
+    "config.external.s3.oppertunities.schedule": data.aws_ssm_parameter.oppertunities_s3_export_schedule.value
+    "config.external.s3.oppertunities.ui.link": data.aws_ssm_parameter.oppertunities_s3_export_ui_link.value
+    "config.external.projects.sync.schedule": data.aws_ssm_parameter.projects_to_opensearch_sync_schedule.value
 
     # Document Upload Service
     "config.external.doc-upload-svc.upload-base-url" : data.aws_ssm_parameter.document_upload_service_upload_base_url.value

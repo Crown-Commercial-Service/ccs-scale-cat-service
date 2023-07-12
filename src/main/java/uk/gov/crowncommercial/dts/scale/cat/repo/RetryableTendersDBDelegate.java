@@ -412,9 +412,8 @@ public class RetryableTendersDBDelegate {
   
   @TendersRetryable
   @Transactional(readOnly = true)
-  public Set<ProcurementEvent> findEventsByTenderStatusAndAgreementId(final String status,
-      final String agreementId) {
-    return procurementEventRepo.findEventsByTenderStatusAndAgreementId(status, agreementId);
+  public Set<ProcurementEvent> findPublishedEventsByAgreementId(final String agreementId) {
+    return procurementEventRepo.findPublishedEventsByAgreementId(agreementId);
   }
   
   @TendersRetryable
