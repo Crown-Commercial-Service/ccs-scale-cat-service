@@ -848,10 +848,12 @@ public class ProcurementProjectService {
      if(projectFilter !=null || lotId !=null )
      {
        BoolQueryBuilder boolQuery = boolQuery();
+       BoolQueryBuilder statusboolQuery = boolQuery();
        if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
          projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
-           boolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
+           statusboolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
          });
+         boolQuery.filter(statusboolQuery);
        }
        if(lotId != null) {
          boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
