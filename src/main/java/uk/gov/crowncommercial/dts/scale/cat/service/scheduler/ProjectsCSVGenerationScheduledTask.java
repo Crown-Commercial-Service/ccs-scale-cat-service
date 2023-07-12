@@ -8,7 +8,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
@@ -26,15 +25,14 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
-import uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 /**
@@ -52,7 +50,6 @@ public class ProjectsCSVGenerationScheduledTask {
   private final Environment env;
   private final AmazonS3 tendersS3Client;
   private final AWSS3Service tendersS3Service;
-  private final CriteriaService cService;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
   public static final String CSV_FILE_NAME = "oppertunity_data.csv";
@@ -121,11 +118,11 @@ public class ProjectsCSVGenerationScheduledTask {
         csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
             env.getProperty(PROJECT_UI_LINK_KEY), agreementDetails.getName(), lotDetails.getName(),
             organisationIdentity.get().getIdentifier().getLegalName(), organisationIdentity.get()
-            .getIdentifier().getUri(), getLocation(event), event.getPublishDate(),TemplateDataExtractor.getOpenForCount(event), 
+            .getIdentifier().getUri(), TemplateDataExtractor.getLocation(event), event.getPublishDate(),TemplateDataExtractor.getOpenForCount(event), 
             TemplateDataExtractor.getExpectedContractLength(event),
             StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
                 : TemplateDataExtractor.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getRight(),
-            TemplateDataExtractor.getStatus(firstAndLastPublishedEvent), totalOrganisationsCountAndWinningSupplier.getLeft(), "", "",
+                EventStatusHelper.getEventStatus(event), totalOrganisationsCountAndWinningSupplier.getLeft(), "", "",
             TemplateDataExtractor.geContractStartData(event), retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
             TemplateDataExtractor.getEmploymentStatus(event));
       }
@@ -155,31 +152,6 @@ public class ProjectsCSVGenerationScheduledTask {
       log.warn("Error while getTotalOrganisationsCountAndWinningSupplier " + e.getMessage());
     }
     return Pair.of("", "");
-  }
-
-  /**
-   * TODO This method output will only work for DOS6. This should be refactor as generic one
-   */
-  public String getLocation(final ProcurementEvent event) {
-    try {
-      String location = "";
-      String criterionId = "Criterion 3";
-      String groupId = event.getProject().getLotNumber().equals("1") ? "Group 5" : "Group 4";
-      String questionId = "Question 6";
-      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-        Optional<Question> question = cService.getEvalCriterionGroupQuestions(
-            event.getProject().getId(), event.getEventID(), criterionId, groupId).stream()
-            .filter(q -> q.getOCDS().getId().equals(questionId)).findAny();
-        if (question.isPresent()) {
-          location = question.get().getNonOCDS().getOptions().stream().filter(o -> o.getSelected())
-              .toList().stream().map(i -> i.getValue()).collect(Collectors.joining(", "));
-        }
-      }
-      return Objects.nonNull(location) ? location : "";
-    } catch (Exception e) {
-      log.warn("Error while getLocation " + e.getMessage());
-    }
-    return "";
   }
 
   private void transferToS3(Path tempFile) {

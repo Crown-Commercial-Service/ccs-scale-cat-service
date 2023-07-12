@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -92,7 +93,8 @@ public class EventsHelper {
     }
 
     private static String getFirstValue(List<Requirement.Option> options) {
-        return options.stream().filter(t -> t.getSelect()).findFirst().map(t -> null != t ? t.getValue() : null).orElseGet(() -> null);
+      return options.stream().filter(t -> t.getSelect())
+          .toList().stream().map(i -> i.getValue()).collect(Collectors.joining(", "));
     }
 
     private static boolean isReqMatch(Requirement r, String requirementId) {
