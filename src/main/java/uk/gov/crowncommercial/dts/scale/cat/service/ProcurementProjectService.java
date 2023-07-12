@@ -35,7 +35,6 @@ import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.BoolQueryBuilder;
 import org.opensearch.index.query.MultiMatchQueryBuilder;
-import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
@@ -49,12 +48,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriUtils;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.S3Object;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.util.UriUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -69,7 +68,29 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Links1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectLots;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectSearchCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ReleaseTag;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
@@ -86,7 +107,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -900,7 +920,7 @@ public class ProcurementProjectService {
       return tendersS3Object.getObjectContent();
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
+      throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");
     }
-    return null;
   }
 }

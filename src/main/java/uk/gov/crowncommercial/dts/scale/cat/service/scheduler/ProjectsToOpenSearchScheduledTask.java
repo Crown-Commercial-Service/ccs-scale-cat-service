@@ -2,12 +2,11 @@ package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,12 +67,12 @@ public class ProjectsToOpenSearchScheduledTask {
 
         Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
-        event = firstAndLastPublishedEvent.getFirst();
+        event = firstAndLastPublishedEvent.getLeft();
 
         ProcurementEventSearch eventSearchData = ProcurementEventSearch.builder().id(event.getId())
             .projectId(event.getProject().getId()).description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
-            .status(EventStatusHelper.getEventStatus(Objects.nonNull(firstAndLastPublishedEvent.getSecond()) ? firstAndLastPublishedEvent.getSecond().getTenderStatus()
+            .status(EventStatusHelper.getEventStatus(Objects.nonNull(firstAndLastPublishedEvent.getRight()) ? firstAndLastPublishedEvent.getRight().getTenderStatus()
                     : event.getTenderStatus())).subStatus(getDashboardStatus(event)).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
             .projectName(event.getProject().getProjectName()).location("").lot(event.getProject().getLotNumber())
             .lotDescription(lotDetails.getDescription()).agreement(agreementDetails.getName()).build();

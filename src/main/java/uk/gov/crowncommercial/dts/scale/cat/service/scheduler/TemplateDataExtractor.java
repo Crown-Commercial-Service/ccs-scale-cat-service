@@ -4,7 +4,7 @@ import java.time.Period;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
@@ -17,8 +17,8 @@ public class TemplateDataExtractor {
   
   public static String getStatus(Pair<ProcurementEvent, ProcurementEvent> events) {
     return EventStatusHelper
-        .getEventStatus(Objects.nonNull(events.getSecond()) ? events.getSecond().getTenderStatus()
-            : events.getFirst().getTenderStatus());
+        .getEventStatus(Objects.nonNull(events.getRight()) ? events.getRight().getTenderStatus()
+            : events.getLeft().getTenderStatus());
   }
 
   public static Long getOpenForCount(ProcurementEvent event) {
@@ -44,7 +44,7 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while getExpectedContractLength" + e.getMessage());
+      log.warn("Error while getExpectedContractLength " + e.getMessage());
     }
     return "";
   }
@@ -70,7 +70,7 @@ public class TemplateDataExtractor {
           return "Not prepared to share details";
       }
     } catch (Exception e) {
-      log.warn("Error while getBudgetRangeData" + e.getMessage());
+      log.warn("Error while getBudgetRangeData " + e.getMessage());
     }
     return null;
   }
@@ -90,7 +90,7 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while geContractStartData" + e.getMessage());
+      log.warn("Error while geContractStartData " + e.getMessage());
     }
     return "";
   }
@@ -107,7 +107,7 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while getEmploymentStatus" + e.getMessage());
+      log.warn("Error while getEmploymentStatus " + e.getMessage());
     }
     return "";
   }
