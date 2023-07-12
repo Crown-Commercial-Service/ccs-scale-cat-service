@@ -820,20 +820,14 @@ public class ProcurementProjectService {
   }
 
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
-    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
-
-     if(projectFilter !=null || lotId !=null || keyword!=null )
-     {
-       BoolQueryBuilder boolQuery = getFilterQuery(lotId, projectFilter,keyword);
-       searchQueryBuilder.withQuery(boolQuery);
-     }
-
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
 
-  private static BoolQueryBuilder getFilterQuery(String lotId, ProjectFilter projectFilter, String keyword) {
+  private static NativeSearchQueryBuilder getFilterQuery(String lotId, ProjectFilter projectFilter, String keyword) {
+    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
     BoolQueryBuilder boolQuery = boolQuery();
     BoolQueryBuilder statusboolQuery = boolQuery();
     if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
@@ -850,16 +844,15 @@ public class ProcurementProjectService {
               .fuzziness(Fuzziness.ZERO)
               .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
     }
-    return boolQuery;
+    if(projectFilter !=null || lotId !=null || keyword !=null )
+    {
+      searchQueryBuilder.withQuery(boolQuery);
+    }
+    return searchQueryBuilder;
   }
 
   private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
-    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
-    if(projectFilter !=null || lotId !=null || keyword !=null )
-    {
-      BoolQueryBuilder boolQuery = getFilterQuery(lotId, projectFilter, keyword);
-      searchQueryBuilder.withQuery(boolQuery);
-    }
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
       searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
