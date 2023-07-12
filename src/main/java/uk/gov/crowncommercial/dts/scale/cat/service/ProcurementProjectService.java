@@ -861,7 +861,7 @@ public class ProcurementProjectService {
     }
     if(keyword  != null) {
       boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-              .fuzziness(Fuzziness.ZERO)
+              .fuzziness(Fuzziness.ONE)
               .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
     }
     if(projectFilter !=null || lotId !=null || keyword !=null )
