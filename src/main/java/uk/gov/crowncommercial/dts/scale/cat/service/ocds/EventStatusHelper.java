@@ -6,7 +6,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
-
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -119,10 +119,20 @@ public class EventStatusHelper {
         return hasValue(OPEN_STATUS_LIST, rfxSetting.getStatusCode());
     }
     
-    public static String getEventStatus(String status) {
-      if (status.equals(TenderStatus.COMPLETE.getValue())) {
+    public static String getEventStatus(ProcurementEvent event) {
+      if (event.getCloseDate().isAfter(Instant.now())) {
+        return StatusEnum.OPEN.getValue();
+      } else {
         return StatusEnum.CLOSED.getValue();
       }
-      return StatusEnum.OPEN.getValue();
+    }
+    
+    public static String getSubStatus(ProcurementEvent event) {
+      if (event.getTenderStatus().equals(TenderStatus.COMPLETE.getValue())) {
+        return EventSubStatus.AWARDED.getValue();
+      } else if (TERMINATION_LIST.contains(event.getTenderStatus())) {
+        return EventSubStatus.CANCELLED.getValue();
+      }
+      return EventSubStatus.AWAITING_OUTCOME.getValue();
     }
 }

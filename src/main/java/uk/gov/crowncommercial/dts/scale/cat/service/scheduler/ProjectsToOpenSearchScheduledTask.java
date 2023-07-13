@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -16,16 +15,14 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
-import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
-import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 @Component
 @RequiredArgsConstructor
@@ -37,7 +34,6 @@ public class ProjectsToOpenSearchScheduledTask {
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
-  private final JaggaerService jaggaerService;
   
   @Scheduled(cron = "${config.external.projects.sync.schedule}")
   @Transactional
@@ -68,14 +64,17 @@ public class ProjectsToOpenSearchScheduledTask {
         Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
         event = firstAndLastPublishedEvent.getLeft();
+        
+        var status = EventStatusHelper.getEventStatus(event);
+        var subStatus = populateSubStatus(firstAndLastPublishedEvent, status);
 
         ProcurementEventSearch eventSearchData = ProcurementEventSearch.builder().id(event.getId())
             .projectId(event.getProject().getId()).description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
-            .status(EventStatusHelper.getEventStatus(Objects.nonNull(firstAndLastPublishedEvent.getRight()) ? firstAndLastPublishedEvent.getRight().getTenderStatus()
-                    : event.getTenderStatus())).subStatus(getDashboardStatus(event)).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
-            .projectName(event.getProject().getProjectName()).location("").lot(event.getProject().getLotNumber())
-            .lotDescription(lotDetails.getDescription()).agreement(agreementDetails.getName()).build();
+            .status(status).subStatus(subStatus).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
+            .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
+            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription())
+            .agreement(agreementDetails.getName()).build();
 
         eventSearchDataList.add(eventSearchData);
       } catch (Exception e) {
@@ -85,16 +84,15 @@ public class ProjectsToOpenSearchScheduledTask {
     return eventSearchDataList;
   }
 
-  private String getDashboardStatus(ProcurementEvent event) {
-    try {
-      var exportRfxResponse = jaggaerService.getRfxByComponent(event.getExternalEventId(),
-          new HashSet<>(Arrays.asList("OFFERS")));
-      DashboardStatus dashboardStatus =
-          TendersAPIModelUtils.getDashboardStatus(exportRfxResponse.getRfxSetting(), event);
-      return dashboardStatus.getValue();
-    } catch (Exception e) {
+  private String populateSubStatus(
+      Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent, String status) {
+    if (Objects.nonNull(firstAndLastPublishedEvent.getRight())) {
+      return EventStatusHelper.getSubStatus(firstAndLastPublishedEvent.getRight());
     }
-    return null;
+    if (StatusEnum.CLOSED.getValue().equals(status)) {
+      return EventStatusHelper.getSubStatus(firstAndLastPublishedEvent.getLeft());
+    }
+    return "";
   }
   
   private static String getSummaryOfWork(ProcurementEvent event) {
@@ -107,5 +105,4 @@ public class ProjectsToOpenSearchScheduledTask {
     }
     return null;
   }
-
 }
