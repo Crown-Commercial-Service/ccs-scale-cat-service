@@ -4,12 +4,9 @@ import java.time.Period;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
-@Slf4j
 public class TemplateDataExtractor {
   
   private static final String PERIOD_FMT = "%d years, %d months, %d days";
@@ -37,7 +34,6 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while getExpectedContractLength " + e.getMessage());
     }
     return "";
   }
@@ -63,7 +59,6 @@ public class TemplateDataExtractor {
           return "Not prepared to share details";
       }
     } catch (Exception e) {
-      log.warn("Error while getBudgetRangeData " + e.getMessage());
     }
     return null;
   }
@@ -83,7 +78,6 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while geContractStartData " + e.getMessage());
     }
     return "";
   }
@@ -100,7 +94,6 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while getEmploymentStatus " + e.getMessage());
     }
     return "";
   }
@@ -117,7 +110,6 @@ public class TemplateDataExtractor {
           event.getProcurementTemplatePayload().getCriteria());
       return Objects.nonNull(location) ? location : "";
     } catch (Exception e) {
-      log.warn("Error while getLocation " + e.getMessage());
     }
     return "";
   }
