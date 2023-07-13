@@ -69,6 +69,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -159,6 +160,9 @@ class ProcurementProjectServiceTest {
   
   @MockBean
   private AWSS3Service tendersS3Service;
+
+  @MockBean
+  private SearchProjectRepo searchProjectRepo;
 
   @BeforeAll
   static void beforeAll() {

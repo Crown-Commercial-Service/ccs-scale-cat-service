@@ -108,6 +108,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -125,7 +126,7 @@ public class ProcurementProjectService {
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
-
+  private final SearchProjectRepo searchProjectRepo;
   private final EventTransitionService eventTransitionService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ModelMapper modelMapper;
@@ -873,6 +874,7 @@ public class ProcurementProjectService {
 
   private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
+    searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
       searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
@@ -889,6 +891,7 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setDescription(object.getDescription());
       projectPublicSearchSummary.setBuyerName(object.getBuyerName());
       projectPublicSearchSummary.setLot(object.getLot());
+      projectPublicSearchSummary.setLotName(object.getLotDescription());
       projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       projectPublicSearchSummary.setSubStatus(object.getSubStatus());
       projectPublicSearchSummary.setLocation(object.getLocation());
