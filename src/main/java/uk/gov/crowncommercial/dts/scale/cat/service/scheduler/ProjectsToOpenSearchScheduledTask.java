@@ -1,8 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
@@ -39,36 +37,37 @@ public class ProjectsToOpenSearchScheduledTask {
   @Transactional
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process");
-    Set<ProcurementEvent> events =
+    var events =
         retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
+    log.info("Dos6 agreements count to update in opensearch: {}", events.size());
     
-    Set<ProcurementEventSearch> eventSearchDataList = new HashSet<ProcurementEventSearch>();
-    AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
+    var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
+    var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
     this.mapToOpenSearch(events, eventSearchDataList, agreementDetails);
     
     searchProjectRepo.saveAll(eventSearchDataList);
     log.info("Successfully updated projects data in open search");
   }
   
-  private Set<ProcurementEventSearch> mapToOpenSearch(Set<ProcurementEvent> events,
-      Set<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
+  private List<ProcurementEventSearch> mapToOpenSearch(Set<ProcurementEvent> events,
+      List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
 
     for (ProcurementEvent event : events) {
       try {
-        LotDetail lotDetails =
+        var lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-        Optional<OrganisationProfileResponseInfo> organisationIdentity =
+        var organisationIdentity =
             conclaveService.getOrganisationIdentity(
                 event.getProject().getOrganisationMapping().getOrganisationId());
 
-        Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
+        var firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
         event = firstAndLastPublishedEvent.getLeft();
         
         var status = EventStatusHelper.getEventStatus(event);
         var subStatus = populateSubStatus(firstAndLastPublishedEvent, status);
 
-        ProcurementEventSearch eventSearchData = ProcurementEventSearch.builder().id(event.getId())
+        var eventSearchData = ProcurementEventSearch.builder().id(event.getId())
             .projectId(event.getProject().getId()).description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
             .status(status).subStatus(subStatus).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
@@ -78,7 +77,7 @@ public class ProjectsToOpenSearchScheduledTask {
 
         eventSearchDataList.add(eventSearchData);
       } catch (Exception e) {
-        log.error("Error while saving project details to opensearch" + e.getMessage());
+        log.error("Error while saving project details to opensearch", e);
       }
     }
     return eventSearchDataList;
@@ -96,12 +95,16 @@ public class ProjectsToOpenSearchScheduledTask {
   }
   
   private static String getSummaryOfWork(ProcurementEvent event) {
-    if (Objects.nonNull(event.getProcurementTemplatePayload())) {
-      var summary = EventsHelper.getData("Criterion 3", "Group 3", "Question 1",
-          event.getProcurementTemplatePayload().getCriteria());
-      if (!StringUtils.isBlank(summary)) {
-        return summary;
+    try {
+      if (Objects.nonNull(event.getProcurementTemplatePayload())) {
+        var summary = EventsHelper.getData("Criterion 3", "Group 3", "Question 1",
+            event.getProcurementTemplatePayload().getCriteria());
+        if (!StringUtils.isBlank(summary)) {
+          return summary;
+        }
       }
+    } catch (Exception e) {
+      // TODO: handle exception
     }
     return null;
   }

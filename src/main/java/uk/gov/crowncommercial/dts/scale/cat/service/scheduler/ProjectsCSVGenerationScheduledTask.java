@@ -1,12 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -21,13 +19,8 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
@@ -65,14 +58,15 @@ public class ProjectsCSVGenerationScheduledTask {
 
   public void writeOppertunitiesToCsv() {
 
-    Set<ProcurementEvent> events =
+    var events =
         retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
-    log.info("Dos6 agreements count: {}", events.size());
+    log.info("Dos6 agreements count for CSV generation: {}", events.size());
+    
     try {
-      Path tempFile = Files.createTempFile("temp", ".csv");
-      PrintWriter writer =
+      var tempFile = Files.createTempFile("temp", ".csv");
+      var writer =
           new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
-      CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+      var csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
 
       csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category",
           "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
@@ -96,17 +90,17 @@ public class ProjectsCSVGenerationScheduledTask {
   private void generateCSVInfo(Set<ProcurementEvent> events, CSVPrinter csvPrinter)
       throws Exception {
     try {
-      AgreementDetail agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
+      var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
       for (ProcurementEvent event : events) {
         
-        Pair<String, String> totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
-        Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent =
+        var totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
+        var firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
         event = firstAndLastPublishedEvent.getLeft();
         
-        LotDetail lotDetails =
+        var lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-        Optional<OrganisationProfileResponseInfo> organisationIdentity =
+        var organisationIdentity =
             conclaveService.getOrganisationIdentity(
                 event.getProject().getOrganisationMapping().getOrganisationId());
         
@@ -127,18 +121,22 @@ public class ProjectsCSVGenerationScheduledTask {
             TemplateDataExtractor.getEmploymentStatus(event));
       }
     } catch (Exception e) {
-      log.error("Error while generating CSV generator " + e.getMessage());
+      log.error("Error while generating CSV generator ", e);
     }
   }
   
+  /**
+   * @param ProcurementEvent
+   * @return winning supplier and suppliers response count
+   */
   private Pair<String, String> getTotalOrganisationsCountAndWinningSupplier(
       final ProcurementEvent event) {
     try {
       String wSupplier = "";
-      ExportRfxResponse rfxWithSuppliers =
+      var rfxWithSuppliers =
           jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(event.getExternalEventId());
       if (event.getTenderStatus().equals(TenderStatus.COMPLETE.getValue())) {
-        Optional<Supplier> winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
+        var winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
             .stream().filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
         if (winningSupplier.isPresent()) {
           wSupplier = winningSupplier.get().getCompanyData().getName();
@@ -154,9 +152,12 @@ public class ProjectsCSVGenerationScheduledTask {
     return Pair.of("", "");
   }
 
+  /**
+   * Send oppertunities CSV file to s3
+   */
   private void transferToS3(Path tempFile) {
     try {
-      InputStream fileStream = Files.newInputStream(tempFile);
+      var fileStream = Files.newInputStream(tempFile);
       var tendersS3ObjectKey = CSV_FILE_PREFIX + CSV_FILE_NAME;
       var objectMetadata = new ObjectMetadata();
       objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
