@@ -8,6 +8,7 @@ import static org.springframework.http.HttpHeaders.WWW_AUTHENTICATE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
@@ -110,6 +111,8 @@ public class JaggaerClientConfig {
       }
     };
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
+
+    httpClient.setIdleTimeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()).toMillis());
 
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
