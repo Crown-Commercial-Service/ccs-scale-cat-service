@@ -4,29 +4,41 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  *
@@ -48,6 +60,12 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String CSV_FILE_NAME = "oppertunity_data.csv";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
+  
+  @Value("${config.oppertunities.published.batch.size: 80}")
+  private int publishedBatchSize;
+  
+  @Value("${config.oppertunities.awarded.batch.size: 20}")
+  private int awardedBatchSize;
 
   @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @Transactional
@@ -58,16 +76,15 @@ public class ProjectsCSVGenerationScheduledTask {
 
   public void writeOppertunitiesToCsv() {
 
-    var events =
-        retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
+    var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
     log.info("Dos6 agreements count for CSV generation: {}", events.size());
-    
+
     try {
       var tempFile = Files.createTempFile("temp", ".csv");
-      var writer =
-          new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
+      var writer = new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
       var csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
-
+      var csvDataList = new ArrayList<CSVData>();
+      
       csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category",
           "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
           "Expected Contract Length", "Budget range", "Applications from SMEs",
@@ -75,7 +92,9 @@ public class ProjectsCSVGenerationScheduledTask {
           "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
           "Clarification questions", "Employment status");
 
-      generateCSVInfo(events, csvPrinter);
+      populateCSVData(events, csvPrinter, csvDataList);
+      populateJaggaerFields(csvDataList);
+      populateCSVPrinter(csvDataList, csvPrinter);
 
       csvPrinter.flush();
       csvPrinter.close();
@@ -87,69 +106,125 @@ public class ProjectsCSVGenerationScheduledTask {
     }
   }
 
-  private void generateCSVInfo(Set<ProcurementEvent> events, CSVPrinter csvPrinter)
+  private void populateCSVData(Set<ProcurementEvent> events, CSVPrinter csvPrinter, List<CSVData> csvDataList)
       throws Exception {
     try {
       var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
       for (ProcurementEvent event : events) {
-        
+
         var totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
         var firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
         event = firstAndLastPublishedEvent.getLeft();
-        
+
         var lotDetails =
             agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-        var organisationIdentity =
-            conclaveService.getOrganisationIdentity(
-                event.getProject().getOrganisationMapping().getOrganisationId());
+        var organisationIdentity = conclaveService.getOrganisationIdentity(
+            event.getProject().getOrganisationMapping().getOrganisationId());
+
+        String rfxId = firstAndLastPublishedEvent.getLeft().getExternalEventId();
+        String tStatus = firstAndLastPublishedEvent.getLeft().getTenderStatus();
         
-        totalOrganisationsCountAndWinningSupplier = getTotalOrganisationsCountAndWinningSupplier(
-            Objects.nonNull(firstAndLastPublishedEvent.getRight())
-                ? firstAndLastPublishedEvent.getRight()
-                : firstAndLastPublishedEvent.getLeft());
-        
-        csvPrinter.printRecord(event.getProject().getId(), event.getProject().getProjectName(),
-            env.getProperty(PROJECT_UI_LINK_KEY), agreementDetails.getName(), lotDetails.getName(),
-            organisationIdentity.get().getIdentifier().getLegalName(), organisationIdentity.get()
-            .getIdentifier().getUri(), TemplateDataExtractor.getLocation(event), event.getPublishDate(),TemplateDataExtractor.getOpenForCount(event), 
-            TemplateDataExtractor.getExpectedContractLength(event),
-            StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
-                : TemplateDataExtractor.getBudgetRangeData(event), "", "", totalOrganisationsCountAndWinningSupplier.getRight(),
-                EventStatusHelper.getEventStatus(event), totalOrganisationsCountAndWinningSupplier.getLeft(), "", "",
-            TemplateDataExtractor.geContractStartData(event), retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()),
-            TemplateDataExtractor.getEmploymentStatus(event));
+        if(Objects.nonNull(firstAndLastPublishedEvent.getRight())){
+          rfxId = firstAndLastPublishedEvent.getRight().getExternalEventId();
+          tStatus = firstAndLastPublishedEvent.getRight().getTenderStatus();
+        }
+
+        var csvData = CSVData.builder().rfxId(rfxId).tenderstatus(tStatus)
+            .projectId(event.getProject().getId()).oppertunity(event.getProject().getProjectName())
+            .link(env.getProperty(PROJECT_UI_LINK_KEY) + "?projectId=" + event.getProject().getId())
+            .framework(agreementDetails.getName()).category(lotDetails.getName())
+            .orgName(organisationIdentity.get().getIdentifier().getLegalName())
+            .buyerDomain(organisationIdentity.get().getIdentifier().getUri())
+            .locationOfWork(TemplateDataExtractor.getLocation(event))
+            .publishedDate(event.getPublishDate())
+            .openFor(TemplateDataExtractor.getOpenForCount(event))
+            .expectedContractLength(TemplateDataExtractor.getExpectedContractLength(event))
+            .budgetRange(StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
+                : TemplateDataExtractor.getBudgetRangeData(event))
+            .totalOrganisations(totalOrganisationsCountAndWinningSupplier.getRight())
+            .status(EventStatusHelper.getEventStatus(event))
+            .winningSupplier(totalOrganisationsCountAndWinningSupplier.getLeft())
+            .contractStartDate(TemplateDataExtractor.geContractStartData(event))
+            .clarificationQuestions(
+                retryableTendersDBDelegate.findQuestionsCountByEventId(event.getId()))
+            .employmentStatus(TemplateDataExtractor.getEmploymentStatus(event)).build();
+        csvDataList.add(csvData);
       }
     } catch (Exception e) {
       log.error("Error while generating CSV generator ", e);
     }
   }
+
+  private void populateJaggaerFields(List<CSVData> csvDataList) {
+    Pair<List<CSVData>, List<CSVData>> splitAwardedProjects = splitAwardedProjects(csvDataList);
+    List<List<CSVData>> awarded = TendersAPIModelUtils.getBatches(splitAwardedProjects.getLeft(), awardedBatchSize);
+    List<List<CSVData>> published = TendersAPIModelUtils.getBatches(splitAwardedProjects.getRight(), publishedBatchSize);
+    for (List<CSVData> dataList : awarded) {
+      Set<String> collect = dataList.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
+      getTotalOrganisationsCountAndWinningSupplier(csvDataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
+      log.info("Awarded batch generated: " + dataList.size());
+    }
+    
+    for (List<CSVData> dataList : published) {
+      Set<String> collect = dataList.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
+      getTotalOrganisationsCountAndWinningSupplier(csvDataList, collect, Set.of("supplier_Response_Counters"));
+      log.info("Published batch generated: " + dataList.size());
+    }
+  }
   
-  /**
-   * @param ProcurementEvent
-   * @return winning supplier and suppliers response count
-   */
-  private Pair<String, String> getTotalOrganisationsCountAndWinningSupplier(
-      final ProcurementEvent event) {
+  private void populateCSVPrinter(List<CSVData> csvDataList, CSVPrinter csvPrinter) {
+    for (CSVData csvData : csvDataList) {
+      try {
+        csvPrinter.printRecord(csvData.getProjectId(), csvData.getOppertunity(), csvData.getLink(),
+            csvData.getFramework(), csvData.getCategory(), csvData.getOrgName(),
+            csvData.getBuyerDomain(), csvData.getLocationOfWork(), csvData.getPublishedDate(),
+            csvData.getOpenFor(), csvData.getExpectedContractLength(), csvData.getBudgetRange(), "",
+            "", csvData.getTotalOrganisations(), csvData.getStatus(), csvData.getWinningSupplier(),
+            "", "", csvData.getContractStartDate(), csvData.getClarificationQuestions(),
+            csvData.getEmploymentStatus());
+      } catch (Exception e) {
+      }
+    }
+  }
+
+  private void getTotalOrganisationsCountAndWinningSupplier(List<CSVData> csvDataList,
+      Set<String> collect, Set<String> components) {
     try {
-      String wSupplier = "";
-      var rfxWithSuppliers =
-          jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(event.getExternalEventId());
-      if (event.getTenderStatus().equals(TenderStatus.COMPLETE.getValue())) {
-        var winningSupplier = rfxWithSuppliers.getSuppliersList().getSupplier()
-            .stream().filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
-        if (winningSupplier.isPresent()) {
-          wSupplier = winningSupplier.get().getCompanyData().getName();
+      Set<ExportRfxResponse> searchRFxWithComponents =
+          jaggaerService.searchRFxWithComponents(collect, components);
+
+      for (ExportRfxResponse rfx : searchRFxWithComponents) {
+        String wSupplier = "";
+        if (rfx.getSuppliersList() != null) {
+          Optional<Supplier> winningSupplier = rfx.getSuppliersList().getSupplier().stream()
+              .filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
+          if (winningSupplier.isPresent()) {
+            wSupplier = winningSupplier.get().getCompanyData().getName();
+          }
+        }
+        for (CSVData csvData : csvDataList) {
+          if (csvData.getRfxId().equals(rfx.getRfxSetting().getRfxId())) {
+            csvData.setWinningSupplier(wSupplier);
+            csvData.setTotalOrganisations(
+                rfx.getSupplierResponseCounters().getLastRound().getNumSupplResponded() + "");
+          }
         }
       }
-      return Pair.of(wSupplier,
-          rfxWithSuppliers.getSupplierResponseCounters().getLastRound().getNumSupplResponded()
-              + "");
-
     } catch (Exception e) {
-      log.warn("Error while getTotalOrganisationsCountAndWinningSupplier " + e.getMessage());
+      log.warn("Error while getTotalOrganisationsCountAndWinningSupplier ", e);
     }
-    return Pair.of("", "");
+  }
+  
+
+  private Pair<List<CSVData>, List<CSVData>> splitAwardedProjects(List<CSVData> collection) {
+    var awardedList = collection.stream()
+        .filter(e -> e.getTenderstatus().equals((TenderStatus.COMPLETE.getValue()))).toList();
+
+    var differences = collection.stream().filter(element -> !awardedList.contains(element))
+        .collect(Collectors.toList());
+    
+    return Pair.of(awardedList, differences);
   }
 
   /**
@@ -162,8 +237,8 @@ public class ProjectsCSVGenerationScheduledTask {
       var objectMetadata = new ObjectMetadata();
       objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
       objectMetadata.setContentType("text/csv");
-      tendersS3Client.putObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey,
-          fileStream, objectMetadata);
+      tendersS3Client.putObject(tendersS3Service.getCredentials().getBucketName(),
+          tendersS3ObjectKey, fileStream, objectMetadata);
       log.info("Successfully uploaded oppertunies file to S3: {}", tendersS3ObjectKey);
       // Delete the temporary file
       Files.delete(tempFile);
@@ -171,5 +246,27 @@ public class ProjectsCSVGenerationScheduledTask {
       log.error("Error in transfer oppertunies to S3 ", e);
     }
   }
-  
+
+}
+
+
+@Setter
+@Getter
+@Builder
+class CSVData {
+
+  private String rfxId;
+
+  private String tenderstatus;
+
+  private long projectId, openFor;
+
+  private long clarificationQuestions;
+
+  private Instant publishedDate;
+
+  private String oppertunity, link, framework, category, orgName, buyerDomain, locationOfWork,
+      expectedContractLength, budgetRange, totalOrganisations, status, winningSupplier,
+      contractStartDate, employmentStatus;
+
 }

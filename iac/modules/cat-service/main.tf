@@ -90,16 +90,16 @@ data "aws_ssm_parameter" "agreements_service_base_url" {
 
 # Oppertunities S3 export
 data "aws_ssm_parameter" "oppertunities_s3_export_schedule" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-export-schedule"
+  name = "/cat/${var.environment}/oppertunities-s3-export-schedule"
 }
 
 data "aws_ssm_parameter" "oppertunities_s3_export_ui_link" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/oppertunities-s3-export-ui-link"
+  name = "/cat/${var.environment}/oppertunities-s3-export-ui-link"
 }
 
 # Sync Projects to OpenSearch
 data "aws_ssm_parameter" "projects_to_opensearch_sync_schedule" {
-  name = "/cat/${var.environment == "prd" ? "prd" : "default"}/projects-to-opensearch-sync-schedule"
+  name = "/cat/${var.environment}/projects-to-opensearch-sync-schedule"
 }
 
 # Document Upload Service
