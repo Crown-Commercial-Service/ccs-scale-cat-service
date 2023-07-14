@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 @Component
 @RequiredArgsConstructor
@@ -33,6 +35,9 @@ public class ProjectsToOpenSearchScheduledTask {
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   
+  @Value("${config.oppertunities.published.batch.size: 100}")
+  private int bathcSize;
+  
   @Scheduled(cron = "${config.external.projects.sync.schedule}")
   @Transactional
   public void saveProjectsDataToOpenSearch() {
@@ -41,15 +46,24 @@ public class ProjectsToOpenSearchScheduledTask {
         retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
     log.info("Dos6 agreements count to update in opensearch: {}", events.size());
     
-    var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
-    this.mapToOpenSearch(events, eventSearchDataList, agreementDetails);
+    this.saveProjectDataAsBatches(events, agreementDetails);
     
-    searchProjectRepo.saveAll(eventSearchDataList);
     log.info("Successfully updated projects data in open search");
   }
   
-  private List<ProcurementEventSearch> mapToOpenSearch(Set<ProcurementEvent> events,
+  private void saveProjectDataAsBatches(Set<ProcurementEvent> events,
+      AgreementDetail agreementDetail) {
+    var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
+    List<List<ProcurementEvent>> batches =
+        TendersAPIModelUtils.getBatches(new ArrayList<ProcurementEvent>(events), bathcSize);
+    for (List<ProcurementEvent> batch : batches) {
+      mapToOpenSearch(batch, eventSearchDataList, agreementDetail);
+      searchProjectRepo.saveAll(eventSearchDataList);
+    }
+  }
+  
+  private List<ProcurementEventSearch> mapToOpenSearch(List<ProcurementEvent> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
 
     for (ProcurementEvent event : events) {
