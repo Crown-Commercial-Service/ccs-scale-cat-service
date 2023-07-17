@@ -1,11 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -34,6 +38,8 @@ public class ProjectsToOpenSearchScheduledTask {
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
+  private final RestHighLevelClient opensearchClient;
+  private static final String INDEX_NAME = "procurement_event";
   
   @Value("${config.oppertunities.published.batch.size: 100}")
   private int bathcSize;
@@ -47,6 +53,7 @@ public class ProjectsToOpenSearchScheduledTask {
     log.info("Dos6 agreements count to update in opensearch: {}", events.size());
     
     var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
+    this.reinstateIndex();
     this.saveProjectDataAsBatches(events, agreementDetails);
     
     log.info("Successfully updated projects data in open search");
@@ -60,6 +67,8 @@ public class ProjectsToOpenSearchScheduledTask {
     for (List<ProcurementEvent> batch : batches) {
       mapToOpenSearch(batch, eventSearchDataList, agreementDetail);
       searchProjectRepo.saveAll(eventSearchDataList);
+      log.info("successfully updated events: "+eventSearchDataList.size());
+      eventSearchDataList.clear();
     }
   }
   
@@ -81,7 +90,7 @@ public class ProjectsToOpenSearchScheduledTask {
         var status = EventStatusHelper.getEventStatus(event);
         var subStatus = populateSubStatus(firstAndLastPublishedEvent, status);
 
-        var eventSearchData = ProcurementEventSearch.builder().id(event.getId())
+        var eventSearchData = ProcurementEventSearch.builder()
             .projectId(event.getProject().getId()).description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
             .status(status).subStatus(subStatus).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
@@ -121,5 +130,14 @@ public class ProjectsToOpenSearchScheduledTask {
       // TODO: handle exception
     }
     return null;
+  }
+  
+  private void reinstateIndex() {
+    try {
+      DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(INDEX_NAME);
+      opensearchClient.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
+      log.info("open search index reinstated");
+    } catch (IOException e) {
+    }
   }
 }
