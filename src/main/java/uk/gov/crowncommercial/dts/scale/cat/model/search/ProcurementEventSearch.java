@@ -18,7 +18,7 @@ import org.springframework.data.elasticsearch.annotations.Field;
 public class ProcurementEventSearch {
   
     @Id
-    Integer id;
+    String id;
     @JsonProperty("projectId")
     Integer projectId;
     @JsonProperty("projectName")
