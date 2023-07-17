@@ -17,4 +17,7 @@ public class VCAPServices {
   @JsonProperty("aws-s3-bucket")
   Set<AWSS3Service> awsS3Services;
 
+  @JsonProperty("opensearch")
+  Set<OpensearchService> opensearch;
+
 }

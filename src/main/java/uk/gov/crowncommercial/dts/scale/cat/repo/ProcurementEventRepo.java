@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.repo;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 
@@ -16,4 +17,7 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
 
   Set<ProcurementEvent> findByProjectId(Integer projectId);
+
+  @Query("select e from ProcurementEvent e where e.publishDate is not null and (:agreementId IS NULL OR e.project.caNumber = :agreementId) order by e.updatedAt desc")
+  Set<ProcurementEvent> findPublishedEventsByAgreementId(String agreementId);
 }

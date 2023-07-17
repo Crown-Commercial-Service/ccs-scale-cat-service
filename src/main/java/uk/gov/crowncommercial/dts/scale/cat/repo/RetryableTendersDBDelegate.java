@@ -7,11 +7,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 import java.time.Instant;
@@ -46,6 +49,8 @@ public class RetryableTendersDBDelegate {
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
+  private final QuestionAndAnswerRepo questionAndAnswerRepo;
+
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -403,6 +408,18 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<ContractDetails> findByEventId(final Integer eventId) {
     return contractDetailsRepo.findByEventId(eventId);
+  }
+  
+  @TendersRetryable
+  @Transactional(readOnly = true)
+  public Set<ProcurementEvent> findPublishedEventsByAgreementId(final String agreementId) {
+    return procurementEventRepo.findPublishedEventsByAgreementId(agreementId);
+  }
+  
+  @TendersRetryable
+  @Transactional(readOnly = true)
+  public long findQuestionsCountByEventId(final Integer eventId) {
+    return questionAndAnswerRepo.countByEventId(eventId);
   }
   
   public void updateEventDate(ProcurementEvent procurementEvent, String profile) {

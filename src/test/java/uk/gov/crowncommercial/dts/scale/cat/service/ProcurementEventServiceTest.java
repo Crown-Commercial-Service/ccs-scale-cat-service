@@ -213,6 +213,9 @@ class ProcurementEventServiceTest {
 
   @Autowired
   private DOS6SupplierStore dos6SupplierStore;
+  
+  @MockBean
+  private QuestionAndAnswerRepo questionAndAnswerRepo;
 
   private final CreateEvent createEvent = new CreateEvent();
 
