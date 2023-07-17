@@ -1,14 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -39,7 +36,6 @@ public class ProjectsToOpenSearchScheduledTask {
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final RestHighLevelClient opensearchClient;
-  private static final String INDEX_NAME = "procurement_event";
   
   @Value("${config.oppertunities.published.batch.size: 100}")
   private int bathcSize;
@@ -134,10 +130,9 @@ public class ProjectsToOpenSearchScheduledTask {
   
   private void reinstateIndex() {
     try {
-      DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(INDEX_NAME);
-      opensearchClient.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
-      log.info("open search index reinstated");
-    } catch (IOException e) {
+      searchProjectRepo.deleteAll();
+      log.info("delete data in opensearch");
+    } catch (Exception e) {
     }
   }
 }
