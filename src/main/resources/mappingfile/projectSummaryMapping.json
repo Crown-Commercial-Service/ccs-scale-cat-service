@@ -1,0 +1,101 @@
+{
+
+  "mappings": {
+    "properties": {
+      "projectId": {
+        "type": "integer"
+      },
+      "projectName": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "buyerName": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "location": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "budgetRange": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "agreement": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "lot": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "lotDescription": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "status": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "subStatus": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "description": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}
+}

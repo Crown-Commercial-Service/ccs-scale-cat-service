@@ -11,7 +11,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -24,25 +29,47 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.web.reactive.function.client.WebClient;
+import com.amazonaws.services.s3.AmazonS3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipient;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipientList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectOwner;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectTeam;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -51,7 +78,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
  */
 @SpringBootTest(
     classes = {ProcurementProjectService.class, JaggaerAPIConfig.class, TendersAPIModelUtils.class,
-        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class,EventTransitionService.class},
+        ModelMapper.class, JaggaerService.class, ApplicationFlagsConfig.class,EventTransitionService.class, ElasticsearchOperations.class},
     webEnvironment = WebEnvironment.NONE)
 @EnableConfigurationProperties(JaggaerAPIConfig.class)
 class ProcurementProjectServiceTest {
@@ -122,10 +149,20 @@ class ProcurementProjectServiceTest {
   @Autowired
   private ProcurementProjectService procurementProjectService;
 
-
+  @MockBean
+  private ElasticsearchOperations elasticsearchOperations;
 
   @MockBean
   private JaggaerService jaggaerService;
+  
+  @MockBean
+  private AmazonS3 tendersS3Client;
+  
+  @MockBean
+  private AWSS3Service tendersS3Service;
+
+  @MockBean
+  private SearchProjectRepo searchProjectRepo;
 
   @BeforeAll
   static void beforeAll() {
