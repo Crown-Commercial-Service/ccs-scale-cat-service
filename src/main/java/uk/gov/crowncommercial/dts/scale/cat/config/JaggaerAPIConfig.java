@@ -57,6 +57,7 @@ public class JaggaerAPIConfig {
   private Map<String, String> getMessage;
   private Map<String, String> updateMessage;
   private Map<String, String> searchRfxSummary;
+  private Map<String, String> searchRfxSummaryWithComponents;
   private Map<String, String> getRfxByComponent;
   private Map<String, String> award;
   private Map<String, String> preAward;

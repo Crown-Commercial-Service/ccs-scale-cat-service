@@ -95,9 +95,6 @@ class ProfileManagementServiceTest {
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
   @MockBean
-  private EncryptionService encryptionService;
-  
-  @MockBean
   private TenderDBSupplierLinkService supplierLinkService;
   
   /*

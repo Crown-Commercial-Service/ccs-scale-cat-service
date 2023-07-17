@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -297,7 +298,8 @@ public class EventsController extends AbstractRestController {
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
       HttpServletResponse response, final JwtAuthenticationToken authentication) {
 
-    var principal = getPrincipalFromJwt(authentication);
+    var principal = Objects.nonNull(authentication) ? getPrincipalFromJwt(authentication) : "";
+    
     log.info("Export documents invoked on behalf of principal: {}", principal);
 
     // list of attachments for download
