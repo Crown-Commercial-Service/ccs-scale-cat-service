@@ -92,9 +92,8 @@ public class ProjectsToOpenSearchScheduledTask {
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
             .status(status).subStatus(subStatus).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
             .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
-            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription())
+            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().toString())
             .agreement(agreementDetails.getName()).build();
-
         eventSearchDataList.add(eventSearchData);
       } catch (Exception e) {
         log.error("Error while saving project details to opensearch", e);
