@@ -40,6 +40,8 @@ import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.terms.Terms;
+import org.opensearch.search.sort.SortBuilders;
+import org.opensearch.search.sort.SortOrder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -842,8 +844,8 @@ public class ProcurementProjectService {
 
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
-   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
-    NativeSearchQuery searchQuery = searchQueryBuilder.build();
+   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
+   NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
 
