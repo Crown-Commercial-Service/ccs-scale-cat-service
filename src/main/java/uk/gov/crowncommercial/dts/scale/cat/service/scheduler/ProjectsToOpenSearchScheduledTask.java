@@ -6,13 +6,13 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.opensearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.core.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
@@ -35,13 +35,14 @@ public class ProjectsToOpenSearchScheduledTask {
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
-  private final RestHighLevelClient opensearchClient;
   
   @Value("${config.oppertunities.published.batch.size: 100}")
   private int bathcSize;
   
-  @Scheduled(cron = "${config.external.projects.sync.schedule}")
   @Transactional
+  @Scheduled(cron = "${config.external.projects.sync.schedule}")
+  @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask", 
+  lockAtLeastForString = "PT5M", lockAtMostForString = "PT10M")
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process");
     var events =

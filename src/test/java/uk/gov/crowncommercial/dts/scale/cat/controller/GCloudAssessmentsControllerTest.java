@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.javacrumbs.shedlock.core.LockProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,9 @@ public class GCloudAssessmentsControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+    
+    @MockBean
+    private LockProvider lockProvider;
 
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validJwtReqPostProcessor;
 
