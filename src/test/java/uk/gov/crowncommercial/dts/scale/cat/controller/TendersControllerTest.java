@@ -25,6 +25,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import net.javacrumbs.shedlock.core.LockProvider;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
@@ -54,6 +55,8 @@ class TendersControllerTest {
   private ProfileManagementService profileManagementService;
   private JwtRequestPostProcessor validCATJwtReqPostProcessor;
   private JwtRequestPostProcessor validLDJwtReqPostProcessor;
+  @MockBean
+  private LockProvider lockProvider;
 
   @BeforeEach
   void beforeEach() {
