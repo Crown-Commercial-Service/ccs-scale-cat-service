@@ -5,6 +5,8 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.PRINCIPAL_PLACEHOLDER;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.DUNS_PLACEHOLDER;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.FISCALCODE_PLACEHOLDER;
+
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Optional;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.util.UriUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DuplicateFiscalCodeException;
@@ -201,7 +204,7 @@ public class UserProfileService {
     // Fall back on SSO super user search in case Tenders DB org mapping missing
     var getSupplierCompanyBySSOUserLoginEndpoint =
         jaggaerAPIConfig.getGetSupplierCompanyProfileBySSOUserLogin().get(JaggaerAPIConfig.ENDPOINT)
-            .replace(PRINCIPAL_PLACEHOLDER, ssoUserLogin);
+            .replace(PRINCIPAL_PLACEHOLDER, UriUtils.encode(ssoUserLogin, StandardCharsets.UTF_8));
 
     var supplierCompanyBySSO = getSupplierDataHelper(getSupplierCompanyBySSOUserLoginEndpoint);
 
