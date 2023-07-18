@@ -35,8 +35,8 @@ import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.BoolQueryBuilder;
 import org.opensearch.index.query.MultiMatchQueryBuilder;
-import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.terms.Terms;
@@ -49,12 +49,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriUtils;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.S3Object;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.util.UriUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -69,7 +69,29 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Links1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectLots;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectSearchCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ReleaseTag;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
@@ -86,7 +108,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -104,7 +126,7 @@ public class ProcurementProjectService {
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
-
+  private final SearchProjectRepo searchProjectRepo;
   private final EventTransitionService eventTransitionService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ModelMapper modelMapper;
@@ -788,7 +810,7 @@ public class ProcurementProjectService {
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
     NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-    NativeSearchQuery searchCountQuery = getLotCount();
+    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
     searchCriteria.setLots(getProjectLots(countResults, lotId));
@@ -819,37 +841,42 @@ public class ProcurementProjectService {
   }
 
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
-    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
-   if(keyword != null  && !keyword.isEmpty()) {
-      searchQueryBuilder.withQuery(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-              .fuzziness(Fuzziness.ONE)
-              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-    }
-     if(projectFilter !=null || lotId !=null )
-     {
-       BoolQueryBuilder boolQuery = boolQuery();
-       if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
-         projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
-           boolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
-         });
-       }
-       if(lotId != null) {
-         boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
-       }
-       searchQueryBuilder.withFilter(boolQuery);
-     }
-
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize()));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
 
-  private  NativeSearchQuery getLotCount () {
-    NativeSearchQuery searchQuery;
-      searchQuery = new NativeSearchQueryBuilder()
-              .withQuery(QueryBuilders.matchAllQuery())
-              .withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").minDocCount(1))
-              .build();
+  private static NativeSearchQueryBuilder getFilterQuery(String lotId, ProjectFilter projectFilter, String keyword) {
+    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
+    BoolQueryBuilder boolQuery = boolQuery();
+    BoolQueryBuilder statusboolQuery = boolQuery();
+    if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
+      projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
+        statusboolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
+      });
+      boolQuery.filter(statusboolQuery);
+    }
+    if(lotId != null) {
+      boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
+    }
+    if(keyword  != null) {
+      boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .fuzziness(Fuzziness.ONE)
+              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
+    }
+    if(projectFilter !=null || lotId !=null || keyword !=null )
+    {
+      searchQueryBuilder.withQuery(boolQuery);
+    }
+    return searchQueryBuilder;
+  }
+
+  private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(null,projectFilter, keyword);
+    searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
+      searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+    NativeSearchQuery searchQuery = searchQueryBuilder.build();
     return searchQuery;
   }
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
@@ -864,6 +891,7 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setDescription(object.getDescription());
       projectPublicSearchSummary.setBuyerName(object.getBuyerName());
       projectPublicSearchSummary.setLot(object.getLot());
+      projectPublicSearchSummary.setLotName(object.getLotDescription());
       projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       projectPublicSearchSummary.setSubStatus(object.getSubStatus());
       projectPublicSearchSummary.setLocation(object.getLocation());
@@ -898,7 +926,7 @@ public class ProcurementProjectService {
       return tendersS3Object.getObjectContent();
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
+      throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");
     }
-    return null;
   }
 }

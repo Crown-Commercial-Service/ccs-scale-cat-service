@@ -52,22 +52,30 @@ public class CompiledReleaseAwardsService extends AbstractOcdsService{
     }
 
     private OrganizationReference1 convertSuppliers(Supplier supplier) {
-        Optional<OrganisationMapping> om = tendersDBDelegate.findOrganisationMappingByExternalOrganisationId(supplier.getCompanyData().getId());
-        if(om.isPresent()){
-            Optional<OrganisationProfileResponseInfo> optOrgProfile = conclaveService.getOrganisationIdentity(om.get().getOrganisationId());
+        CompanyData companyData = supplier.getCompanyData();
+        Optional<OrganisationMapping> om = tendersDBDelegate.findOrganisationMappingByExternalOrganisationId(companyData.getId());
+        if (om.isPresent()) {
+            OrganisationMapping organisationMapping = om.get();
+            Optional<OrganisationProfileResponseInfo> optOrgProfile = conclaveService.getOrganisationIdentity(organisationMapping.getOrganisationId());
             if (optOrgProfile.isPresent()) {
                 OrganisationProfileResponseInfo orgProfile = optOrgProfile.get();
                 return modelMapper.map(orgProfile, OrganizationReference1.class);
-            }
-        }
+            } else {
+                String orgId = null != organisationMapping.getCasOrganisationId() ? organisationMapping.getCasOrganisationId()
+                        : organisationMapping.getOrganisationId();
 
-        OrganizationReference1 ref = new OrganizationReference1();
-        if(null != supplier.getCompanyData()) {
-            CompanyData cData = supplier.getCompanyData();
-            ref.setId(cData.getCode());
-            ref.setName(cData.getName());
+                OrganizationReference1 ref = new OrganizationReference1();
+                ref.setId(orgId);
+                ref.setIdentifier(OcdsConverter.getId(orgId));
+                ref.setName(companyData.getName());
+                return ref;
+            }
+        } else {
+            OrganizationReference1 ref = new OrganizationReference1();
+            ref.setId(companyData.getCode());
+            ref.setName(companyData.getName());
+            return ref;
         }
-        return ref;
     }
 
     public MapperResponse populateItems(Record1 re, ProjectQuery pq) {

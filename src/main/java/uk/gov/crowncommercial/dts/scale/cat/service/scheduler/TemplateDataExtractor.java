@@ -4,23 +4,13 @@ import java.time.Period;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.util.Pair;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
-@Slf4j
 public class TemplateDataExtractor {
   
   private static final String PERIOD_FMT = "%d years, %d months, %d days";
   
-  public static String getStatus(Pair<ProcurementEvent, ProcurementEvent> events) {
-    return EventStatusHelper
-        .getEventStatus(Objects.nonNull(events.getSecond()) ? events.getSecond().getTenderStatus()
-            : events.getFirst().getTenderStatus());
-  }
-
   public static Long getOpenForCount(ProcurementEvent event) {
     if (Objects.nonNull(event.getPublishDate()) && Objects.nonNull(event.getCloseDate())) {
       return ChronoUnit.DAYS.between(event.getPublishDate(), event.getCloseDate());
@@ -44,7 +34,6 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while getExpectedContractLength" + e.getMessage());
     }
     return "";
   }
@@ -70,7 +59,6 @@ public class TemplateDataExtractor {
           return "Not prepared to share details";
       }
     } catch (Exception e) {
-      log.warn("Error while getBudgetRangeData" + e.getMessage());
     }
     return null;
   }
@@ -90,7 +78,6 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while geContractStartData" + e.getMessage());
     }
     return "";
   }
@@ -107,7 +94,22 @@ public class TemplateDataExtractor {
         }
       }
     } catch (Exception e) {
-      log.warn("Error while getEmploymentStatus" + e.getMessage());
+    }
+    return "";
+  }
+  
+  /**
+   * TODO This method output will only work for DOS6. This should be refactor as generic one
+   */
+  public static String getLocation(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = event.getProject().getLotNumber().equals("1") ? "Group 5" : "Group 4";
+      String questionId = "Question 6";
+      String location = EventsHelper.getData(criterionId, groupId, questionId,
+          event.getProcurementTemplatePayload().getCriteria());
+      return Objects.nonNull(location) ? location : "";
+    } catch (Exception e) {
     }
     return "";
   }

@@ -5,9 +5,6 @@ import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSV
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Collection;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,20 +19,29 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.persistence.Id;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackage;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
-import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
-import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsToOpenSearchScheduledTask;
 
 /**
  *
