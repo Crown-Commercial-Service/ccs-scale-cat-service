@@ -85,6 +85,7 @@ public class ProjectsCSVGenerationScheduledTask {
     try {
       var tempFile = Files.createTempFile("temp", ".csv");
       var writer = new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
+      writer.write('\ufeff');
       var csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
       var csvDataList = new ArrayList<CSVData>();
       
@@ -242,7 +243,7 @@ public class ProjectsCSVGenerationScheduledTask {
       objectMetadata.setContentType("text/csv");
       tendersS3Client.putObject(tendersS3Service.getCredentials().getBucketName(),
           tendersS3ObjectKey, fileStream, objectMetadata);
-      log.info("Successfully uploaded oppertunies file to S3: {}", tendersS3ObjectKey);
+      log.info("Successfully uploaded oppertunities file to S3: {}", tendersS3ObjectKey);
       // Delete the temporary file
       Files.delete(tempFile);
     } catch (Exception e) {
