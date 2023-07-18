@@ -35,6 +35,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.javacrumbs.shedlock.core.LockProvider;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -90,6 +91,9 @@ class ProjectsControllerTest {
   
   @MockBean
   private ProjectsCSVGenerationScheduledTask projectsGenerationScheduledTask;
+  
+  @MockBean
+  private LockProvider lockProvider;
 
   @MockBean
   private UserProfileService userProfileService;
