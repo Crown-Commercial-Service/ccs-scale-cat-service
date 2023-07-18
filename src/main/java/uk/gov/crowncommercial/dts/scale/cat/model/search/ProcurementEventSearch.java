@@ -42,5 +42,7 @@ public class ProcurementEventSearch {
     String subStatus;
     @JsonProperty("description")
     String description;
+    @JsonProperty("lastUpdated")
+    String lastUpdated;
 
 }

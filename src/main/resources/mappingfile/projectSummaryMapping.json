@@ -94,8 +94,16 @@
             "type": "keyword"
           }
         }
+      },
+      "lastUpdated": {
+        "type": "text",
+        "fielddata": true,
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
       }
     }
   }
-}
 }
