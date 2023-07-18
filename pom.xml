@@ -17,7 +17,7 @@
 
     <properties>
         <java.version>17</java.version>
-        <swagger-parser.version>2.1.15</swagger-parser.version>
+        <swagger-parser.version>2.1.16</swagger-parser.version>
         <guava.version>32.1.1-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
