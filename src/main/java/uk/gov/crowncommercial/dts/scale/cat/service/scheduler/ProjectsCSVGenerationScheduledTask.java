@@ -29,7 +29,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.core.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
@@ -89,7 +89,7 @@ public class ProjectsCSVGenerationScheduledTask {
       var csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
       var csvDataList = new ArrayList<CSVData>();
       
-      csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category",
+      csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
           "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
           "Expected Contract Length", "Budget range", "Applications from SMEs",
           "Applications from Large Organisations", "Total Organisations", "Status",
@@ -110,21 +110,21 @@ public class ProjectsCSVGenerationScheduledTask {
     }
   }
 
-  private void populateCSVData(Set<ProcurementEvent> events, CSVPrinter csvPrinter, List<CSVData> csvDataList)
+  private void populateCSVData(Set<ProcurementProject> events, CSVPrinter csvPrinter, List<CSVData> csvDataList)
       throws Exception {
     try {
       var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
-      for (ProcurementEvent event : events) {
+      for (ProcurementProject project : events) {
 
         var totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
         var firstAndLastPublishedEvent =
-            EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
-        event = firstAndLastPublishedEvent.getLeft();
+            EventsHelper.getFirstAndLastPublishedEvent(project);
+        var event = firstAndLastPublishedEvent.getLeft();
 
         var lotDetails =
-            agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
+            agreementsService.getLotDetails(DOS6_AGREEMENT_ID, project.getLotNumber());
         var organisationIdentity = conclaveService.getOrganisationIdentity(
-            event.getProject().getOrganisationMapping().getOrganisationId());
+            project.getOrganisationMapping().getOrganisationId());
 
         String rfxId = firstAndLastPublishedEvent.getLeft().getExternalEventId();
         String tStatus = firstAndLastPublishedEvent.getLeft().getTenderStatus();
@@ -181,7 +181,7 @@ public class ProjectsCSVGenerationScheduledTask {
     for (CSVData csvData : csvDataList) {
       try {
         csvPrinter.printRecord(csvData.getProjectId(), csvData.getOppertunity(), csvData.getLink(),
-            csvData.getFramework(), csvData.getCategory(), csvData.getOrgName(),
+            csvData.getFramework(), csvData.getCategory(), "", csvData.getOrgName(),
             csvData.getBuyerDomain(), csvData.getLocationOfWork(), csvData.getPublishedDate(),
             csvData.getOpenFor(), csvData.getExpectedContractLength(), csvData.getBudgetRange(), "",
             "", csvData.getTotalOrganisations(), csvData.getStatus(), csvData.getWinningSupplier(),
