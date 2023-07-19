@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.core.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -56,12 +57,12 @@ public class ProjectsToOpenSearchScheduledTask {
     log.info("Successfully updated projects data in open search");
   }
   
-  private void saveProjectDataAsBatches(Set<ProcurementEvent> events,
+  private void saveProjectDataAsBatches(Set<ProcurementProject> events,
       AgreementDetail agreementDetail) {
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
-    List<List<ProcurementEvent>> batches =
-        TendersAPIModelUtils.getBatches(new ArrayList<ProcurementEvent>(events), bathcSize);
-    for (List<ProcurementEvent> batch : batches) {
+    List<List<ProcurementProject>> batches =
+        TendersAPIModelUtils.getBatches(new ArrayList<ProcurementProject>(events), bathcSize);
+    for (List<ProcurementProject> batch : batches) {
       mapToOpenSearch(batch, eventSearchDataList, agreementDetail);
       searchProjectRepo.saveAll(eventSearchDataList);
       log.info("successfully updated events: "+eventSearchDataList.size());
@@ -69,21 +70,18 @@ public class ProjectsToOpenSearchScheduledTask {
     }
   }
   
-  private List<ProcurementEventSearch> mapToOpenSearch(List<ProcurementEvent> events,
+  private List<ProcurementEventSearch> mapToOpenSearch(List<ProcurementProject> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
 
-    for (ProcurementEvent event : events) {
+    for (ProcurementProject project : events) {
       try {
-        var lotDetails =
-            agreementsService.getLotDetails(DOS6_AGREEMENT_ID, event.getProject().getLotNumber());
-        var organisationIdentity =
-            conclaveService.getOrganisationIdentity(
-                event.getProject().getOrganisationMapping().getOrganisationId());
+        var firstAndLastPublishedEvent = EventsHelper.getFirstAndLastPublishedEvent(project);
+        var event = firstAndLastPublishedEvent.getLeft();
 
-        var firstAndLastPublishedEvent =
-            EventsHelper.getFirstAndLastPublishedEvent(event.getProject());
-        event = firstAndLastPublishedEvent.getLeft();
-        
+        var lotDetails = agreementsService.getLotDetails(DOS6_AGREEMENT_ID, project.getLotNumber());
+        var organisationIdentity = conclaveService
+            .getOrganisationIdentity(project.getOrganisationMapping().getOrganisationId());
+
         var status = EventStatusHelper.getEventStatus(event);
         var subStatus = populateSubStatus(firstAndLastPublishedEvent, status);
 
