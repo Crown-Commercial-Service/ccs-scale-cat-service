@@ -96,8 +96,7 @@
         }
       },
       "lastUpdated": {
-        "type": "text",
-        "fielddata": true,
+        "type": "long",
         "fields": {
           "raw": {
             "type": "keyword"
