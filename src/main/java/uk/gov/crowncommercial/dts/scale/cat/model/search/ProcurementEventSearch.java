@@ -47,4 +47,5 @@ public class ProcurementEventSearch {
     @JsonProperty("lastUpdated")
     Long lastUpdated;
 
+
 }

@@ -9,8 +9,6 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 public class TemplateDataExtractor {
   
-  private static final String PERIOD_FMT = "%d years, %d months, %d days";
-  
   public static Long getOpenForCount(ProcurementEvent event) {
     if (Objects.nonNull(event.getPublishDate()) && Objects.nonNull(event.getCloseDate())) {
       return ChronoUnit.DAYS.between(event.getPublishDate(), event.getCloseDate());
@@ -30,12 +28,38 @@ public class TemplateDataExtractor {
             event.getProcurementTemplatePayload().getCriteria());
         if (Objects.nonNull(dataFromJSONDataTemplate)) {
           var period = Period.parse(dataFromJSONDataTemplate);
-          return String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+          return periodFormat(period);
         }
       }
     } catch (Exception e) {
     }
     return "";
+  }
+  
+  public static final String periodFormat(Period period) {
+    if (period != null && period == Period.ZERO) {
+      return "0 days";
+    } else {
+      StringBuilder buf = new StringBuilder();
+      if (period.getYears() != 0) {
+        buf.append(period.getYears()).append(period.getYears() > 1 ? " years" : " year");
+        if (period.getMonths() != 0 || period.getDays() != 0) {
+          buf.append(", ");
+        }
+      }
+
+      if (period.getMonths() != 0) {
+        buf.append(period.getMonths()).append(period.getMonths() > 1 ? " months" : " month");
+        if (period.getDays() != 0) {
+          buf.append(", ");
+        }
+      }
+
+      if (period.getDays() != 0) {
+        buf.append(period.getDays()).append(period.getDays() > 1 ? " days" : " day");
+      }
+      return buf.toString();
+    }
   }
   
   /**
@@ -52,7 +76,7 @@ public class TemplateDataExtractor {
         minValue = EventsHelper.getData("Criterion 3", groupId, "Question 3",
             event.getProcurementTemplatePayload().getCriteria());
         if (!StringUtils.isBlank(minValue) & !StringUtils.isBlank(minValue)) {
-          return "£" + minValue + "- £" + maxValue;
+          return "£" + minValue + " - £" + maxValue;
         } else if (!StringUtils.isBlank(maxValue)) {
           return "up to £" + maxValue;
         } else
