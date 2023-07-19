@@ -92,7 +92,7 @@ public class ProjectsToOpenSearchScheduledTask {
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
             .status(status).subStatus(subStatus).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
             .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
-            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().toString())
+            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().getEpochSecond())
             .agreement(agreementDetails.getName()).build();
         eventSearchDataList.add(eventSearchData);
       } catch (Exception e) {
