@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 
+import java.time.Instant;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -43,6 +45,6 @@ public class ProcurementEventSearch {
     @JsonProperty("description")
     String description;
     @JsonProperty("lastUpdated")
-    String lastUpdated;
+    Long lastUpdated;
 
 }
