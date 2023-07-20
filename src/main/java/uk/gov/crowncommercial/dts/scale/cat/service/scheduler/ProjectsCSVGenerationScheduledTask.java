@@ -58,7 +58,7 @@ public class ProjectsCSVGenerationScheduledTask {
   private final AWSS3Service tendersS3Service;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
-  public static final String CSV_FILE_NAME = "oppertunity_data.csv";
+  public static final String CSV_FILE_NAME = "opportunity_data.csv";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
   
