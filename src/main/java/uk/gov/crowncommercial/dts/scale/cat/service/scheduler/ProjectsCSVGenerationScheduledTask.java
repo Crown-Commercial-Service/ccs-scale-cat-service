@@ -142,12 +142,10 @@ public class ProjectsCSVGenerationScheduledTask {
             .buyerDomain(organisationIdentity.get().getIdentifier().getUri())
             .locationOfWork(TemplateDataExtractor.getLocation(event))
             .publishedDate(event.getPublishDate())
-            .openFor(TemplateDataExtractor.getOpenForCount(event))
             .expectedContractLength(TemplateDataExtractor.getExpectedContractLength(event))
             .budgetRange(StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
                 : TemplateDataExtractor.getBudgetRangeData(event))
             .totalOrganisations(totalOrganisationsCountAndWinningSupplier.getRight())
-            .status(EventStatusHelper.getEventStatus(event))
             .winningSupplier(totalOrganisationsCountAndWinningSupplier.getLeft())
             .contractStartDate(TemplateDataExtractor.geContractStartData(event))
             .clarificationQuestions(
@@ -166,13 +164,13 @@ public class ProjectsCSVGenerationScheduledTask {
     List<List<CSVData>> published = TendersAPIModelUtils.getBatches(splitAwardedProjects.getRight(), publishedBatchSize);
     for (List<CSVData> dataList : awarded) {
       Set<String> collect = dataList.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
-      getTotalOrganisationsCountAndWinningSupplier(csvDataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
+      getJaggaerData(csvDataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
       log.info("Awarded batch generated: " + dataList.size());
     }
     
     for (List<CSVData> dataList : published) {
       Set<String> collect = dataList.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
-      getTotalOrganisationsCountAndWinningSupplier(csvDataList, collect, Set.of("supplier_Response_Counters"));
+      getJaggaerData(csvDataList, collect, Set.of("supplier_Response_Counters"));
       log.info("Published batch generated: " + dataList.size());
     }
   }
@@ -192,7 +190,7 @@ public class ProjectsCSVGenerationScheduledTask {
     }
   }
 
-  private void getTotalOrganisationsCountAndWinningSupplier(List<CSVData> csvDataList,
+  private void getJaggaerData(List<CSVData> csvDataList,
       Set<String> collect, Set<String> components) {
     try {
       Set<ExportRfxResponse> searchRFxWithComponents =
@@ -209,9 +207,16 @@ public class ProjectsCSVGenerationScheduledTask {
         }
         for (CSVData csvData : csvDataList) {
           if (csvData.getRfxId().equals(rfx.getRfxSetting().getRfxId())) {
+            //winning supper details
             csvData.setWinningSupplier(wSupplier);
+            // Total org count
             csvData.setTotalOrganisations(
                 rfx.getSupplierResponseCounters().getLastRound().getNumSupplResponded() + "");
+            // Open for
+            csvData.setOpenFor(TemplateDataExtractor.getOpenForCount(
+                rfx.getRfxSetting().getPublishDate(), rfx.getRfxSetting().getCloseDate()));
+            // Status
+            csvData.setStatus(EventStatusHelper.getEventStatus(rfx.getRfxSetting()));
           }
         }
       }
