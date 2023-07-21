@@ -34,6 +34,9 @@ public class EventStatusHelper {
     private static final List<Integer> OPEN_STATUS_LIST = List.of(JaggaerStatus.RUNNING.getValue(),
             JaggaerStatus.QUALIFICATION_CLARIFICATION.getValue(), JaggaerStatus.AUCTION.getValue(),
             JaggaerStatus.BEST_FINAL_OFFER.getValue(), JaggaerStatus.TIOC_PROGRESS.getValue());
+    
+    private static final List<Integer> CANCELLED_LIST = List.of(JaggaerStatus.INVALIDATED.getValue(),
+        JaggaerStatus.SUSPENDED.getValue());
 
     public static TenderStatus getStatus(RfxSetting rfxSetting, ProcurementEvent pe) {
         if (null != pe.getTenderStatus()) {
@@ -119,20 +122,27 @@ public class EventStatusHelper {
         return hasValue(OPEN_STATUS_LIST, rfxSetting.getStatusCode());
     }
     
-    public static String getEventStatus(ProcurementEvent event) {
-      if (event.getCloseDate().isAfter(Instant.now())) {
+    public static boolean isCancelled(RfxSetting rfxSetting){
+      return hasValue(CANCELLED_LIST, rfxSetting.getStatusCode());
+  }
+    
+    public static String getEventStatus(RfxSetting rfxSetting) {
+      if (isOpen(rfxSetting)) {
         return StatusEnum.OPEN.getValue();
       } else {
         return StatusEnum.CLOSED.getValue();
       }
     }
-    
-    public static String getSubStatus(ProcurementEvent event) {
-      if (event.getTenderStatus().equals(TenderStatus.COMPLETE.getValue())) {
+  
+    public static String getSubStatus(RfxSetting rfxSetting) {
+      if (isAwarded(rfxSetting)) {
         return EventSubStatus.AWARDED.getValue();
-      } else if (TERMINATION_LIST.contains(event.getTenderStatus())) {
+      } else if (isCancelled(rfxSetting)) {
         return EventSubStatus.CANCELLED.getValue();
       }
-      return EventSubStatus.AWAITING_OUTCOME.getValue();
+      if (getEventStatus(rfxSetting).equals(StatusEnum.CLOSED.getValue())) {
+        return EventSubStatus.AWAITING_OUTCOME.getValue();
+      }
+      return "";
     }
 }

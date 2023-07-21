@@ -26,6 +26,8 @@ public enum JaggaerStatus {
     CLOSED(1200),
     //Withdrawn
     SUSPENDED(1100),
+    //Invlaidated
+    INVALIDATED(1000),
     //Cancelled
     ENDED(1500),
 
