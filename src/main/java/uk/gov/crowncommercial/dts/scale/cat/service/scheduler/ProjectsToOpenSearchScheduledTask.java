@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -45,7 +44,7 @@ public class ProjectsToOpenSearchScheduledTask {
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
   
-  @Value("${config.oppertunities.published.batch.size: 100}")
+  @Value("${config.oppertunities.published.batch.size: 80}")
   private int bathcSize;
   
   @Transactional
@@ -111,28 +110,30 @@ public class ProjectsToOpenSearchScheduledTask {
       }
     }
     populateStatus(eventSearchDataListDTO);
-    populateSubStatusForClosedProjects(eventSearchDataListDTO);
+    populateSubStatus(eventSearchDataListDTO);
     populateSearchData(eventSearchDataListDTO, eventSearchDataList);
     return eventSearchDataList;
   }
   
   private void populateStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
-    Set<String> rfxIds = searchDataDTO.stream()
-        .map(e -> e.getRfxId()).collect(Collectors.toSet());
+    Set<String> rfxIds = searchDataDTO.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
     Set<ExportRfxResponse> rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
-    
+
     for (ExportRfxResponse exportRfxResponse : rfxResponse) {
       for (ProcurementEventSearchDTO data : searchDataDTO) {
         if (data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
-          data.setStatus(EventStatusHelper.getEventStatus(exportRfxResponse.getRfxSetting()));
-          data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
+          var eventStatus = EventStatusHelper.getEventStatus(exportRfxResponse.getRfxSetting());
+          data.setStatus(eventStatus);
+          if (eventStatus.equals(StatusEnum.CLOSED.getValue())) {
+            data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
+          }
         }
       }
     }
   }
   
-  private void populateSubStatusForClosedProjects(List<ProcurementEventSearchDTO> searchDataDTO) {
+  private void populateSubStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
     Set<String> rfxIds = searchDataDTO.stream()
         .map(e -> e.getSecondRfxId()).collect(Collectors.toSet());
     Set<ExportRfxResponse> rfxResponse =
@@ -140,8 +141,8 @@ public class ProjectsToOpenSearchScheduledTask {
     
     for (ExportRfxResponse exportRfxResponse : rfxResponse) {
       for (ProcurementEventSearchDTO data : searchDataDTO) {
-        if (data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
-          data.setStatus(StatusEnum.CLOSED.getValue());
+        if (data.getSecondRfxId() != null
+            && data.getSecondRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
           data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
         }
       }
