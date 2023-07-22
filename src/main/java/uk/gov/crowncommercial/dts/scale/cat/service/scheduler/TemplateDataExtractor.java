@@ -10,13 +10,13 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 public class TemplateDataExtractor {
   
-  public static Long getOpenForCount(OffsetDateTime publishedDate, OffsetDateTime closeDate) {
+  public static long getOpenForCount(OffsetDateTime publishedDate, OffsetDateTime closeDate) {
     if (Objects.nonNull(publishedDate) && Objects.nonNull(closeDate)) {
       Duration duration = Duration.between(publishedDate, closeDate);
       // if more than 12h - consider as full day
       return duration.toHoursPart() > 12 ? duration.toDaysPart() + 1 : duration.toDaysPart();
     }
-    return null;
+    return 0;
   }
   
   /**
