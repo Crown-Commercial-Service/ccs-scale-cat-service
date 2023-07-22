@@ -140,9 +140,6 @@ public class EventStatusHelper {
       } else if (isCancelled(rfxSetting)) {
         return EventSubStatus.CANCELLED.getValue();
       }
-      if (getEventStatus(rfxSetting).equals(StatusEnum.CLOSED.getValue())) {
-        return EventSubStatus.AWAITING_OUTCOME.getValue();
-      }
-      return "";
+      return EventSubStatus.AWAITING_OUTCOME.getValue();
     }
 }
