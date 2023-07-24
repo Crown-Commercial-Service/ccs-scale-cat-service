@@ -117,9 +117,14 @@ public class ProjectsToOpenSearchScheduledTask {
   
   private void populateStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
     Set<String> rfxIds = searchDataDTO.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
-    Set<ExportRfxResponse> rfxResponse =
+    var rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
-
+    
+    // removed broken projects
+    rfxResponse = rfxResponse.stream().filter(
+        e -> e.getRfxSetting().getCloseDate() != null && e.getRfxSetting().getPublishDate() != null)
+        .collect(Collectors.toSet());
+    
     for (ExportRfxResponse exportRfxResponse : rfxResponse) {
       for (ProcurementEventSearchDTO data : searchDataDTO) {
         if (data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
@@ -151,6 +156,9 @@ public class ProjectsToOpenSearchScheduledTask {
 
   private void populateSearchData(List<ProcurementEventSearchDTO> searchDataDTO,
       List<ProcurementEventSearch> searchDataList) {
+    //removed broken projects
+    searchDataDTO = searchDataDTO.stream().filter(e -> e.getStatus() != null).toList();
+    
     searchDataDTO.stream().forEach(dto -> {
       ProcurementEventSearch searchData = new ProcurementEventSearch();
       BeanUtils.copyProperties(dto, searchData);
