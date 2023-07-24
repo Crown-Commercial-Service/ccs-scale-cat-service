@@ -109,7 +109,7 @@ public class QuestionAndAnswerService {
     }
 
     var covertedQandAList =
-        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+        convertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
     var agreementNo = procurementEvent.getProject().getCaNumber();
     var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
     var lotDetails = agreementsService.getLotDetails(agreementNo, procurementEvent.getProject().getLotNumber());
@@ -129,7 +129,7 @@ public class QuestionAndAnswerService {
     //Validate event
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var covertedQandAList =
-        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+        convertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
     var agreementNo = procurementEvent.getProject().getCaNumber();
     var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
     var lotDetails =
@@ -153,7 +153,7 @@ public class QuestionAndAnswerService {
             ZoneId.systemDefault()));
   }
 
-  private List<QandA> covertQandAList(Set<QuestionAndAnswer> questionAndAnswerList) {
+  private List<QandA> convertQandAList(Set<QuestionAndAnswer> questionAndAnswerList) {
     return questionAndAnswerList.stream().map(this::convertQandA).collect(Collectors.toList());
   }
 

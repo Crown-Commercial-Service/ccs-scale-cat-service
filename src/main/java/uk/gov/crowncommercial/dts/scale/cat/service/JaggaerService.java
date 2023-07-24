@@ -157,7 +157,7 @@ public class JaggaerService {
                     "Unexpected error retrieving rfx"));
   }
 
-  public ExportRfxResponse getRfxWithWithBuyerAndSellerAttachments(final String externalEventId) {
+  public ExportRfxResponse getRfxWithBuyerAndSellerAttachments(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithBuyerAndSellerAttachments().get(ENDPOINT);
     return ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()

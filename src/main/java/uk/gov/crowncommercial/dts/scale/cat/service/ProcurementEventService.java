@@ -1301,7 +1301,7 @@ public class ProcurementEventService implements EventService {
                                                     final String principal) {
         log.debug("Export all Documents from Event {}", eventId);
         var event = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = jaggaerService.getRfxWithWithBuyerAndSellerAttachments(event.getExternalEventId());
+        var exportRfxResponse = jaggaerService.getRfxWithBuyerAndSellerAttachments(event.getExternalEventId());
         var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
                 .get(exportRfxResponse.getRfxSetting().getStatusCode());
         var attachments = new ArrayList<DocumentAttachment>();
