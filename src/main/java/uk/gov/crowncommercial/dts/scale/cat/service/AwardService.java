@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -21,11 +20,12 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessInput;
-import uk.gov.crowncommercial.dts.scale.cat.model.rpa.RPAProcessNameEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service

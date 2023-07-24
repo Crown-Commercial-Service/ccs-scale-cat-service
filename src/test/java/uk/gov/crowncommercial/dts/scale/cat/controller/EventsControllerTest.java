@@ -41,6 +41,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.javacrumbs.shedlock.core.LockProvider;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
@@ -106,6 +107,9 @@ class EventsControllerTest {
 
   @MockBean
   private EventSummary eventSummary;
+  
+  @MockBean
+  private LockProvider lockProvider;
 
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 

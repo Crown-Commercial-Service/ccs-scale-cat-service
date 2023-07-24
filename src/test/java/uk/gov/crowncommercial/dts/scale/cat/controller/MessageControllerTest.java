@@ -10,6 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import net.javacrumbs.shedlock.core.LockProvider;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -51,6 +52,9 @@ class MessageControllerTest {
 
     @MockBean
     private MessageService messageService;
+    
+    @MockBean
+    private LockProvider lockProvider;
 
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validJwtReqPostProcessor;
 

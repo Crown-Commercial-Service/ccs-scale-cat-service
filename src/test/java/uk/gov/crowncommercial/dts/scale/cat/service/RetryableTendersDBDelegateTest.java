@@ -94,6 +94,9 @@ class RetryableTendersDBDelegateTest {
   
   @MockBean
   private ContractDetailsRepo contractDetailsRepo;
+  
+  @MockBean
+  private QuestionAndAnswerRepo questionAndAnswerRepo;
 
   @Test
   void testRetrySuccess() {
