@@ -113,6 +113,7 @@ public class ProjectsCSVGenerationScheduledTask {
   private void populateCSVData(Set<ProcurementProject> events, CSVPrinter csvPrinter, List<CSVData> csvDataList)
       throws Exception {
     try {
+      log.info("Populating CSV data");
       var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
       for (ProcurementProject project : events) {
 
@@ -176,6 +177,8 @@ public class ProjectsCSVGenerationScheduledTask {
   }
   
   private void populateCSVPrinter(List<CSVData> csvDataList, CSVPrinter csvPrinter) {
+    //removed broken projects
+    csvDataList = csvDataList.stream().filter(e -> e.getStatus() != null).toList();
     for (CSVData csvData : csvDataList) {
       try {
         csvPrinter.printRecord(csvData.getProjectId(), csvData.getOppertunity(), csvData.getLink(),
@@ -193,8 +196,12 @@ public class ProjectsCSVGenerationScheduledTask {
   private void getJaggaerData(List<CSVData> csvDataList,
       Set<String> collect, Set<String> components) {
     try {
-      Set<ExportRfxResponse> searchRFxWithComponents =
+      var searchRFxWithComponents =
           jaggaerService.searchRFxWithComponents(collect, components);
+      
+    //removed broken projects
+      searchRFxWithComponents = searchRFxWithComponents.stream().filter(e -> e.getRfxSetting().getCloseDate() != null
+          && e.getRfxSetting().getPublishDate() != null).collect(Collectors.toSet());
 
       for (ExportRfxResponse rfx : searchRFxWithComponents) {
         String wSupplier = "";
