@@ -5,6 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -61,6 +64,8 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String CSV_FILE_NAME = "opportunity_data.csv";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
+  private static final String PATTERN_FORMAT = "yyyy-MM-dd";
+
   
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int publishedBatchSize;
@@ -142,7 +147,7 @@ public class ProjectsCSVGenerationScheduledTask {
             .orgName(organisationIdentity.get().getIdentifier().getLegalName())
             .buyerDomain(organisationIdentity.get().getIdentifier().getUri())
             .locationOfWork(TemplateDataExtractor.getLocation(event))
-            .publishedDate(event.getPublishDate())
+            .publishedDate(formatInstantDate(event.getPublishDate()))
             .expectedContractLength(TemplateDataExtractor.getExpectedContractLength(event))
             .budgetRange(StringUtils.isBlank(TemplateDataExtractor.getBudgetRangeData(event)) ? ""
                 : TemplateDataExtractor.getBudgetRangeData(event))
@@ -199,9 +204,8 @@ public class ProjectsCSVGenerationScheduledTask {
       var searchRFxWithComponents =
           jaggaerService.searchRFxWithComponents(collect, components);
       
-    //removed broken projects
-      searchRFxWithComponents = searchRFxWithComponents.stream().filter(e -> e.getRfxSetting().getCloseDate() != null
-          && e.getRfxSetting().getPublishDate() != null).collect(Collectors.toSet());
+      // removed broken projects
+      searchRFxWithComponents = TemplateDataExtractor.removeBrokenEvents(searchRFxWithComponents);
 
       for (ExportRfxResponse rfx : searchRFxWithComponents) {
         String wSupplier = "";
@@ -232,6 +236,26 @@ public class ProjectsCSVGenerationScheduledTask {
     }
   }
   
+  private String convertPublishedDate(OffsetDateTime publishedDate) {
+    if (Objects.nonNull(publishedDate)) {
+      return publishedDate.atZoneSameInstant(ZoneId.of("Europe/London")).toOffsetDateTime()
+          .toString();
+    }
+    return null;
+  }
+  
+  private String formatInstantDate(Instant publishedDate) {
+    try {
+      if (Objects.nonNull(publishedDate)) {
+        DateTimeFormatter formatter =
+            DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.systemDefault());
+        return formatter.format(publishedDate);
+      }
+    } catch (Exception e) {
+    }
+    return "";
+  }
+
 
   private Pair<List<CSVData>, List<CSVData>> splitAwardedProjects(List<CSVData> collection) {
     var awardedList = collection.stream()
@@ -279,7 +303,7 @@ class CSVData {
 
   private long clarificationQuestions;
 
-  private Instant publishedDate;
+  private String publishedDate;
 
   private String oppertunity, link, framework, category, orgName, buyerDomain, locationOfWork,
       expectedContractLength, budgetRange, totalOrganisations, status, winningSupplier,
