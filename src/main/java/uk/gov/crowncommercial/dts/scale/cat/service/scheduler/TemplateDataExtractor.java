@@ -4,8 +4,11 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 public class TemplateDataExtractor {
@@ -139,6 +142,15 @@ public class TemplateDataExtractor {
     } catch (Exception e) {
     }
     return "";
+  }
+  
+  public static Set<ExportRfxResponse> removeBrokenEvents(Set<ExportRfxResponse> jaggaerData) {
+    // removed broken projects
+    return jaggaerData.stream()
+        .filter(e -> Objects.nonNull(e.getRfxSetting().getCloseDate())
+            && Objects.nonNull(e.getRfxSetting().getPublishDate())
+            && e.getRfxSetting().getStatusCode() != 0)
+        .collect(Collectors.toSet());
   }
 
 }
