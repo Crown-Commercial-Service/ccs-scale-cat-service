@@ -121,9 +121,7 @@ public class ProjectsToOpenSearchScheduledTask {
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
     
     // removed broken projects
-    rfxResponse = rfxResponse.stream().filter(
-        e -> e.getRfxSetting().getCloseDate() != null && e.getRfxSetting().getPublishDate() != null)
-        .collect(Collectors.toSet());
+    rfxResponse = TemplateDataExtractor.removeBrokenEvents(rfxResponse);
     
     for (ExportRfxResponse exportRfxResponse : rfxResponse) {
       for (ProcurementEventSearchDTO data : searchDataDTO) {
