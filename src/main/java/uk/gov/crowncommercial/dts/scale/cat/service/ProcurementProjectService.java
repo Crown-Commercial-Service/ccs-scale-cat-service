@@ -1,40 +1,117 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-import org.springframework.web.reactive.function.client.WebClient;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.exception.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
-
-import jakarta.transaction.Transactional;
+import static java.util.Optional.ofNullable;
+import static org.opensearch.index.query.QueryBuilders.boolQuery;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
+import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
+import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_PREFIX;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
+import java.io.InputStream;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
-
-import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
+import org.modelmapper.ModelMapper;
+import org.opensearch.common.unit.Fuzziness;
+import org.opensearch.data.client.orhlc.NativeSearchQuery;
+import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
+import org.opensearch.index.query.BoolQueryBuilder;
+import org.opensearch.index.query.MultiMatchQueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.aggregations.AggregationBuilder;
+import org.opensearch.search.aggregations.AggregationBuilders;
+import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.terms.Terms;
+import org.opensearch.search.sort.SortBuilders;
+import org.opensearch.search.sort.SortOrder;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriUtils;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.S3Object;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserNotExistException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.UnhandledEdgeCaseException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ContactPoint1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Links1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilter;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectFilters;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectLots;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectSearchCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ReleaseTag;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipient;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipientList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectOwner;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectTeam;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
+import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
  * Procurement projects service layer. Handles interactions with Jaggaer and the persistence layer
@@ -51,12 +128,27 @@ public class ProcurementProjectService {
   private final ConclaveService conclaveService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ProcurementEventService procurementEventService;
-
+  private final SearchProjectRepo searchProjectRepo;
   private final EventTransitionService eventTransitionService;
   private final TendersAPIModelUtils tendersAPIModelUtils;
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
+
+  private final ElasticsearchOperations elasticsearchOperations;
+  private final AmazonS3 tendersS3Client;
+  private final AWSS3Service tendersS3Service;
+
+
+  private static final String PROJECT_NAME = "projectName";
+  private static final String PROJECT_DESCRIPTION = "description";
+  private static final String LOT = "lot";
+
+  private static final String STATUS = "status";
+
+  private static final String COUNT_AGGREGATION = "count_lot";
+  private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
+
 
   /**
    * SCC-440/441
@@ -627,6 +719,7 @@ public class ProcurementProjectService {
         "Could not find current event for project " + project.getId());
   }
 
+
   private void addProjectUserMapping(final String jaggaerUserId, final ProcurementProject project,
       final String principal) {
     retryableTendersDBDelegate
@@ -709,6 +802,133 @@ public class ProcurementProjectService {
                 eventTransitionService.terminateEvent(
                     projectId, event.getEventID(), terminationType, principal, false);
               });
+    }
+  }
+
+  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
+                                            int page, int pageSize, ProjectFilters projectFilters) {
+    ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
+    ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
+    searchCriteria.setKeyword(keyword);
+    searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
+    NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
+    SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+    searchCriteria.setLots(getProjectLots(countResults, lotId));
+    projectPublicSearchResult.setSearchCriteria(searchCriteria);
+    projectPublicSearchResult.setResults(convertResults(results));
+    projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
+    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
+  return projectPublicSearchResult;
+  }
+  public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
+  {
+    Map<Object, Boolean> map = new ConcurrentHashMap<>();
+    return t -> map.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
+  }
+  private List<ProjectLots> getProjectLots(SearchHits<ProcurementEventSearch> countResults, String lotId) {
+    Map<String, String> lotAndDescription = countResults.stream().map(SearchHit::getContent).filter(distinctByKey(project -> project.getLot())).collect(Collectors.toMap(ProcurementEventSearch::getLot, ProcurementEventSearch::getLotDescription));
+    Aggregations aggregations = (Aggregations) countResults.getAggregations().aggregations();
+     Terms terms = (Terms) aggregations.get(COUNT_AGGREGATION);
+     return terms.getBuckets().stream().map(bucket -> {
+       int lotnumber = Character.getNumericValue(bucket.getKeyAsString().charAt(bucket.getKeyAsString().length() - 1));
+       ProjectLots projectLots= new ProjectLots();
+       projectLots.setId(lotnumber);
+        projectLots.setCount((int)bucket.getDocCount());
+        projectLots.setText(lotAndDescription.get(bucket.getKeyAsString()));
+        projectLots.setSelected(bucket.getKeyAsString().equalsIgnoreCase(lotId));
+       return projectLots;
+     }).collect(Collectors.toList());
+  }
+
+  private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
+   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
+   NativeSearchQuery searchQuery = searchQueryBuilder.build();
+    return searchQuery;
+  }
+
+  private static NativeSearchQueryBuilder getFilterQuery(String lotId, ProjectFilter projectFilter, String keyword) {
+    NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
+    BoolQueryBuilder boolQuery = boolQuery();
+    BoolQueryBuilder statusboolQuery = boolQuery();
+    if(projectFilter !=null && projectFilter.getName().equalsIgnoreCase(STATUS)) {
+      projectFilter.getOptions().stream().filter(projectFilterOption -> projectFilterOption.getSelected()).forEach(projectFilterOption -> {
+        statusboolQuery.should(QueryBuilders.termQuery(STATUS, projectFilterOption.getText()));
+      });
+      boolQuery.filter(statusboolQuery);
+    }
+    if(lotId != null) {
+      boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
+    }
+    if(keyword  != null) {
+      boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .fuzziness(Fuzziness.ONE)
+              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
+    }
+    if(projectFilter !=null || lotId !=null || keyword !=null )
+    {
+      searchQueryBuilder.withQuery(boolQuery);
+    }
+    return searchQueryBuilder;
+  }
+
+  private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
+    NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(null,projectFilter, keyword);
+    searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
+      searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+    NativeSearchQuery searchQuery = searchQueryBuilder.build();
+    return searchQuery;
+  }
+  private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
+  {
+    return results.stream().map(SearchHit::getContent).map(object ->
+    {
+      ProjectPublicSearchSummary projectPublicSearchSummary=new ProjectPublicSearchSummary();
+      projectPublicSearchSummary.setProjectId(object.getProjectId());
+      projectPublicSearchSummary.setProjectName(object.getProjectName());
+      projectPublicSearchSummary.setAgreement(object.getAgreement());
+      projectPublicSearchSummary.setBudgetRange(object.getBudgetRange());
+      projectPublicSearchSummary.setDescription(object.getDescription());
+      projectPublicSearchSummary.setBuyerName(object.getBuyerName());
+      projectPublicSearchSummary.setLot(object.getLot());
+      projectPublicSearchSummary.setLotName(object.getLotDescription());
+      projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
+      projectPublicSearchSummary.setSubStatus(object.getSubStatus());
+      projectPublicSearchSummary.setLocation(object.getLocation());
+      return projectPublicSearchSummary;}).collect(Collectors.toList());
+
+  }
+
+  private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
+  {
+      int last = (int) Math.ceil((double)totalsize/pageSize);
+    int next = page < last ? page + 1 : 0;
+    int previous = page <= 1 ? 0 : page - 1;
+    keyword = UriUtils.encode(keyword,"UTF-8");
+     Links1 links1= new Links1();
+     links1.setFirst(URI.create(String.format(SEARCH_URI,keyword,1,pageSize)));
+     links1.setLast(last ==0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
+     links1.setNext(next == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,next,pageSize)));
+     links1.setPrev(previous == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
+     links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+    return links1;
+
+  }
+  
+  /**
+   * Download all oppertunities data from s3
+   * 
+   */
+  public InputStream downloadProjectsData() {
+    try {
+      S3Object tendersS3Object = tendersS3Client
+          .getObject(tendersS3Service.getCredentials().getBucketName(), CSV_FILE_PREFIX + CSV_FILE_NAME);
+      return tendersS3Object.getObjectContent();
+    } catch (Exception exception) {
+      log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
+      throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");
     }
   }
 }

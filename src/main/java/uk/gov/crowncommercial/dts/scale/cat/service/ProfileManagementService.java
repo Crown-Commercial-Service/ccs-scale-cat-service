@@ -74,7 +74,6 @@ public class ProfileManagementService {
   private final NotificationService notificationService;
   private final UserRegistrationNotificationConfig userRegistrationNotificationConfig;
   private final BuyerUserDetailsRepo buyerDetailsRepo;
-  private final EncryptionService encryptionService;
   private final TenderDBSupplierLinkService supplierLinkService;
 
   /**
@@ -175,7 +174,6 @@ public class ProfileManagementService {
           createUpdateCompanyDataBuilder, registerUserResponse);
       returnRoles.add(RegisterUserResponse.RolesEnum.BUYER);
       sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
-      saveBuyerDetails(conclaveUser.getUserName());
 
     } else if (conclaveRoles.containsAll(Set.of(BUYER, SUPPLIER)) && jaggaerRoles.isEmpty()) {
 
@@ -183,7 +181,6 @@ public class ProfileManagementService {
       createBuyer(conclaveUser, conclaveUserOrg, conclaveUserContacts,
           createUpdateCompanyDataBuilder, registerUserResponse);
       sendUserRegistrationNotification(conclaveUser, conclaveUserOrg);
-      saveBuyerDetails(conclaveUser.getUserName());
 
       throw new LoginDirectorEdgeCaseException("CON1682-AC15: Dual Conclave roles, buyer created");
 
@@ -600,14 +597,6 @@ public class ProfileManagementService {
 
     notificationService.sendEmail(userRegistrationNotificationConfig.getInvalidDunsTemplateId(),
         userRegistrationNotificationConfig.getTargetEmail(), placeholders, "");
-  }
-
-  private BuyerUserDetails saveBuyerDetails(final String profile) {
-    var userProfile = userProfileService.resolveBuyerUserProfile(profile)
-        .orElseThrow(() -> new ResourceNotFoundException(ERR_MSG_FMT_JAGGAER_USER_MISSING));
-    return buyerDetailsRepo.save(BuyerUserDetails.builder().userId(userProfile.getUserId())
-        .userPassword(encryptionService.generateBuyerPassword()).exported(Boolean.FALSE)
-        .createdAt(Instant.now()).createdBy("ProfileManagement").build());
   }
 
   static SSOCodeData buildSSOCodeData(final String userId) {

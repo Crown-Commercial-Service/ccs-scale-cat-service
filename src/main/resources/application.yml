@@ -70,8 +70,26 @@ config:
       - zip
     maxSize: 314572800 #300MB
     maxTotalSize: 1073741824 #1GB
-
+    oppertunities:
+      published:
+        batch:
+          size: 80
+      awarded:
+        batch:
+          size: 20
+      opensearch:
+        batch:
+          size: 80    
+    
   external:
+#   s3:
+#     oppertunities:
+#       ui:
+#         link: SET IN ENV"
+#       schedule: SET IN ENV"
+#   projects:
+#     sync:
+#       schedule: SET IN ENV"
     jaggaer:
 #      baseUrl: "SET IN ENV"
       timeoutDuration: 300
@@ -195,6 +213,8 @@ config:
       # This is far more performant for summary-level only data
       searchRfxSummary:
         endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
+      searchRfxSummaryWithComponents:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})&comp={components}  
       createUpdateCompany:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles
       getAttachment:

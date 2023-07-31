@@ -194,6 +194,26 @@ public class JaggaerService {
         "Unexpected error searching rfxs");
   }
   
+  public Set<ExportRfxResponse> searchRFxWithComponents(final Set<String> externalEventIds,
+      final Set<String> components) {
+
+    var searchRfxUri = jaggaerAPIConfig.getSearchRfxSummaryWithComponents().get(ENDPOINT);
+    var rfxIds = externalEventIds.stream().collect(Collectors.joining(","));
+    var componentFilters = components.stream().collect(Collectors.joining(";"));
+
+    var searchRfxResponse = webclientWrapper
+        .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
+            jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds, componentFilters)
+        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+            "Unexpected error searching rfxs"));
+
+    if (searchRfxResponse.getReturnCode() == 0) {
+      return searchRfxResponse.getDataList().getRfx();
+    }
+    throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+        "Unexpected error searching rfxs");
+  }
+  
   /**
    * Get an Rfx by component(Event).
    *

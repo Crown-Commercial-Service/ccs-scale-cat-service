@@ -1,23 +1,42 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
-import lombok.RequiredArgsConstructor;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ContractDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentSelection;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTaxon;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.DimensionEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.RequirementTaxon;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
@@ -46,6 +65,8 @@ public class RetryableTendersDBDelegate {
   private final SupplierSelectionRepo supplierSelectionRepo;
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
+  private final QuestionAndAnswerRepo questionAndAnswerRepo;
+
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
@@ -403,6 +424,18 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Optional<ContractDetails> findByEventId(final Integer eventId) {
     return contractDetailsRepo.findByEventId(eventId);
+  }
+  
+  @TendersRetryable
+  @Transactional(readOnly = true)
+  public Set<ProcurementProject> findPublishedEventsByAgreementId(final String agreementId) {
+    return procurementProjectRepo.findPublishedEventsByAgreementId(agreementId);
+  }
+  
+  @TendersRetryable
+  @Transactional(readOnly = true)
+  public long findQuestionsCountByEventId(final Integer eventId) {
+    return questionAndAnswerRepo.countByEventId(eventId);
   }
   
   public void updateEventDate(ProcurementEvent procurementEvent, String profile) {
