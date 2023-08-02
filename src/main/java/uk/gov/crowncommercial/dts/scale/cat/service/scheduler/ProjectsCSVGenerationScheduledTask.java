@@ -27,7 +27,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.core.SchedulerLock;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
@@ -70,8 +70,8 @@ public class ProjectsCSVGenerationScheduledTask {
 
   @Transactional
   @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
-  @SchedulerLock(name = "CSVGeneration_scheduledTask", 
-    lockAtLeastForString = "PT5M", lockAtMostForString = "PT10M")
+  @SchedulerLock(name = "CSVGeneration_scheduledTask",
+    lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
     log.info("Started oppertunities CSV generation");
     writeOppertunitiesToCsv();
