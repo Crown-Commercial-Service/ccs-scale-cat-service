@@ -4,24 +4,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.core.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
+import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -36,8 +42,9 @@ public class ProjectsToOpenSearchScheduledTask {
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
+  private final JaggaerService jaggaerService;
   
-  @Value("${config.oppertunities.published.batch.size: 100}")
+  @Value("${config.oppertunities.published.batch.size: 80}")
   private int bathcSize;
   
   @Transactional
@@ -73,6 +80,8 @@ public class ProjectsToOpenSearchScheduledTask {
   private List<ProcurementEventSearch> mapToOpenSearch(List<ProcurementProject> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
 
+    var eventSearchDataListDTO = new ArrayList<ProcurementEventSearchDTO>();
+    
     for (ProcurementProject project : events) {
       try {
         var firstAndLastPublishedEvent = EventsHelper.getFirstAndLastPublishedEvent(project);
@@ -81,34 +90,80 @@ public class ProjectsToOpenSearchScheduledTask {
         var lotDetails = agreementsService.getLotDetails(DOS6_AGREEMENT_ID, project.getLotNumber());
         var organisationIdentity = conclaveService
             .getOrganisationIdentity(project.getOrganisationMapping().getOrganisationId());
+        
+        String srfxId = null;
+        if (Objects.nonNull(firstAndLastPublishedEvent.getRight())) {
+          srfxId = firstAndLastPublishedEvent.getRight().getExternalEventId();
+        }
 
-        var status = EventStatusHelper.getEventStatus(event);
-        var subStatus = populateSubStatus(firstAndLastPublishedEvent, status);
-
-        var eventSearchData = ProcurementEventSearch.builder()
-            .projectId(event.getProject().getId()).description(getSummaryOfWork(event))
+        var eventSearchDataDTO = ProcurementEventSearchDTO.builder().rfxId(firstAndLastPublishedEvent.getLeft().getExternalEventId())
+            .secondRfxId(srfxId).projectId(event.getProject().getId()).description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
-            .status(status).subStatus(subStatus).buyerName(organisationIdentity.get().getIdentifier().getLegalName())
+            .buyerName(organisationIdentity.get().getIdentifier().getLegalName())
             .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
             .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().getEpochSecond())
             .agreement(agreementDetails.getName()).build();
-        eventSearchDataList.add(eventSearchData);
+        
+        eventSearchDataListDTO.add(eventSearchDataDTO);
       } catch (Exception e) {
         log.error("Error while saving project details to opensearch", e);
       }
     }
+    populateStatus(eventSearchDataListDTO);
+    populateSubStatus(eventSearchDataListDTO);
+    populateSearchData(eventSearchDataListDTO, eventSearchDataList);
     return eventSearchDataList;
   }
+  
+  private void populateStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
+    Set<String> rfxIds = searchDataDTO.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
+    var rfxResponse =
+        jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
+    
+    // removed broken projects
+    rfxResponse = rfxResponse.stream().filter(
+        e -> e.getRfxSetting().getCloseDate() != null && e.getRfxSetting().getPublishDate() != null)
+        .collect(Collectors.toSet());
+    
+    for (ExportRfxResponse exportRfxResponse : rfxResponse) {
+      for (ProcurementEventSearchDTO data : searchDataDTO) {
+        if (data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
+          var eventStatus = EventStatusHelper.getEventStatus(exportRfxResponse.getRfxSetting());
+          data.setStatus(eventStatus);
+          if (eventStatus.equals(StatusEnum.CLOSED.getValue())) {
+            data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
+          }
+        }
+      }
+    }
+  }
+  
+  private void populateSubStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
+    Set<String> rfxIds = searchDataDTO.stream()
+        .map(e -> e.getSecondRfxId()).collect(Collectors.toSet());
+    Set<ExportRfxResponse> rfxResponse =
+        jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
+    
+    for (ExportRfxResponse exportRfxResponse : rfxResponse) {
+      for (ProcurementEventSearchDTO data : searchDataDTO) {
+        if (data.getSecondRfxId() != null
+            && data.getSecondRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
+          data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
+        }
+      }
+    }
+  }
 
-  private String populateSubStatus(
-      Pair<ProcurementEvent, ProcurementEvent> firstAndLastPublishedEvent, String status) {
-    if (Objects.nonNull(firstAndLastPublishedEvent.getRight())) {
-      return EventStatusHelper.getSubStatus(firstAndLastPublishedEvent.getRight());
-    }
-    if (StatusEnum.CLOSED.getValue().equals(status)) {
-      return EventStatusHelper.getSubStatus(firstAndLastPublishedEvent.getLeft());
-    }
-    return "";
+  private void populateSearchData(List<ProcurementEventSearchDTO> searchDataDTO,
+      List<ProcurementEventSearch> searchDataList) {
+    //removed broken projects
+    searchDataDTO = searchDataDTO.stream().filter(e -> e.getStatus() != null).toList();
+    
+    searchDataDTO.stream().forEach(dto -> {
+      ProcurementEventSearch searchData = new ProcurementEventSearch();
+      BeanUtils.copyProperties(dto, searchData);
+      searchDataList.add(searchData);
+    });
   }
   
   private static String getSummaryOfWork(ProcurementEvent event) {
@@ -133,4 +188,26 @@ public class ProjectsToOpenSearchScheduledTask {
     } catch (Exception e) {
     }
   }
+}
+
+@Setter
+@Getter
+@Builder
+class ProcurementEventSearchDTO {
+  String rfxId;
+  String secondRfxId;
+  String id;
+  Integer projectId;
+  String projectName;
+  String buyerName;
+  String location;
+  String budgetRange;
+  String agreement;
+  String lot;
+  String lotDescription;
+  String status;
+  String subStatus;
+  String description;
+  Long lastUpdated;
+
 }

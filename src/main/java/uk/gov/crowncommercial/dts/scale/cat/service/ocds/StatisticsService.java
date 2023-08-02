@@ -22,7 +22,7 @@ public class StatisticsService {
         log.debug("populating basic details");
         Release release = OcdsHelper.getRelease(record);
         ProcurementProject pp = query.getProject();
-        ProcurementEvent pe = EventsHelper.getLastPublishedEvent(pp);
+        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
         CompletableFuture<Void> cf = CompletableFuture.runAsync(() -> {
             ExportRfxResponse rfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(pe.getExternalEventId());
             LastRound lastRound = rfxResponse.getSupplierResponseCounters().getLastRound();

@@ -1,7 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.time.Period;
-import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -9,11 +10,13 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 public class TemplateDataExtractor {
   
-  public static Long getOpenForCount(ProcurementEvent event) {
-    if (Objects.nonNull(event.getPublishDate()) && Objects.nonNull(event.getCloseDate())) {
-      return ChronoUnit.DAYS.between(event.getPublishDate(), event.getCloseDate());
+  public static long getOpenForCount(OffsetDateTime publishedDate, OffsetDateTime closeDate) {
+    if (Objects.nonNull(publishedDate) && Objects.nonNull(closeDate)) {
+      Duration duration = Duration.between(publishedDate, closeDate);
+      // if more than 12h - consider as full day
+      return duration.toHoursPart() > 12 ? duration.toDaysPart() + 1 : duration.toDaysPart();
     }
-    return null;
+    return 0;
   }
   
   /**
