@@ -13,8 +13,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -32,11 +30,9 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.*;
@@ -214,31 +210,17 @@ public class ProjectsCSVGenerationScheduledTask {
           && e.getRfxSetting().getPublishDate() != null).collect(Collectors.toSet());
 
       for (ExportRfxResponse rfx : firstRfxWithComponents) {
-        String wSupplier = "";
-        if (rfx.getSuppliersList() != null) {
-          Optional<Supplier> winningSupplier = rfx.getSuppliersList().getSupplier().stream()
-              .filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
-          if (winningSupplier.isPresent()) {
-            wSupplier = winningSupplier.get().getCompanyData().getName();
-          }
-        }
+
         for (CSVData csvData : csvDataList) {
           if (csvData.getFirstRfxId().equals(rfx.getRfxSetting().getRfxId())) {
-            //winning supper details
-            csvData.setWinningSupplier(wSupplier);
-            // Total org count
-            csvData.setTotalOrganisations(
-                rfx.getSupplierResponseCounters().getLastRound().getNumSupplResponded() + "");
-            // Open for
-            csvData.setOpenFor(TemplateDataExtractor.getOpenForCount(
-                rfx.getRfxSetting().getPublishDate(), rfx.getRfxSetting().getCloseDate()));
-            // Status
-            csvData.setStatus(EventStatusHelper.getEventStatus(rfx.getRfxSetting()));
+
+
+            populateInitialEntries(rfx, csvData);
 
             if(csvData.singleRfx()) {
-              populateSubStatus(csvData, csvData.getFirstRfxId(), firstRfxWithComponents);
+              populateLatestEntries(csvData, csvData.getFirstRfxId(), firstRfxWithComponents);
             }else{
-              populateSubStatus(csvData, csvData.getLatestRfxId(), latestRFxWithComponents);
+              populateLatestEntries(csvData, csvData.getLatestRfxId(), latestRFxWithComponents);
             }
 
           }
@@ -249,10 +231,34 @@ public class ProjectsCSVGenerationScheduledTask {
     }
   }
 
-  private void populateSubStatus(CSVData data, String rfxId, Set<ExportRfxResponse> latestRFxWithComponents) {
+  private static void populateInitialEntries(ExportRfxResponse rfx, CSVData csvData) {
+    // Total org count
+    csvData.setTotalOrganisations(
+        rfx.getSupplierResponseCounters().getLastRound().getNumSupplResponded() + "");
+    // Open for
+    csvData.setOpenFor(TemplateDataExtractor.getOpenForCount(
+        rfx.getRfxSetting().getPublishDate(), rfx.getRfxSetting().getCloseDate()));
+    // Status
+    csvData.setStatus(EventStatusHelper.getEventStatus(rfx.getRfxSetting()));
+  }
+
+  private void populateLatestEntries(CSVData csvData, String rfxId, Set<ExportRfxResponse> latestRFxWithComponents) {
+
     for(ExportRfxResponse rfx: latestRFxWithComponents){
       if(rfx.getRfxSetting().getRfxId().equals(rfxId)){
-        data.setSubStatus(EventStatusHelper.getSubStatus(rfx.getRfxSetting()));
+
+        String wSupplier = "";
+        if (rfx.getSuppliersList() != null) {
+          Optional<Supplier> winningSupplier = rfx.getSuppliersList().getSupplier().stream()
+                  .filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
+          if (winningSupplier.isPresent()) {
+            wSupplier = winningSupplier.get().getCompanyData().getName();
+          }
+        }
+        //winning supper details
+        csvData.setWinningSupplier(wSupplier);
+
+        csvData.setSubStatus(EventStatusHelper.getSubStatus(rfx.getRfxSetting()));
       }
     }
   }
