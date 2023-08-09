@@ -1,25 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.Builder;
@@ -28,6 +8,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
@@ -40,6 +31,16 @@ import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import java.io.File;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -102,9 +103,9 @@ public class ProjectsCSVGenerationScheduledTask {
 
       csvPrinter.flush();
       csvPrinter.close();
-
+      log.info("Successfully generated CSV data, Initiating transfer to S3 Storage");
       transferToS3(tempFile);
-      log.info("Successfully generated CSV data");
+      log.info("DOS6 CSV Data uploaded to S3 Storage");
     } catch (Exception e) {
       log.error("Error While generating Projects CSV ", e);
     }
@@ -129,13 +130,19 @@ public class ProjectsCSVGenerationScheduledTask {
 
         String rfxId = firstAndLastPublishedEvent.getLeft().getExternalEventId();
         String tStatus = firstAndLastPublishedEvent.getLeft().getTenderStatus();
-        
+
+        String latestRfxId, latestStatus;
+
         if(Objects.nonNull(firstAndLastPublishedEvent.getRight())){
-          rfxId = firstAndLastPublishedEvent.getRight().getExternalEventId();
-          tStatus = firstAndLastPublishedEvent.getRight().getTenderStatus();
+          latestRfxId = firstAndLastPublishedEvent.getRight().getExternalEventId();
+          latestStatus = firstAndLastPublishedEvent.getRight().getTenderStatus();
+        }else{
+          latestRfxId = rfxId;
+          latestStatus = tStatus;
         }
 
-        var csvData = CSVData.builder().rfxId(rfxId).tenderstatus(tStatus)
+        var csvData = CSVData.builder().firstRfxId(rfxId).tenderstatus(latestStatus)
+                .latestRfxId(latestRfxId)
             .projectId(event.getProject().getId()).oppertunity(event.getProject().getProjectName())
             .link(env.getProperty(PROJECT_UI_LINK_KEY) + "?projectId=" + event.getProject().getId())
             .framework(agreementDetails.getName()).category(lotDetails.getName())
@@ -164,15 +171,13 @@ public class ProjectsCSVGenerationScheduledTask {
     List<List<CSVData>> awarded = TendersAPIModelUtils.getBatches(splitAwardedProjects.getLeft(), awardedBatchSize);
     List<List<CSVData>> published = TendersAPIModelUtils.getBatches(splitAwardedProjects.getRight(), publishedBatchSize);
     for (List<CSVData> dataList : awarded) {
-      Set<String> collect = dataList.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
-      getJaggaerData(csvDataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
-      log.info("Awarded batch generated: " + dataList.size());
+      Set<String> collect = dataList.stream().map(e -> e.getFirstRfxId()).collect(Collectors.toSet());
+      getJaggaerData(dataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
     }
     
     for (List<CSVData> dataList : published) {
-      Set<String> collect = dataList.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
-      getJaggaerData(csvDataList, collect, Set.of("supplier_Response_Counters"));
-      log.info("Published batch generated: " + dataList.size());
+      Set<String> collect = dataList.stream().map(e -> e.getFirstRfxId()).collect(Collectors.toSet());
+      getJaggaerData(dataList, collect, Set.of("supplier_Response_Counters"));
     }
   }
   
@@ -196,14 +201,19 @@ public class ProjectsCSVGenerationScheduledTask {
   private void getJaggaerData(List<CSVData> csvDataList,
       Set<String> collect, Set<String> components) {
     try {
-      var searchRFxWithComponents =
+      var firstRfxWithComponents =
           jaggaerService.searchRFxWithComponents(collect, components);
-      
+
+      Set<String> latestRfxIds = csvDataList.stream().map(e -> e.getLatestRfxId()).collect(Collectors.toSet());
+
+      var latestRFxWithComponents =
+              jaggaerService.searchRFxWithComponents(latestRfxIds, components);
+
     //removed broken projects
-      searchRFxWithComponents = searchRFxWithComponents.stream().filter(e -> e.getRfxSetting().getCloseDate() != null
+      firstRfxWithComponents = firstRfxWithComponents.stream().filter(e -> e.getRfxSetting().getCloseDate() != null
           && e.getRfxSetting().getPublishDate() != null).collect(Collectors.toSet());
 
-      for (ExportRfxResponse rfx : searchRFxWithComponents) {
+      for (ExportRfxResponse rfx : firstRfxWithComponents) {
         String wSupplier = "";
         if (rfx.getSuppliersList() != null) {
           Optional<Supplier> winningSupplier = rfx.getSuppliersList().getSupplier().stream()
@@ -213,7 +223,7 @@ public class ProjectsCSVGenerationScheduledTask {
           }
         }
         for (CSVData csvData : csvDataList) {
-          if (csvData.getRfxId().equals(rfx.getRfxSetting().getRfxId())) {
+          if (csvData.getFirstRfxId().equals(rfx.getRfxSetting().getRfxId())) {
             //winning supper details
             csvData.setWinningSupplier(wSupplier);
             // Total org count
@@ -224,6 +234,13 @@ public class ProjectsCSVGenerationScheduledTask {
                 rfx.getRfxSetting().getPublishDate(), rfx.getRfxSetting().getCloseDate()));
             // Status
             csvData.setStatus(EventStatusHelper.getEventStatus(rfx.getRfxSetting()));
+
+            if(csvData.singleRfx()) {
+              populateSubStatus(csvData, csvData.getFirstRfxId(), firstRfxWithComponents);
+            }else{
+              populateSubStatus(csvData, csvData.getLatestRfxId(), latestRFxWithComponents);
+            }
+
           }
         }
       }
@@ -231,7 +248,15 @@ public class ProjectsCSVGenerationScheduledTask {
       log.warn("Error while getTotalOrganisationsCountAndWinningSupplier ", e);
     }
   }
-  
+
+  private void populateSubStatus(CSVData data, String rfxId, Set<ExportRfxResponse> latestRFxWithComponents) {
+    for(ExportRfxResponse rfx: latestRFxWithComponents){
+      if(rfx.getRfxSetting().getRfxId().equals(rfxId)){
+        data.setSubStatus(EventStatusHelper.getSubStatus(rfx.getRfxSetting()));
+      }
+    }
+  }
+
 
   private Pair<List<CSVData>, List<CSVData>> splitAwardedProjects(List<CSVData> collection) {
     var awardedList = collection.stream()
@@ -271,9 +296,13 @@ public class ProjectsCSVGenerationScheduledTask {
 @Builder
 class CSVData {
 
-  private String rfxId;
+  private String firstRfxId;
+
+  private String latestRfxId;
 
   private String tenderstatus;
+
+  private String subStatus;
 
   private long projectId, openFor;
 
@@ -284,5 +313,9 @@ class CSVData {
   private String oppertunity, link, framework, category, orgName, buyerDomain, locationOfWork,
       expectedContractLength, budgetRange, totalOrganisations, status, winningSupplier,
       contractStartDate, employmentStatus;
+
+  public boolean singleRfx(){
+    return null == latestRfxId || latestRfxId.equalsIgnoreCase(firstRfxId);
+  }
 
 }
