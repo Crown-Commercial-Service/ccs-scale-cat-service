@@ -249,22 +249,27 @@ public class ProjectsCSVGenerationScheduledTask {
     for(ExportRfxResponse rfx: latestRFxWithComponents){
       if(rfx.getRfxSetting().getRfxId().equals(rfxId)){
 
-        String wSupplier = "";
-        if (rfx.getSuppliersList() != null) {
-          Optional<Supplier> winningSupplier = rfx.getSuppliersList().getSupplier().stream()
-                  .filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
-          if (winningSupplier.isPresent()) {
-            wSupplier = winningSupplier.get().getCompanyData().getName();
-          }
-        }
-        //winning supper details
-        csvData.setWinningSupplier(wSupplier);
+        populateAwardedSupplier(csvData, rfx);
+
         if(csvData.getStatus().equals(ProjectPublicDetail.StatusEnum.CLOSED.getValue())) {
           csvData.setSubStatus(EventStatusHelper.getSubStatus(rfx.getRfxSetting()));
           csvData.setStatus(transformSubStatus(csvData.getStatus(), csvData.getSubStatus()));
         }
       }
     }
+  }
+
+  private static void populateAwardedSupplier(CSVData csvData, ExportRfxResponse rfx) {
+    String wSupplier = "";
+    if (rfx.getSuppliersList() != null) {
+      Optional<Supplier> winningSupplier = rfx.getSuppliersList().getSupplier().stream()
+              .filter(e -> e.getStatusCode() == JAGGAER_SUPPLIER_WINNER_STATUS).findFirst();
+      if (winningSupplier.isPresent()) {
+        wSupplier = winningSupplier.get().getCompanyData().getName();
+      }
+    }
+    //winning supper details
+    csvData.setWinningSupplier(wSupplier);
   }
 
   private String transformSubStatus(String status, String subStatus) {
