@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
@@ -27,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventSubStatus;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -58,10 +60,10 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String CSV_FILE_NAME = "opportunity_data.csv";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
-  
+
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int publishedBatchSize;
-  
+
   @Value("${config.oppertunities.awarded.batch.size: 20}")
   private int awardedBatchSize;
 
@@ -85,7 +87,7 @@ public class ProjectsCSVGenerationScheduledTask {
       writer.write('\ufeff');
       var csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
       var csvDataList = new ArrayList<CSVData>();
-      
+
       csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
           "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
           "Expected Contract Length", "Budget range", "Applications from SMEs",
@@ -170,13 +172,13 @@ public class ProjectsCSVGenerationScheduledTask {
       Set<String> collect = dataList.stream().map(e -> e.getFirstRfxId()).collect(Collectors.toSet());
       getJaggaerData(dataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
     }
-    
+
     for (List<CSVData> dataList : published) {
       Set<String> collect = dataList.stream().map(e -> e.getFirstRfxId()).collect(Collectors.toSet());
-      getJaggaerData(dataList, collect, Set.of("supplier_Response_Counters"));
+      getJaggaerData(dataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
     }
   }
-  
+
   private void populateCSVPrinter(List<CSVData> csvDataList, CSVPrinter csvPrinter) {
     //removed broken projects
     csvDataList = csvDataList.stream().filter(e -> e.getStatus() != null).toList();
@@ -257,10 +259,28 @@ public class ProjectsCSVGenerationScheduledTask {
         }
         //winning supper details
         csvData.setWinningSupplier(wSupplier);
-
-        csvData.setSubStatus(EventStatusHelper.getSubStatus(rfx.getRfxSetting()));
+        if(csvData.getStatus().equals(ProjectPublicDetail.StatusEnum.CLOSED.getValue())) {
+          csvData.setSubStatus(EventStatusHelper.getSubStatus(rfx.getRfxSetting()));
+          csvData.setStatus(transformSubStatus(csvData.getStatus(), csvData.getSubStatus()));
+        }
       }
     }
+  }
+
+  private String transformSubStatus(String status, String subStatus) {
+    if(null == subStatus)
+      return status;
+    EventSubStatus eventSubStatus = EventSubStatus.fromValue(subStatus);
+    if(null == eventSubStatus)
+      return status;
+
+    switch (eventSubStatus){
+      case  AWARDED:
+        return "awarded";
+      case CANCELLED:
+        return "cancelled";
+    }
+    return status;
   }
 
 
@@ -270,7 +290,7 @@ public class ProjectsCSVGenerationScheduledTask {
 
     var differences = collection.stream().filter(element -> !awardedList.contains(element))
         .collect(Collectors.toList());
-    
+
     return Pair.of(awardedList, differences);
   }
 
