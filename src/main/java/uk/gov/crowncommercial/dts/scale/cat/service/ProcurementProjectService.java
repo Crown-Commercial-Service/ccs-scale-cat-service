@@ -877,7 +877,7 @@ public class ProcurementProjectService {
       if(matchPattern.matcher(keyword).find() || (keyword.indexOf('*') > 0)){
         boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword)
                 .field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-//                .analyzeWildcard(true)
+                .analyzeWildcard(true)
                 .defaultOperator(Operator.AND).flags(SimpleQueryStringFlag.ALL));
       }else {
         boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
