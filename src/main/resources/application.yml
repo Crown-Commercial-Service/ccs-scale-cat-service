@@ -79,7 +79,7 @@ config:
           size: 20
       opensearch:
         batch:
-          size: 100    
+          size: 80    
     
   external:
 #   s3:
