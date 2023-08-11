@@ -861,8 +861,17 @@ public class ProcurementProjectService {
     if(lotId != null) {
       boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
     }
-    if(keyword  != null && keyword.trim().length() > 0) {
 
+    addKeywordQuery(boolQuery, keyword);
+    if(projectFilter !=null || lotId !=null || keyword !=null )
+    {
+      searchQueryBuilder.withQuery(boolQuery);
+    }
+    return searchQueryBuilder;
+  }
+
+  private static void addKeywordQuery(BoolQueryBuilder boolQuery, String keyword) {
+    if(keyword != null && keyword.trim().length() > 0) {
       Pattern matchPattern = Pattern.compile("~[0-9]|\"[^\"]*\"");
 
       if(matchPattern.matcher(keyword).find() || (keyword.indexOf('*') > 0)){
@@ -875,13 +884,7 @@ public class ProcurementProjectService {
                 .fuzziness(Fuzziness.ONE)
                 .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
       }
-
     }
-    if(projectFilter !=null || lotId !=null || keyword !=null )
-    {
-      searchQueryBuilder.withQuery(boolQuery);
-    }
-    return searchQueryBuilder;
   }
 
   private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
