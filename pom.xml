@@ -31,7 +31,7 @@
         <notifications-java-client.version>4.1.0-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.2.3</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-        <snakeyaml.version>2.0</snakeyaml.version>
+        <snakeyaml.version>2.1</snakeyaml.version>
         <spring-security.version>6.1.2</spring-security.version>
         <hsql.version>2.7.2</hsql.version>
         <rollbar.version>1.10.0</rollbar.version>
