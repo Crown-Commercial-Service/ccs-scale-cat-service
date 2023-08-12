@@ -147,7 +147,7 @@ public class CriteriaService {
           if (titlesData != null && !titlesData.getRows().isEmpty() && !criteriaData.isEmpty()) {
             titlesData.getRows().forEach(title -> {
               // Each entry here represents a scoring criteria - so use this to build models for each
-              TableData relevantData = criteriaData.stream().filter(d -> d.getRow() == title.getId()).findFirst().orElse(null);
+              TableData relevantData = criteriaData.stream().filter(d -> d.getRow().equals(title.getId())).findFirst().orElse(null);
 
               if (relevantData != null && relevantData.getCols().size() == 2) {
                 // Finally we have everything we need out of the nested monster parent.  So now just map
