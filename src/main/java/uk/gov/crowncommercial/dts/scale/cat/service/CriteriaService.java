@@ -165,10 +165,10 @@ public class CriteriaService {
     }
 
     // Finally, sort our results based on their score, descending
-    // TODO: Fix this sorting - it currently does not work
-    Collections.sort(model, Comparator.comparingInt(criteria -> criteria.score));
+    model.sort(Comparator.comparing(o -> o.score));
+    Collections.reverse(model);
 
-    return new HashSet<>(model);
+    return new LinkedHashSet<>(model);
   }
 
   @Transactional
