@@ -6,7 +6,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model;
 public class ScoringCriteria {
     public String name;
 
-    public String score;
+    public Integer score;
 
     public String description;
 }

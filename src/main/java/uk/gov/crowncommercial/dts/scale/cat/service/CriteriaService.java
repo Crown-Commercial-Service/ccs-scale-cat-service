@@ -127,20 +127,48 @@ public class CriteriaService {
    * Returns a set of scoring criteria for the requested project
    */
   public Set<ScoringCriteria> getScoringCriteriaForProject(Integer projectId, String eventId, String criteriaId, String groupId) {
+    ArrayList<ScoringCriteria> model = new ArrayList<>();
+
     // Start by fetching the complete "question" set for this project - we need to get that data then break it down and convert it
     Set<Question> questionSet = getEvalCriterionGroupQuestions(projectId, eventId, criteriaId, groupId);
 
     if (questionSet != null && !questionSet.isEmpty()) {
       // Next, filter down the response - we're only interested in the scoring criteria itself
-      Question scoringQuestion = questionSet.stream().filter((q) -> q.getOCDS().getId() == Constants.scoringCriteria_questionId).findFirst().orElse(null);
+      Question scoringQuestion = questionSet.stream().filter(q -> q.getOCDS().getId().equals(Constants.scoringCriteria_questionId)).findFirst().orElse(null);
 
-      if (scoringQuestion != null) {
+      if (scoringQuestion != null && scoringQuestion.getNonOCDS() != null && !scoringQuestion.getNonOCDS().getOptions().isEmpty()) {
         // We've found the question relating to the criteria - now map those criteria into a friendly model
-        // TODO: map data and sort data then return
+        QuestionNonOCDSOptions relevantOption = scoringQuestion.getNonOCDS().getOptions().stream().filter(o -> o.getValue().equals("3")).findFirst().orElse(null);
+
+        if (relevantOption != null && relevantOption.getTableDefinition() != null) {
+          TableDefinitionTitles titlesData = relevantOption.getTableDefinition().getTitles();
+          List<TableData> criteriaData = relevantOption.getTableDefinition().getData();
+
+          if (titlesData != null && !titlesData.getRows().isEmpty() && !criteriaData.isEmpty()) {
+            titlesData.getRows().forEach(title -> {
+              // Each entry here represents a scoring criteria - so use this to build models for each
+              TableData relevantData = criteriaData.stream().filter(d -> d.getRow() == title.getId()).findFirst().orElse(null);
+
+              if (relevantData != null && relevantData.getCols().size() == 2) {
+                // Finally we have everything we need out of the nested monster parent.  So now just map
+                ScoringCriteria scoringCriteria = new ScoringCriteria();
+                scoringCriteria.name = title.getName();
+                scoringCriteria.score = Integer.valueOf(relevantData.getCols().get(0));
+                scoringCriteria.description = relevantData.getCols().get(1);
+
+                model.add(scoringCriteria);
+              }
+            });
+          }
+        }
       }
     }
 
-    return null;
+    // Finally, sort our results based on their score, descending
+    // TODO: Fix this sorting - it currently does not work
+    Collections.sort(model, Comparator.comparingInt(criteria -> criteria.score));
+
+    return new HashSet<>(model);
   }
 
   @Transactional
