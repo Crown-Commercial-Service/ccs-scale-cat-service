@@ -25,13 +25,13 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>4.9.0</jena-core.version>
         <commons-io.version>2.13.0</commons-io.version>
-        <aws-java-sdk-s3.version>1.12.520</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>1.12.528</aws-java-sdk-s3.version>
         <tika-core.version>2.8.0</tika-core.version>
         <java-cfenv-boot.version>2.4.2</java-cfenv-boot.version>
         <notifications-java-client.version>4.1.0-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.2.3</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-        <snakeyaml.version>2.0</snakeyaml.version>
+        <snakeyaml.version>2.1</snakeyaml.version>
         <spring-security.version>6.1.2</spring-security.version>
         <hsql.version>2.7.2</hsql.version>
         <rollbar.version>1.10.0</rollbar.version>
