@@ -6,7 +6,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
+import uk.gov.crowncommercial.dts.scale.cat.model.ScoringCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroup;
@@ -60,6 +62,19 @@ public class CriteriaController extends AbstractRestController {
         principal);
 
     return criteriaService.getEvalCriterionGroupQuestions(procId, eventId, criterionId, groupId);
+  }
+
+  /**
+   * Fetch a list of Scoring Criteria the user has set to apply to their project
+   */
+  @GetMapping("/scoring")
+  @TrackExecutionTime
+  public Set<ScoringCriteria> getScoringCriteriaForProject(@PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId) {
+    // We set the known Criteria ID and Group ID here, as they are static for this type of request
+    String criteriaId = Constants.scoringCriteria_criteriaId,
+            groupId = Constants.scoringCriteria_groupId;
+
+    return criteriaService.getScoringCriteriaForProject(procId, eventId, criteriaId, groupId);
   }
 
   @PutMapping("/{criterion-id}/groups/{group-id}/questions/{question-id}")

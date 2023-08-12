@@ -23,6 +23,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
+import uk.gov.crowncommercial.dts.scale.cat.model.ScoringCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
@@ -111,18 +112,36 @@ public class CriteriaService {
     }).collect(Collectors.toSet());
   }
 
-  public Set<Question> getEvalCriterionGroupQuestions(final Integer projectId, final String eventId,
-      final String criterionId, final String groupId) {
-    var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    var dataTemplate = retrieveDataTemplate(event);
-    var criteria = extractTemplateCriteria(dataTemplate, criterionId);
-    var group = extractRequirementGroup(criteria, groupId);
+  public Set<Question> getEvalCriterionGroupQuestions(final Integer projectId, final String eventId, final String criterionId, final String groupId) {
+    ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
+    DataTemplate dataTemplate = retrieveDataTemplate(event);
+    TemplateCriteria criteria = extractTemplateCriteria(dataTemplate, criterionId);
+    RequirementGroup group = extractRequirementGroup(criteria, groupId);
+
     return group.getOcds().getRequirements().stream().map(
         (final Requirement r) -> convertRequirementToQuestion(r, event.getProject().getCaNumber()))
         .collect(Collectors.toSet());
-
   }
 
+  /**
+   * Returns a set of scoring criteria for the requested project
+   */
+  public Set<ScoringCriteria> getScoringCriteriaForProject(Integer projectId, String eventId, String criteriaId, String groupId) {
+    // Start by fetching the complete "question" set for this project - we need to get that data then break it down and convert it
+    Set<Question> questionSet = getEvalCriterionGroupQuestions(projectId, eventId, criteriaId, groupId);
+
+    if (questionSet != null && !questionSet.isEmpty()) {
+      // Next, filter down the response - we're only interested in the scoring criteria itself
+      Question scoringQuestion = questionSet.stream().filter((q) -> q.getOCDS().getId() == Constants.scoringCriteria_questionId).findFirst().orElse(null);
+
+      if (scoringQuestion != null) {
+        // We've found the question relating to the criteria - now map those criteria into a friendly model
+        // TODO: map data and sort data then return
+      }
+    }
+
+    return null;
+  }
 
   @Transactional
   public Question putQuestionOptionDetails(final Question question, final Integer projectId,

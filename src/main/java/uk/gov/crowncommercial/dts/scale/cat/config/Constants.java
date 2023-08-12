@@ -83,4 +83,8 @@ public class Constants {
 
   public static final List<String> CLOSED_STATUS_LIST = Arrays.asList(CLOSED_STATUS.toLowerCase(), TerminationType.CANCELLED.getValue(),TerminationType.WITHDRAWN.getValue(),
           TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS.toLowerCase());
+
+  public static final String scoringCriteria_criteriaId = "Criterion 2";
+  public static final String scoringCriteria_groupId = "Group 13";
+  public static final String scoringCriteria_questionId = "Question 1";
 }
