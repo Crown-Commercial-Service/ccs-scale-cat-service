@@ -61,10 +61,10 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
 
-  @Value("${config.oppertunities.published.batch.size: 80}")
+  @Value("${config.oppertunities.published.batch.size: 60}")
   private int publishedBatchSize;
 
-  @Value("${config.oppertunities.awarded.batch.size: 20}")
+  @Value("${config.oppertunities.awarded.batch.size: 10}")
   private int awardedBatchSize;
 
   @Transactional
@@ -166,16 +166,16 @@ public class ProjectsCSVGenerationScheduledTask {
 
   private void populateJaggaerFields(List<CSVData> csvDataList) {
     Pair<List<CSVData>, List<CSVData>> splitAwardedProjects = splitAwardedProjects(csvDataList);
-    List<List<CSVData>> awarded = TendersAPIModelUtils.getBatches(splitAwardedProjects.getLeft(), awardedBatchSize);
+    List<List<CSVData>> supplierFetchList = TendersAPIModelUtils.getBatches(splitAwardedProjects.getLeft(), awardedBatchSize);
     List<List<CSVData>> published = TendersAPIModelUtils.getBatches(splitAwardedProjects.getRight(), publishedBatchSize);
-    for (List<CSVData> dataList : awarded) {
+    for (List<CSVData> dataList : supplierFetchList) {
       Set<String> collect = dataList.stream().map(e -> e.getFirstRfxId()).collect(Collectors.toSet());
       getJaggaerData(dataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
     }
 
     for (List<CSVData> dataList : published) {
       Set<String> collect = dataList.stream().map(e -> e.getFirstRfxId()).collect(Collectors.toSet());
-      getJaggaerData(dataList, collect, Set.of("SUPPLIERS", "supplier_Response_Counters"));
+      getJaggaerData(dataList, collect, Set.of("supplier_Response_Counters"));
     }
   }
 
@@ -290,13 +290,18 @@ public class ProjectsCSVGenerationScheduledTask {
 
 
   private Pair<List<CSVData>, List<CSVData>> splitAwardedProjects(List<CSVData> collection) {
-    var awardedList = collection.stream()
-        .filter(e -> e.getTenderstatus().equals((TenderStatus.COMPLETE.getValue()))).toList();
+    List<CSVData> supplierFetchList = new ArrayList<>();
+    List<CSVData> firstStageList = new ArrayList<>();
 
-    var differences = collection.stream().filter(element -> !awardedList.contains(element))
-        .collect(Collectors.toList());
+    for(CSVData d : collection){
+      if(d.singleRfx()){
+        firstStageList.add(d);
+      }else{
+        supplierFetchList.add(d);
+      }
+    }
 
-    return Pair.of(awardedList, differences);
+    return Pair.of(supplierFetchList, firstStageList);
   }
 
   /**
