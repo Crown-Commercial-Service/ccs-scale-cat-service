@@ -9,6 +9,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.FISCA
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -58,6 +59,10 @@ public class UserProfileService {
   private final LoadingCache<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerBuyerUserCache =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
           .build(jaggaerSubUserProfileCacheLoader());
+
+  private final LoadingCache<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> ccsBuyerUserCache =
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofMinutes(30))
+                  .build(ccsSubUserProfileCacheLoader());
 
   private final ApplicationFlagsConfig appFlagsConfig;
 
@@ -132,9 +137,12 @@ public class UserProfileService {
         .getSecond();
   }
 
+  /**
+   * Gets the self-service buyer company data from Jaegger
+   */
   public ReturnCompanyData getSelfServiceBuyerCompany() {
-    var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
-    var endpoint = getBuyerCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
+    Map<String, String> getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
+    String endpoint = getBuyerCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
 
     log.info("Calling company profiles endpoint: {}", endpoint);
 
@@ -144,31 +152,74 @@ public class UserProfileService {
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving Jaggear company profile data"));
 
-    if (!"0".equals(getCompanyDataResponse.getReturnCode())
-        || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
-      throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(),
-          getCompanyDataResponse.getReturnMessage());
+    if (!"0".equals(getCompanyDataResponse.getReturnCode()) || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(), getCompanyDataResponse.getReturnMessage());
     }
 
     if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
       throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
     }
-    return getCompanyDataResponse.getReturnCompanyData().stream().findFirst()
-        .orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
+    return getCompanyDataResponse.getReturnCompanyData().stream().findFirst().orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
   }
 
+  /**
+   * Gets the CCS org company data from Jaegger
+   */
+  public ReturnCompanyData getCcsBuyerCompany() {
+    Map<String, String> ccsCompanyProfile = jaggaerAPIConfig.getGetCcsCompanyProfile();
+    String endpoint = ccsCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
+
+    log.info("Calling CCS company endpoint: {}", endpoint);
+
+    var getCompanyDataResponse = ofNullable(
+            jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
+                    .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(), "Unexpected error retrieving CCS Jaggaer company profile data"));
+
+    if (!"0".equals(getCompanyDataResponse.getReturnCode()) || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
+      throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(), getCompanyDataResponse.getReturnMessage());
+    }
+
+    if (getCompanyDataResponse.getReturnCompanyData().size() != 1) {
+      throw INVALID_COMPANY_PROFILE_DATA_EXCEPTION;
+    }
+    return getCompanyDataResponse.getReturnCompanyData().stream().findFirst().orElseThrow(() -> INVALID_COMPANY_PROFILE_DATA_EXCEPTION);
+  }
+
+  /**
+   * Returns sub-user information within the Self Serve Jaegger org
+   */
   private CacheLoader<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> jaggaerSubUserProfileCacheLoader() {
     return new CacheLoader<>() {
 
       @Override
       public Pair<CompanyInfo, Optional<SubUser>> load(final SubUserIdentity subUserIdentity)
           throws Exception {
-        var selfServiceBuyerCompany = getSelfServiceBuyerCompany();
-        var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().stream()
-            .filter(subUserIdentity.getFilterPredicate()).findFirst();
+        ReturnCompanyData selfServiceBuyerCompany = getSelfServiceBuyerCompany();
+        var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().stream().filter(subUserIdentity.getFilterPredicate()).findFirst();
+
         log.debug("Matched sub-user record: {}", subUser);
 
         return Pair.of(selfServiceBuyerCompany.getReturnCompanyInfo(), subUser);
+      }
+    };
+  }
+
+  /**
+   * Returns sub-user information within the CCS Jaegger org
+   */
+  private CacheLoader<SubUserIdentity, Pair<CompanyInfo, Optional<SubUser>>> ccsSubUserProfileCacheLoader() {
+    return new CacheLoader<>() {
+
+      @Override
+      public Pair<CompanyInfo, Optional<SubUser>> load(final SubUserIdentity subUserIdentity)
+              throws Exception {
+        ReturnCompanyData ccsBuyerCompany = getCcsBuyerCompany();
+        var subUser = ccsBuyerCompany.getReturnSubUser().getSubUsers().stream().filter(subUserIdentity.getFilterPredicate()).findFirst();
+
+        log.debug("Matched CCS sub-user record: {}", subUser);
+
+        return Pair.of(ccsBuyerCompany.getReturnCompanyInfo(), subUser);
       }
     };
   }

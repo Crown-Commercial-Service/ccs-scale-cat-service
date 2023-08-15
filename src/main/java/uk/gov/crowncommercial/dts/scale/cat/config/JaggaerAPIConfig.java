@@ -36,6 +36,7 @@ public class JaggaerAPIConfig {
   private Map<String, String> getProjectList;
   private Map<String, String> createRfx;
   private Map<String, String> getBuyerCompanyProfile;
+  private Map<String, String> getCcsCompanyProfile;
   private Map<String, String> exportRfx;
   private Map<String, String> exportRfxWithEmailRecipients;
   private Map<String, String> exportRfxWithSuppliers;
