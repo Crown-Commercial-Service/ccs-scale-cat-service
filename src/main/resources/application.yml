@@ -185,7 +185,7 @@ config:
       getBuyerCompanyProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
       getCcsCompanyProfile:
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.ccs-org-id}
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;BRAVOID==${config.external.jaggaer.ccs-org-id}
       getSupplierCompanyProfileByBravoID:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;BRAVOID=={{PRINCIPAL}}        
       getSupplierCompanyProfileBySSOUserLogin:
