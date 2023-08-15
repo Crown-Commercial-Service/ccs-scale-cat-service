@@ -26,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Org
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
@@ -58,11 +57,7 @@ public class ProfileManagementService {
       "Organisation [%s] not found in Conclave";
   static final String ERR_MSG_FMT_JAGGAER_USER_MISSING = "User [%s] not found in Jaggaer";
   static final String ERR_MSG_FMT_NO_ROLES = "User [%s] is neither buyer NOR supplier in Conclave";
-  static final String ERR_MSG_JAGGAER_INCONSISTENT = "User [%s] has inconsistent data in Jaggaer";
-  static final String ERR_MSG_JAGGAER_USER_UNMERGED =
-      "User [%s] is not merged in Jaggaer (no SSO data)";
   static final String MSG_FMT_SYS_ROLES = "%s user [%s] has roles %s";
-  static final String MSG_FMT_BOTH_ROLES = "User [%s] is both buyer AND supplier in Conclave";
   static final Set<String> ISO_COUNTRIES = Set.of(Locale.getISOCountries());
 
   private final ConclaveService conclaveService;
@@ -90,32 +85,27 @@ public class ProfileManagementService {
    */
   public List<RolesEnum> getUserRoles(final String userId) {
     Assert.hasLength(userId, "userId must not be empty");
-    var conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(
-        () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
 
-    var conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId())
-        .orElseThrow(() -> new ResourceNotFoundException(
-            format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
-
-    var conclaveRoles = new HashSet<RolesEnum>();
+    // Start by getting the details we need from PPG
+    UserProfileResponseInfo conclaveUser = conclaveService.getUserProfile(userId).orElseThrow(() -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, userId)));
+    OrganisationProfileResponseInfo conclaveUserOrg = conclaveService.getOrganisationProfile(conclaveUser.getOrganisationId()).orElseThrow(() -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_ORG_MISSING, conclaveUser.getOrganisationId())));
+    HashSet<RolesEnum> conclaveRoles = new HashSet<>();
     populateConclaveRoles(conclaveRoles, conclaveUser);
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, conclaveRoles));
 
-    var jaggaerRoles = new HashSet<RolesEnum>();
-    getJaggaerRolesWithSSoUserData(jaggaerRoles, userId,
-        conclaveService.getOrganisationIdentifer(conclaveUserOrg));
+    // Next get the details we need from Jaegger
+    HashSet<RolesEnum> jaggaerRoles = new HashSet<>();
+    getJaggaerRolesWithSSoUserData(jaggaerRoles, userId, conclaveService.getOrganisationIdentifer(conclaveUserOrg));
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, jaggaerRoles));
 
+    // Now we should have everything, but check we actually have some Jaegger roles and throw an exception if not
     if (jaggaerRoles.isEmpty()) {
-      // CON-1680-AC2
       throw new ResourceNotFoundException(format(ERR_MSG_FMT_JAGGAER_USER_MISSING, userId));
     }
 
-    if (conclaveRoles.size() == 1
-        && !jaggaerRoles.contains(conclaveRoles.stream().findFirst().orElseThrow())) {
-      // CON-1680-AC5&6
-      throw new UserRolesConflictException(
-          format(ERR_MSG_FMT_ROLES_CONFLICT, userId, conclaveRoles, jaggaerRoles));
+    // If we only have one role in PPG, make sure Jaegger also has a matching role or throw an exception
+    if (conclaveRoles.size() == 1 && !jaggaerRoles.contains(conclaveRoles.stream().findFirst().orElseThrow())) {
+      throw new UserRolesConflictException(format(ERR_MSG_FMT_ROLES_CONFLICT, userId, conclaveRoles, jaggaerRoles));
     }
 
     // CON-1680-AC1&7
@@ -479,8 +469,10 @@ public class ProfileManagementService {
         .company(createUpdateCompanyBuilder.companyInfo(companyInfoBuilder.build()).build());
   }
 
-  private void populateConclaveRoles(final Set<RolesEnum> conclaveRoles,
-      final UserProfileResponseInfo conclaveUser) {
+  /**
+   * Populates a set of role information from PPG
+   */
+  private void populateConclaveRoles(final Set<RolesEnum> conclaveRoles, final UserProfileResponseInfo conclaveUser) {
     var conclaveBuyerSupplierRoleKeys = Map.of(conclaveAPIConfig.getBuyerRoleKey(), BUYER,
         conclaveAPIConfig.getCatUserRoleKey(), BUYER,
         conclaveAPIConfig.getSupplierRoleKey(), SUPPLIER);
@@ -535,8 +527,10 @@ public class ProfileManagementService {
     return Pair.of(buyerSubUser, Optional.empty());
   }
 
-  private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> getJaggaerRolesWithSSoUserData(
-          final Set<RolesEnum> jaggaerRoles, final String userId, final String organisationIdentifier) {
+  /**
+   * Populates a set of Jaegger role information from source
+   */
+  private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> getJaggaerRolesWithSSoUserData(final Set<RolesEnum> jaggaerRoles, final String userId, final String organisationIdentifier) {
 
     // SSO verification built-in to search
     var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
@@ -545,14 +539,13 @@ public class ProfileManagementService {
     if (buyerSubUser.isEmpty()) {
       userProfileService.refreshBuyerCache(userId);
       buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
-      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId,
-              buyerSubUser.isPresent());
+      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId, buyerSubUser.isPresent());
     }
 
-    if(buyerSubUser.isPresent()&& null!=buyerSubUser.get().getSsoCodeData()&&userId.equalsIgnoreCase(
-            buyerSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())){
+    if (buyerSubUser.isPresent() && buyerSubUser.get().getSsoCodeData() != null && userId.equalsIgnoreCase(buyerSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())) {
       buyerSubUser.ifPresent(su -> jaggaerRoles.add(BUYER));
     }
+
     // SSO verification required
     var optSupplierCompanyData =
             userProfileService.resolveSupplierData(userId, organisationIdentifier);

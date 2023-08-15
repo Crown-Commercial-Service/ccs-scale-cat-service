@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
@@ -46,21 +45,22 @@ public class TendersController extends AbstractRestController {
     return Arrays.asList(ViewEventType.values());
   }
 
+  /**
+   * Gets the status of a requested user, generated from both their state in PPG and Jaegger
+   */
   @GetMapping("/users/{user-id}")
   @TrackExecutionTime
-  public GetUserResponse getUser(@PathVariable("user-id") final String userId,
-      final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
+  public GetUserResponse getUser(@PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
 
     log.info("getUserRoles invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
+    // Make sure the user requested is the same as the principal in session, or we can't service the request
     if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
-      // CON-1680-AC3
-      throw new AuthorisationFailureException(
-          "Authenticated user does not match requested user-id");
+      throw new AuthorisationFailureException("Authenticated user does not match requested user-id");
     }
 
+    // Requested user and principal match, so we can proceed
     return new GetUserResponse().roles(profileManagementService.getUserRoles(userId));
   }
 

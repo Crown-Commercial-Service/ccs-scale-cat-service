@@ -184,6 +184,7 @@ config:
       # TODO / NB: Search via SSO data directly only works for super users (i.e. suppliers)
       getBuyerCompanyProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+        ccs-endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.ccs-org-id}
       getSupplierCompanyProfileByBravoID:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;BRAVOID=={{PRINCIPAL}}        
       getSupplierCompanyProfileBySSOUserLogin:
