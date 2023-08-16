@@ -2,8 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
 import static org.springframework.util.StringUtils.hasText;
-import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.BUYER;
-import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
+import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.*;
+
 import java.time.Instant;
 import java.util.*;
 import joptsimple.internal.Strings;
@@ -94,21 +94,27 @@ public class ProfileManagementService {
     log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, conclaveRoles));
 
     // Next get the details we need from Jaegger
-    HashSet<RolesEnum> jaggaerRoles = new HashSet<>();
-    getJaggaerRolesWithSSoUserData(jaggaerRoles, userId, conclaveService.getOrganisationIdentifer(conclaveUserOrg));
-    log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, jaggaerRoles));
+    UserStatusModel userStatusModel = getJaggaerRolesWithSSoUserData(userId, conclaveService.getOrganisationIdentifer(conclaveUserOrg));
 
     // Now we should have everything, but check we actually have some Jaegger roles and throw an exception if not
-    if (jaggaerRoles.isEmpty()) {
+    if (userStatusModel == null || (userStatusModel.buyerSubUser == null && userStatusModel.guruSubUser == null && userStatusModel.supplierCompanyData == null)) {
       throw new ResourceNotFoundException(format(ERR_MSG_FMT_JAGGAER_USER_MISSING, userId));
     }
 
     // If we only have one role in PPG, make sure Jaegger also has a matching role or throw an exception
-    if (conclaveRoles.size() == 1 && !jaggaerRoles.contains(conclaveRoles.stream().findFirst().orElseThrow())) {
-      throw new UserRolesConflictException(format(ERR_MSG_FMT_ROLES_CONFLICT, userId, conclaveRoles, jaggaerRoles));
-    }
+    // Note that for now PPG does not know about the Guru user, so we don't check for that
+    if (conclaveRoles.size() == 1 && ((conclaveRoles.contains(BUYER) && userStatusModel.buyerSubUser == null) || (conclaveRoles.contains(SUPPLIER) && userStatusModel.supplierCompanyData == null))) {
+      String jaeggerRole;
 
-    // CON-1680-AC1&7
+      if (userStatusModel.buyerSubUser != null) {
+        jaeggerRole = BUYER.toString();
+      } else {
+        jaeggerRole = SUPPLIER.toString();
+      }
+
+      throw new UserRolesConflictException(format(ERR_MSG_FMT_ROLES_CONFLICT, userId, conclaveRoles, jaeggerRole));
+    }
+    
     return List.copyOf(conclaveRoles);
   }
 
@@ -530,44 +536,57 @@ public class ProfileManagementService {
   /**
    * Populates a set of Jaegger role information from source (source can be multiple Jaegger orgs)
    */
-  private Pair<Optional<SubUser>, Optional<ReturnCompanyData>> getJaggaerRolesWithSSoUserData(final Set<RolesEnum> jaggaerRoles, final String userId, final String organisationIdentifier) {
-    // First we want to check if the user is a buyer within the Self Serve org
-    Optional<SubUser> buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+  private UserStatusModel getJaggaerRolesWithSSoUserData(final String userId, final String organisationIdentifier) {
+    UserStatusModel model = new UserStatusModel();
+
+    // First we want to check if the user is a buyer within the Self Serve org - to do that we need to find their account, then check if the SSO mapping has been done
+    Optional<SubUser> locatedBuyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
 
     // If we didn't get a value back, refresh the buyer cache in case user has since been registered (by separate instance)
-    if (buyerSubUser.isEmpty()) {
+    if (locatedBuyerSubUser.isEmpty()) {
       userProfileService.refreshBuyerCache(userId);
-      buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
-      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId, buyerSubUser.isPresent());
+      locatedBuyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId, locatedBuyerSubUser.isPresent());
     }
 
-    // Now if we have a result, with the user's SSO login mapped to it, this is valid so we add the buyer role
-    if (buyerSubUser.isPresent() && buyerSubUser.get().getSsoCodeData() != null && userId.equalsIgnoreCase(buyerSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())) {
-      buyerSubUser.ifPresent(su -> jaggaerRoles.add(BUYER));
+    // Now if we have a result, verify the user's SSO login is mapped to it.  If so this is valid, and we save it for return
+    if (locatedBuyerSubUser.isPresent() && locatedBuyerSubUser.get().getSsoCodeData() != null && userId.equalsIgnoreCase(locatedBuyerSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())) {
+      model.buyerSubUser = locatedBuyerSubUser.get();
     }
 
-    // TODO: Guru lookup here
-    
+    // Next we need to check if the user is a guru within the CCS org
+    Optional<SubUser> locatedGuruSubUser = userProfileService.resolveGuruUserBySSOUserLogin(userId);
 
+    // If we didn't get a value back, refresh the guru cache in case user has since been registered
+    if (locatedGuruSubUser.isEmpty()) {
+      userProfileService.refreshGuruCache(userId);
+      locatedGuruSubUser = userProfileService.resolveGuruUserBySSOUserLogin(userId);
+      log.debug("Refreshed guru user cache for [{}]", userId);
+    }
 
-    // Next we want to check if the user is a supplier within Jaegger
+    // Now if we have a result, verify the user's SSO login is mapped to it.  If so, this is valid and we return it
+    if (locatedGuruSubUser.isPresent() && locatedGuruSubUser.get().getSsoCodeData() != null && userId.equalsIgnoreCase(locatedGuruSubUser.get().getSsoCodeData().getSsoCode().stream().findFirst().get().getSsoUserLogin())) {
+      model.guruSubUser = locatedGuruSubUser.get();
+    }
+
+    // Finally we want to check if the user is a supplier within Jaegger
     Optional<ReturnCompanyData> optSupplierCompanyData = userProfileService.resolveSupplierData(userId, organisationIdentifier);
 
     if (optSupplierCompanyData.isPresent()) {
       // We've found a matching supplier company
-      ReturnCompanyData supplierCompanyData = optSupplierCompanyData.get();
+      ReturnCompanyData locatedSupplierCompanyData = optSupplierCompanyData.get();
 
       // We need to perform explicit SSO verification in this instance
       SSOCodeData expectedSSOData = buildSSOCodeData(userId);
 
       // Check the super-user and sub-user for the company we've found to check something matches our SSO verification
-      if (Objects.equals(expectedSSOData, supplierCompanyData.getReturnCompanyInfo().getSsoCodeData()) || supplierCompanyData.getReturnSubUser().getSubUsers() != null && supplierCompanyData.getReturnSubUser().getSubUsers().stream().anyMatch(subUser -> Objects.equals(expectedSSOData, subUser.getSsoCodeData()))) {
-        jaggaerRoles.add(SUPPLIER);
-        return Pair.of(buyerSubUser, optSupplierCompanyData);
+      if (Objects.equals(expectedSSOData, locatedSupplierCompanyData.getReturnCompanyInfo().getSsoCodeData()) || locatedSupplierCompanyData.getReturnSubUser().getSubUsers() != null && locatedSupplierCompanyData.getReturnSubUser().getSubUsers().stream().anyMatch(subUser -> Objects.equals(expectedSSOData, subUser.getSsoCodeData()))) {
+        model.supplierCompanyData = locatedSupplierCompanyData;
       }
     }
 
-    return Pair.of(buyerSubUser, Optional.empty());
+    // Our model should now contain all of the information we've found, so return it
+    return model;
   }
 
   private void sendUserRegistrationNotification(final UserProfileResponseInfo conclaveUser,

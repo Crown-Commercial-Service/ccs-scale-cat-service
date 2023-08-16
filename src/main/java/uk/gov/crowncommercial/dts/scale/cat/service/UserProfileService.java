@@ -105,10 +105,22 @@ public class UserProfileService {
         .getSecond();
   }
 
+  /**
+   * Find a user in the Buyer Jaegger org
+   */
   @SneakyThrows
   public Optional<SubUser> resolveBuyerUserBySSOUserLogin(final String email) {
     return jaggaerBuyerUserCache
         .get(new SubUserIdentity(email, getFilterPredicateSSOUserLogin(email))).getSecond();
+  }
+
+  /**
+   * Find a user in the CCS Jaegger org
+   */
+  @SneakyThrows
+  public Optional<SubUser> resolveGuruUserBySSOUserLogin(final String email) {
+    return ccsBuyerUserCache
+            .get(new SubUserIdentity(email, getFilterPredicateSSOUserLogin(email))).getSecond();
   }
 
   /**
@@ -274,8 +286,15 @@ public class UserProfileService {
    */
   public void refreshBuyerCache(final String userId) {
     log.debug("Refreshing Jaggaer buyer cache for user: {}", userId);
-    jaggaerBuyerUserCache
-        .refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
+    jaggaerBuyerUserCache.refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
+  }
+
+  /**
+   * Refresh the guru user cache (for example after a new user has been created / updated)
+   */
+  public void refreshGuruCache(final String userId) {
+    log.debug("Refreshing Jaggaer guru cache for user: {}", userId);
+    ccsBuyerUserCache.refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
   }
 
   private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {
