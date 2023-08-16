@@ -97,12 +97,12 @@ public class ProfileManagementService {
     UserStatusModel userStatusModel = getJaggaerRolesWithSSoUserData(userId, conclaveService.getOrganisationIdentifer(conclaveUserOrg));
 
     // Now we should have everything, but check we actually have some Jaegger roles and throw an exception if not
-    if (userStatusModel == null || (userStatusModel.buyerSubUser == null && userStatusModel.guruSubUser == null && userStatusModel.supplierCompanyData == null)) {
+    // Note that for now PPG does not know about the Guru user, so we don't check for that anywhere yet
+    if (userStatusModel == null || (userStatusModel.buyerSubUser == null && userStatusModel.supplierCompanyData == null)) {
       throw new ResourceNotFoundException(format(ERR_MSG_FMT_JAGGAER_USER_MISSING, userId));
     }
 
-    // If we only have one role in PPG, make sure Jaegger also has a matching role or throw an exception
-    // Note that for now PPG does not know about the Guru user, so we don't check for that
+    // Make sure Jaegger has returned matching data to our PPG info, or return a conflict error
     if (conclaveRoles.size() == 1 && ((conclaveRoles.contains(BUYER) && userStatusModel.buyerSubUser == null) || (conclaveRoles.contains(SUPPLIER) && userStatusModel.supplierCompanyData == null))) {
       String jaeggerRole;
 
