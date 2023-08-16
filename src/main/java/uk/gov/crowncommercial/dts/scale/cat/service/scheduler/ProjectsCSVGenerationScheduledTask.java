@@ -61,10 +61,10 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
 
-  @Value("${config.oppertunities.published.batch.size: 60}")
+  @Value("${config.oppertunities.published.batch.size: 20}")
   private int publishedBatchSize;
 
-  @Value("${config.oppertunities.awarded.batch.size: 10}")
+  @Value("${config.oppertunities.awarded.batch.size: 5}")
   private int awardedBatchSize;
 
   @Transactional
