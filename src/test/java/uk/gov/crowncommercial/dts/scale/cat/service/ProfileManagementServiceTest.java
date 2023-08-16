@@ -215,7 +215,7 @@ class ProfileManagementServiceTest {
 
     assertEquals(
         "User [" + USERID
-            + "] has conflicting Conclave/Jaggaer roles (Conclave: [supplier], Jaggaer: [buyer])",
+            + "] has conflicting Conclave/Jaggaer roles (Conclave: [supplier], Jaggaer: buyer)",
         ex.getMessage());
   }
 
@@ -241,7 +241,7 @@ class ProfileManagementServiceTest {
 
     assertEquals(
         "User [" + USERID
-            + "] has conflicting Conclave/Jaggaer roles (Conclave: [buyer], Jaggaer: [supplier])",
+            + "] has conflicting Conclave/Jaggaer roles (Conclave: [buyer], Jaggaer: supplier)",
         ex.getMessage());
   }
 
