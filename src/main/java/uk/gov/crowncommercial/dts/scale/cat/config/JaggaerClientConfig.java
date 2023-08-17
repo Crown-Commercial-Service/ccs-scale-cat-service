@@ -114,10 +114,6 @@ public class JaggaerClientConfig {
     
     httpClient.setIdleTimeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()).toMillis());
 
-    httpClient.setIdleTimeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()).toMillis());
-
-    httpClient.setIdleTimeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()).toMillis());
-
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
