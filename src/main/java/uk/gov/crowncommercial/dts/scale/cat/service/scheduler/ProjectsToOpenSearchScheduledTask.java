@@ -16,7 +16,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import net.javacrumbs.shedlock.core.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -50,7 +50,7 @@ public class ProjectsToOpenSearchScheduledTask {
   @Transactional
   @Scheduled(cron = "${config.external.projects.sync.schedule}")
   @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask", 
-  lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
+  lockAtLeastForString = "PT5M", lockAtMostForString = "PT10M")
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process");
     var events =

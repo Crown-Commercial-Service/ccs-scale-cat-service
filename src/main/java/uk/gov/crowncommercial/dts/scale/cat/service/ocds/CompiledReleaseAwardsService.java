@@ -1,15 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
-import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Organization1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Record1;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
@@ -17,7 +18,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -51,30 +51,15 @@ public class CompiledReleaseAwardsService extends AbstractOcdsService{
         return new MapperResponse(re, cf);
     }
 
-    public OrganizationReference1 convertSuppliers(Supplier supplier) {
+    private OrganizationReference1 convertSuppliers(Supplier supplier) {
         CompanyData companyData = supplier.getCompanyData();
         Optional<OrganisationMapping> om = tendersDBDelegate.findOrganisationMappingByExternalOrganisationId(companyData.getId());
         if (om.isPresent()) {
             OrganisationMapping organisationMapping = om.get();
             Optional<OrganisationProfileResponseInfo> optOrgProfile = conclaveService.getOrganisationIdentity(organisationMapping.getOrganisationId());
-
             if (optOrgProfile.isPresent()) {
                 OrganisationProfileResponseInfo orgProfile = optOrgProfile.get();
-                OrganizationReference1 ref = modelMapper.map(orgProfile, OrganizationReference1.class);
-                String casId = organisationMapping.getCasOrganisationId();
-                if(null != casId) {
-                    if (!hasId(orgProfile, casId)) {
-                        Identifier1 id = OcdsConverter.getId(casId);
-                        if(null != orgProfile.getIdentifier())
-                            id.setLegalName(orgProfile.getIdentifier().getLegalName());
-
-                        if (null == ref.getAdditionalIdentifiers()) {
-                            ref.setAdditionalIdentifiers(new ArrayList<>());
-                        }
-                        ref.getAdditionalIdentifiers().add(id);
-                    }
-                }
-                return ref;
+                return modelMapper.map(orgProfile, OrganizationReference1.class);
             } else {
                 String orgId = null != organisationMapping.getCasOrganisationId() ? organisationMapping.getCasOrganisationId()
                         : organisationMapping.getOrganisationId();
@@ -92,26 +77,6 @@ public class CompiledReleaseAwardsService extends AbstractOcdsService{
             return ref;
         }
     }
-
-    private boolean hasId(OrganisationProfileResponseInfo orgProfile, String orgId) {
-        Identifier1 id = OcdsConverter.getId(orgId);
-        if(isSame(orgProfile.getIdentifier(), id)){
-            return true;
-        }
-        for(OrganisationIdentifier identifier : orgProfile.getAdditionalIdentifiers()){
-            if(isSame(identifier, id)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean isSame(OrganisationIdentifier identifier, Identifier1 id) {
-        return
-                id.getId().toString().equals(identifier.getId()) &&
-                id.getScheme().getValue().equals(identifier.getScheme());
-    }
-
 
     public MapperResponse populateItems(Record1 re, ProjectQuery pq) {
         log.warn("populating Items not yet implemented");

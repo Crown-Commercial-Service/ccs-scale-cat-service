@@ -28,13 +28,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
-import org.opensearch.index.query.*;
+import org.opensearch.index.query.BoolQueryBuilder;
+import org.opensearch.index.query.MultiMatchQueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
@@ -861,30 +862,16 @@ public class ProcurementProjectService {
     if(lotId != null) {
       boolQuery.must(QueryBuilders.termQuery(LOT, lotId));
     }
-
-    addKeywordQuery(boolQuery, keyword);
+    if(keyword  != null) {
+      boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .fuzziness(Fuzziness.ONE)
+              .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
+    }
     if(projectFilter !=null || lotId !=null || keyword !=null )
     {
       searchQueryBuilder.withQuery(boolQuery);
     }
     return searchQueryBuilder;
-  }
-
-  private static void addKeywordQuery(BoolQueryBuilder boolQuery, String keyword) {
-    if(keyword != null && keyword.trim().length() > 0) {
-      Pattern matchPattern = Pattern.compile("~[0-9]|\"[^\"]*\"");
-
-      if(matchPattern.matcher(keyword).find() || (keyword.indexOf('*') > 0)){
-        boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword)
-                .field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                .analyzeWildcard(true)
-                .defaultOperator(Operator.AND).flags(SimpleQueryStringFlag.ALL));
-      }else {
-        boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                .fuzziness(Fuzziness.ONE)
-                .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-      }
-    }
   }
 
   private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
