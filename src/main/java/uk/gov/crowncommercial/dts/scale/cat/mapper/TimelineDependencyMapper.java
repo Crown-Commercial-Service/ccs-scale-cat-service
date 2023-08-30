@@ -6,7 +6,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import java.util.stream.Collectors;
 
-
 @RequiredArgsConstructor
 @Component
 public class TimelineDependencyMapper {
