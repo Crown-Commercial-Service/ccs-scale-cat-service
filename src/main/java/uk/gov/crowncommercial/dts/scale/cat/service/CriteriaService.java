@@ -186,16 +186,6 @@ public class CriteriaService {
     return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
   }
 
-  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
-    return options.stream()
-            .map(questionNonOCDSOptions -> Option.builder()
-                    .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
-                            : questionNonOCDSOptions.getSelected())
-                    .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
-                    .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
-            .collect(Collectors.toList());
-  }
-
 
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
       List<QuestionNonOCDSOptions> options) {
@@ -398,5 +388,15 @@ public class CriteriaService {
               .titles(o.getTableDefinition().getTitles()).data(o.getTableDefinition().getData()));
     }
     return questionNonOCDSOptions;
+  }
+
+  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
+    return options.stream()
+            .map(questionNonOCDSOptions -> Option.builder()
+                    .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
+                            : questionNonOCDSOptions.getSelected())
+                    .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
+                    .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
+            .collect(Collectors.toList());
   }
 }
