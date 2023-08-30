@@ -208,8 +208,7 @@ public class ProjectsCSVGenerationScheduledTask {
               jaggaerService.searchRFxWithComponents(latestRfxIds, components);
 
     //removed broken projects
-      firstRfxWithComponents = firstRfxWithComponents.stream().filter(e -> e.getRfxSetting().getCloseDate() != null
-          && e.getRfxSetting().getPublishDate() != null).collect(Collectors.toSet());
+      firstRfxWithComponents = TemplateDataExtractor.removeBrokenEvents(firstRfxWithComponents);
 
       for (ExportRfxResponse rfx : firstRfxWithComponents) {
 
