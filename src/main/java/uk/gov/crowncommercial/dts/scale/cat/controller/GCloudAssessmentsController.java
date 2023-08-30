@@ -102,7 +102,6 @@ public class GCloudAssessmentsController extends AbstractRestController {
                     if (sanitisedResultsSummary.contains(",") || sanitisedResultsSummary.contains("\"") || sanitisedResultsSummary.contains("'")) {
                         sanitisedResultsSummary = sanitisedResultsSummary.replace("\"", "\"\"");
                     }
-
                     writer.write(CSV_GENERIC_HEADERS);
                     writer.write(CSV_STATIC_NAME + "," + exportTime + ",\"" + sanitisedResultsSummary + "\"\n");
 
