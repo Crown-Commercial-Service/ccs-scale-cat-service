@@ -1,15 +1,16 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
+import org.apache.commons.lang3.StringUtils;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
+
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 
 public class TemplateDataExtractor {
   
@@ -152,5 +153,4 @@ public class TemplateDataExtractor {
             && e.getRfxSetting().getStatusCode() != 0)
         .collect(Collectors.toSet());
   }
-
 }
