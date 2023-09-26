@@ -296,13 +296,13 @@ config:
       catUserRoleKey: CAT_USER
       supplierRoleKey: JAEGGER_SUPPLIER      
       getUser:
-        uriTemplate: /user-profiles?user-id={user-id}
+        uriTemplate: /user-profile?user-id={user-id}
       getUserContacts:
-        uriTemplate: /user-profiles/contacts?user-id={email}
+        uriTemplate: /user-profile/contacts?user-id={email}
         
       # Org ID is the internal ID
       getOrganisation:
-        uriTemplate: /organisation-profiles/{org-id}
+        uriTemplate: /organisation-profile/{org-id}
         
       # Org ID is {scheme}-{registry-id} e.g. US-DUN-123456789
       getOrganisationIdentity:
