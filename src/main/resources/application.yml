@@ -298,7 +298,7 @@ config:
       getUser:
         uriTemplate: /user-profile?user-id={user-id}
       getUserContacts:
-        uriTemplate: /user-profile/contacts?user-id={email}
+        uriTemplate: /contact-service/user/contacts?user-id={email}
         
       # Org ID is the internal ID
       getOrganisation:
