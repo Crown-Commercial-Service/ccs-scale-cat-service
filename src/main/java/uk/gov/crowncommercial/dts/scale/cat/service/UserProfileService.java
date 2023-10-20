@@ -136,13 +136,13 @@ public class UserProfileService {
     var getBuyerCompanyProfile = jaggaerAPIConfig.getGetBuyerCompanyProfile();
     var endpoint = getBuyerCompanyProfile.get(JaggaerAPIConfig.ENDPOINT);
 
-    log.info("Calling company profiles endpoint: {}", endpoint);
-
+    log.info("Start calling Jaggaer API to get buyer company profile, endpoint : {}", endpoint);
     var getCompanyDataResponse = ofNullable(
         jaggaerWebClient.get().uri(endpoint).retrieve().bodyToMono(GetCompanyDataResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving Jaggear company profile data"));
+    log.info("Finish calling Jaggaer API to get buyer company profile, endpoint : {}", endpoint);
 
     if (!"0".equals(getCompanyDataResponse.getReturnCode())
         || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
@@ -194,17 +194,22 @@ public class UserProfileService {
       var supplierOrgMapping = optSupplierOrgMapping.get();
 
       // Get the supplier org from Jaggaer by the bravoID
+      log.info("Start calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
       var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
           .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
               PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+      log.info("Finish calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
 
       return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
     }
 
     // Fall back on SSO super user search in case Tenders DB org mapping missing
+    final var encodedSSOUserLogin = UriUtils.encode(ssoUserLogin, StandardCharsets.UTF_8);
+    log.info("Start calling Jaggaer API to get supplier company profile by SSO User: {}", encodedSSOUserLogin);
     var getSupplierCompanyBySSOUserLoginEndpoint =
-        jaggaerAPIConfig.getGetSupplierCompanyProfileBySSOUserLogin().get(JaggaerAPIConfig.ENDPOINT)
-            .replace(PRINCIPAL_PLACEHOLDER, UriUtils.encode(ssoUserLogin, StandardCharsets.UTF_8));
+            jaggaerAPIConfig.getGetSupplierCompanyProfileBySSOUserLogin().get(JaggaerAPIConfig.ENDPOINT)
+                    .replace(PRINCIPAL_PLACEHOLDER, encodedSSOUserLogin);
+    log.info("Finish calling Jaggaer API to get supplier company profile by SSO User: {}", encodedSSOUserLogin);
 
     var supplierCompanyBySSO = getSupplierDataHelper(getSupplierCompanyBySSOUserLoginEndpoint);
 
@@ -274,9 +279,11 @@ public class UserProfileService {
       var supplierOrgMapping = optSupplierOrgMapping.get();
 
       // Get the supplier org from Jaggaer by the bravoID
+      log.info("Start calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
       var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
               .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
                       PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+      log.info("Finish calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
 
       return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
     }
@@ -291,10 +298,12 @@ public class UserProfileService {
   */
  public Optional<ReturnCompanyData> getSupplierDataByDUNSNumber(final String concalveIdentifier) {
      // Get the supplier org from Jaggaer by the DUNS Number
-     var getSupplierCompanyByDUNSNumberEndpoint = jaggaerAPIConfig
-             .getGetCompanyProfileByDUNSNumber().get(JaggaerAPIConfig.ENDPOINT).replace(
-                 DUNS_PLACEHOLDER, concalveIdentifier);
-     return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
+   log.info("Start calling Jaggaer API to get company profile by DUNS Number: {}", concalveIdentifier);
+   var getSupplierCompanyByDUNSNumberEndpoint = jaggaerAPIConfig
+           .getGetCompanyProfileByDUNSNumber().get(JaggaerAPIConfig.ENDPOINT).replace(
+                   DUNS_PLACEHOLDER, concalveIdentifier);
+   log.info("Finish calling Jaggaer API to get company profile by DUNS Number: {}", concalveIdentifier);
+   return getSupplierDataHelper(getSupplierCompanyByDUNSNumberEndpoint);
  }
  
  /**
@@ -306,7 +315,9 @@ public class UserProfileService {
  public Optional<ReturnCompanyData> getSupplierDataByFiscalCode(final String concalveIdentifier) {
    var getSupplierCompanyByFiscalCodeEndpoint = jaggaerAPIConfig.getGetCompanyProfileByFiscalCode()
        .get(JaggaerAPIConfig.ENDPOINT).replace(FISCALCODE_PLACEHOLDER, concalveIdentifier);
+   log.info("Start calling Jaggaer API to get company profile by Fiscal Code: {}", concalveIdentifier);
    var supplierSuperUserData = getSuppliersDataHelper(getSupplierCompanyByFiscalCodeEndpoint);
+   log.info("Finish calling Jaggaer API to get company profile by Fiscal Code: {}", concalveIdentifier);
    if (supplierSuperUserData.size() > 1) {
      throw new DuplicateFiscalCodeException(
          "Duplicate fiscal code " + concalveIdentifier + " found in jaggaer");
@@ -327,9 +338,11 @@ public class UserProfileService {
     }else{
       var supplierOrgMapping = optSupplierOrgMapping.get();
       // Get the supplier org from Jaggaer by the bravoID
+      log.info("Start calling Jaggaer API to get company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
       var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig.getGetCompanyProfileByBravoID()
               .get(JaggaerAPIConfig.ENDPOINT).replace(
                       PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+      log.info("Finish calling Jaggaer API to get company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
 
       return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
     }
