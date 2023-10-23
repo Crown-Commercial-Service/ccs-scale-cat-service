@@ -28,6 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DuplicateFiscalCodeException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.GetCompanyDataResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReturnCompanyData;
@@ -191,16 +192,7 @@ public class UserProfileService {
 
     if (optSupplierOrgMapping.isPresent()) {
 
-      var supplierOrgMapping = optSupplierOrgMapping.get();
-
-      // Get the supplier org from Jaggaer by the bravoID
-      log.info("Start calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
-      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
-          .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
-              PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
-      log.info("Finish calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
-
-      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
+      return getReturnCompanyData(optSupplierOrgMapping);
     }
 
     // Fall back on SSO super user search in case Tenders DB org mapping missing
@@ -219,6 +211,19 @@ public class UserProfileService {
       return supplierCompanyBySSO;
     }
     return Optional.empty();
+  }
+
+  private Optional<ReturnCompanyData> getReturnCompanyData(Optional<OrganisationMapping> optSupplierOrgMapping) {
+    var supplierOrgMapping = optSupplierOrgMapping.get();
+
+    // Get the supplier org from Jaggaer by the bravoID
+    log.info("Start calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
+    var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
+        .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
+            PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
+    log.info("Finish calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
+
+    return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
   }
 
   /**
@@ -276,16 +281,7 @@ public class UserProfileService {
 
     if (optSupplierOrgMapping.isPresent()) {
 
-      var supplierOrgMapping = optSupplierOrgMapping.get();
-
-      // Get the supplier org from Jaggaer by the bravoID
-      log.info("Start calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
-      var getSupplierCompanyByBravoIDEndpoint = jaggaerAPIConfig
-              .getGetSupplierCompanyProfileByBravoID().get(JaggaerAPIConfig.ENDPOINT).replace(
-                      PRINCIPAL_PLACEHOLDER, supplierOrgMapping.getExternalOrganisationId().toString());
-      log.info("Finish calling Jaggaer API to get supplier company profile by Bravo Id: {}", supplierOrgMapping.getExternalOrganisationId());
-
-      return getSupplierDataHelper(getSupplierCompanyByBravoIDEndpoint);
+      return getReturnCompanyData(optSupplierOrgMapping);
     }
     return Optional.empty();
   }
