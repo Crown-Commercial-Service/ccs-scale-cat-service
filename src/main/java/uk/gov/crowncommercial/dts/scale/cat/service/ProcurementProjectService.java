@@ -7,7 +7,6 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPO
 import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.createTimestamps;
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_PREFIX;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.ConstantHelper.*;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import java.io.InputStream;
@@ -213,14 +212,14 @@ public class ProcurementProjectService {
       var createUpdateProject =
               new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
-      log.info(START + CALLING_JAGGAER_API_TO + CREATE_OR_UPDATE_PROJECT + REQUEST, createUpdateProject);
+      log.info("Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
       var createProjectResponse =
               ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
                       .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
                       .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                       .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                               "Unexpected error creating project"));
-      log.info(FINISH + CALLING_JAGGAER_API_TO + CREATE_OR_UPDATE_PROJECT + RESPONSE, createProjectResponse);
+      log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", createProjectResponse);
 
       if (createProjectResponse.getReturnCode() != 0
               || !"OK".equals(createProjectResponse.getReturnMessage())) {
@@ -298,14 +297,14 @@ public class ProcurementProjectService {
     var updateProject =
         new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
-    log.info(START + CALLING_JAGGAER_API_TO + UPDATE_PROJECT + REQUEST, updateProject);
+    log.info("Start calling Jaggaer API to Update project. Request: {}", updateProject);
     var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating project"));
-    log.info(FINISH + CALLING_JAGGAER_API_TO + UPDATE_PROJECT + RESPONSE, updateProjectResponse);
+    log.info("Finish calling Jaggaer API to Update project. Response: {}", updateProjectResponse);
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
@@ -362,13 +361,13 @@ public class ProcurementProjectService {
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
 
-    log.info(START + CALLING_JAGGAER_API_TO_GET + PROJECT_USING_PROJECT_ID, projectId);
+    log.info("Start calling Jaggaer API to get project using project Id: {}", projectId);
     var jaggaerProject = ofNullable(jaggaerWebClient.get()
         .uri(getProjectUri, dbProject.getExternalProjectId()).retrieve().bodyToMono(Project.class)
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving project"));
-    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + PROJECT_USING_PROJECT_ID, projectId);
+    log.info("Finish calling Jaggaer API to get project using project Id: {}", projectId);
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);

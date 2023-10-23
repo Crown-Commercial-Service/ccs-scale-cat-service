@@ -4,8 +4,6 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import static uk.gov.crowncommercial.dts.scale.cat.utils.ConstantHelper.*;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -164,7 +162,7 @@ public class CriteriaService {
     if (Party.TENDERER == criteria.getRelatesTo()) {
       var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
 
-      log.info(START + CALLING_JAGGAER_API_TO + UPDATE_RFX + RFX_ID, rfx.getRfxSetting().getRfxId());
+      log.info("Start calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
       var createRfxResponse =
           ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
               .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
@@ -172,7 +170,7 @@ public class CriteriaService {
               .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                   .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                       "Unexpected error updating Rfx"));
-      log.info(FINISH + CALLING_JAGGAER_API_TO + UPDATE_RFX + RFX_ID, rfx.getRfxSetting().getRfxId());
+      log.info("Finish calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
 
       if (createRfxResponse.getReturnCode() != 0
           || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
