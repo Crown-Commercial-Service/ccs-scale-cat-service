@@ -37,6 +37,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_RFX_NOT_FOUND;
+import static uk.gov.crowncommercial.dts.scale.cat.utils.ConstantHelper.*;
 
 /**
  * Jaggaer Service.
@@ -64,14 +65,14 @@ public class JaggaerService {
   public CreateUpdateProjectResponse createUpdateProject(
       final CreateUpdateProject createUpdateProject) {
 
-    log.info("Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
+    log.info(START + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE_PROJECT + REQUEST, createUpdateProject);
     final var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating project"));
-    log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", updateProjectResponse);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE_PROJECT + RESPONSE, updateProjectResponse);
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
@@ -91,7 +92,7 @@ public class JaggaerService {
    */
   public CreateUpdateRfxResponse createUpdateRfx(final Rfx rfx, final OperationCode operationCode) {
 
-    log.info("Start calling Jaggaer API to create or update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+    log.info(START + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE + RFX + RFX_ID, rfx.getRfxSetting().getRfxId());
     final var createRfxResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
             .bodyValue(new CreateUpdateRfx(operationCode, rfx)).retrieve()
@@ -99,7 +100,7 @@ public class JaggaerService {
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating Rfx"));
-    log.info("Finish calling Jaggaer API to create or update rfx, Rfx Id: {} ", rfx.getRfxSetting().getRfxId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE + RFX + RFX_ID + " ", rfx.getRfxSetting().getRfxId());
 
     if (createRfxResponse.getReturnCode() != 0
         || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
@@ -123,13 +124,13 @@ public class JaggaerService {
   public ExportRfxResponse getRfx(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfx().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get rfx, Rfx Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + RFX + RFX_ID, externalEventId);
     final var rfxResponse = ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
-    log.info("Finish calling Jaggaer API to get rfx, Rfx Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + RFX + RFX_ID, externalEventId);
     return rfxResponse;
   }
 
@@ -137,52 +138,52 @@ public class JaggaerService {
   public ExportRfxResponse getRfxWithEmailRecipients(final String externalEventId) {
     //TODO: This can be a candidate for cache
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithEmailRecipients().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get rfx with Email Recipients, Rfx Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + RFX_WITH + EMAIL_RECIPIENTS + RFX_ID, externalEventId);
     final var rfxResponse = ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
-    log.info("Finish calling Jaggaer API to get rfx with Email Recipients, Rfx Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + RFX_WITH + EMAIL_RECIPIENTS + RFX_ID, externalEventId);
     return rfxResponse;
   }
 
   public ExportRfxResponse getRfxWithSuppliers(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithSuppliers().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get rfx with suppliers, Rfx Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + RFX_WITH + SUPPLIERS + RFX_ID, externalEventId);
     final var rfxResponse = ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
-    log.info("Finish calling Jaggaer API to get rfx with suppliers, Rfx Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + RFX_WITH + SUPPLIERS + RFX_ID, externalEventId);
     return rfxResponse;
   }
 
   public ExportRfxResponse getRfxWithSuppliersOffersAndResponseCounters(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithSuppliersOffersAndResponseCounters().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get rfx with suppliers offers and response counters, Rfx Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + RFX_WITH + SUPPLIERS_OFFERS_AND_RESPONSE_COUNTERS + RFX_ID, externalEventId);
     final var rfxResponse = ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
-    log.info("Finish calling Jaggaer API to get rfx with suppliers offers and response counters, Rfx Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + RFX_WITH + SUPPLIERS_OFFERS_AND_RESPONSE_COUNTERS + RFX_ID, externalEventId);
     return rfxResponse;
   }
 
   public ExportRfxResponse getRfxWithWithBuyerAndSellerAttachments(final String externalEventId) {
 
     final var exportRfxUri = jaggaerAPIConfig.getExportRfxWithBuyerAndSellerAttachments().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get rfx with buyer and seller attachments, Rfx Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + RFX_WITH + BUYER_AND_SELLER_ATTACHMENTS + RFX_ID, externalEventId);
     final var rfxResponse = ofNullable(jaggaerWebClient.get().uri(exportRfxUri, externalEventId).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
-    log.info("Finish calling Jaggaer API to get rfx with buyer and seller attachments, Rfx Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + RFX_WITH + BUYER_AND_SELLER_ATTACHMENTS + RFX_ID, externalEventId);
     return rfxResponse;
   }
 
@@ -200,13 +201,13 @@ public class JaggaerService {
     var searchRfxUri = jaggaerAPIConfig.getSearchRfxSummary().get(ENDPOINT);
     var rfxIds = externalEventIds.stream().collect(Collectors.joining(","));
 
-    log.info("Start calling Jaggaer API to search rfx, Rfx Ids: {}", rfxIds);
+    log.info(START + CALLING_JAGGAER_API_TO_SEARCH + RFX + RFX_IDS, rfxIds);
     var searchRfxResponse = webclientWrapper
         .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
             jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds)
         .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
             "Unexpected error searching rfxs"));
-    log.info("Finish calling Jaggaer API to search rfx, Rfx Ids: {}", rfxIds);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_SEARCH + RFX + RFX_IDS, rfxIds);
 
     if (searchRfxResponse.getReturnCode() == 0) {
       return searchRfxResponse.getDataList().getRfx();
@@ -222,13 +223,13 @@ public class JaggaerService {
     var rfxIds = externalEventIds.stream().collect(Collectors.joining(","));
     var componentFilters = components.stream().collect(Collectors.joining(";"));
 
-    log.info("Start calling Jaggaer API to search rfx with components. Rfx Id: {}, Components: {}", rfxIds, componentFilters);
+    log.info(START + CALLING_JAGGAER_API_TO_SEARCH + RFX_WITH + COMPONENTS + RFX_ID + COMPONENTS_PARAM, rfxIds, componentFilters);
     var searchRfxResponse = webclientWrapper
         .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
             jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds, componentFilters)
         .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
             "Unexpected error searching rfxs"));
-    log.info("Finish calling Jaggaer API to search rfx with components. Rfx Id: {}, Components: {}", rfxIds, componentFilters);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_SEARCH + RFX_WITH + COMPONENTS + RFX_ID + COMPONENTS_PARAM, rfxIds, componentFilters);
 
     if (searchRfxResponse.getReturnCode() == 0) {
       return searchRfxResponse.getDataList().getRfx();
@@ -248,13 +249,13 @@ public class JaggaerService {
 
     final var rfxUri = jaggaerAPIConfig.getGetRfxByComponent().get(ENDPOINT);
     var componentFilters = components.stream().collect(Collectors.joining(";"));
-    log.info("Start calling Jaggaer API to get rfx by component, Rfx Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + RFX_BY_COMPONENT + RFX_ID, externalEventId);
     final var rfxResponse = ofNullable(jaggaerWebClient.get().uri(rfxUri, externalEventId, componentFilters).retrieve()
             .bodyToMono(ExportRfxResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving rfx"));
-    log.info("Finish calling Jaggaer API to get rfx by component, Rfx Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + RFX_BY_COMPONENT + RFX_ID, externalEventId);
     return rfxResponse;
   }
 
@@ -267,11 +268,11 @@ public class JaggaerService {
    */
   public CreateUpdateCompanyResponse createUpdateCompany(
       final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
-    log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
+    log.info(START + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE + COMPANY + REQUEST, createUpdateCompanyRequest);
     final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
         CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
         jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
-    log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
+    log.info(START + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE + COMPANY + RESPONSE, createUpdateCompanyResponse);
 
     // Super user exists is code "-996"...
     var jaggaerSuccessCodes = Set.of("0", "1", "-996");
@@ -304,8 +305,6 @@ public class JaggaerService {
    */
   public void uploadDocument(final MultipartFile multipartFile, final CreateUpdateRfx rfx) {
 
-    log.info("uploadDocument");
-
     if (multipartFile.getOriginalFilename() == null) {
       throw new IllegalArgumentException("No filename specified for upload document attachment");
     }
@@ -314,7 +313,7 @@ public class JaggaerService {
     parts.add("data", rfx);
     parts.add(multipartFile.getOriginalFilename(), multipartFile.getResource());
 
-    log.info("Start calling Jaggaer API to upload document. File name: {}", multipartFile.getOriginalFilename());
+    log.info(START + CALLING_JAGGAER_API_TO + UPLOAD_DOCUMENT + FILE_NAME, multipartFile.getOriginalFilename());
     final var response =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
             .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
@@ -322,7 +321,7 @@ public class JaggaerService {
                 .orElseThrow(() -> new JaggaerApplicationException(
                     "Upload attachment from Jaggaer returned a null response: rfxId:"
                         + rfx.getRfx().getRfxSetting().getRfxId()));
-    log.info("Finish calling Jaggaer API to upload document. File name: {}", multipartFile.getOriginalFilename());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + UPLOAD_DOCUMENT + FILE_NAME, multipartFile.getOriginalFilename());
 
     if (0 != response.getReturnCode()) {
       throw new JaggaerApplicationException(response.getReturnCode(), response.getReturnMessage());
@@ -341,11 +340,11 @@ public class JaggaerService {
     log.info("getDocument: {}, {}", fileId, fileName);
 
     final var getAttachmentUri = jaggaerAPIConfig.getGetAttachment().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get attachment, File name: {}", fileName);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + ATTACHMENT + FILE_NAME, fileName);
     final var response = jaggaerWebClient.get().uri(getAttachmentUri, fileId, fileName)
         .header(ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE).retrieve().toEntity(byte[].class)
         .block();
-    log.info("Finish calling Jaggaer API to get attachment, File name: {}", fileName);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + ATTACHMENT + FILE_NAME, fileName);
 
 
     if (response == null) {
@@ -376,10 +375,10 @@ public class JaggaerService {
 
     final var publishRfxEndpoint = jaggaerAPIConfig.getPublishRfx().get(ENDPOINT);
 
-    log.info("Start calling Jaggaer API to publish rfx, Rfx Id: {}", publishRfx.getRfxId());
+    log.info(START + CALLING_JAGGAER_API_TO + PUBLISH_RFX + RFX_ID, publishRfx.getRfxId());
     final var publishRfxResponse = webclientWrapper.postData(publishRfx, PublishRfxResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), publishRfxEndpoint);
-    log.info("Finish calling Jaggaer API to publish rfx, Rfx Id: {}", publishRfx.getRfxId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + PUBLISH_RFX + RFX_ID, publishRfx.getRfxId());
 
     log.debug("Publish event response: {}", publishRfxResponse);
 
@@ -400,13 +399,13 @@ public class JaggaerService {
     final var projectListUri = jaggaerAPIConfig.getGetProjectList().get(ENDPOINT);
     final var filters = "projectOwnerId==" + jaggaerUserId;
 
-    log.info("Start calling Jaggaer API to get project list using project owner Id: {}", jaggaerUserId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + PROJECT_LIST_USING_PROJECT_OWNER_ID, jaggaerUserId);
     final var projects = ofNullable(jaggaerWebClient.get().uri(projectListUri, filters).retrieve()
             .bodyToMono(ProjectListResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving projects"));
-    log.info("Finish calling Jaggaer API to get project list using project owner Id: {}", jaggaerUserId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + PROJECT_LIST_USING_PROJECT_OWNER_ID, jaggaerUserId);
     return projects;
   }
 
@@ -415,38 +414,38 @@ public class JaggaerService {
     final var start = pageSize > 1 ? pageSize + 1 : 1;
     final var filters = "objectReferenceCode==" + externalEventId;
 
-    log.info("Start calling Jaggaer API to get messages, Event Id: {}", externalEventId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + MESSAGES + EVENT_ID, externalEventId);
     final var messagesResponse = ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, MESSAGE_PARAMS, start)
             .retrieve().bodyToMono(MessagesResponse.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving messages"));
-    log.info("Finish calling Jaggaer API to get messages, Event Id: {}", externalEventId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + MESSAGES + EVENT_ID, externalEventId);
     return messagesResponse;
   }
 
   public Message getMessage(final String messageId) {
     final var messagesUrl = jaggaerAPIConfig.getGetMessage().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get message, Message Id: {}", messageId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + MESSAGE + MESSAGE_ID, messageId);
     final var messageResponse = ofNullable(jaggaerWebClient.get().uri(messagesUrl, messageId, MESSAGE_PARAMS).retrieve()
             .bodyToMono(Message.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving messages"));
-    log.info("Finish calling Jaggaer API to get message, Message Id: {}", messageId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + MESSAGE + MESSAGE_ID, messageId);
     return messageResponse;
   }
  @Async
   public Future<MessageResponse> updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
 
-   log.info("Start calling Jaggaer API to update message, Message Id: {}", messageUpdate.getMessageId());
+   log.info(START + CALLING_JAGGAER_API_TO + UPDATE_MESSAGE + MESSAGE_ID, messageUpdate.getMessageId());
    final var updateResponse = new AsyncResult<>(ofNullable(jaggaerWebClient.put().uri(updateMessageUrl).body(Mono.just(messageUpdate), MessageUpdate.class).retrieve()
            .bodyToMono(MessageResponse.class)
            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                    "Unexpected error retrieving messages")));
-   log.info("Finish calling Jaggaer API to update message, Message Id: {}", messageUpdate.getMessageId());
+   log.info(FINISH + CALLING_JAGGAER_API_TO + UPDATE_MESSAGE + MESSAGE_ID, messageUpdate.getMessageId());
    return updateResponse;
   }
   /**
@@ -462,11 +461,11 @@ public class JaggaerService {
 
     final var endPoint = jaggaerAPIConfig.getStartEvaluation().get(ENDPOINT);
 
-    log.info("Start calling Jaggaer API to start evaluation, Rfx Id: {}", event.getExternalEventId());
+    log.info(START + CALLING_JAGGAER_API_TO + START_EVALUATION + RFX_ID, event.getExternalEventId());
     final var evaluationResponse =
         webclientWrapper.postData(startEvaluationRequest, WorkflowRfxResponse.class,
             jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
-    log.info("Finish calling Jaggaer API to start evaluation, Rfx Id: {}", event.getExternalEventId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + START_EVALUATION + RFX_ID, event.getExternalEventId());
 
     log.debug("Start evaluation event response: {}", evaluationResponse);
   }
@@ -526,11 +525,11 @@ public class JaggaerService {
   public CreateUpdateRfxResponse extendRfx(final RfxRequest rfx,
       final OperationCode operationCode) {
 
-    log.info("Start calling Jaggaer API to extend rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+    log.info(START + CALLING_JAGGAER_API_TO + EXTEND_RFX + RFX_ID, rfx.getRfxSetting().getRfxId());
     final var extendRfxResponse = webclientWrapper.postData(new ExtendEventRfx(operationCode, rfx),
         CreateUpdateRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
         jaggaerAPIConfig.getCreateRfx().get(ENDPOINT));
-    log.info("Finish calling Jaggaer API to extend rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + EXTEND_RFX + RFX_ID, rfx.getRfxSetting().getRfxId());
 
     if (extendRfxResponse.getReturnCode() != 0
         || !Constants.OK_MSG.equals(extendRfxResponse.getReturnMessage())) {
@@ -550,10 +549,10 @@ public class JaggaerService {
   public void invalidateEvent(final InvalidateEventRequest request) {
     final var endPoint = jaggaerAPIConfig.getInvalidateEvent().get(ENDPOINT);
 
-    log.info("Start calling Jaggaer API to invalidate event, Rfx Id: {}", request.getRfxId());
+    log.info(START + CALLING_JAGGAER_API_TO + INVALIDATE_EVENT + RFX_ID, request.getRfxId());
     final var response = webclientWrapper.postData(request, WorkflowRfxResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
-    log.info("Finish calling Jaggaer API to invalidate event, Rfx Id: {}", request.getRfxId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + INVALIDATE_EVENT + RFX_ID, request.getRfxId());
 
     log.debug("Invalidate event response: {}", response);
   }
@@ -564,13 +563,13 @@ public class JaggaerService {
    * @param externalProjectId
    */
   public Project getProject(final String externalProjectId) {
-    log.info("Start calling Jaggaer API to get project using project Id: {}", externalProjectId);
+    log.info(START + CALLING_JAGGAER_API_TO_GET + PROJECT_USING_PROJECT_ID, externalProjectId);
     final var project = ofNullable(jaggaerWebClient.get()
             .uri(jaggaerAPIConfig.getGetProject().get(ENDPOINT), externalProjectId).retrieve()
             .bodyToMono(Project.class).block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving project"));
-    log.info("Finish calling Jaggaer API to get project using project Id: {}", externalProjectId);
+    log.info(FINISH + CALLING_JAGGAER_API_TO_GET + PROJECT_USING_PROJECT_ID, externalProjectId);
     return project;
   }
   
@@ -593,10 +592,10 @@ public class JaggaerService {
       endPoint = jaggaerAPIConfig.getPreAward().get(ENDPOINT);
     }
 
-    log.info("Start calling Jaggaer API to award or pre-award rfx, Rfx Id: {}", event.getExternalEventId());
+    log.info(START + CALLING_JAGGAER_API_TO + AWARD_OR_PRE_AWARD_RFX + RFX_ID, event.getExternalEventId());
     final var response = webclientWrapper.postData(awardRequest, WorkflowRfxResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
-    log.info("Finish calling Jaggaer API to award or pre-award rfx, Rfx Id: {}", event.getExternalEventId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + AWARD_OR_PRE_AWARD_RFX + RFX_ID, event.getExternalEventId());
 
     log.debug("Award response: {}", response);
     
@@ -621,11 +620,11 @@ public class JaggaerService {
 
     final var endPoint = jaggaerAPIConfig.getCompleteTechnical().get(ENDPOINT);
 
-    log.info("Start calling Jaggaer API to complete technical, Rfx Id: {}", event.getExternalEventId());
+    log.info(START + CALLING_JAGGAER_API_TO + COMPLETE_TECHNICAL + RFX_ID, event.getExternalEventId());
     final var response =
         webclientWrapper.postData(completeTechnicalRequest, WorkflowRfxResponse.class,
             jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
-    log.info("Finish calling Jaggaer API to complete technical, Rfx Id: {}", event.getExternalEventId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + COMPLETE_TECHNICAL + RFX_ID, event.getExternalEventId());
 
     log.debug("Complete evaluation rfx response: {}", response);
   }
@@ -643,11 +642,11 @@ public class JaggaerService {
         .rfxReferenceCode(event.getExternalReferenceId())
         .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
 
-    log.info("Start calling Jaggaer API to open envelope, Rfx Id: {}", event.getExternalEventId());
+    log.info(START + CALLING_JAGGAER_API_TO + OPEN_ENVELOPE + RFX_ID, event.getExternalEventId());
     final var envelopeResponse = webclientWrapper.postData(openEnvelopeRequest,
         WorkflowRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
         jaggaerAPIConfig.getOpenEnvelope().get(ENDPOINT));
-    log.info("Finish calling Jaggaer API to open envelope, Rfx Id: {}", event.getExternalEventId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + OPEN_ENVELOPE + RFX_ID, event.getExternalEventId());
 
     log.debug("Open envelope response: {}", envelopeResponse);
     if (envelopeResponse.getReturnCode() != 0
@@ -680,10 +679,10 @@ public class JaggaerService {
    */
   public MessageResponse createReplyMessage(final CreateReplyMessage messageRequest) {
     final var endPoint = jaggaerAPIConfig.getCreateReplyMessage().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to create or reply message, Buyer Id: {}", messageRequest.getOperatorUser().getId());
+    log.info(START + CALLING_JAGGAER_API_TO + CREATE_OR_REPLY_MESSAGE + BUYER_ID, messageRequest.getOperatorUser().getId());
     final var messageResponse = webclientWrapper.postData(messageRequest, MessageResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
-    log.info("Finish calling Jaggaer API to create or reply message, Buyer Id: {}", messageRequest.getOperatorUser().getId());
+    log.info(FINISH + CALLING_JAGGAER_API_TO + CREATE_OR_REPLY_MESSAGE + BUYER_ID, messageRequest.getOperatorUser().getId());
     log.debug("Create-Reply message response: {}", messageResponse);
     return messageResponse;
   }
@@ -697,10 +696,10 @@ public class JaggaerService {
       ScoringRequest scoringRequest) {
     final var endPoint = jaggaerAPIConfig.getCreatUpdateScores().get(ENDPOINT);
 
-    log.info("Start calling Jaggaer API to create or update scores, Rfx reference code: {}", scoringRequest.getRfxReferenceCode());
+    log.info(START + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE + SCORES + RFX_REFERENCE_CODE, scoringRequest.getRfxReferenceCode());
     final var scoreResponse = webclientWrapper.postData(scoringRequest, ScoringResponse.class,
         jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
-    log.info("Finish calling Jaggaer API to create or update scores, Rfx reference code: {}", scoringRequest.getRfxReferenceCode());
+    log.info(FINISH + CALLING_JAGGAER_API_TO_CREATE_OR_UPDATE + SCORES + RFX_REFERENCE_CODE, scoringRequest.getRfxReferenceCode());
 
     log.debug("Create-update scoring response: {}", scoreResponse);
     if (scoreResponse.getReturnCode() != 0
