@@ -102,28 +102,7 @@ public class MessageService {
 
       suppliersListBuilder.supplier(suppliers.getFirst());
     } else {
-      ExportRfxResponse exportRfxResponse =
-          jaggaerService.getRfxWithSuppliers(procurementEvent.getExternalEventId());
-      if (Objects.nonNull(exportRfxResponse)
-          && Objects.nonNull(exportRfxResponse.getSuppliersList())
-          && Objects.nonNull(exportRfxResponse.getSuppliersList().getSupplier())) {
-        var allSuppliers = exportRfxResponse.getSuppliersList().getSupplier();
-        var nonDeclinedSuppliers =
-            allSuppliers.stream()
-                .filter(supplier -> !DECLINED_TO_RESPOND.equals(supplier.getStatus()))
-                .map(
-                    e ->
-                        Supplier.builder()
-                            .status(e.getStatus())
-                            .companyData(e.getCompanyData())
-                            .id(String.valueOf(e.getCompanyData().getId()))
-                            .build())
-                .toList();
-        if (allSuppliers.size() != nonDeclinedSuppliers.size()) {
-          suppliersListBuilder.supplier(nonDeclinedSuppliers);
-          messageRequest.broadcast("0");
-        }
-      }
+      buildNonDeclinedSuppliers(procurementEvent.getExternalEventId(), suppliersListBuilder, messageRequest);
     }
     messageRequest.supplierList(suppliersListBuilder.build()).build();
 
@@ -140,6 +119,32 @@ public class MessageService {
 
   }
 
+  private void buildNonDeclinedSuppliers(
+      final String externalEventId,
+      final SuppliersList.SuppliersListBuilder suppliersListBuilder,
+      final CreateReplyMessage.CreateReplyMessageBuilder messageRequest) {
+    ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliers(externalEventId);
+    if (Objects.nonNull(exportRfxResponse)
+        && Objects.nonNull(exportRfxResponse.getSuppliersList())
+        && Objects.nonNull(exportRfxResponse.getSuppliersList().getSupplier())) {
+      var allSuppliers = exportRfxResponse.getSuppliersList().getSupplier();
+      var nonDeclinedSuppliers =
+          allSuppliers.stream()
+              .filter(supplier -> !DECLINED_TO_RESPOND.equals(supplier.getStatus()))
+              .map(
+                  e ->
+                      Supplier.builder()
+                          .status(e.getStatus())
+                          .companyData(e.getCompanyData())
+                          .id(String.valueOf(e.getCompanyData().getId()))
+                          .build())
+              .toList();
+      if (allSuppliers.size() != nonDeclinedSuppliers.size()) {
+        suppliersListBuilder.supplier(nonDeclinedSuppliers);
+        messageRequest.broadcast("0");
+      }
+    }
+  }
 
   /**
    * Returns a list of message summary at the event level.
