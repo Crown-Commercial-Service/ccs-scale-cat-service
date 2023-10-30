@@ -35,12 +35,9 @@ import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.*;
-import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.terms.Terms;
-import org.opensearch.search.sort.SortBuilders;
-import org.opensearch.search.sort.SortOrder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -215,12 +212,14 @@ public class ProcurementProjectService {
       var createUpdateProject =
               new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
+      log.info("Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
       var createProjectResponse =
               ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
                       .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
                       .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                       .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                               "Unexpected error creating project"));
+      log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", createProjectResponse);
 
       if (createProjectResponse.getReturnCode() != 0
               || !"OK".equals(createProjectResponse.getReturnMessage())) {
@@ -298,12 +297,14 @@ public class ProcurementProjectService {
     var updateProject =
         new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
+    log.info("Start calling Jaggaer API to Update project. Request: {}", updateProject);
     var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating project"));
+    log.info("Finish calling Jaggaer API to Update project. Response: {}", updateProjectResponse);
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
@@ -359,11 +360,14 @@ public class ProcurementProjectService {
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
+
+    log.info("Start calling Jaggaer API to get project using project Id: {}", projectId);
     var jaggaerProject = ofNullable(jaggaerWebClient.get()
         .uri(getProjectUri, dbProject.getExternalProjectId()).retrieve().bodyToMono(Project.class)
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving project"));
+    log.info("Finish calling Jaggaer API to get project using project Id: {}", projectId);
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
