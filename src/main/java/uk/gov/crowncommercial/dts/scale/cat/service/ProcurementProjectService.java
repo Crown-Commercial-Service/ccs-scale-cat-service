@@ -558,6 +558,7 @@ public class ProcurementProjectService {
                 .orElse(null);
 
         if (projectMapping != null) {
+          // Great, now fetch the final details we need and map to our summary model
           Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
 
           if (!externalEventIds.isEmpty()) {
