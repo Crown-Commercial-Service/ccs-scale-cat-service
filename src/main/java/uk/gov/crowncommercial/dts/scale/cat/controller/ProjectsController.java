@@ -71,6 +71,17 @@ public class ProjectsController extends AbstractRestController {
     return procurementProjectService.getProjects(principal, searchType, searchTerm, page, pageSize);
   }
 
+  /**
+   * Returns a single ProjectPackageSummary model for a given project ID
+   */
+  @GetMapping("/{projectId}/summary")
+  @TrackExecutionTime
+  public ProjectPackageSummary getProjectSummary(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+    // Grab the principal from the JWT passed to us, then use it and the requested Project ID to fetch the relevant project summary
+    String principal = getPrincipalFromJwt(authentication);
+    return procurementProjectService.getProjectSummary(principal, projectId);
+  }
+
   @PostMapping("/agreements")
   @TrackExecutionTime
   public DraftProcurementProject createProcurementProject(
