@@ -184,9 +184,9 @@ public class GCloudAssessmentService {
             GCloudAssessmentSummary model = new GCloudAssessmentSummary();
 
             model.id = assessmentModel.getId();
-            model.description = assessmentModel.getResultsSummary();
-            model.criteria = assessmentModel.getDimensionRequirements();
-            model.name = assessmentModel.getAssessmentName();
+            model.resultsSummary = assessmentModel.getResultsSummary();
+            model.dimensionRequirements = assessmentModel.getDimensionRequirements();
+            model.assessmentName = assessmentModel.getAssessmentName();
             model.status = AssessmentStatus.fromValue(assessmentModel.getStatus().toString().toLowerCase());
 
             Timestamps timestamps = assessmentModel.getTimestamps();
