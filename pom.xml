@@ -29,7 +29,7 @@
         <tika-core.version>2.9.0</tika-core.version>
         <java-cfenv-boot.version>3.1.1</java-cfenv-boot.version>
         <notifications-java-client.version>4.1.0-RELEASE</notifications-java-client.version>
-        <poi-ooxml.version>5.2.3</poi-ooxml.version>
+        <poi-ooxml.version>5.2.4</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.2</snakeyaml.version>
         <spring-security.version>6.1.4</spring-security.version>
