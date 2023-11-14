@@ -276,15 +276,15 @@ config:
       # apiKey: "SET IN ENV"
       timeoutDuration: 10
       getAgreementDetail:
-        uriTemplate: /agreements/{agreement-id}
+        uriTemplate: /agreements-service/agreements/{agreement-id}
       getLotDetailsForAgreement:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}
       getLotSuppliers:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/suppliers
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/suppliers
       getLotEventTypeDataTemplates:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
       getEventTypesForAgreement:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
 
     conclaveWrapper:
       # baseUrl: "SET IN ENV"
