@@ -45,19 +45,21 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
         OpensearchCredentials opensearchCredentials = vcapServices.getOpensearch().stream()
                 .filter(b -> b.getName().matches(OPEN_SEARCH_PATTERN)).findFirst().orElseThrow().getCredentials();
         String hostnameurl = opensearchCredentials.getHostname()+":"+opensearchCredentials.getPort();
+        ClientConfiguration.MaybeSecureClientConfigurationBuilder clientConfigurationBuilder = ClientConfiguration.builder()
+            .connectedTo(hostnameurl);
 
         if(Arrays.stream(environment.getActiveProfiles()).filter(profile -> profile.contains("local")).findFirst().isPresent())
         {
-            clientConfiguration = ClientConfiguration.builder()
-                    .connectedTo(hostnameurl)
-                    .build();
-
-        }else {
-            clientConfiguration = ClientConfiguration.builder()
-                    .connectedTo(hostnameurl)
-                    .usingSsl(sslContext, NoopHostnameVerifier.INSTANCE)
-                    .withBasicAuth(opensearchCredentials.getUsername(), opensearchCredentials.getPassword())
-                    .build();
+            // No additional configuration required
+            clientConfiguration = clientConfigurationBuilder.build();
+        } else {
+            // Only add basic auth if configured
+            if(opensearchCredentials.getUsername() != null) {
+                clientConfigurationBuilder.withBasicAuth(opensearchCredentials.getUsername().toString(), opensearchCredentials.getPassword().toString());
+            }
+            // Enforce use of SSL
+            clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
+            clientConfiguration = clientConfigurationBuilder.build();
         }
 
         return RestClients.create(clientConfiguration).rest();

@@ -19,11 +19,16 @@ public class DocumentUploadS3ClientConfig {
 
   @Bean("documentUploadS3Client")
   public AmazonS3 amazonS3() {
-    var awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-        documentUploadAPIConfig.getAwsAccessKeyId(), documentUploadAPIConfig.getAwsSecretKey()));
+    if(documentUploadAPIConfig.getAwsAccessKeyId() != null) {
+      var awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
+          documentUploadAPIConfig.getAwsAccessKeyId().toString(), documentUploadAPIConfig.getAwsSecretKey().toString()));
 
-    return AmazonS3ClientBuilder.standard().withRegion(documentUploadAPIConfig.getAwsRegion())
-        .withCredentials(awsCredentials).build();
+      return AmazonS3ClientBuilder.standard().withRegion(documentUploadAPIConfig.getAwsRegion())
+          .withCredentials(awsCredentials).build();
+    } else {
+      return AmazonS3ClientBuilder.standard().withRegion(documentUploadAPIConfig.getAwsRegion())
+          .build();
+    }
   }
 
 }
