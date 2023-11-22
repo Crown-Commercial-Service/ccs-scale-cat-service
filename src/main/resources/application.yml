@@ -276,15 +276,15 @@ config:
       # apiKey: "SET IN ENV"
       timeoutDuration: 10
       getAgreementDetail:
-        uriTemplate: /agreements/{agreement-id}
+        uriTemplate: /agreements-service/agreements/{agreement-id}
       getLotDetailsForAgreement:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}
       getLotSuppliers:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/suppliers
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/suppliers
       getLotEventTypeDataTemplates:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
       getEventTypesForAgreement:
-        uriTemplate: /agreements/{agreement-id}/lots/{lot-id}/event-types
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
 
     conclaveWrapper:
       # baseUrl: "SET IN ENV"
@@ -296,13 +296,13 @@ config:
       catUserRoleKey: CAT_USER
       supplierRoleKey: JAEGGER_SUPPLIER      
       getUser:
-        uriTemplate: /user-profiles?user-id={user-id}
+        uriTemplate: /user-profile?user-id={user-id}
       getUserContacts:
-        uriTemplate: /user-profiles/contacts?user-id={email}
+        uriTemplate: /contact-service/user/contacts?user-id={email}
         
       # Org ID is the internal ID
       getOrganisation:
-        uriTemplate: /organisation-profiles/{org-id}
+        uriTemplate: /organisation-profile/{org-id}
         
       # Org ID is {scheme}-{registry-id} e.g. US-DUN-123456789
       getOrganisationIdentity:

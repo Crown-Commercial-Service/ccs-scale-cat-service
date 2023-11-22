@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
@@ -168,6 +169,38 @@ public class GCloudAssessmentService {
                 retryableTendersDBDelegate.saveAll(gCloudAssessmentResultSet);
             }
         }
+    }
+
+    /**
+     * Gets a summary model for a GCloud Assessment
+     */
+    @Transactional
+    public GCloudAssessmentSummary getGcloudAssessmentSummary(final Integer assessmentId) {
+        // Grab the assessment details from the DB
+        GCloudAssessmentEntity assessmentModel = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId).orElse(null);
+
+        if (assessmentModel != null) {
+            // We appear to have data, so map it to our desired output model
+            GCloudAssessmentSummary model = new GCloudAssessmentSummary();
+
+            model.id = assessmentModel.getId();
+            model.resultsSummary = assessmentModel.getResultsSummary();
+            model.dimensionRequirements = assessmentModel.getDimensionRequirements();
+            model.assessmentName = assessmentModel.getAssessmentName();
+            model.status = AssessmentStatus.fromValue(assessmentModel.getStatus().toString().toLowerCase());
+
+            Timestamps timestamps = assessmentModel.getTimestamps();
+            if (timestamps.getUpdatedAt() != null) {
+                model.lastUpdate = OffsetDateTime.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME));
+            } else {
+                model.lastUpdate = OffsetDateTime.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME));
+            }
+
+            return model;
+        }
+
+        // If we've got this far, there's been an issue or no data was found - return null
+        return null;
     }
 
     /**

@@ -37,8 +37,8 @@ public class AgreementsService {
 
   @TrackExecutionTime
   @Cacheable(value = "getLotEventTypeDataTemplates",  key = "{#agreementId, #lotId,#eventType.value}")
-  public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId,
-      final String lotId, final ViewEventType eventType) {
+  public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
+    String formattedLotId = formatLotIdForAgreementService(lotId);
 
     var getLotEventTypeDataTemplatesUri =
         agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
@@ -48,7 +48,7 @@ public class AgreementsService {
 
     try {
       var dataTemplates = ofNullable(agreementsServiceWebClient.get()
-              .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
+              .uri(getLotEventTypeDataTemplatesUri, agreementId, formattedLotId, eventType.getValue()).retrieve()
               .bodyToMono(typeRefTemplateCriteria)
               .onErrorMap(IOException.class, UncheckedIOException::new)
               .retryWhen(Retry
@@ -61,12 +61,12 @@ public class AgreementsService {
       return dataTemplates;
     }catch(Throwable e){
       // TODO This try-catch block and the fallbackQuery function to be removed after agreement service upgraded.
-      return fallbackQuery(agreementId, lotId, eventType);
+      return fallbackQuery(agreementId, formattedLotId, eventType);
     }
   }
 
-  private List<DataTemplate> fallbackQuery(final String agreementId,
-                                           final String lotId, final ViewEventType eventType) {
+  private List<DataTemplate> fallbackQuery(final String agreementId, final String lotId, final ViewEventType eventType) {
+    String formattedLotId = formatLotIdForAgreementService(lotId);
 
     var getLotEventTypeDataTemplatesUri =
             agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
@@ -76,7 +76,7 @@ public class AgreementsService {
             };
 
     var dataTemplates = ofNullable(agreementsServiceWebClient.get()
-            .uri(getLotEventTypeDataTemplatesUri, agreementId, lotId, eventType.getValue()).retrieve()
+            .uri(getLotEventTypeDataTemplatesUri, agreementId, formattedLotId, eventType.getValue()).retrieve()
             .bodyToMono(typeRefTemplateCriteria)
             .onErrorMap(IOException.class, UncheckedIOException::new)
             .retryWhen(Retry
@@ -95,11 +95,12 @@ public class AgreementsService {
   @TrackExecutionTime
   @Cacheable(value = "getLotSuppliers",  key = "{#agreementId, #lotId}")
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
+    String formattedLotId = formatLotIdForAgreementService(lotId);
     var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
     var lotSuppliers =
         webclientWrapper.getOptionalResource(LotSupplier[].class, agreementsServiceWebClient,
-            agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, lotId);
+            agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, formattedLotId);
 
     return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
   }
@@ -121,27 +122,35 @@ public class AgreementsService {
   @TrackExecutionTime
   @Cacheable(value = "getLotDetails", key = "{#agreementId, #lotId}")
   public LotDetail getLotDetails(final String agreementId, final String lotId) {
+    String formattedLotId = formatLotIdForAgreementService(lotId);
     var lotDetailUri =
         agreementServiceAPIConfig.getGetLotDetailsForAgreement().get(KEY_URI_TEMPLATE);
 
     var lotDetail =
         webclientWrapper.getOptionalResource(LotDetail.class, agreementsServiceWebClient,
-            agreementServiceAPIConfig.getTimeoutDuration(), lotDetailUri, agreementId, lotId);
+            agreementServiceAPIConfig.getTimeoutDuration(), lotDetailUri, agreementId, formattedLotId);
 
     return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
-        "Lot with ID: [" + lotId + "] for CA: [" + agreementId + "] not found in AS"));
+        "Lot with ID: [" + formattedLotId + "] for CA: [" + agreementId + "] not found in AS"));
   }
   @TrackExecutionTime
   @Cacheable(value = "getLotEventTypes", key = "{#agreementId, #lotId}")
   public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
+    String formattedLotId = formatLotIdForAgreementService(lotId);
     var getLotEventTypesUri =
         agreementServiceAPIConfig.getGetEventTypesForAgreement().get(KEY_URI_TEMPLATE);
 
     var lotEventTypes = webclientWrapper.getOptionalResource(LotEventType[].class,
         agreementsServiceWebClient, agreementServiceAPIConfig.getTimeoutDuration(),
-        getLotEventTypesUri, agreementId, lotId);
+        getLotEventTypesUri, agreementId, formattedLotId);
 
     return lotEventTypes.isPresent() ? Set.of(lotEventTypes.get()) : Set.of();
   }
 
+  /**
+   * Strip out legacy formatting from the supplied Lot ID, so that legacy projects can continue to work with the updated Agreement Service
+   */
+  private String formatLotIdForAgreementService(String lotId) {
+    return lotId.replace("Lot ", "");
+  }
 }
