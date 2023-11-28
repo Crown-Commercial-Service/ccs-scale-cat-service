@@ -12,6 +12,7 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ContractDetails;
@@ -168,23 +169,25 @@ public class RetryableTendersDBDelegate {
   }
   
   @TendersRetryable
-  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumber(
-      final String eventType, final String commercialAgreementNumber, final String lotNumber) {
-    return documentTemplateRepo.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType,
-        commercialAgreementNumber, lotNumber);
+  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumber(final String eventType, final String commercialAgreementNumber, final String lotNumber) {
+    return documentTemplateRepo.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType, commercialAgreementNumber, lotNumber);
   }
   
   @TendersRetryable
-  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
-      final String eventType, final String commercialAgreementNumber, final String lotNumber,
-      final Integer templateGroup) {
-    if (templateGroup == null) {
-      return this.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType,
-          commercialAgreementNumber, lotNumber);
+  public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(final String eventType, final String commercialAgreementNumber, final String lotNumber, final Integer templateGroup) {
+    // We need to potentially correct our Lot ID - we need to be sure it contains the legacy prefix for doc gen
+    String lotId = lotNumber;
+
+    if (!lotId.contains(Constants.LOT_PREFIX)) {
+      lotId = Constants.LOT_PREFIX + lotId;
     }
+
+    if (templateGroup == null) {
+      return this.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType, commercialAgreementNumber, lotId);
+    }
+
     return documentTemplateRepo
-        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType,
-            commercialAgreementNumber, lotNumber, templateGroup);
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, commercialAgreementNumber, lotId, templateGroup);
   }
   
   @TendersRetryable
