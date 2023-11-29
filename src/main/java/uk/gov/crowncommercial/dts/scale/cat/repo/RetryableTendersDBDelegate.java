@@ -136,8 +136,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public Set<OrganisationMapping> findOrganisationMappingByCasOrganisationIdIn(
-          final Set<String> organisationIds) {
+  public Set<OrganisationMapping> findOrganisationMappingByCasOrganisationIdIn(final Set<String> organisationIds) {
     return organisationMappingRepo.findByCasOrganisationIdIn(organisationIds);
   }
 
