@@ -35,12 +35,9 @@ import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.*;
-import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.terms.Terms;
-import org.opensearch.search.sort.SortBuilders;
-import org.opensearch.search.sort.SortOrder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -93,20 +90,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.BuyerCompany;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateProjectResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipient;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EmailRecipientList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectOwner;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ProjectTeam;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Tender;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.User;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
@@ -215,12 +199,14 @@ public class ProcurementProjectService {
       var createUpdateProject =
               new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
+      log.info("Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
       var createProjectResponse =
               ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
                       .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
                       .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                       .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                               "Unexpected error creating project"));
+      log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", createProjectResponse);
 
       if (createProjectResponse.getReturnCode() != 0
               || !"OK".equals(createProjectResponse.getReturnMessage())) {
@@ -298,12 +284,14 @@ public class ProcurementProjectService {
     var updateProject =
         new CreateUpdateProject(OperationCode.UPDATE, Project.builder().tender(tender).build());
 
+    log.info("Start calling Jaggaer API to Update project. Request: {}", updateProject);
     var updateProjectResponse =
         ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
             .bodyValue(updateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
             .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error updating project"));
+    log.info("Finish calling Jaggaer API to Update project. Response: {}", updateProjectResponse);
 
     if (updateProjectResponse.getReturnCode() != 0
         || !"OK".equals(updateProjectResponse.getReturnMessage())) {
@@ -359,11 +347,14 @@ public class ProcurementProjectService {
     var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
         .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
     var getProjectUri = jaggaerAPIConfig.getGetProject().get(ENDPOINT);
+
+    log.info("Start calling Jaggaer API to get project using project Id: {}", projectId);
     var jaggaerProject = ofNullable(jaggaerWebClient.get()
         .uri(getProjectUri, dbProject.getExternalProjectId()).retrieve().bodyToMono(Project.class)
         .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                 "Unexpected error retrieving project"));
+    log.info("Finish calling Jaggaer API to get project using project Id: {}", projectId);
 
     // Get Rfx (email recipients)
     var dbEvent = getCurrentEvent(dbProject);
@@ -546,6 +537,46 @@ public class ProcurementProjectService {
           .collect(Collectors.toSet());
     }
     return Collections.emptyList();
+  }
+
+  /**
+   * Get a specific project summary
+   */
+  public ProjectPackageSummary getProjectSummary(final String principal, final Integer projectId) {
+    // Grab the Jaegger details we need to start from the authentication
+    String userId = userProfileService.resolveBuyerUserProfile(principal).orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
+
+    if (userId != null && !userId.isEmpty()) {
+      // Now fetch the projects mapped against this user from our Tenders DB
+      List<ProjectUserMapping> userProjects = retryableTendersDBDelegate.findProjectUserMappingByUserId(userId,null,null, PageRequest.of(0, 20, Sort.by("project.procurementEvents.updatedAt").descending()));
+
+      if (userProjects != null && !userProjects.isEmpty()) {
+        // Now we need to filter down to only include the project we're after
+        ProjectUserMapping projectMapping = userProjects.stream()
+                .filter(p -> p.getProject().getId().equals(projectId))
+                .findFirst()
+                .orElse(null);
+
+        if (projectMapping != null) {
+          // Great, now fetch the final details we need and map to our summary model
+          Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+          if (!externalEventIds.isEmpty()) {
+            Set<ExportRfxResponse> projectRfxs = jaggaerService.searchRFx(externalEventIds);
+
+            if (!projectRfxs.isEmpty()) {
+              Optional<ProjectPackageSummary> projectSummary = convertProjectToProjectPackageSummary(projectMapping, projectRfxs);
+
+              if (projectSummary.isPresent()) {
+                return projectSummary.get();
+              }
+            }
+          }
+        }
+      }
+    }
+
+    throw new ResourceNotFoundException("Project '" + projectId + "' not found");
   }
 
   /**
