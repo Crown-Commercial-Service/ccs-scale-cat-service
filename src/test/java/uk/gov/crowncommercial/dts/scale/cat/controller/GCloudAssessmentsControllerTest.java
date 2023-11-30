@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -44,6 +45,9 @@ public class GCloudAssessmentsControllerTest {
 
     @MockBean
     private GCloudAssessmentService assessmentService;
+
+    @MockBean
+    private AssessmentService coreAssessmentService;
 
     @Autowired
     private ObjectMapper objectMapper;
