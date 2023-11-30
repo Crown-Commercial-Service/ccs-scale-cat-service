@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.processors.store;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -14,36 +15,45 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 public abstract class AbstractSupplierStore implements SupplierStore {
 
     public static final String ERR_MSG_FMT_SUPPLIER_NOT_FOUND =
             "Organisation id '%s' not found in organisation mappings";
 
     protected RetryableTendersDBDelegate retryableTendersDBDelegate;
+
+    /**
+     * Gets the organisation mappings of a set of suppliers passed through to us
+     */
     protected Set<OrganisationMapping> getOrganisationMappings(EventSuppliers eventSuppliers) {
-        var supplierOrgIds = eventSuppliers.getSuppliers().stream().map(OrganizationReference1::getId)
+        // Pull together the supplier org IDs of the suppliers passed in
+        Set<String> supplierOrgIds = eventSuppliers.getSuppliers().stream().map(OrganizationReference1::getId)
                 .collect(Collectors.toSet());
 
-        var supplierOrgMappings =
-                retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
+        // Next grab the organisation mappings from the Tenders DB for those IDs
+        Set<OrganisationMapping> supplierOrgMappings = retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationIdIn(supplierOrgIds);
 
-        // Validate suppliers exist in Organisation Mapping Table
+        // Our two lists should now be the same size - check this
         if (supplierOrgMappings.size() != eventSuppliers.getSuppliers().size()) {
-
-            var missingSuppliers = new ArrayList<String>();
-            eventSuppliers.getSuppliers().stream().forEach(or -> {
+            // There is a disparity, which means some suppliers don't exist in the Tenders org mapping table.  Work out which ones
+            List<String> missingSuppliers = new ArrayList<>();
+            eventSuppliers.getSuppliers().forEach(supplier -> {
                 if (supplierOrgMappings.parallelStream()
-                        .filter(som -> som.getCasOrganisationId().equals(or.getId())).findFirst().isEmpty()) {
-                    missingSuppliers.add(or.getId());
+                        .filter(som -> som.getCasOrganisationId().equals(supplier.getId())).findFirst().isEmpty()) {
+                    missingSuppliers.add(supplier.getId());
                 }
             });
 
             if (!missingSuppliers.isEmpty()) {
-                throw new ResourceNotFoundException(String.format(
+                // We now have a list of the missing suppliers.  We probably want to log that we have this issue, but then just strip them out of the response and carry on
+                log.warn(String.format(
                         "The following suppliers are not present in the Organisation Mappings, so unable to add them: %s",
                         missingSuppliers));
             }
         }
+
+        // We can now return our mappings, confident that they exist in the correct state
         return supplierOrgMappings;
     }
 
