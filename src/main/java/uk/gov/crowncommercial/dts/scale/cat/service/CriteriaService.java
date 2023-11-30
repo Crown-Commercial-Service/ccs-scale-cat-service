@@ -162,6 +162,8 @@ public class CriteriaService {
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
       var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
+
+      log.info("Start calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
       var createRfxResponse =
           ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
               .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
@@ -169,6 +171,7 @@ public class CriteriaService {
               .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                   .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                       "Unexpected error updating Rfx"));
+      log.info("Finish calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
 
       if (createRfxResponse.getReturnCode() != 0
           || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
