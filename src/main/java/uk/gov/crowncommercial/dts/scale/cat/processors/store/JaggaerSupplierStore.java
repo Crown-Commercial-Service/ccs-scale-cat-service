@@ -71,16 +71,20 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         return eventSuppliers;
     }
 
+    /**
+     * Final method in the chain that adds suppliers into Jaegger
+     */
     @Override
     public List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliersList, boolean overWrite, String principal) {
         OperationCode operationCode = overWrite ? OperationCode.UPDATE_RESET : OperationCode.CREATEUPDATE;
 
-        // Build Rfx and update
-        var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-                .rfxReferenceCode(event.getExternalReferenceId()).build();
-        var rfx = Rfx.builder().rfxSetting(rfxSetting)
-                .suppliersList(SuppliersList.builder().supplier(suppliersList).build()).build();
+        // Build the Jaegger Rfx request
+        RfxSetting rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId()).rfxReferenceCode(event.getExternalReferenceId()).build();
+        Rfx rfx = Rfx.builder().rfxSetting(rfxSetting).suppliersList(SuppliersList.builder().supplier(suppliersList).build()).build();
+
+        // We should now be able to perform the update
         jaggaerService.createUpdateRfx(rfx, operationCode);
+
         return suppliersList;
     }
 
@@ -118,8 +122,7 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         return null;
     }
 
-    private void addSuppliersToJaggaer(final ProcurementEvent event,
-                                       final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite, String principal) {
+    private void addSuppliersToJaggaer(final ProcurementEvent event, final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite, String principal) {
         List<Supplier> suppliersList = supplierOrgMappings.stream().map(org -> {
             var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
             return Supplier.builder().companyData(companyData).build();
