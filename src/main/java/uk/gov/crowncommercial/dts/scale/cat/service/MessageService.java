@@ -46,7 +46,6 @@ public class MessageService {
       "Organisation [%s] not found in Conclave";
   static final String ERR_MSG_FMT_ORG_MAPPING_MISSING = "Organisation [%s] not found in OrgMapping";
   static final String ERR_MSG_DOC_NOT_FOUND = "Document [%s] not found in message attachments list";
-  public static final String DECLINED_TO_RESPOND = "Declined to Respond";
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final JaggaerService jaggaerService;
@@ -91,7 +90,6 @@ public class MessageService {
         .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
         .operatorUser(OwnerUser.builder().id(jaggaerUserId).build());
 
-    SuppliersList.SuppliersListBuilder suppliersListBuilder = SuppliersList.builder();
     // Adding supplier details
     if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
       if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
@@ -100,11 +98,8 @@ public class MessageService {
       var suppliers = supplierService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
           .stream().map(OrganizationReference1::getId).toList());
 
-      suppliersListBuilder.supplier(suppliers.getFirst());
-    } else {
-      buildNonDeclinedSuppliers(procurementEvent.getExternalEventId(), suppliersListBuilder, messageRequest);
+      messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
     }
-    messageRequest.supplierList(suppliersListBuilder.build()).build();
 
     // To reply the message
     if (nonOCDS.getParentId() != null) {
@@ -119,32 +114,6 @@ public class MessageService {
 
   }
 
-  private void buildNonDeclinedSuppliers(
-      final String externalEventId,
-      final SuppliersList.SuppliersListBuilder suppliersListBuilder,
-      final CreateReplyMessage.CreateReplyMessageBuilder messageRequest) {
-    ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliers(externalEventId);
-    if (Objects.nonNull(exportRfxResponse)
-        && Objects.nonNull(exportRfxResponse.getSuppliersList())
-        && Objects.nonNull(exportRfxResponse.getSuppliersList().getSupplier())) {
-      var allSuppliers = exportRfxResponse.getSuppliersList().getSupplier();
-      var nonDeclinedSuppliers =
-          allSuppliers.stream()
-              .filter(supplier -> !DECLINED_TO_RESPOND.equals(supplier.getStatus()))
-              .map(
-                  e ->
-                      Supplier.builder()
-                          .status(e.getStatus())
-                          .companyData(e.getCompanyData())
-                          .id(String.valueOf(e.getCompanyData().getId()))
-                          .build())
-              .toList();
-      if (allSuppliers.size() != nonDeclinedSuppliers.size()) {
-        suppliersListBuilder.supplier(nonDeclinedSuppliers);
-        messageRequest.broadcast("0");
-      }
-    }
-  }
 
   /**
    * Returns a list of message summary at the event level.
