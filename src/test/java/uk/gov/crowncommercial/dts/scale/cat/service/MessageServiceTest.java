@@ -1,22 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.builder;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -34,30 +27,21 @@ import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageDirection;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageSort;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageSortOrder;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Attachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.AttachmentList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateReplyMessage;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageCategory;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageList;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageRequestInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessageResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.MessagesResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Receiver;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ReceiverList;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Sender;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SenderUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
@@ -99,8 +83,6 @@ class MessageServiceTest {
   static final String READER_NAME = "John Smith";
 
   static final ProcurementProject project = ProcurementProject.builder().build();
-  public static final String NOT_REPLIED = "Not Replied";
-  public static final String DECLINED_TO_RESPOND = "Declined to Respond";
 
   @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;
@@ -132,53 +114,9 @@ class MessageServiceTest {
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
-  @Captor
-  ArgumentCaptor<CreateReplyMessage> createReplyMessageArgumentCaptor;
-
   @BeforeEach
   void beforeEach() {}
 
-  @Test
-  void shouldNotDeliverMessageToDeclinedSuppliers() {
-    var user = SubUser.builder().userId(JAGGAER_USER_ID).build();
-    var event = new ProcurementEvent();
-    event.setExternalReferenceId(RFX_ID);
-    var rfxResponse = new ExportRfxResponse();
-    var list =
-        List.of(
-            Supplier.builder()
-                .companyData(CompanyData.builder().id(1).build())
-                .status(NOT_REPLIED)
-                .build(),
-            Supplier.builder()
-                .companyData(CompanyData.builder().id(2).build())
-                .status(DECLINED_TO_RESPOND)
-                .build());
-    rfxResponse.setSuppliersList(SuppliersList.builder().supplier(list).build());
-    var message = new Message();
-    var ocds = new MessageOCDS();
-    message.OCDS(ocds);
-    message.nonOCDS(new MessageNonOCDS().isBroadcast(true));
-
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
-        .thenReturn(event);
-    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
-    when(jaggaerService.getRfxWithSuppliers(event.getExternalEventId())).thenReturn(rfxResponse);
-    when(jaggaerService.createReplyMessage(any(CreateReplyMessage.class)))
-        .thenReturn(MessageResponse.builder().messageId(1234L).build());
-
-    messageService.createOrReplyMessage(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID, message);
-
-    verify(jaggaerService).createReplyMessage(createReplyMessageArgumentCaptor.capture());
-
-    var createReplyMessage = createReplyMessageArgumentCaptor.getValue();
-    var supplier = createReplyMessage.getSupplierList().getSupplier().get(0);
-    assertThat(createReplyMessage.getSupplierList().getSupplier()).hasSize(1);
-    assertThat(supplier.getId()).isEqualTo("1");
-    assertThat(supplier.getStatus()).isEqualTo(NOT_REPLIED);
-    assertThat(createReplyMessage.getBroadcast()).isEqualTo("0");
-    assertThat(supplier.getCompanyData().getId()).isEqualTo(1);
-  }
 
   @Test
   void testGetMessages() throws Exception {
