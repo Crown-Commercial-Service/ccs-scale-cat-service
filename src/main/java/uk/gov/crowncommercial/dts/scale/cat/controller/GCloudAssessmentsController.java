@@ -9,8 +9,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,7 +21,9 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -34,6 +39,8 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
 
     private final GCloudAssessmentService assessmentService;
+
+    private final AssessmentService coreAssessmentService;
 
     /**
      * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
@@ -69,6 +76,33 @@ public class GCloudAssessmentsController extends AbstractRestController {
         log.info("updateGcloudAssessment invoked on behalf of principal: {}", principal);
 
         assessmentService.updateGcloudAssessment(assessment, assessmentId, principal);
+    }
+
+    /**
+     * Gets a list of GCloud Assessment Summaries for a user
+     */
+    @GetMapping("/gcloud/summaries")
+    @TrackExecutionTime
+    public List<GCloudAssessmentSummary> getGcloudAssessmentSummaries(final JwtAuthenticationToken authentication) {
+        List<GCloudAssessmentSummary> model = new ArrayList<>();
+
+        // First get the principal from the token and use it to fetch a list of all GCloud assessments for the user
+        String principal = getPrincipalFromJwt(authentication);
+        List<AssessmentSummary> userAssessments = coreAssessmentService.getAssessmentsForUser(principal, 14);
+
+        if (userAssessments != null && !userAssessments.isEmpty()) {
+            // Now for each assessment we've found we need to build the GCloudAssessmentSummary model and add it to our results
+            userAssessments.stream().forEach(result -> {
+                GCloudAssessmentSummary summaryModel = assessmentService.getGcloudAssessmentSummary(result.getAssessmentId());
+
+                if (summaryModel != null) {
+                    model.add(summaryModel);
+                }
+            });
+        }
+
+        // Results should now have been built up, so return our list
+        return model;
     }
 
     /**

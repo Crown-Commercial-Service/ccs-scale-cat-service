@@ -89,7 +89,7 @@ public class MessageService {
         .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
         .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
         .operatorUser(OwnerUser.builder().id(jaggaerUserId).build());
-    
+
     // Adding supplier details
     if (Boolean.FALSE.equals(nonOCDS.getIsBroadcast())) {
       if (CollectionUtils.isEmpty(nonOCDS.getReceiverList())) {
@@ -100,7 +100,7 @@ public class MessageService {
 
       messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
     }
-    
+
     // To reply the message
     if (nonOCDS.getParentId() != null) {
       var messageDetails = jaggaerService.getMessage(nonOCDS.getParentId());

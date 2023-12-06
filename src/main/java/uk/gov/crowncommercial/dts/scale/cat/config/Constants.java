@@ -83,4 +83,6 @@ public class Constants {
 
   public static final List<String> CLOSED_STATUS_LIST = Arrays.asList(CLOSED_STATUS.toLowerCase(), TerminationType.CANCELLED.getValue(),TerminationType.WITHDRAWN.getValue(),
           TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS.toLowerCase());
+
+  public static final String LOT_PREFIX = "Lot ";
 }
