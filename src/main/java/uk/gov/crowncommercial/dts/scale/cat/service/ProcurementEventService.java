@@ -691,7 +691,7 @@ public class ProcurementEventService implements EventService {
 
     /**
      * Add/Overwrite suppliers on an Event.
-     * <p>
+     *
      * If it is an Assessment Event Type, suppliers will only be added in the Tenders DB, otherwise
      * updates will only be in Jaggaer.
      *
@@ -703,67 +703,17 @@ public class ProcurementEventService implements EventService {
      * @return
      */
     @Transactional
-    public EventSuppliers addSuppliers(final Integer procId, final String eventId,
-                                       final EventSuppliers eventSuppliers, final boolean overwrite, final String principal) {
-
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
-
+    public EventSuppliers addSuppliers(final Integer procId, final String eventId, final EventSuppliers eventSuppliers, final boolean overwrite, final String principal) {
+        // Grab the existing Supplier Store for this event
+        ProcurementEvent event = validationService.validateProjectAndEventIds(procId, eventId);
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
-        // we are setting refresh suppliers to false
+        // Set refresh suppliers to false and then save the event
         event.setRefreshSuppliers(false);
         retryableTendersDBDelegate.save(event);
 
+        // Now we can save the suppliers we've been passed
         return supplierStore.storeSuppliers(event, eventSuppliers, principal);
-//
-//    var supplierOrgIds = eventSuppliers.getSuppliers().stream().map(OrganizationReference1::getId)
-//        .collect(Collectors.toSet());
-//
-//    var supplierOrgMappings =
-//        retryableTendersDBDelegate.findOrganisationMappingByOrganisationIdIn(supplierOrgIds);
-//
-//    // Validate suppliers exist in Organisation Mapping Table
-//    if (supplierOrgMappings.size() != eventSuppliers.getSuppliers().size()) {
-//
-//      var missingSuppliers = new ArrayList<String>();
-//      eventSuppliers.getSuppliers().stream().forEach(or -> {
-//        if (supplierOrgMappings.parallelStream()
-//            .filter(som -> som.getOrganisationId().equals(or.getId())).findFirst().isEmpty()) {
-//          missingSuppliers.add(or.getId());
-//        }
-//      });
-//
-//      if (!missingSuppliers.isEmpty()) {
-//        throw new ResourceNotFoundException(String.format(
-//            "The following suppliers are not present in the Organisation Mappings, so unable to add them: %s",
-//            missingSuppliers));
-//      }
-//    }
-//
-//    if (eventSuppliers.getJustification() != null) {
-//      event.setSupplierSelectionJustification(eventSuppliers.getJustification());
-//    }
-//    /*
-//     * If Event is a Tenders DB only type, suppliers are stored in the Tenders DB only, otherwise
-//     * they are stored in Jaggaer.
-//     */
-//    if (event.isTendersDBOnly()) {
-//      log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
-//          event.getEventType());
-//      var assessment =
-//          assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE, Optional.empty());
-//      var dimensionWeightingCheck = assessment.getDimensionRequirements().stream()
-//          .map(DimensionRequirement::getWeighting).reduce(0, Integer::sum);
-//      if (dimensionWeightingCheck != 100) {
-//        throw new ValidationException(ERR_MSG_ALL_DIMENSION_WEIGHTINGS);
-//      }
-//      addSuppliersToTendersDB(event, supplierOrgMappings, overwrite, principal);
-//    } else {
-//      log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
-//      addSuppliersToJaggaer(event, supplierOrgMappings, overwrite);
-//    }
-//
-//    return eventSuppliers;
     }
 
     /**
@@ -1013,49 +963,60 @@ public class ProcurementEventService implements EventService {
         updateStatusAndDates(principal, procurementEvent);
     }
 
+    /**
+     * Validates and, if necessary, refreshes supplier details across Agreement Service and Jaegger to bring them into line
+     */
     public void jaggaerSupplierRefresh(Integer procId, String eventId, String principal, ProcurementEvent procurementEvent, ExportRfxResponse exportRfxResponse) {
+        // Grab a list of all suppliers for this agreement/lot from Tenders DB (via the Agreement Service), and all suppliers from Jaegger
         Set<OrganisationMapping> agreementSuppliers = supplierService.getSuppliersForLot(procurementEvent.getProject().getCaNumber(), procurementEvent.getProject().getLotNumber());
         List<Supplier> jaggaerSuppliers = Objects.nonNull(exportRfxResponse.getSuppliersList()) ? exportRfxResponse.getSuppliersList().getSupplier() : new ArrayList();
 
         Set<Integer> agreementSupplierIds = agreementSuppliers.stream().map(OrganisationMapping::getExternalOrganisationId).collect(Collectors.toSet());
         Set<Integer> jaggaerSupplierIds = jaggaerSuppliers.stream().map(supplier -> supplier.getCompanyData().getId()).collect(Collectors.toSet());
 
+        // Check to see whether our Tenders and Jaegger data sets are identical
         boolean agreementHasSuperSet = agreementSupplierIds.containsAll(jaggaerSupplierIds);
         boolean jaggaerHasSuperSet = jaggaerSupplierIds.containsAll(agreementSupplierIds);
 
         if (!agreementHasSuperSet || !jaggaerHasSuperSet) {
-            if (agreementHasSuperSet && !jaggaerHasSuperSet) {
-                log.debug("computing extra suppliers from agreement serivce/jaggaer {}/{}", agreementSupplierIds.size(), jaggaerSupplierIds.size());
+            // Our data sets are not identical, we need to bring them into line
+            if (agreementHasSuperSet) {
+                // Jaegger does not contain all the data we found in the Agreement Service
+                log.debug("computing extra suppliers from agreement service/jaggaer {}/{}", agreementSupplierIds.size(), jaggaerSupplierIds.size());
                 agreementSupplierIds.removeAll(jaggaerSupplierIds);
                 log.debug("{} suppliers are identified to be added in Jaggaer", agreementSupplierIds.size());
-                List<OrganisationMapping> newAggrementSuppliers = agreementSuppliers.stream()
+
+                // We are now left with the missing suppliers in Jaegger in our list.  Filter this down further to just those with External Org IDs
+                List<OrganisationMapping> newAgreementSuppliers = agreementSuppliers.stream()
                         .filter(organisationMapping -> agreementSupplierIds.contains(organisationMapping.getExternalOrganisationId()))
                         .collect(Collectors.toList());
 
-                EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
+                // Now take that filtered list, build it into the EventSupplier models we need, and then proceed to try and add them into Jaegger
+                EventSuppliers newEventSuppliers = createNewEventSuppliers(newAgreementSuppliers);
                 addSuppliers(procId, eventId, newEventSuppliers, false, principal);
             } else {
+                // Tenders DB does not contain all the data we found in Jaegger - repush the data
                 log.debug("{} suppliers will be re-pushed to Jaggaer", agreementSuppliers.size());
-                List<OrganisationMapping> newAggrementSuppliers = agreementSuppliers.stream().collect(Collectors.toList());
-                EventSuppliers newEventSuppliers = createNewEventSuppliers(newAggrementSuppliers);
+                List<OrganisationMapping> newAgreementSuppliers = new ArrayList<>(agreementSuppliers);
+                EventSuppliers newEventSuppliers = createNewEventSuppliers(newAgreementSuppliers);
                 newEventSuppliers.setOverwriteSuppliers(Boolean.TRUE);
                 addSuppliers(procId, eventId, newEventSuppliers, true, principal);
             }
-        }else{
+        } else {
+            // Data sets are identical, so data is in line between Tenders and Jaegger - no action needed
             log.info("No change in suppliers detected, suppliers will not be refreshed in Jaggaer {}/{}", agreementSuppliers.size(), jaggaerSuppliers.size());
         }
     }
 
-    private EventSuppliers createNewEventSuppliers(List<OrganisationMapping> newAggrementSuppliers) {
+    private EventSuppliers createNewEventSuppliers(List<OrganisationMapping> newAgreementSuppliers) {
 
-        List<OrganizationReference1> eventSuppliersOrgs= newAggrementSuppliers.stream().map(organisationMapping -> {
-
+        List<OrganizationReference1> eventSuppliersOrgs = newAgreementSuppliers.stream().map(organisationMapping -> {
             OrganizationReference1 organizationReference1= new OrganizationReference1();
             organizationReference1.setId(organisationMapping.getCasOrganisationId());
             return organizationReference1;
         }).collect(Collectors.toList());
 
-        EventSuppliers eventSuppliers= new EventSuppliers();
+        EventSuppliers eventSuppliers = new EventSuppliers();
 
         eventSuppliers.setSuppliers(eventSuppliersOrgs);
         eventSuppliers.setOverwriteSuppliers(false);

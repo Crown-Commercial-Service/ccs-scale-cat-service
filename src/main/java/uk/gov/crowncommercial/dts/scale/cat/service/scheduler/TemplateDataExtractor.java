@@ -144,13 +144,13 @@ public class TemplateDataExtractor {
     }
     return "";
   }
-
+  
   public static Set<ExportRfxResponse> removeBrokenEvents(Set<ExportRfxResponse> jaggaerData) {
     // removed broken projects
     return jaggaerData.stream()
-            .filter(e -> Objects.nonNull(e.getRfxSetting().getCloseDate())
-                    && Objects.nonNull(e.getRfxSetting().getPublishDate())
-                    && e.getRfxSetting().getStatusCode() != 0)
-            .collect(Collectors.toSet());
+        .filter(e -> Objects.nonNull(e.getRfxSetting().getCloseDate())
+            && Objects.nonNull(e.getRfxSetting().getPublishDate())
+            && e.getRfxSetting().getStatusCode() != 0)
+        .collect(Collectors.toSet());
   }
 }

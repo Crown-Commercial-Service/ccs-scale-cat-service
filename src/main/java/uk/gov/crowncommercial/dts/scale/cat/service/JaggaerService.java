@@ -414,7 +414,8 @@ public class JaggaerService {
     log.info("Finish calling Jaggaer API to get message, Message Id: {}", messageId);
     return messageResponse;
   }
- @Async
+  
+  @Async
   public Future<MessageResponse> updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
 

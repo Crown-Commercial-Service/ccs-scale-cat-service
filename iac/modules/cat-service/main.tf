@@ -88,10 +88,6 @@ data "aws_ssm_parameter" "agreements_service_base_url" {
   name = "/cat/${var.environment}/agreements-service-base-url"
 }
 
-data "aws_ssm_parameter" "agreements_service_api_key" {
-  name = "/cat/${var.environment}/agreements-service-api-key"
-}
-
 # Oppertunities S3 export
 data "aws_ssm_parameter" "oppertunities_s3_export_schedule" {
   name = "/cat/${var.environment}/oppertunities-s3-export-schedule"
@@ -189,7 +185,6 @@ resource "cloudfoundry_app" "cat_service" {
     
     # Agreements Service
     "config.external.agreements-service.baseUrl" : data.aws_ssm_parameter.agreements_service_base_url.value
-    "config.external.agreements-service.apiKey" : data.aws_ssm_parameter.agreements_service_api_key.value
 
     # Projects to OpenSearch scheduler
     "config.external.s3.oppertunities.schedule": data.aws_ssm_parameter.oppertunities_s3_export_schedule.value
