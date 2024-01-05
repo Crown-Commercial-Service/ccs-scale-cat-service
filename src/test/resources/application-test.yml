@@ -12,9 +12,6 @@ config:
     maxAttempts: 3
   external:
     jaggaer:
-      createProjectTemplateId: tender_49
-      createRfxTemplateId: itt_9899
       rpa: 
         encryptionIv: hjnhgy8k*A?(7y-K
         encryptionKey: uikjnsh657*y%hD*G-KaPdS*kij#3s6v
-
