@@ -11,7 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 
 /**
- *
+ * Web Client for connecting to Tenders S3 bucket
  */
 @Configuration
 @RequiredArgsConstructor
@@ -30,9 +30,9 @@ public class TendersS3ClientConfig {
   @Bean("tendersS3Client")
   public AmazonS3 amazonS3(final AWSS3Service awsS3Bucket) {
     var bucketCredentials = awsS3Bucket.getCredentials();
-    if(bucketCredentials.getAwsAccessKeyId() != null) {
-      var awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-          bucketCredentials.getAwsAccessKeyId().toString(), bucketCredentials.getAwsSecretAccessKey().toString()));
+    if(bucketCredentials.getAwsAccessKeyId() != null && bucketCredentials.getAwsAccessKeyId().isPresent() && bucketCredentials.getAwsSecretAccessKey() != null && bucketCredentials.getAwsSecretAccessKey().isPresent()) {
+      AWSStaticCredentialsProvider awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
+          bucketCredentials.getAwsAccessKeyId().get(), bucketCredentials.getAwsSecretAccessKey().get()));
 
       return AmazonS3ClientBuilder.standard().withRegion(bucketCredentials.getAwsRegion())
           .withCredentials(awsCredentials).build();

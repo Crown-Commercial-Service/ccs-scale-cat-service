@@ -10,16 +10,12 @@ import org.opensearch.data.client.orhlc.AbstractOpenSearchConfiguration;
 import org.opensearch.data.client.orhlc.ClientConfiguration;
 import org.opensearch.data.client.orhlc.RestClients;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.OpensearchCredentials;
-import uk.gov.crowncommercial.dts.scale.cat.config.paas.OpensearchService;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import java.util.Arrays;
 
@@ -48,19 +44,17 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
         ClientConfiguration.MaybeSecureClientConfigurationBuilder clientConfigurationBuilder = ClientConfiguration.builder()
             .connectedTo(hostnameurl);
 
-        if(Arrays.stream(environment.getActiveProfiles()).filter(profile -> profile.contains("local")).findFirst().isPresent())
+        if(Arrays.stream(environment.getActiveProfiles()).noneMatch(profile -> profile.contains("local")))
         {
-            // No additional configuration required
-            clientConfiguration = clientConfigurationBuilder.build();
-        } else {
             // Only add basic auth if configured
-            if(opensearchCredentials.getUsername() != null) {
-                clientConfigurationBuilder.withBasicAuth(opensearchCredentials.getUsername().toString(), opensearchCredentials.getPassword().toString());
+            if(opensearchCredentials.getUsername() != null && opensearchCredentials.getUsername().isPresent() && opensearchCredentials.getPassword() != null && opensearchCredentials.getPassword().isPresent()) {
+                clientConfigurationBuilder.withBasicAuth(opensearchCredentials.getUsername().get(), opensearchCredentials.getPassword().get());
             }
             // Enforce use of SSL
             clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
-            clientConfiguration = clientConfigurationBuilder.build();
         }
+
+        clientConfiguration = clientConfigurationBuilder.build();
 
         return RestClients.create(clientConfiguration).rest();
     }
