@@ -4,6 +4,7 @@ COPY . /build
 RUN cd /build && mvn package
 
 FROM eclipse-temurin:17.0.9_9-jre-alpine
+RUN apk --no-cache add curl
 ARG APP_DIR
 RUN addgroup -S appuser && \
     adduser -S -G appuser appuser && \
