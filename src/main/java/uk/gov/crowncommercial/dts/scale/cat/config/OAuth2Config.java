@@ -41,7 +41,11 @@ public class OAuth2Config {
 
     log.info("Configuring resource server...");
 
-    http.authorizeHttpRequests(authz ->
+    http
+      .authorizeHttpRequests()
+      .requestMatchers("/actuator/**").permitAll()
+      .and()
+      .authorizeHttpRequests(authz ->
       authz
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*/events/*/documents/export").permitAll()
