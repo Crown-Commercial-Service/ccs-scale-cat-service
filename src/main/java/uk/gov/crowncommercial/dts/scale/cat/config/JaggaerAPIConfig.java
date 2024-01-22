@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import lombok.Data;
@@ -62,6 +64,8 @@ public class JaggaerAPIConfig {
   private Map<String, String> award;
   private Map<String, String> preAward;
   private Map<String, String> completeTechnical;
+  private Optional<String> createProjectTemplateId;
+  private Optional<String> createRfxTemplateId;
 
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;

@@ -9,7 +9,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import lombok.RequiredArgsConstructor;
 
 /**
- *
+ * Web Client for accessing Doc Upload S3 Bucket
  */
 @Configuration
 @RequiredArgsConstructor
@@ -19,11 +19,16 @@ public class DocumentUploadS3ClientConfig {
 
   @Bean("documentUploadS3Client")
   public AmazonS3 amazonS3() {
-    var awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-        documentUploadAPIConfig.getAwsAccessKeyId(), documentUploadAPIConfig.getAwsSecretKey()));
+    if(documentUploadAPIConfig.getAwsAccessKeyId() != null && documentUploadAPIConfig.getAwsAccessKeyId().isPresent() && documentUploadAPIConfig.getAwsSecretKey() != null && documentUploadAPIConfig.getAwsSecretKey().isPresent()) {
+      AWSStaticCredentialsProvider awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
+          documentUploadAPIConfig.getAwsAccessKeyId().get(), documentUploadAPIConfig.getAwsSecretKey().get()));
 
-    return AmazonS3ClientBuilder.standard().withRegion(documentUploadAPIConfig.getAwsRegion())
-        .withCredentials(awsCredentials).build();
+      return AmazonS3ClientBuilder.standard().withRegion(documentUploadAPIConfig.getAwsRegion())
+          .withCredentials(awsCredentials).build();
+    } else {
+      return AmazonS3ClientBuilder.standard().withRegion(documentUploadAPIConfig.getAwsRegion())
+          .build();
+    }
   }
 
 }
