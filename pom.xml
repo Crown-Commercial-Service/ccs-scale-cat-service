@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.6</version>
+        <version>3.2.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>uk.gov.crowncommercial.dts</groupId>
@@ -39,9 +39,12 @@
         <jackson.version>2.15.2</jackson.version>
         <hibernate.version>6.3.1.Final</hibernate.version>
         <junit.version>5.9.3</junit.version>
-        <opensearch.version>1.2.1</opensearch.version>
+        <opensearch.version>1.3.0</opensearch.version>
         <shedlock.version>5.10.0</shedlock.version>
         <spring-boot.version>3.2.2</spring-boot.version>
+        <jose.version>0.9.4</jose.version>
+        <jsonpath.version>2.9.0</jsonpath.version>
+        <logback.version>1.4.14</logback.version>
     </properties>
 
     <dependencies>
@@ -223,23 +226,27 @@
             <groupId>uk.gov.service.notify</groupId>
             <artifactId>notifications-java-client</artifactId>
             <version>${notifications-java-client.version}</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>jose4j</artifactId>
+                    <groupId>org.bitbucket.b_c</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.bitbucket.b_c/jose4j -->
         <dependency>
             <groupId>org.bitbucket.b_c</groupId>
             <artifactId>jose4j</artifactId>
-            <version>0.9.4</version>
+            <version>${jose.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-core</artifactId>
             <version>${jena-core.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.jayway.jsonpath/json-path -->
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
-            <version>2.9.0</version>
+            <version>${jsonpath.version}</version>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>
@@ -292,6 +299,10 @@
                     <groupId>org.junit.vintage</groupId>
                     <artifactId>junit-vintage-engine</artifactId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>json-path</artifactId>
+                    <groupId>com.jayway.jsonpath</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -315,18 +326,16 @@
             <artifactId>rollbar-logback</artifactId>
             <version>${rollbar.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.4.14</version>
+            <version>${logback.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-core -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
-            <version>1.4.14</version>
+            <version>${logback.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
