@@ -18,7 +18,7 @@
     <properties>
         <java.version>17</java.version>
         <swagger-parser.version>2.1.19</swagger-parser.version>
-        <guava.version>32.1.3-jre</guava.version>
+        <guava.version>33.0.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
         <modelmapper.version>3.2.0</modelmapper.version>
@@ -37,7 +37,7 @@
         <rollbar.version>1.10.0</rollbar.version>
         <jsoup.version>1.17.1</jsoup.version>
         <jackson.version>2.15.2</jackson.version>
-        <hibernate.version>6.3.1.Final</hibernate.version>
+        <hibernate.version>6.3.2.Final</hibernate.version>
         <junit.version>5.9.3</junit.version>
         <opensearch.version>1.3.0</opensearch.version>
         <shedlock.version>5.10.2</shedlock.version>
