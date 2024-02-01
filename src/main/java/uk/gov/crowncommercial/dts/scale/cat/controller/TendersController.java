@@ -75,7 +75,7 @@ public class TendersController extends AbstractRestController {
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    String sanitisedUserId = sanitisationUtils.sanitiseString(userId, false);
+    String sanitisedUserId = sanitisationUtils.sanitiseStringAsText(userId);
 
     if (!StringUtils.equalsIgnoreCase(trim(principal), sanitisedUserId)) {
       throw new AuthorisationFailureException("Authenticated user does not match requested user-id");

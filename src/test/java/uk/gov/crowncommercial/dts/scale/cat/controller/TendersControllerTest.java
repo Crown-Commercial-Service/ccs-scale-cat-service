@@ -144,7 +144,7 @@ class TendersControllerTest {
         .roles(List.of(
             uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.BUYER)));
 
-    when(sanitisationUtils.sanitiseString(PRINCIPAL, false)).thenReturn(PRINCIPAL);
+    when(sanitisationUtils.sanitiseStringAsText(PRINCIPAL)).thenReturn(PRINCIPAL);
 
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
@@ -162,7 +162,7 @@ class TendersControllerTest {
         .roles(List.of(
             uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.SUPPLIER)));
 
-    when(sanitisationUtils.sanitiseString(PRINCIPAL, false)).thenReturn(PRINCIPAL);
+    when(sanitisationUtils.sanitiseStringAsText(PRINCIPAL)).thenReturn(PRINCIPAL);
 
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)

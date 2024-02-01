@@ -168,7 +168,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("addProjectUser invoked on behalf of principal: {}", principal);
-    String sanitisedUserId = sanitisationUtils.sanitiseString(userId, false);
+    String sanitisedUserId = sanitisationUtils.sanitiseStringAsText(userId);
 
     return procurementProjectService.addProjectTeamMember(procId, sanitisedUserId, updateTeamMember, principal);
   }
@@ -180,7 +180,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteTeamMember invoked on behalf of principal: {}", principal);
-    String sanitisedUserId = sanitisationUtils.sanitiseString(userId, false);
+    String sanitisedUserId = sanitisationUtils.sanitiseStringAsText(userId);
 
     procurementProjectService.deleteTeamMember(procId, sanitisedUserId, principal);
     return Constants.OK_MSG;

@@ -317,7 +317,7 @@ class ProjectsControllerTest {
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
         updateTeamMember, PRINCIPAL)).thenReturn(TestUtils.getTeamMember());
 
-    when(sanitisationUtils.sanitiseString(TestUtils.USERID, false)).thenReturn(TestUtils.USERID);
+    when(sanitisationUtils.sanitiseStringAsText(TestUtils.USERID)).thenReturn(TestUtils.USERID);
 
     mockMvc
         .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
@@ -363,7 +363,7 @@ class ProjectsControllerTest {
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
         updateTeamMember, PRINCIPAL)).thenThrow(new JaggaerApplicationException("1", "BANG"));
 
-    when(sanitisationUtils.sanitiseString(TestUtils.USERID, false)).thenReturn(TestUtils.USERID);
+    when(sanitisationUtils.sanitiseStringAsText(TestUtils.USERID)).thenReturn(TestUtils.USERID);
 
     mockMvc
         .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)

@@ -13,20 +13,21 @@ import static org.apache.commons.lang3.StringUtils.trim;
 @Component
 public class SanitisationUtils {
     /**
-     * Sanitise a given String value
+     * Sanitise a given String value and returns as text
      */
-    public String sanitiseString(String inputValue, Boolean htmlSupported) {
-        // Instantiate the Jsoup cleaner
-        Cleaner cleaner;
-
-        // Check to see whether HTML needs to be supported in this input.  By default this should always be no
-        if (htmlSupported) {
-            cleaner = new Cleaner(Safelist.basic());
-        } else {
-            cleaner = new Cleaner(Safelist.none());
-        }
+    public String sanitiseStringAsText(String inputValue) {
+        // Instantiate the Jsoup cleaner - we need to parse this too so it transforms encoded characters correctly
+        Cleaner cleaner = new Cleaner(Safelist.none());
 
         return cleaner.clean(Jsoup.parse(trim(inputValue))).text();
+    }
+
+    /**
+     * Sanitise a given String value and returns as "simple text" (aka. text with HTML elements)
+     */
+    public String sanitiseStringAsFormattedText(String inputValue) {
+        // Instantiate the Jsoup cleaner - we can just sanitise this directly
+        return Jsoup.clean(trim(inputValue), Safelist.simpleText());
     }
 
     // TODO: Handling models
