@@ -3,12 +3,14 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Safelist;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
@@ -73,12 +75,13 @@ public class TendersController extends AbstractRestController {
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
-      // CON-1682-AC11
-      throw new AuthorisationFailureException(
-          "Authenticated user does not match requested user-id");
+    Cleaner cleaner = new Cleaner(Safelist.none());
+    String sanitisedUserId = cleaner.clean(Jsoup.parse(trim(userId))).text();
+
+    if (!StringUtils.equalsIgnoreCase(trim(principal), sanitisedUserId)) {
+      throw new AuthorisationFailureException("Authenticated user does not match requested user-id");
     }
-    var registerUserResponse = profileManagementService.registerUser(userId);
+    var registerUserResponse = profileManagementService.registerUser(sanitisedUserId);
     if (registerUserResponse.getUserAction() == UserActionEnum.EXISTED) {
       return ResponseEntity.status(HttpStatus.OK).body(registerUserResponse);
     } else {
