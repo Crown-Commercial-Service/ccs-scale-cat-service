@@ -3,9 +3,6 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Cleaner;
-import org.jsoup.safety.Safelist;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -18,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,6 +34,8 @@ import static org.apache.commons.lang3.StringUtils.trim;
 public class TendersController extends AbstractRestController {
 
   private final ProfileManagementService profileManagementService;
+
+  private final SanitisationUtils sanitisationUtils;
 
   @GetMapping("/event-types")
   @TrackExecutionTime
@@ -75,8 +75,7 @@ public class TendersController extends AbstractRestController {
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    Cleaner cleaner = new Cleaner(Safelist.none());
-    String sanitisedUserId = cleaner.clean(Jsoup.parse(trim(userId))).text();
+    String sanitisedUserId = sanitisationUtils.sanitiseString(userId, false);
 
     if (!StringUtils.equalsIgnoreCase(trim(principal), sanitisedUserId)) {
       throw new AuthorisationFailureException("Authenticated user does not match requested user-id");

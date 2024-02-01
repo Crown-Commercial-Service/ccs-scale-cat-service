@@ -35,6 +35,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -57,6 +58,9 @@ class TendersControllerTest {
   private JwtRequestPostProcessor validLDJwtReqPostProcessor;
   @MockBean
   private LockProvider lockProvider;
+
+  @MockBean
+  private SanitisationUtils sanitisationUtils;
 
   @BeforeEach
   void beforeEach() {
@@ -139,6 +143,9 @@ class TendersControllerTest {
         .userAction(UserActionEnum.EXISTED).organisationAction(OrganisationActionEnum.EXISTED)
         .roles(List.of(
             uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.BUYER)));
+
+    when(sanitisationUtils.sanitiseString(PRINCIPAL, false)).thenReturn(PRINCIPAL);
+
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
@@ -154,6 +161,9 @@ class TendersControllerTest {
         .userAction(UserActionEnum.CREATED).organisationAction(OrganisationActionEnum.EXISTED)
         .roles(List.of(
             uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.RolesEnum.SUPPLIER)));
+
+    when(sanitisationUtils.sanitiseString(PRINCIPAL, false)).thenReturn(PRINCIPAL);
+
     mockMvc
         .perform(put("/tenders/users/{user-id}", PRINCIPAL).with(validLDJwtReqPostProcessor)
             .accept(APPLICATION_JSON))

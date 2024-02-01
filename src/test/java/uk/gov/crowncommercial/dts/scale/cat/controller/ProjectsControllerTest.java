@@ -50,6 +50,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.UserProfileService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
 import uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -97,6 +98,9 @@ class ProjectsControllerTest {
 
   @MockBean
   private UserProfileService userProfileService;
+
+  @MockBean
+  private SanitisationUtils sanitisationUtils;
 
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 
@@ -313,6 +317,8 @@ class ProjectsControllerTest {
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
         updateTeamMember, PRINCIPAL)).thenReturn(TestUtils.getTeamMember());
 
+    when(sanitisationUtils.sanitiseString(TestUtils.USERID, false)).thenReturn(TestUtils.USERID);
+
     mockMvc
         .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)
             .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
@@ -356,6 +362,8 @@ class ProjectsControllerTest {
 
     when(procurementProjectService.addProjectTeamMember(PROC_PROJECT_ID, TestUtils.USERID,
         updateTeamMember, PRINCIPAL)).thenThrow(new JaggaerApplicationException("1", "BANG"));
+
+    when(sanitisationUtils.sanitiseString(TestUtils.USERID, false)).thenReturn(TestUtils.USERID);
 
     mockMvc
         .perform(put(TENDERS_PROJECTS + PROC_PROJECT_ID + "/users/" + TestUtils.USERID)

@@ -1,15 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import static org.apache.commons.lang3.StringUtils.trim;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Collection;
 import org.apache.commons.io.IOUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Cleaner;
-import org.jsoup.safety.Safelist;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -46,6 +42,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  *
@@ -59,6 +56,7 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProjectPackageService projectPackageService;
   private final ProcurementProjectService procurementProjectService;
+  private final SanitisationUtils sanitisationUtils;
 
   private final ObjectMapper mapper;
 
@@ -170,8 +168,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("addProjectUser invoked on behalf of principal: {}", principal);
-    Cleaner cleaner = new Cleaner(Safelist.none());
-    String sanitisedUserId = cleaner.clean(Jsoup.parse(trim(userId))).text();
+    String sanitisedUserId = sanitisationUtils.sanitiseString(userId, false);
 
     return procurementProjectService.addProjectTeamMember(procId, sanitisedUserId, updateTeamMember, principal);
   }
@@ -183,8 +180,7 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteTeamMember invoked on behalf of principal: {}", principal);
-    Cleaner cleaner = new Cleaner(Safelist.none());
-    String sanitisedUserId = cleaner.clean(Jsoup.parse(trim(userId))).text();
+    String sanitisedUserId = sanitisationUtils.sanitiseString(userId, false);
 
     procurementProjectService.deleteTeamMember(procId, sanitisedUserId, principal);
     return Constants.OK_MSG;
