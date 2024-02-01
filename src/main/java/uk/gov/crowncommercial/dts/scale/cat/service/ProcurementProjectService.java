@@ -178,13 +178,17 @@ public class ProcurementProjectService {
               .orElseThrow(() -> new AuthorisationFailureException(
                       "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
 
-      var projectTitle =
-              getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
+      var projectTitle = getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
+      String projectTemplateId = null;
+
+      if (jaggaerAPIConfig.getCreateProjectTemplateId() != null && jaggaerAPIConfig.getCreateProjectTemplateId().isPresent()) {
+        projectTemplateId = jaggaerAPIConfig.getCreateProjectTemplateId().get();
+      }
 
       var tender = Tender.builder().title(projectTitle)
               .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
               .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
-              .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+              .sourceTemplateReferenceCode(projectTemplateId).build();
 
       var projectBuilder = Project.builder().tender(tender);
 
@@ -208,8 +212,7 @@ public class ProcurementProjectService {
                               "Unexpected error creating project"));
       log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", createProjectResponse);
 
-      if (createProjectResponse.getReturnCode() != 0
-              || !"OK".equals(createProjectResponse.getReturnMessage())) {
+      if (createProjectResponse.getReturnCode() != 0 || !"OK".equals(createProjectResponse.getReturnMessage())) {
         throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
                 createProjectResponse.getReturnMessage());
       }
@@ -223,24 +226,23 @@ public class ProcurementProjectService {
               .updatedBy(principal).updatedAt(Instant.now()).build();
 
       /*
-       * Get existing buyer user org mapping or create as part of procurement project persistence.
-       * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
-       * self-service company).
-       */
+        * Get existing buyer user org mapping or create as part of procurement project persistence.
+        * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
+        * self-service company).
+      */
       var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
-      var organisationMapping =
-              retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+      var organisationMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
       // Adapt save strategy based on org mapping status (new/existing)
       if (organisationMapping.isEmpty()) {
-        organisationMapping=Optional.of(retryableTendersDBDelegate
+        organisationMapping = Optional.of(retryableTendersDBDelegate
                 .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
                         .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
                         .createdAt(Instant.now()).createdBy(principal).build()));
       }
 
       procurementProject.setOrganisationMapping(organisationMapping.get());
-      procurementProject=retryableTendersDBDelegate.save(procurementProject);
+      procurementProject = retryableTendersDBDelegate.save(procurementProject);
 
       var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
               new CreateEvent(), null, principal);
@@ -903,18 +905,10 @@ public class ProcurementProjectService {
 
   private static void addKeywordQuery(BoolQueryBuilder boolQuery, String keyword) {
     if(keyword != null && keyword.trim().length() > 0) {
-      Pattern matchPattern = Pattern.compile("~[0-9]|\"[^\"]*\"");
-
-      if(matchPattern.matcher(keyword).find() || (keyword.indexOf('*') > 0)){
-        boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword)
-                .field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                .analyzeWildcard(true)
-                .defaultOperator(Operator.AND).flags(SimpleQueryStringFlag.ALL));
-      }else {
-        boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                .fuzziness(Fuzziness.ONE)
-                .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-      }
+      boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword)
+              .field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
+              .analyzeWildcard(true)
+              .defaultOperator(Operator.OR).flags(SimpleQueryStringFlag.ALL));
     }
   }
 

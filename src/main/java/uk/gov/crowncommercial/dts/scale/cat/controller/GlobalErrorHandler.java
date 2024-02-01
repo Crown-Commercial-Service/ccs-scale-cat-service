@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.HttpStatus.*;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,10 +85,8 @@ public class GlobalErrorHandler implements ErrorController {
 
     log.error("UnauthorisedException", exception);
 
-    var apiError = new ApiError(FORBIDDEN.toString(), exception.getMessage(),
-        appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? exception.getMessage()
-            : "");
-    return tendersAPIModelUtils.buildErrors(Arrays.asList(apiError));
+    var apiError = new ApiError(FORBIDDEN.toString(), exception.getMessage(), exception.getMessage());
+    return tendersAPIModelUtils.buildErrors(List.of(apiError));
   }
 
   @ResponseStatus(CONFLICT)

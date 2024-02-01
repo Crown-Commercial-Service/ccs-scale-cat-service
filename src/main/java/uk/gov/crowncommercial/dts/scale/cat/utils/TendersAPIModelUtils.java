@@ -78,9 +78,8 @@ public class TendersAPIModelUtils {
   }
 
   public Errors buildDefaultErrors(final String status, final String title, final String details) {
-    var apiError = new ApiError(status, title,
-        appFlagsConfig.getDevMode() != null && appFlagsConfig.getDevMode() ? details : "");
-    return buildErrors(Arrays.asList(apiError));
+    var apiError = new ApiError(status, title, details);
+    return buildErrors(List.of(apiError));
   }
 
   public Errors buildErrors(final List<ApiError> apiErrors) {

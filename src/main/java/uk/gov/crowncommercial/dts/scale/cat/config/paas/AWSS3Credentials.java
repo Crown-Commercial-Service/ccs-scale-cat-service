@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
+import java.util.Optional;
 
 @Value
 @Builder
@@ -17,9 +18,9 @@ public class AWSS3Credentials {
   String bucketName;
 
   @JsonProperty("aws_access_key_id")
-  String awsAccessKeyId;
+  Optional<String> awsAccessKeyId;
 
   @JsonProperty("aws_secret_access_key")
-  String awsSecretAccessKey;
+  Optional<String> awsSecretAccessKey;
 
 }

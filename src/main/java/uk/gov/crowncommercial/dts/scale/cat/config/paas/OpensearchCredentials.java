@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
+import java.util.Optional;
 
 @Value
 @Builder
@@ -14,10 +15,10 @@ public class OpensearchCredentials {
     String hostname;
 
     @JsonProperty("username")
-    String username;
+    Optional<String> username;
 
     @JsonProperty("password")
-    String password;
+    Optional<String> password;
 
     @JsonProperty("port")
     String port;
