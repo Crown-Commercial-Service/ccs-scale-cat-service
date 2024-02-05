@@ -21,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEnti
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentResult;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 import java.net.URI;
 
@@ -49,6 +50,7 @@ public class GCloudAssessmentService {
 
     private final ConclaveService conclaveService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+    private final SanitisationUtils sanitisationUtils;
 
     /**
      * Create a GCloud Assessment.
@@ -131,7 +133,7 @@ public class GCloudAssessmentService {
         if (model != null) {
             // We now know the assessment does exist, so now we can proceed to update it
             model.setId(assessmentId);
-            model.setAssessmentName(assessment.getAssessmentName());
+            model.setAssessmentName(sanitisationUtils.sanitiseStringAsFormattedText(assessment.getAssessmentName()));
 
             if (assessment.getStatus() == AssessmentStatus.ACTIVE) {
                 model.setStatus(AssessmentStatusEntity.ACTIVE);

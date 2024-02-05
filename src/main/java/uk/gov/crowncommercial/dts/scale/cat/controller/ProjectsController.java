@@ -117,7 +117,7 @@ public class ProjectsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
 
-    procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
+    procurementProjectService.updateProcurementProjectName(procId, sanitisationUtils.sanitiseStringAsText(projectName.getName()),
         principal);
 
     return Constants.OK_MSG;

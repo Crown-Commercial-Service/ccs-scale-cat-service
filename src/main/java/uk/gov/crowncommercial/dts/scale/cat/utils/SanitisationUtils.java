@@ -29,6 +29,4 @@ public class SanitisationUtils {
         // Instantiate the Jsoup cleaner - we can just sanitise this directly
         return Jsoup.clean(trim(inputValue), Safelist.simpleText());
     }
-
-    // TODO: Handling models
 }
