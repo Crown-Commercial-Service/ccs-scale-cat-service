@@ -27,9 +27,7 @@ class TendersAPIModelUtilsTest {
   TendersAPIModelUtils utils;
 
   @Test
-  void testBuildDefaultErrors_devMode_true() throws Exception {
-
-    when(appFlagsConfig.getDevMode()).thenReturn(true);
+  void testBuildDefaultErrors() throws Exception {
 
     Errors errors = utils.buildDefaultErrors(ERROR_STATUS, ERROR_TITLE, ERROR_MESSAGE);
 
@@ -39,29 +37,4 @@ class TendersAPIModelUtilsTest {
     assertEquals(ERROR_MESSAGE, errors.getErrors().get(0).getDetail());
   }
 
-  @Test
-  void testBuildDefaultErrors_devMode_false() throws Exception {
-
-    when(appFlagsConfig.getDevMode()).thenReturn(false);
-
-    Errors errors = utils.buildDefaultErrors(ERROR_STATUS, ERROR_TITLE, ERROR_MESSAGE);
-
-    assertEquals(1, errors.getErrors().size());
-    assertEquals(ERROR_STATUS, errors.getErrors().get(0).getStatus());
-    assertEquals(ERROR_TITLE, errors.getErrors().get(0).getTitle());
-    assertEquals("", errors.getErrors().get(0).getDetail());
-  }
-
-  @Test
-  void testBuildDefaultErrors_devMode_null() throws Exception {
-
-    when(appFlagsConfig.getDevMode()).thenReturn(null);
-
-    Errors errors = utils.buildDefaultErrors(ERROR_STATUS, ERROR_TITLE, ERROR_MESSAGE);
-
-    assertEquals(1, errors.getErrors().size());
-    assertEquals(ERROR_STATUS, errors.getErrors().get(0).getStatus());
-    assertEquals(ERROR_TITLE, errors.getErrors().get(0).getTitle());
-    assertEquals("", errors.getErrors().get(0).getDetail());
-  }
 }
