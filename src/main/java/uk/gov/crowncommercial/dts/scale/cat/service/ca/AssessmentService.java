@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.SupplierSubmissionDataRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -73,6 +74,7 @@ public class AssessmentService {
     private final AgreementsService agreementsService;
     private final AssessmentCalculationService assessmentCalculationService;
     private final SupplierSubmissionDataRepo ssDataRepo;
+    private final SanitisationUtils sanitisationUtils;
 
     private final AssessmentDimensionCriteriaService assessmentDimensionCriteriaService;
 
@@ -174,7 +176,7 @@ public class AssessmentService {
         entity.setStatus(AssessmentStatusEntity.ACTIVE);
         entity.setBuyerOrganisationId(conclaveUser.getOrganisationId());
         entity.setTimestamps(createTimestamps(principal));
-        entity.setAssessmentName(assessment.getAssessmentName());
+        entity.setAssessmentName(sanitisationUtils.sanitiseStringAsFormattedText(assessment.getAssessmentName()));
 
         Set<AssessmentSelection> assessmentSelections = new HashSet<>();
 
