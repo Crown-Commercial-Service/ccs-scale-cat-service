@@ -35,6 +35,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  *
@@ -115,6 +116,9 @@ class AwardServiceTest {
 
   @MockBean
   private DocumentTemplateResourceService documentTemplateResourceService;
+
+  @MockBean
+  private SanitisationUtils sanitisationUtils;
 
 
   @BeforeAll

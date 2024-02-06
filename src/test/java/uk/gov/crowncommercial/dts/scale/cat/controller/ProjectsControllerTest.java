@@ -233,7 +233,7 @@ class ProjectsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
 
     verify(procurementProjectService, times(1)).updateProcurementProjectName(PROC_PROJECT_ID,
-        projectName.getName(), PRINCIPAL);
+        sanitisationUtils.sanitiseStringAsFormattedText(projectName.getName()), PRINCIPAL);
   }
 
   /*
