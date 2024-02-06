@@ -903,18 +903,10 @@ public class ProcurementProjectService {
 
   private static void addKeywordQuery(BoolQueryBuilder boolQuery, String keyword) {
     if(keyword != null && keyword.trim().length() > 0) {
-      Pattern matchPattern = Pattern.compile("~[0-9]|\"[^\"]*\"");
-
-      if(matchPattern.matcher(keyword).find() || (keyword.indexOf('*') > 0)){
         boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword)
                 .field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
                 .analyzeWildcard(true)
-                .defaultOperator(Operator.AND).flags(SimpleQueryStringFlag.ALL));
-      }else {
-        boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                .fuzziness(Fuzziness.ONE)
-                .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-      }
+              .defaultOperator(Operator.OR).flags(SimpleQueryStringFlag.ALL));
     }
   }
 
