@@ -38,6 +38,7 @@ import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploa
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.DocumentUploadCallable;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.callables.RetrieveDocumentCallable;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import jakarta.transaction.Transactional;
@@ -119,6 +120,7 @@ public class ProcurementEventService implements EventService {
     private final AsyncExecutor asyncExecutor;
     private final SupplierStoreFactory supplierStoreFactory;
     private final EventTransitionService eventTransitionService;
+    private final SanitisationUtils sanitisationUtils;
 
     private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -172,7 +174,7 @@ public class ProcurementEventService implements EventService {
 
         downSelectedSuppliers = requireNonNullElse(downSelectedSuppliers, Boolean.FALSE);
 
-        var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? createEventOCDS.getTitle()
+        var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? sanitisationUtils.sanitiseStringAsFormattedText(createEventOCDS.getTitle())
                 : getDefaultEventTitle(project.getProjectName(), eventTypeValue);
 
         var eventBuilder = ProcurementEvent.builder();
@@ -518,8 +520,8 @@ public class ProcurementEventService implements EventService {
 
         // Update event name
         if (StringUtils.hasText(updateEvent.getName())) {
-            rfx.getRfxSetting().setShortDescription(updateEvent.getName());
-            event.setEventName(updateEvent.getName());
+            rfx.getRfxSetting().setShortDescription(sanitisationUtils.sanitiseStringAsFormattedText(updateEvent.getName()));
+            event.setEventName(sanitisationUtils.sanitiseStringAsFormattedText(updateEvent.getName()));
 
             // TODO: Should pre-existing DAA/FCA events have corresponding Jaggaer Rfx? (confirm
             // via SCAT-2501)
@@ -712,6 +714,11 @@ public class ProcurementEventService implements EventService {
         event.setRefreshSuppliers(false);
         retryableTendersDBDelegate.save(event);
 
+        // Also sanitise any justification we've been given
+        if (eventSuppliers.getJustification() != null && !eventSuppliers.getJustification().isEmpty()) {
+            eventSuppliers.setJustification(sanitisationUtils.sanitiseStringAsFormattedText(eventSuppliers.getJustification()));
+        }
+
         // Now we can save the suppliers we've been passed
         return supplierStore.storeSuppliers(event, eventSuppliers, principal);
     }
@@ -880,7 +887,7 @@ public class ProcurementEventService implements EventService {
         }
 
         return tendersAPIModelUtils.buildDocumentSummary(documentUploadService.uploadDocument(event,
-                multipartFile, audience, fileDescription, principal));
+                multipartFile, audience, sanitisationUtils.sanitiseStringAsFormattedText(fileDescription), principal));
     }
 
     /**
