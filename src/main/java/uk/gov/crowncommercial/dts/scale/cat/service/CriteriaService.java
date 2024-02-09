@@ -40,7 +40,6 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperSer
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import jakarta.transaction.Transactional;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  *
@@ -66,7 +65,6 @@ public class CriteriaService {
 
   private final DataTemplateProcessor templateProcessor;
   private final ProcurementEventHelperService eventHelperService;
-  private final SanitisationUtils sanitisationUtils;
 
   @Transactional
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
@@ -143,14 +141,6 @@ public class CriteriaService {
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
     eventHelperService.checkValidforUpdate(requirement);
-
-    if (question.getOCDS().getTitle() != null && !question.getOCDS().getTitle().isEmpty()) {
-      question.getOCDS().setTitle(sanitisationUtils.sanitiseStringAsFormattedText(question.getOCDS().getTitle()));
-    }
-
-    if (question.getOCDS().getDescription() != null && !question.getOCDS().getDescription().isEmpty()) {
-      question.getOCDS().setDescription(sanitisationUtils.sanitiseStringAsFormattedText(question.getOCDS().getDescription()));
-    }
 
     var options = question.getNonOCDS().getOptions();
     if (options == null) {

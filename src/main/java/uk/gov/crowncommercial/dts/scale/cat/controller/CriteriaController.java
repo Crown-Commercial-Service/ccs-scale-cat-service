@@ -77,4 +77,5 @@ public class CriteriaController extends AbstractRestController {
     return criteriaService.putQuestionOptionDetails(question, procId, eventId, criterionId, groupId,
         questionId);
   }
+
 }

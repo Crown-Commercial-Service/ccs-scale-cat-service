@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -33,6 +34,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
+import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.QueuedAsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DOS6SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierStore;
@@ -41,7 +43,6 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -215,9 +216,6 @@ class ProcurementEventServiceTest {
   
   @MockBean
   private QuestionAndAnswerRepo questionAndAnswerRepo;
-
-  @MockBean
-  private SanitisationUtils sanitisationUtils;
 
   private final CreateEvent createEvent = new CreateEvent();
 
@@ -518,7 +516,6 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
-    when(sanitisationUtils.sanitiseStringAsFormattedText(UPDATED_EVENT_NAME)).thenReturn(UPDATED_EVENT_NAME);
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
@@ -558,7 +555,6 @@ class ProcurementEventServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID))
         .thenReturn(event);
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
-    when(sanitisationUtils.sanitiseStringAsFormattedText(UPDATED_EVENT_NAME)).thenReturn(UPDATED_EVENT_NAME);
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);

@@ -44,7 +44,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SenderUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  * Message Service layer tests
@@ -114,9 +113,6 @@ class MessageServiceTest {
 
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
-
-  @MockBean
-  private SanitisationUtils sanitisationUtils;
 
   @BeforeEach
   void beforeEach() {}

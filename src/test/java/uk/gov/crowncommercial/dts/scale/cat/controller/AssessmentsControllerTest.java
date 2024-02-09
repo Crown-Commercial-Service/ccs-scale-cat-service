@@ -31,7 +31,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -72,9 +71,6 @@ class AssessmentsControllerTest {
   
   @MockBean
   private LockProvider lockProvider;
-
-  @MockBean
-  private SanitisationUtils sanitisationUtils;
 
   private JwtRequestPostProcessor validJwtReqPostProcessor;
 

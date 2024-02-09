@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerUserExistException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
@@ -15,7 +16,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,8 +34,6 @@ import static org.apache.commons.lang3.StringUtils.trim;
 public class TendersController extends AbstractRestController {
 
   private final ProfileManagementService profileManagementService;
-
-  private final SanitisationUtils sanitisationUtils;
 
   @GetMapping("/event-types")
   @TrackExecutionTime
@@ -75,12 +73,12 @@ public class TendersController extends AbstractRestController {
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    String sanitisedUserId = sanitisationUtils.sanitiseStringAsText(userId);
-
-    if (!StringUtils.equalsIgnoreCase(trim(principal), sanitisedUserId)) {
-      throw new AuthorisationFailureException("Authenticated user does not match requested user-id");
+    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
+      // CON-1682-AC11
+      throw new AuthorisationFailureException(
+          "Authenticated user does not match requested user-id");
     }
-    var registerUserResponse = profileManagementService.registerUser(sanitisedUserId);
+    var registerUserResponse = profileManagementService.registerUser(userId);
     if (registerUserResponse.getUserAction() == UserActionEnum.EXISTED) {
       return ResponseEntity.status(HttpStatus.OK).body(registerUserResponse);
     } else {
