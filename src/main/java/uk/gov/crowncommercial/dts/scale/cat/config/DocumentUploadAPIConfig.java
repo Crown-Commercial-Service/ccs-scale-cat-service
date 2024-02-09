@@ -4,6 +4,7 @@ import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import lombok.Data;
+import java.util.Optional;
 
 /**
  *
@@ -21,8 +22,8 @@ public class DocumentUploadAPIConfig {
 
   // AWS-S3
   private String awsRegion;
-  private String awsAccessKeyId;
-  private String awsSecretKey;
+  private Optional<String> awsAccessKeyId;
+  private Optional<String> awsSecretKey;
   private String s3Bucket;
 
   private Integer timeoutDuration;
