@@ -12,7 +12,6 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
 import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  * Q&A Controller which create question and answers to event
@@ -27,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 public class QuestionAndAnswerController extends AbstractRestController {
 
   private final QuestionAndAnswerService questionAndAnswerService;
-  private final SanitisationUtils sanitisationUtils;
 
   @PostMapping
   @TrackExecutionTime
@@ -40,9 +38,6 @@ public class QuestionAndAnswerController extends AbstractRestController {
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("createQuestionAndAnswer invoked on behalf of principal: {}", principal,
         conclaveOrgId);
-
-    questionRequest.setQuestion(sanitisationUtils.sanitiseStringAsFormattedText(questionRequest.getQuestion()));
-    questionRequest.setAnswer(sanitisationUtils.sanitiseStringAsFormattedText(questionRequest.getAnswer()));
 
     return ResponseEntity.ok(questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal,
         procId, eventId, questionRequest, null));
@@ -60,9 +55,6 @@ public class QuestionAndAnswerController extends AbstractRestController {
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
     log.info("updateQuestionAndAnswer invoked on behalf of principal: {}", principal,
         conclaveOrgId);
-
-    questionRequest.setQuestion(sanitisationUtils.sanitiseStringAsFormattedText(questionRequest.getQuestion()));
-    questionRequest.setAnswer(sanitisationUtils.sanitiseStringAsFormattedText(questionRequest.getAnswer()));
 
     return ResponseEntity.ok(questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal,
         procId, eventId, questionRequest, questionId));

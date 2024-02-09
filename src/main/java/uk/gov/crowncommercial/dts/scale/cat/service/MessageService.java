@@ -23,7 +23,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.Message;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.MessageNonOCDS.ClassificationEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_JAGGAER_USER_NOT_FOUND;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.UNLIMITED_VALUE;
@@ -52,7 +51,6 @@ public class MessageService {
   private final JaggaerService jaggaerService;
   private final UserProfileService userProfileService;
   private final ConclaveService conclaveService;
-  private final SanitisationUtils sanitisationUtils;
 
   private final SupplierService supplierService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -86,9 +84,9 @@ public class MessageService {
       messageClassification = "";
     }
 
-    var messageRequest = CreateReplyMessage.builder().body(sanitisationUtils.sanitiseStringAsFormattedText(ocds.getDescription()))
+    var messageRequest = CreateReplyMessage.builder().body(ocds.getDescription())
         .broadcast(Boolean.TRUE.equals(nonOCDS.getIsBroadcast()) ? "1" : "0")
-        .messageClassificationCategoryName(messageClassification).subject(sanitisationUtils.sanitiseStringAsFormattedText(ocds.getTitle()))
+        .messageClassificationCategoryName(messageClassification).subject(ocds.getTitle())
         .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE)
         .operatorUser(OwnerUser.builder().id(jaggaerUserId).build());
 

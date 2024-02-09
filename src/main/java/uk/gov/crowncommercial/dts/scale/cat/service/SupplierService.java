@@ -39,7 +39,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierIdentification
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScore;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScoreList;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  * Encapsulates operations related to suppliers
@@ -54,7 +53,6 @@ public class SupplierService {
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final JaggaerService jaggaerService;
-  private final SanitisationUtils sanitisationUtils;
   private static final String RPA_DELIMITER = "~|";
   private static final String RPA_OPEN_ENVELOPE_ERROR_DESC = "Technical button not found";
   private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
@@ -144,7 +142,6 @@ public class SupplierService {
     
     var scoreAndCommentMap = new HashMap<String, ScoreAndCommentNonOCDS>();
     for (ScoreAndCommentNonOCDS scoreAndComment : scoreAndComments) {
-      scoreAndComment.setComment(sanitisationUtils.sanitiseStringAsFormattedText(scoreAndComment.getComment()));
       scoreAndCommentMap.put(scoreAndComment.getOrganisationId(), scoreAndComment);
     }
 

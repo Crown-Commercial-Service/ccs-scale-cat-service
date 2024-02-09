@@ -28,7 +28,6 @@ import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSubmissionData;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
-import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 @RestController
 @RequestMapping(path = "/assessments", produces = APPLICATION_JSON_VALUE)
@@ -44,7 +43,6 @@ public class AssessmentsController extends AbstractRestController {
   private static final String NOT_SUPPORTED_MIME_TYPE = "Mime Type application/json not supported";
 
   private final AssessmentService assessmentService;
-  private final SanitisationUtils sanitisationUtils;
 
   @GetMapping("/tools/{tool-id}/dimensions")
   @TrackExecutionTime
@@ -135,15 +133,6 @@ public class AssessmentsController extends AbstractRestController {
       requirement.setRequirementId(requirementId);
     }
 
-    // Clean name and description
-    if (requirement.getName() != null && !requirement.getName().isEmpty()) {
-      requirement.setName(sanitisationUtils.sanitiseStringAsFormattedText(requirement.getName()));
-    }
-
-    if (requirement.getDescription() != null && !requirement.getDescription().isEmpty()) {
-      requirement.setDescription(sanitisationUtils.sanitiseStringAsFormattedText(requirement.getDescription()));
-    }
-
     // Check in casde it has been supplied, but is not same as path param
     if (!requirement.getRequirementId().equals(requirementId)) {
       throw new ValidationException(
@@ -231,5 +220,6 @@ public class AssessmentsController extends AbstractRestController {
         ssd.getDimensionName(), ssd.getToolName(),
         ssd.getSubmissionTypeName(), ssd.getSubmissionValue()
         );
+
   }
 }
