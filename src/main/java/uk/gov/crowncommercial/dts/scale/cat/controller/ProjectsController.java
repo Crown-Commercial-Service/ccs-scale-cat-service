@@ -42,6 +42,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  *
@@ -55,6 +56,7 @@ public class ProjectsController extends AbstractRestController {
 
   private final ProjectPackageService projectPackageService;
   private final ProcurementProjectService procurementProjectService;
+  private final SanitisationUtils sanitisationUtils;
 
   private final ObjectMapper mapper;
 
@@ -115,7 +117,7 @@ public class ProjectsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("updateProcurementEventName invoked on behalf of principal: {}", principal);
 
-    procurementProjectService.updateProcurementProjectName(procId, projectName.getName(),
+    procurementProjectService.updateProcurementProjectName(procId, sanitisationUtils.sanitiseStringAsText(projectName.getName()),
         principal);
 
     return Constants.OK_MSG;
@@ -166,9 +168,9 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("addProjectUser invoked on behalf of principal: {}", principal);
+    String sanitisedUserId = sanitisationUtils.sanitiseStringAsText(userId);
 
-    return procurementProjectService.addProjectTeamMember(procId, userId, updateTeamMember,
-        principal);
+    return procurementProjectService.addProjectTeamMember(procId, sanitisedUserId, updateTeamMember, principal);
   }
 
   @DeleteMapping("/{proc-id}/users/{user-id}")
@@ -178,7 +180,9 @@ public class ProjectsController extends AbstractRestController {
 
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteTeamMember invoked on behalf of principal: {}", principal);
-    procurementProjectService.deleteTeamMember(procId, userId, principal);
+    String sanitisedUserId = sanitisationUtils.sanitiseStringAsText(userId);
+
+    procurementProjectService.deleteTeamMember(procId, sanitisedUserId, principal);
     return Constants.OK_MSG;
   }
   
