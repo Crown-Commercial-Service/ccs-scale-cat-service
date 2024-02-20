@@ -177,8 +177,8 @@ resource "cloudfoundry_app" "cat_service" {
     "spring.security.oauth2.client.provider.jaggaer.token-uri" : data.aws_ssm_parameter.jaggaer_token_url.value
     "config.external.jaggaer.baseUrl" : data.aws_ssm_parameter.jaggaer_base_url.value
     "config.external.jaggaer.self-service-id" : data.aws_ssm_parameter.jaggaer_self_service_id.value
-    "config.external.jaggaer.createRfx.templateId" : data.aws_ssm_parameter.jaggaer_itt_template_id.value
-    "config.external.jaggaer.createProject.templateId" : data.aws_ssm_parameter.jaggaer_project_template_id.value
+    "config.external.jaggaer.createRfxTemplateId" : data.aws_ssm_parameter.jaggaer_itt_template_id.value
+    "config.external.jaggaer.createProjectTemplateId" : data.aws_ssm_parameter.jaggaer_project_template_id.value
     
     # Auth server / CII
     "spring.security.oauth2.resourceserver.jwt.jwk-set-uri" : data.aws_ssm_parameter.auth_server_jwk_set_uri.value
