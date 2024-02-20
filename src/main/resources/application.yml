@@ -5,6 +5,30 @@
 #        jwt:
 #          jwk-set-uri: "SET IN ENV"
 
+# App info (for actuator)
+info:
+  app:
+    name: CCS Contract Award Service API
+    description: The API for the CrownCommercialService Contract Award Service, also known as Tenders API
+    version: 1.0.0
+
+# Actuator config
+management:
+  security:
+    enabled: false
+  endpoints:
+    web:
+      base-path: /actuator/
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
 
 logging:
   level:
