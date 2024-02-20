@@ -174,12 +174,19 @@ public class RetryableTendersDBDelegate {
   
   @TendersRetryable
   public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(final String eventType, final String commercialAgreementNumber, final String lotNumber, final Integer templateGroup) {
+    // We need to potentially correct our Lot ID - we need to be sure it contains the legacy prefix for doc gen
+    String lotId = lotNumber;
+
+    if (!lotId.contains(Constants.LOT_PREFIX)) {
+      lotId = Constants.LOT_PREFIX + lotId;
+    }
+
     if (templateGroup == null) {
-      return this.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType, commercialAgreementNumber, lotNumber);
+      return this.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType, commercialAgreementNumber, lotId);
     }
 
     return documentTemplateRepo
-        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, commercialAgreementNumber, lotNumber, templateGroup);
+        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, commercialAgreementNumber, lotId, templateGroup);
   }
   
   @TendersRetryable
