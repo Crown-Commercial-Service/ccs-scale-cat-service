@@ -151,6 +151,6 @@ public class AgreementsService {
    * Strip out legacy formatting from the supplied Lot ID, so that legacy projects can continue to work with the updated Agreement Service
    */
   private String formatLotIdForAgreementService(String lotId) {
-    return lotId;
+    return lotId.replace("Lot ", "");
   }
 }
