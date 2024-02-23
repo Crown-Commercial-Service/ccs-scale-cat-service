@@ -27,6 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 /**
  *
@@ -92,6 +93,9 @@ class SupplierServiceTest {
 
   @MockBean
   private BuyerUserDetailsRepo buyerDetailsRepo;
+
+  @MockBean
+  private SanitisationUtils sanitisationUtils;
 
 
   @BeforeAll

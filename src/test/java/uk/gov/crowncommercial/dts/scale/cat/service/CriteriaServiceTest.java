@@ -22,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.utils.SanitisationUtils;
 
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -76,6 +77,9 @@ class CriteriaServiceTest {
 
   @MockBean
   private ProcurementEventHelperService eventHelperService;
+
+  @MockBean
+  private SanitisationUtils sanitisationUtils;
 
   @Test
   void testPutQuestionOptionDetails_buyer_multiSelect() throws Exception {
