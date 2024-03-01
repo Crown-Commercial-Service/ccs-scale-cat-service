@@ -124,6 +124,19 @@ public class ProcurementEventService implements EventService {
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     /**
+     * Completes an existing event directly, rather than relying on a multitude of background processes
+     * Needed to support PA and other event types that don't naturally complete on their own
+     */
+    @Transactional
+    public void completeEvent(final Integer projectId, final String eventId, final String principal) {
+        // Fetch the event specified, and then trigger completion
+        log.debug("Complete Event {}", eventId);
+
+        ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
+        eventTransitionService.completeExistingEvent(eventModel, principal);
+    }
+
+    /**
      * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
      * event name, if specified, otherwise falls back on the default event title logic (using the
      * project name).
