@@ -95,11 +95,17 @@ public class UserProfileService {
   @SneakyThrows
   public Optional<SubUser> resolveBuyerUserProfile(final String principal) {
     if (Boolean.TRUE.equals(appFlagsConfig.getResolveBuyerUsersBySSO())) {
-      return resolveBuyerUserBySSOUserLogin(principal);
+      log.info("Resolving buyer UserProfile using SSO: Flag Value: "+appFlagsConfig.getResolveBuyerUsersBySSO());
+      Optional<SubUser> subUser = resolveBuyerUserBySSOUserLogin(principal);
+      log.info("Sub user Details: "+subUser);
+      return subUser;
     }
-    return jaggaerBuyerUserCache
-        .get(new SubUserIdentity(principal, getFilterPredicateEmailAndRightsProfile(principal)))
-        .getSecond();
+    log.info("Resolving buyer UserProfile using Non SSO: Flag Value: "+appFlagsConfig.getResolveBuyerUsersBySSO());
+    Optional<SubUser> subUser = jaggaerBuyerUserCache
+            .get(new SubUserIdentity(principal, getFilterPredicateEmailAndRightsProfile(principal)))
+            .getSecond();
+    log.info("Sub user Details: "+subUser);
+    return subUser;
   }
 
   @SneakyThrows
@@ -118,11 +124,12 @@ public class UserProfileService {
   @SneakyThrows
   public CompanyInfo resolveBuyerUserCompany(final String principal) {
     if (Boolean.TRUE.equals(appFlagsConfig.getResolveBuyerUsersBySSO())) {
+      log.info("Resolving buyer UserCompany using SSO: Flag Value: "+appFlagsConfig.getResolveBuyerUsersBySSO());
       return jaggaerBuyerUserCache
           .get(new SubUserIdentity(principal, getFilterPredicateSSOUserLogin(principal)))
           .getFirst();
     }
-
+    log.info("Resolving buyer UserCompany using Non SSO: Flag Value: "+appFlagsConfig.getResolveBuyerUsersBySSO());
     return jaggaerBuyerUserCache
         .get(new SubUserIdentity(principal, getFilterPredicateEmailAndRightsProfile(principal)))
         .getFirst();
@@ -145,7 +152,6 @@ public class UserProfileService {
                 .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving Jaggear company profile data"));
     log.info("Finish calling Jaggaer API to get buyer company profile, endpoint : {}", endpoint);
-
     if (!"0".equals(getCompanyDataResponse.getReturnCode())
         || !"OK".equals(getCompanyDataResponse.getReturnMessage())) {
       throw new JaggaerApplicationException(getCompanyDataResponse.getReturnCode(),
@@ -168,7 +174,9 @@ public class UserProfileService {
         var selfServiceBuyerCompany = getSelfServiceBuyerCompany();
         var subUser = selfServiceBuyerCompany.getReturnSubUser().getSubUsers().stream()
             .filter(subUserIdentity.getFilterPredicate()).findFirst();
-        log.debug("Matched sub-user record: {}", subUser);
+        log.info("Matched sub-user record: {}", subUser);
+        log.info("Filter predicate: "+subUserIdentity);
+        log.info("Filter predicate: "+subUserIdentity.getFilterPredicate());
 
         return Pair.of(selfServiceBuyerCompany.getReturnCompanyInfo(), subUser);
       }
@@ -230,9 +238,10 @@ public class UserProfileService {
    * @param userId aka email
    */
   public void refreshBuyerCache(final String userId) {
-    log.debug("Refreshing Jaggaer buyer cache for user: {}", userId);
+    log.info("Refreshing Jaggaer buyer cache for user: {}", userId);
     jaggaerBuyerUserCache
         .refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
+    log.info("Refreshed Jaggaer buyer cache for user: {}", userId);
   }
 
   private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {

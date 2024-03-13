@@ -99,15 +99,16 @@ public class ProfileManagementService {
 
     var conclaveRoles = new HashSet<RolesEnum>();
     populateConclaveRoles(conclaveRoles, conclaveUser);
-    log.debug(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, conclaveRoles));
+    log.info(format(MSG_FMT_SYS_ROLES, SYSID_CONCLAVE, userId, conclaveRoles));
 
     var jaggaerRoles = new HashSet<RolesEnum>();
     getJaggaerRolesWithSSoUserData(jaggaerRoles, userId,
         conclaveService.getOrganisationIdentifer(conclaveUserOrg));
-    log.debug(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, jaggaerRoles));
+    log.info(format(MSG_FMT_SYS_ROLES, SYSID_JAGGAER, userId, jaggaerRoles));
 
     if (jaggaerRoles.isEmpty()) {
       // CON-1680-AC2
+      log.info(userId +" is not found");
       throw new ResourceNotFoundException(format(ERR_MSG_FMT_JAGGAER_USER_MISSING, userId));
     }
 
@@ -539,13 +540,15 @@ public class ProfileManagementService {
           final Set<RolesEnum> jaggaerRoles, final String userId, final String organisationIdentifier) {
 
     // SSO verification built-in to search
+    log.info("Resolving buyer using SSO: "+userId);
     var buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
+    log.info("Resolved buyer using SSO: "+userId);
 
     // If cache missing, refresh in case user has since been registered (by separate instance)
     if (buyerSubUser.isEmpty()) {
       userProfileService.refreshBuyerCache(userId);
       buyerSubUser = userProfileService.resolveBuyerUserBySSOUserLogin(userId);
-      log.debug("Refreshed buyer user cache for [{}], now found? - [{}]", userId,
+      log.info("Refreshed buyer user cache for [{}], now found? - [{}]", userId,
               buyerSubUser.isPresent());
     }
 
