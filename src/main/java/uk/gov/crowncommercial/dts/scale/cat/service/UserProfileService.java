@@ -238,9 +238,16 @@ public class UserProfileService {
    * @param userId aka email
    */
   public void refreshBuyerCache(final String userId) {
+    SubUserIdentity subUserIdentity = null;
+    if (Boolean.TRUE.equals(appFlagsConfig.getResolveBuyerUsersBySSO())) {
+      log.info("Resolving buyer UserCompany using SSO: Flag Value: " + appFlagsConfig.getResolveBuyerUsersBySSO());
+      subUserIdentity = new SubUserIdentity(userId, getFilterPredicateSSOUserLogin(userId));
+    } else {
+      subUserIdentity = new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId));
+      log.info("Resolving buyer UserCompany using Non SSO: Flag Value: " + appFlagsConfig.getResolveBuyerUsersBySSO());
+    }
     log.info("Refreshing Jaggaer buyer cache for user: {}", userId);
-    jaggaerBuyerUserCache
-        .refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
+    jaggaerBuyerUserCache.refresh(subUserIdentity);
     log.info("Refreshed Jaggaer buyer cache for user: {}", userId);
   }
 
