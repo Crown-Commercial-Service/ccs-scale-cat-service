@@ -231,8 +231,13 @@ public class UserProfileService {
    */
   public void refreshBuyerCache(final String userId) {
     log.debug("Refreshing Jaggaer buyer cache for user: {}", userId);
-    jaggaerBuyerUserCache
-        .refresh(new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId)));
+    SubUserIdentity subUserIdentity = null;
+    if (Boolean.TRUE.equals(appFlagsConfig.getResolveBuyerUsersBySSO())) {
+      subUserIdentity = new SubUserIdentity(userId, getFilterPredicateSSOUserLogin(userId));
+    } else {
+      subUserIdentity = new SubUserIdentity(userId, getFilterPredicateEmailAndRightsProfile(userId));
+    }
+    jaggaerBuyerUserCache.refresh(subUserIdentity);
   }
 
   private Optional<ReturnCompanyData> getSupplierDataHelper(final String endpoint) {
