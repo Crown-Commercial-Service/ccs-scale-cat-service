@@ -1,11 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
+import static java.util.Objects.nonNull;
 import static org.springframework.util.StringUtils.hasText;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.BUYER;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
@@ -17,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.SSOObjectMissingException;
@@ -37,8 +40,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyRequest.CreateUpdateCompanyRequestBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SSOCodeData.SSOCode;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus.CreateJIBuyerResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus.CreateJIBuyerRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus.Status;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+import uk.gov.crowncommercial.dts.scale.cat.utils.JIUserRequestBuilder;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 /**
@@ -320,13 +327,46 @@ public class ProfileManagementService {
         conclaveUserContacts, Optional.empty(), jaggaerAPIConfig.getSelfServiceId(),
         jaggaerAPIConfig.getDefaultBuyerRightsProfile());
 
+    CreateUpdateCompanyRequest createUpdateCompanyRequest = createUpdateCompanyDataBuilder.build();
     log.debug("Creating buyer user: [{}], request: {}", conclaveUser.getUserName(),
-        createUpdateCompanyDataBuilder.build());
-    jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+            createUpdateCompanyRequest);
+
+    if (jaggaerAPIConfig.isCreateBuyerUsingJIEndpoint()) {
+      // create buyer profile using new JI endpoint
+      createJIBuyerAccount(createUpdateCompanyRequest);
+    } else {
+      log.info("Create Buyer using company profiles endpoint: {}", createUpdateCompanyRequest);
+      jaggaerService.createUpdateCompany(createUpdateCompanyRequest);
+    }
 
     userProfileService.refreshBuyerCache(conclaveUser.getUserName());
     registerUserResponse.userAction(UserActionEnum.CREATED);
     registerUserResponse.organisationAction(OrganisationActionEnum.PENDING);
+  }
+
+  private void createJIBuyerAccount(CreateUpdateCompanyRequest createUpdateCompanyRequest) {
+    final CreateJIBuyerRequest jiUserRequest = JIUserRequestBuilder
+            .mapToJIBuyerRequest(jaggaerAPIConfig, createUpdateCompanyRequest);
+    log.info("Creating buyer profile using new JI endpoint: {}", jiUserRequest);
+    CreateJIBuyerResponse response = jaggaerService.createJIBuyerAccount(jiUserRequest);
+    if(nonNull(response) && nonNull(response.getResponseMessage())){
+      final Status status = response.getResponseMessage().getStatus();
+      if(nonNull(status) && !"200".equals(status.getStatusCode())){
+        log.error("Error while creating buyer using new JI endpoint: Status code: {}, Message: {} ",
+                status.getStatusCode(), status.getStatusText());
+        throw new JaggaerApplicationException(status.getStatusCode(), status.getStatusText());
+      }
+    }
+
+    // update SSO
+    Set<SubUser> subUsers = createUpdateCompanyRequest.getSubUsers().getSubUsers().stream()
+            .map(subUser -> SubUser.builder().login(subUser.getLogin()).ssoCodeData(subUser.getSsoCodeData()).build()
+            ).collect(Collectors.toSet());
+    CreateUpdateCompanyRequest ssoRequest = CreateUpdateCompanyRequest.builder()
+            .company(createUpdateCompanyRequest.getCompany())
+            .subUsers(SubUsers.builder().operationCode(OperationCode.UPDATE).subUsers(subUsers).build())
+            .build();
+    jaggaerService.createUpdateCompany(ssoRequest);
   }
 
   private void updateBuyer(final UserProfileResponseInfo conclaveUser,

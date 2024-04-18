@@ -67,6 +67,11 @@ public class JaggaerAPIConfig {
   private Optional<String> createProjectTemplateId;
   private Optional<String> createRfxTemplateId;
 
+  // Contract+
+  private String defaultBusinessUnitInternalName;
+  private boolean createBuyerUsingJIEndpoint;
+  private Map<String, String> createBuyerUsingContractPlus;
+
   // Temporary - SOAP config
   private JaggaerSOAPAPIConfig soap;
   private Map<String, String> startEvaluation;

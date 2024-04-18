@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static java.lang.String.format;
 import static java.time.Duration.ofSeconds;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
@@ -36,6 +37,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus.CreateJIBuyerResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus.CreateJIBuyerRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus.Status;
+
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_RFX_NOT_FOUND;
 
 /**
@@ -238,6 +243,23 @@ public class JaggaerService {
     return rfxResponse;
   }
 
+  public CreateJIBuyerResponse createJIBuyerAccount(final CreateJIBuyerRequest jiUserRequest) {
+    log.info("Start calling Jaggaer API to create buyer account using New JI user endpoint. Request: {}", jiUserRequest);
+    final var response = webclientWrapper.postData(jiUserRequest,
+            CreateJIBuyerResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+            jaggaerAPIConfig.getCreateBuyerUsingContractPlus().get(ENDPOINT));
+    log.info("Finish calling Jaggaer API to create buyer account using New JI user endpoint. Response: {}", response);
+
+    if (nonNull(response) && nonNull(response.getResponseMessage())) {
+      final Status status = response.getResponseMessage().getStatus();
+      if (nonNull(status) && !"200".equals(status.getStatusCode())) {
+        log.error("Error while creating buyer using JI endpoint: Status code: {}, Message: {} ",
+                status.getStatusCode(), status.getStatusText());
+        throw new JaggaerApplicationException(status.getStatusCode(), status.getStatusText());
+      }
+    }
+    return response;
+  }
 
   /**
    * Create or update a company and/or sub-users

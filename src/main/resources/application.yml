@@ -118,6 +118,8 @@ config:
 #      baseUrl: "SET IN ENV"
       timeoutDuration: 300
       addDivisionToProjectTeam: false
+      createBuyerUsingJIEndpoint: true
+      defaultBusinessUnitInternalName: "13704070"
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
       defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
@@ -241,6 +243,8 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})&comp={components}  
       createUpdateCompany:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles
+      createBuyerUsingContractPlus:
+        endpoint: /esop/jint/api/public/ji/v1/users
       getAttachment:
         endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
       publishRfx:
