@@ -292,6 +292,17 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  @PutMapping("/{eventID}/complete")
+  @TrackExecutionTime
+  public StringValueResponse completeEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("completeEvent invoked on behalf of principal: {}", principal);
+
+    procurementEventService.completeEvent(procId, eventId, principal);
+
+    return new StringValueResponse("OK");
+  }
+
   @GetMapping("/{eventID}/documents/export")
   @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(

@@ -15,23 +15,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
-import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.*;
@@ -737,18 +726,21 @@ public class ProcurementProjectService {
 
   /**
    * Returns the current event for a project.
-   *
-   * TODO: what extra logic is required in the event there are multiple events on a project? (Event
-   * status is not captured in the Tenders DB currently).
    */
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
+    // Sort the list of events for the project by the date last updated to be sure we consistently deal with the latest
+    List<ProcurementEvent> eventsList = new ArrayList<>(project.getProcurementEvents().stream().toList());
+    eventsList.sort(Comparator.comparing(ProcurementEvent::getUpdatedAt).reversed());
 
-    var event = project.getProcurementEvents().stream().findFirst();
+    Optional<ProcurementEvent> event = eventsList.stream().findFirst();
+
     if (event.isPresent()) {
+      // We've found the latest event, so return it
       return event.get();
     }
-    throw new UnhandledEdgeCaseException(
-        "Could not find current event for project " + project.getId());
+
+    // If we have gotten this far it couldn't find an event, so throw an error
+    throw new UnhandledEdgeCaseException("Could not find current event for project " + project.getId());
   }
 
 
