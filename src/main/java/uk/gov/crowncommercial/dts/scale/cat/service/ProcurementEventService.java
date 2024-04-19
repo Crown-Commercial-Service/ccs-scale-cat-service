@@ -124,6 +124,19 @@ public class ProcurementEventService implements EventService {
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     /**
+     * Completes an existing event directly, rather than relying on a multitude of background processes
+     * Needed to support PA and other event types that don't naturally complete on their own
+     */
+    @Transactional
+    public void completeEvent(final Integer projectId, final String eventId, final String principal) {
+        // Fetch the event specified, and then trigger completion
+        log.debug("Complete Event {}", eventId);
+
+        ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
+        eventTransitionService.completeExistingEvent(eventModel, principal);
+    }
+
+    /**
      * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
      * event name, if specified, otherwise falls back on the default event title logic (using the
      * project name).
@@ -430,12 +443,17 @@ public class ProcurementEventService implements EventService {
 
         var buyerCompany = BuyerCompany.builder().id(jaggaerBuyerCompanyId).build();
         var ownerUser = OwnerUser.builder().id(jaggaerUserId).build();
+        String rfxTemplateId = null;
 
-        var rfxSetting =
-                RfxSetting.builder().rfiFlag(RFI_FLAG).tenderReferenceCode(project.getExternalReferenceId())
-                        .templateReferenceCode(jaggaerAPIConfig.getCreateRfx().get("templateId"))
-                        .shortDescription(eventName).buyerCompany(buyerCompany).ownerUser(ownerUser)
-                        .rfxType(RFX_TYPE).build();
+        if (jaggaerAPIConfig.getCreateRfxTemplateId() != null && jaggaerAPIConfig.getCreateRfxTemplateId().isPresent()) {
+            rfxTemplateId = jaggaerAPIConfig.getCreateRfxTemplateId().get();
+        }
+
+        var rfxSetting = RfxSetting.builder()
+                .rfiFlag(RFI_FLAG).tenderReferenceCode(project.getExternalReferenceId())
+                .templateReferenceCode(rfxTemplateId)
+                .shortDescription(eventName).buyerCompany(buyerCompany).ownerUser(ownerUser)
+                .rfxType(RFX_TYPE).build();
 
         var additionalInfoFramework = AdditionalInfo.builder().name(ADDITIONAL_INFO_FRAMEWORK_NAME)
                 .label(ADDITIONAL_INFO_FRAMEWORK_NAME).labelLocale(ADDITIONAL_INFO_LOCALE)
@@ -443,18 +461,16 @@ public class ProcurementEventService implements EventService {
                         new AdditionalInfoValues(Arrays.asList(new AdditionalInfoValue(project.getCaNumber()))))
                 .build();
 
-        var additionalInfoLot =
-                AdditionalInfo.builder().name(ADDITIONAL_INFO_LOT_NUMBER).label(ADDITIONAL_INFO_LOT_NUMBER)
-                        .labelLocale(ADDITIONAL_INFO_LOCALE).values(new AdditionalInfoValues(
-                                Arrays.asList(new AdditionalInfoValue(project.getLotNumber()))))
-                        .build();
+        var additionalInfoLot = AdditionalInfo.builder().name(ADDITIONAL_INFO_LOT_NUMBER).label(ADDITIONAL_INFO_LOT_NUMBER)
+                .labelLocale(ADDITIONAL_INFO_LOCALE).values(new AdditionalInfoValues(
+                        Arrays.asList(new AdditionalInfoValue(project.getLotNumber()))))
+                .build();
 
         var suppliersList = SuppliersList.builder().supplier(suppliers).build();
         var rfx = Rfx.builder().rfxSetting(rfxSetting)
-            .rfxAdditionalInfoList(new RfxAdditionalInfoList(
-                Arrays.asList(additionalInfoFramework, additionalInfoLot)))
-            .suppliersList(suppliersList).build();
-
+                .rfxAdditionalInfoList(new RfxAdditionalInfoList(
+                        Arrays.asList(additionalInfoFramework, additionalInfoLot)))
+                .suppliersList(suppliersList).build();
         return new CreateUpdateRfx(OperationCode.CREATE_FROM_TEMPLATE, rfx);
     }
 

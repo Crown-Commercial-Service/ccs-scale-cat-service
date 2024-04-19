@@ -15,23 +15,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
-import org.opensearch.common.unit.Fuzziness;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.*;
@@ -178,13 +167,17 @@ public class ProcurementProjectService {
               .orElseThrow(() -> new AuthorisationFailureException(
                       "Conclave org with ID [" + conclaveOrgId + "] from JWT not found"));
 
-      var projectTitle =
-              getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
+      var projectTitle = getDefaultProjectTitle(agreementDetails, conclaveUserOrg.getIdentifier().getLegalName());
+      String projectTemplateId = null;
+
+      if (jaggaerAPIConfig.getCreateProjectTemplateId() != null && jaggaerAPIConfig.getCreateProjectTemplateId().isPresent()) {
+        projectTemplateId = jaggaerAPIConfig.getCreateProjectTemplateId().get();
+      }
 
       var tender = Tender.builder().title(projectTitle)
               .buyerCompany(BuyerCompany.builder().id(jaggaerBuyerCompanyId).build())
               .projectOwner(ProjectOwner.builder().id(jaggaerUserId).build())
-              .sourceTemplateReferenceCode(jaggaerAPIConfig.getCreateProject().get("templateId")).build();
+              .sourceTemplateReferenceCode(projectTemplateId).build();
 
       var projectBuilder = Project.builder().tender(tender);
 
@@ -208,8 +201,7 @@ public class ProcurementProjectService {
                               "Unexpected error creating project"));
       log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", createProjectResponse);
 
-      if (createProjectResponse.getReturnCode() != 0
-              || !"OK".equals(createProjectResponse.getReturnMessage())) {
+      if (createProjectResponse.getReturnCode() != 0 || !"OK".equals(createProjectResponse.getReturnMessage())) {
         throw new JaggaerApplicationException(createProjectResponse.getReturnCode(),
                 createProjectResponse.getReturnMessage());
       }
@@ -223,24 +215,23 @@ public class ProcurementProjectService {
               .updatedBy(principal).updatedAt(Instant.now()).build();
 
       /*
-       * Get existing buyer user org mapping or create as part of procurement project persistence.
-       * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
-       * self-service company).
-       */
+        * Get existing buyer user org mapping or create as part of procurement project persistence.
+        * Should be unique per Conclave org. Buyer Jaggaer company ID WILL repeat (e.g. for the Buyer
+        * self-service company).
+      */
       var organisationIdentifier = conclaveService.getOrganisationIdentifer(conclaveUserOrg);
-      var organisationMapping =
-              retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
+      var organisationMapping = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationIdentifier);
 
       // Adapt save strategy based on org mapping status (new/existing)
       if (organisationMapping.isEmpty()) {
-        organisationMapping=Optional.of(retryableTendersDBDelegate
+        organisationMapping = Optional.of(retryableTendersDBDelegate
                 .save(OrganisationMapping.builder().organisationId(organisationIdentifier)
                         .externalOrganisationId(Integer.valueOf(jaggaerBuyerCompanyId))
                         .createdAt(Instant.now()).createdBy(principal).build()));
       }
 
       procurementProject.setOrganisationMapping(organisationMapping.get());
-      procurementProject=retryableTendersDBDelegate.save(procurementProject);
+      procurementProject = retryableTendersDBDelegate.save(procurementProject);
 
       var eventSummary = procurementEventService.createEvent(procurementProject.getId(),
               new CreateEvent(), null, principal);
@@ -735,18 +726,21 @@ public class ProcurementProjectService {
 
   /**
    * Returns the current event for a project.
-   *
-   * TODO: what extra logic is required in the event there are multiple events on a project? (Event
-   * status is not captured in the Tenders DB currently).
    */
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
+    // Sort the list of events for the project by the date last updated to be sure we consistently deal with the latest
+    List<ProcurementEvent> eventsList = new ArrayList<>(project.getProcurementEvents().stream().toList());
+    eventsList.sort(Comparator.comparing(ProcurementEvent::getUpdatedAt).reversed());
 
-    var event = project.getProcurementEvents().stream().findFirst();
+    Optional<ProcurementEvent> event = eventsList.stream().findFirst();
+
     if (event.isPresent()) {
+      // We've found the latest event, so return it
       return event.get();
     }
-    throw new UnhandledEdgeCaseException(
-        "Could not find current event for project " + project.getId());
+
+    // If we have gotten this far it couldn't find an event, so throw an error
+    throw new UnhandledEdgeCaseException("Could not find current event for project " + project.getId());
   }
 
 
@@ -903,18 +897,10 @@ public class ProcurementProjectService {
 
   private static void addKeywordQuery(BoolQueryBuilder boolQuery, String keyword) {
     if(keyword != null && keyword.trim().length() > 0) {
-      Pattern matchPattern = Pattern.compile("~[0-9]|\"[^\"]*\"");
-
-      if(matchPattern.matcher(keyword).find() || (keyword.indexOf('*') > 0)){
         boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword)
                 .field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
                 .analyzeWildcard(true)
-                .defaultOperator(Operator.AND).flags(SimpleQueryStringFlag.ALL));
-      }else {
-        boolQuery.must(QueryBuilders.multiMatchQuery(keyword).field(PROJECT_NAME).field(PROJECT_DESCRIPTION)
-                .fuzziness(Fuzziness.ONE)
-                .type(MultiMatchQueryBuilder.Type.BEST_FIELDS));
-      }
+              .defaultOperator(Operator.OR).flags(SimpleQueryStringFlag.ALL));
     }
   }
 
