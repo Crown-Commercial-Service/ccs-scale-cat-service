@@ -68,8 +68,8 @@ public class JaggaerAPIConfig {
   private Optional<String> createRfxTemplateId;
 
   // Contract+
-  private String defaultBusinessUnitInternalName;
-  private boolean createBuyerUsingJIEndpoint;
+  private String businessUnitName;
+  private boolean enableContractPlus;
   private Map<String, String> createBuyerUsingContractPlus;
 
   // Temporary - SOAP config

@@ -45,9 +45,15 @@
         <jose.version>0.9.5</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.0</logback.version>
+        <libphonenumber.version>8.12.10</libphonenumber.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>${libphonenumber.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>

@@ -1,14 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.contractplus;
 
-import lombok.Getter;
+import lombok.Value;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.jackson.Jacksonized;
 
-@Getter
+@Value
 @SuperBuilder
 @Jacksonized
-public class TelephoneNumber {
-    String countryCode;
-    String areaCode;
-    String number;
+public class MobileTelephoneNumber extends TelephoneNumber {
+
 }

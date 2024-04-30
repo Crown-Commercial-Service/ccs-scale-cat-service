@@ -331,7 +331,7 @@ public class ProfileManagementService {
     log.debug("Creating buyer user: [{}], request: {}", conclaveUser.getUserName(),
             createUpdateCompanyRequest);
 
-    if (jaggaerAPIConfig.isCreateBuyerUsingJIEndpoint()) {
+    if (jaggaerAPIConfig.isEnableContractPlus()) {
       // create buyer profile using new JI endpoint
       createJIBuyerAccount(createUpdateCompanyRequest);
     } else {

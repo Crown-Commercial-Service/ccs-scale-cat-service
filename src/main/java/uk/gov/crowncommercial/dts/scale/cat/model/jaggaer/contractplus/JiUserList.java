@@ -23,6 +23,7 @@ public class JiUserList {
         String userStatus;
         String email;
         TelephoneNumber telephoneNumber;
+        MobileTelephoneNumber mobileTelephoneNumber;
         International international;
         String authorizationMethod;
         BusinessUnit businessUnit;
