@@ -53,7 +53,7 @@ public class JIUserRequestBuilder {
     }
 
     TelephoneNumber buildTelephoneNumber(String telephoneNumber) {
-        TelephoneNumber.TelephoneNumberBuilder<?, ?> builder = TelephoneNumber.builder();
+        TelephoneNumber.TelephoneNumberBuilder builder = TelephoneNumber.builder();
         try {
             Phonenumber.PhoneNumber phoneNumber = phoneNumberUtil.parse(telephoneNumber, "ZZ");
             String significantNumber = phoneNumberUtil.getNationalSignificantNumber(phoneNumber);
@@ -73,7 +73,7 @@ public class JIUserRequestBuilder {
     }
 
     MobileTelephoneNumber buildMobileTelephoneNumber(String telephoneNumber) {
-        MobileTelephoneNumber.MobileTelephoneNumberBuilder<?, ?> builder = MobileTelephoneNumber.builder();
+        MobileTelephoneNumber.MobileTelephoneNumberBuilder builder = MobileTelephoneNumber.builder();
         try {
             Phonenumber.PhoneNumber phoneNumber = phoneNumberUtil.parse(telephoneNumber, "ZZ");
             String significantNumber = phoneNumberUtil.getNationalSignificantNumber(phoneNumber);
