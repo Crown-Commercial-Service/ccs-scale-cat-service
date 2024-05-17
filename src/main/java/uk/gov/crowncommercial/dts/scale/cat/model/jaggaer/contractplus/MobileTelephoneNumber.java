@@ -7,6 +7,8 @@ import lombok.extern.jackson.Jacksonized;
 @Value
 @SuperBuilder
 @Jacksonized
-public class MobileTelephoneNumber extends TelephoneNumber {
-
+public class MobileTelephoneNumber {
+    String countryCode;
+    String areaCode;
+    String number;
 }

@@ -28,8 +28,11 @@ import static java.util.Objects.nonNull;
 public class JIUserRequestBuilder {
 
     private static final PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
+    private static final String AREA_CODE = "0";
+    public static final String COUNTRY_CODE = "+44";
+    public static final String COUNTRY_CODE_PREFIX = "+";
 
-     public CreateJIBuyerRequest mapToJIBuyerRequest(JaggaerAPIConfig jaggaerAPIConfig, CreateUpdateCompanyRequest requestBuilder) {
+    public CreateJIBuyerRequest mapToJIBuyerRequest(JaggaerAPIConfig jaggaerAPIConfig, CreateUpdateCompanyRequest requestBuilder) {
         List<SubUsers.SubUser> subUsers = requestBuilder.getSubUsers().getSubUsers().stream().toList();
         Set<JiUserList.JiUser> users = subUsers.stream().map(subUser -> JiUserList.JiUser.builder()
                 .userName(subUser.getLogin())
@@ -43,29 +46,49 @@ public class JIUserRequestBuilder {
                 .department(Department.builder().departmentName("Division Self Serve").build())
                 .position(jaggaerAPIConfig.getDefaultBuyerRightsProfile())
                 .telephoneNumber(nonNull(subUser.getPhoneNumber()) ? buildTelephoneNumber(subUser.getPhoneNumber()) : null)
-                .mobileTelephoneNumber(nonNull(subUser.getMobilePhoneNumber()) ? (MobileTelephoneNumber) buildTelephoneNumber(subUser.getMobilePhoneNumber()) : null)
+                .mobileTelephoneNumber(nonNull(subUser.getMobilePhoneNumber()) ? buildMobileTelephoneNumber(subUser.getMobilePhoneNumber()) : null)
                 .build()).collect(Collectors.toSet());
         JiUserList userList = JiUserList.builder().jiUser(users).build();
         return CreateJIBuyerRequest.builder().jiuserList(userList).build();
     }
 
     TelephoneNumber buildTelephoneNumber(String telephoneNumber) {
-        TelephoneNumber.TelephoneNumberBuilder<?, ?> builder = MobileTelephoneNumber.builder();
+        TelephoneNumber.TelephoneNumberBuilder<?, ?> builder = TelephoneNumber.builder();
         try {
             Phonenumber.PhoneNumber phoneNumber = phoneNumberUtil.parse(telephoneNumber, "ZZ");
             String significantNumber = phoneNumberUtil.getNationalSignificantNumber(phoneNumber);
             int areaCodeLength = phoneNumberUtil.getLengthOfGeographicalAreaCode(phoneNumber);
             if (areaCodeLength > 0) {
-                builder.areaCode("0" + significantNumber.substring(0, areaCodeLength));
+                builder.areaCode(AREA_CODE + significantNumber.substring(0, areaCodeLength));
                 builder.number(significantNumber.substring(areaCodeLength));
             } else {
-                builder.areaCode("0");
+                builder.areaCode(AREA_CODE);
                 builder.number(significantNumber);
             }
-            return builder.countryCode("+" + phoneNumber.getCountryCode()).build();
+            return builder.countryCode(COUNTRY_CODE_PREFIX + phoneNumber.getCountryCode()).build();
         } catch (NumberParseException e) {
             log.error("Error while converting phone number: {}", telephoneNumber);
-            return builder.countryCode("+44").number(telephoneNumber).areaCode("0").build();
+            return builder.countryCode(COUNTRY_CODE).number(telephoneNumber).areaCode(AREA_CODE).build();
+        }
+    }
+
+    MobileTelephoneNumber buildMobileTelephoneNumber(String telephoneNumber) {
+        MobileTelephoneNumber.MobileTelephoneNumberBuilder<?, ?> builder = MobileTelephoneNumber.builder();
+        try {
+            Phonenumber.PhoneNumber phoneNumber = phoneNumberUtil.parse(telephoneNumber, "ZZ");
+            String significantNumber = phoneNumberUtil.getNationalSignificantNumber(phoneNumber);
+            int areaCodeLength = phoneNumberUtil.getLengthOfGeographicalAreaCode(phoneNumber);
+            if (areaCodeLength > 0) {
+                builder.areaCode(AREA_CODE + significantNumber.substring(0, areaCodeLength));
+                builder.number(significantNumber.substring(areaCodeLength));
+            } else {
+                builder.areaCode(AREA_CODE);
+                builder.number(significantNumber);
+            }
+            return builder.countryCode(COUNTRY_CODE_PREFIX + phoneNumber.getCountryCode()).build();
+        } catch (NumberParseException e) {
+            log.error("Error while converting mobile phone number: {}", telephoneNumber);
+            return builder.countryCode(COUNTRY_CODE).number(telephoneNumber).areaCode(AREA_CODE).build();
         }
     }
 
