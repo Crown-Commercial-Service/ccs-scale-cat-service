@@ -115,6 +115,16 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.getEvent(procId, eventId);
   }
 
+  @GetMapping("/{eventID}/review")
+  @TrackExecutionTime
+  public EventDetail getEventReview(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getEventReview invoked on behalf of principal: {}", principal);
+
+    // Fetch the event review model
+    return procurementEventService.getEventReview(procId, eventId);
+  }
+
   @PutMapping("/{eventID}")
   @TrackExecutionTime
   public EventSummary updateProcurementEvent(@PathVariable("procID") final Integer procId,
