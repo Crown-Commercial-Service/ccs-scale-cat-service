@@ -45,7 +45,7 @@ public class JIUserRequestBuilder {
                 .businessUnit(BusinessUnit.builder().internalName(jaggaerAPIConfig.getBusinessUnitName()).build())
                 .department(Department.builder().departmentName("Division Self Serve").build())
                 .position(jaggaerAPIConfig.getDefaultBuyerRightsProfile())
-                .telephoneNumber(nonNull(subUser.getPhoneNumber()) ? buildTelephoneNumber(subUser.getPhoneNumber()) : null)
+                .telephoneNumber(nonNull(subUser.getPhoneNumber()) && !subUser.getPhoneNumber().equals("07123456789") ? buildTelephoneNumber(subUser.getPhoneNumber()) : null)
                 .mobileTelephoneNumber(nonNull(subUser.getMobilePhoneNumber()) ? buildMobileTelephoneNumber(subUser.getMobilePhoneNumber()) : null)
                 .build()).collect(Collectors.toSet());
         JiUserList userList = JiUserList.builder().jiUser(users).build();
