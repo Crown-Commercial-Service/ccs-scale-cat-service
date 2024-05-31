@@ -80,13 +80,9 @@ public class ProcurementEventService implements EventService {
 
     public static final String ERR_MSG_FMT_DOCUMENT_NOT_FOUND =
             "Document upload record for ID [%s] not found";
-    public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
-            "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
     public static final Set<String> RESPONSE_STATES = Set.of("Not Replied");
     private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
             "No Supplier Responses found for the given event '%s'  ";
-    private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
-            "Supplier [%s] not found in Conclave";
     private static final String ERR_MSG_RFX_NOT_FOUND = "Rfx [%s] not found in Jaggaer";
 
     private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
@@ -488,6 +484,22 @@ public class ProcurementEventService implements EventService {
         return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
                 event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
                         : Collections.emptySet());
+    }
+
+    /**
+     * Retrieve a single event's review information based on the ID
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public EventDetail getEventReview(final Integer projectId, final String eventId) {
+        // Grab the event as its core RFX format
+        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
+        ExportRfxResponse exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
+
+        // The main difference between this and getEvent is that we always want it to provide us with the eval criteria - it shouldn't be suppressed based on event type
+        return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event, criteriaService.getEvalCriteria(projectId, eventId, true));
     }
 
     /**
