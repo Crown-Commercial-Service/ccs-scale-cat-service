@@ -59,7 +59,8 @@ public class JIUserRequestBuilder {
             String significantNumber = phoneNumberUtil.getNationalSignificantNumber(phoneNumber);
             int areaCodeLength = phoneNumberUtil.getLengthOfGeographicalAreaCode(phoneNumber);
             if (areaCodeLength > 0) {
-                builder.areaCode(AREA_CODE + significantNumber.substring(0, areaCodeLength));
+                String substring = significantNumber.substring(0, areaCodeLength);
+                builder.areaCode(areaCodeLength > 3 ? substring : AREA_CODE + substring);
                 builder.number(significantNumber.substring(areaCodeLength));
             } else {
                 builder.areaCode(AREA_CODE);
