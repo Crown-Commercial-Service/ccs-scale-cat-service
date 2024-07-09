@@ -32,7 +32,7 @@
         <poi-ooxml.version>5.2.5</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.2</snakeyaml.version>
-        <spring-security.version>6.2.4</spring-security.version>
+        <spring-security.version>6.3.1</spring-security.version>
         <hsql.version>2.7.2</hsql.version>
         <rollbar.version>1.10.0</rollbar.version>
         <jsoup.version>1.17.2</jsoup.version>
