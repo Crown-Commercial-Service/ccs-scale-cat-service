@@ -33,7 +33,7 @@
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.2</snakeyaml.version>
         <spring-security.version>6.3.1</spring-security.version>
-        <hsql.version>2.7.2</hsql.version>
+        <hsql.version>2.7.3</hsql.version>
         <rollbar.version>1.10.0</rollbar.version>
         <jsoup.version>1.17.2</jsoup.version>
         <jackson.version>2.15.2</jackson.version>
