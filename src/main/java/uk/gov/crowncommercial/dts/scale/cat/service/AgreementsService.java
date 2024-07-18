@@ -125,19 +125,27 @@ public class AgreementsService {
     return agreementDetail.orElseThrow();
   }
 
-  @TrackExecutionTime
+  /**
+   * Get the details of a given Lot for an Agreement
+   */
   @Cacheable(value = "getLotDetails", key = "{#agreementId, #lotId}")
   public LotDetail getLotDetails(final String agreementId, final String lotId) {
+    // Call the Agreements Service to request the details of the given lot for the given agreement, formatting the Lot ID first
     String formattedLotId = formatLotIdForAgreementService(lotId);
-    var lotDetailUri =
-        agreementServiceAPIConfig.getGetLotDetailsForAgreement().get(KEY_URI_TEMPLATE);
+    String exceptionFormat = "Lot with ID: [" + formattedLotId + "] for CA: [" + agreementId + "] not found in AS";
 
-    var lotDetail =
-        webclientWrapper.getOptionalResource(LotDetail.class, agreementsServiceWebClient,
-            agreementServiceAPIConfig.getTimeoutDuration(), lotDetailUri, agreementId, formattedLotId);
+    try {
+      LotDetail model = agreementsClient.getLotDetail(agreementId, formattedLotId, serviceApiKey);
 
-    return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
-        "Lot with ID: [" + formattedLotId + "] for CA: [" + agreementId + "] not found in AS"));
+      // Return the model if possible, otherwise throw an error
+      if (model != null) {
+        return model;
+      } else {
+        throw new AgreementsServiceApplicationException(exceptionFormat);
+      }
+    } catch (Exception ex) {
+      throw new AgreementsServiceApplicationException(exceptionFormat);
+    }
   }
 
   /**
@@ -147,10 +155,15 @@ public class AgreementsService {
   public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
     // Call the Agreements Service to request the event types for the given lot and agreement, formatting the Lot ID first
     String formattedLotId = formatLotIdForAgreementService(lotId);
-    Collection<LotEventType> model = agreementsClient.getLotEventTypes(agreementId, formattedLotId, serviceApiKey);
 
-    // Return the model if it has results, otherwise return an empty set
-    return model != null ? model : Set.of();
+    try {
+      Collection<LotEventType> model = agreementsClient.getLotEventTypes(agreementId, formattedLotId, serviceApiKey);
+
+      // Return the model if it has results, otherwise return an empty set
+      return model != null ? model : Set.of();
+    } catch (Exception ex) {
+      return Set.of();
+    }
   }
 
   /**
