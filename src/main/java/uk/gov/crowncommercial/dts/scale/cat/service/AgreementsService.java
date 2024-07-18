@@ -11,12 +11,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import reactor.util.retry.Retry;
+import uk.gov.crowncommercial.dts.scale.cat.clients.AgreementsClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
@@ -30,6 +32,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 @Service
 @RequiredArgsConstructor
 public class AgreementsService {
+  @Value("${config.external.agreements-service.apiKey}")
+  public String serviceApiKey;
+
+  private final AgreementsClient agreementsClient;
 
   private final WebClient agreementsServiceWebClient;
   private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
@@ -133,18 +139,18 @@ public class AgreementsService {
     return lotDetail.orElseThrow(() -> new AgreementsServiceApplicationException(
         "Lot with ID: [" + formattedLotId + "] for CA: [" + agreementId + "] not found in AS"));
   }
-  @TrackExecutionTime
+
+  /**
+   * Get Event Types for a given Agreement and Lot
+   */
   @Cacheable(value = "getLotEventTypes", key = "{#agreementId, #lotId}")
   public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
+    // Call the Agreements Service to request the event types for the given lot and agreement, formatting the Lot ID first
     String formattedLotId = formatLotIdForAgreementService(lotId);
-    var getLotEventTypesUri =
-        agreementServiceAPIConfig.getGetEventTypesForAgreement().get(KEY_URI_TEMPLATE);
+    Collection<LotEventType> model = agreementsClient.getLotEventTypes(agreementId, formattedLotId, serviceApiKey);
 
-    var lotEventTypes = webclientWrapper.getOptionalResource(LotEventType[].class,
-        agreementsServiceWebClient, agreementServiceAPIConfig.getTimeoutDuration(),
-        getLotEventTypesUri, agreementId, formattedLotId);
-
-    return lotEventTypes.isPresent() ? Set.of(lotEventTypes.get()) : Set.of();
+    // Return the model if it has results, otherwise return an empty set
+    return model != null ? model : Set.of();
   }
 
   /**
