@@ -45,7 +45,7 @@ public class ConclaveService {
    * @param email
    * @return an optional user profile (empty if not found)
    */
-  @Cacheable(value = "conclaveCache", key = "{#root.methodName-#email}")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #email")
   public Optional<UserProfileResponseInfo> getUserProfile(final String email) {
 
     final var templateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
@@ -66,7 +66,7 @@ public class ConclaveService {
    * @param userId
    * @return
    */
-  @Cacheable(value = "conclaveCache", key = "{#root.methodName-#userId}")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #userId")
   public UserContactInfoList getUserContacts(final String userId) {
 
     final var templateURI = conclaveAPIConfig.getGetUserContacts().get(KEY_URI_TEMPLATE);
@@ -88,7 +88,7 @@ public class ConclaveService {
    * @param orgId the internal org identifier
    * @return
    */
-  @Cacheable(value = "conclaveCache", key = "{#root.methodName-#orgId}")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisationProfile(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisation().get(KEY_URI_TEMPLATE);
@@ -111,7 +111,7 @@ public class ConclaveService {
    * @param orgId the public identifier e.g. US-DUNS-123456789
    * @return
    */
-  @Cacheable(value = "conclaveCache", key = "{#root.methodName-#orgId}")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisationIdentity(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);

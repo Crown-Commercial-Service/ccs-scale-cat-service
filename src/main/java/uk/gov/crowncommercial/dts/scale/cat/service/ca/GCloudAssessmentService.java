@@ -286,7 +286,7 @@ public class GCloudAssessmentService {
      * @param externalToolId
      * @return
      */
-    @Cacheable(value = "gcloudConfigCache", key = "{#root.methodName-#externalToolId}")
+    @Cacheable(value = "gcloudConfigCache", key = "#root.methodName + '-' + #externalToolId")
     protected boolean isExternalToolIdValidForGcloud(final String externalToolId) {
         // Always assume the ID isn't valid until the DB tells us otherwise
         boolean isValid = false;

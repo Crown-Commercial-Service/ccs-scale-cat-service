@@ -102,7 +102,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  @Cacheable(value = "tendersCache", key = "{#root.methodName-#organisationIds}")
+  @Cacheable(value = "tendersCache", key = "#root.methodName + '-' + #organisationIds")
   public Set<OrganisationMapping> findOrganisationMappingByOrganisationIdIn(
       final Set<String> organisationIds) {
     return organisationMappingRepo.findByOrganisationIdIn(organisationIds);
@@ -117,7 +117,7 @@ public class RetryableTendersDBDelegate {
 
 
   @TendersRetryable
-  @Cacheable(value = "tendersCache", key = "{#root.methodName-#externalOrganisationId}")
+  @Cacheable(value = "tendersCache", key = "#root.methodName + '-' + #externalOrganisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByExternalOrganisationId(
       final Integer externalOrganisationId) {
     return organisationMappingRepo.findByExternalOrganisationId(externalOrganisationId);
@@ -129,7 +129,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  @Cacheable(value = "tendersCache", key = "{#root.methodName-#organisationId}")
+  @Cacheable(value = "tendersCache", key = "#root.methodName + '-' + #organisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByOrganisationId(
       final String organisationId) {
     return organisationMappingRepo.findByOrganisationId(organisationId);
@@ -141,7 +141,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  @Cacheable(value = "tendersCache", key = "{#root.methodName-#organisationId}")
+  @Cacheable(value = "tendersCache", key = "#root.methodName + '-' + #organisationId")
   public Optional<OrganisationMapping> findOrganisationMappingByCasOrganisationId(
           final String organisationId) {
     return organisationMappingRepo.findByCasOrganisationId(organisationId);

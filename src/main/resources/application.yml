@@ -46,6 +46,7 @@ caching:
   long:
     cacheLength: 3600
     heapSize: 500
+  agreements: RM1557.13,RM1043.8,RM6187
 
 spring:
   jpa:
