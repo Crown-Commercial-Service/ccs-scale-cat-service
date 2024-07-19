@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig.KEY_URI_TEMPLATE;
 import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
@@ -23,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 @RequiredArgsConstructor
 @Slf4j
 public class ConclaveService {
+  public static final String KEY_URI_TEMPLATE = "uriTemplate";
 
   private final ConclaveAPIConfig conclaveAPIConfig;
   private final WebClient conclaveWrapperAPIClient;
