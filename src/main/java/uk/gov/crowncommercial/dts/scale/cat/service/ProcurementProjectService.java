@@ -143,7 +143,6 @@ public class ProcurementProjectService {
   public DraftProcurementProject createFromAgreementDetails(final AgreementDetails agreementDetails, final String principal, final String conclaveOrgId) {
     // Before we do anything, check if we've been given a lot ID as part of the request
     boolean validRequest = true;
-    log.warn("Started create project at " + LocalDateTime.now());
 
     if (agreementDetails.getLotId() == null || agreementDetails.getLotId().isEmpty()) {
       // No lot ID has been provided - so we need to check via the Agreements Service whether or not a lot is required for this agreement
@@ -236,8 +235,6 @@ public class ProcurementProjectService {
 
       // add current user to project
       addProjectUserMapping(jaggaerUserId, procurementProject, principal);
-
-      log.warn("Completed create project at " + LocalDateTime.now());
 
       return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
               procurementProject.getId(), eventSummary.getId(), projectTitle,
@@ -534,13 +531,14 @@ public class ProcurementProjectService {
    * Get a specific project summary
    */
   public ProjectPackageSummary getProjectSummary(final String principal, final Integer projectId) {
+    log.warn("Started project summary fetch at " + LocalDateTime.now());
     // Grab the Jaegger details we need to start from the authentication
     String userId = userProfileService.resolveBuyerUserProfile(principal).orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
-
+    log.warn("Project summary - have user id at " + LocalDateTime.now());
     if (userId != null && !userId.isEmpty()) {
       // Now fetch the projects mapped against this user from our Tenders DB
       List<ProjectUserMapping> userProjects = retryableTendersDBDelegate.findProjectUserMappingByUserId(userId,null,null, PageRequest.of(0, 20, Sort.by("project.procurementEvents.updatedAt").descending()));
-
+      log.warn("Project summary - have user projects at " + LocalDateTime.now());
       if (userProjects != null && !userProjects.isEmpty()) {
         // Now we need to filter down to only include the project we're after
         ProjectUserMapping projectMapping = userProjects.stream()
@@ -549,14 +547,17 @@ public class ProcurementProjectService {
                 .orElse(null);
 
         if (projectMapping != null) {
+          log.warn("Project summary - filtered project at " + LocalDateTime.now());
           // Great, now fetch the final details we need and map to our summary model
           Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
-
+          log.warn("Project summary - got external event ids at " + LocalDateTime.now());
           if (!externalEventIds.isEmpty()) {
             Set<ExportRfxResponse> projectRfxs = jaggaerService.searchRFx(externalEventIds);
 
             if (!projectRfxs.isEmpty()) {
+              log.warn("Project summary - search rfx done at " + LocalDateTime.now());
               Optional<ProjectPackageSummary> projectSummary = convertProjectToProjectPackageSummary(projectMapping, projectRfxs);
+              log.warn("Project summary - mapped at " + LocalDateTime.now());
 
               if (projectSummary.isPresent()) {
                 return projectSummary.get();
@@ -567,6 +568,7 @@ public class ProcurementProjectService {
       }
     }
 
+    log.warn("Project summary - we're done at " + LocalDateTime.now());
     throw new ResourceNotFoundException("Project '" + projectId + "' not found");
   }
 
