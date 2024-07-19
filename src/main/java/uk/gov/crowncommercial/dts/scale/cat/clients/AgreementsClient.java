@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Web client to interface with the Agreements Service API
  */
-@FeignClient(name = "agreementsClient", url = "${config.external.agreements-service.baseUrl}")
+@FeignClient(name = "agreementsClient", url = "${config.external.agreementsService.baseUrl}")
 public interface AgreementsClient {
     @GetMapping("${config.external.agreementsService.getEventTypesForAgreement.uriTemplate}")
     Collection<LotEventType> getLotEventTypes(@PathVariable("agreement-id") String agreementId, @PathVariable("lot-id") String lotId, @RequestHeader("x-api-key") String apiKey);

@@ -20,7 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
  */
 @Service
 public class AgreementsService {
-  @Value("${config.external.agreements-service.apiKey}")
+  @Value("${config.external.agreementsService.apiKey}")
   public String serviceApiKey;
 
   @Autowired
