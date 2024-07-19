@@ -1,37 +1,24 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
-import static java.util.Optional.ofNullable;
-import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig.KEY_URI_TEMPLATE;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.time.Duration;
+import static org.hibernate.query.sqm.tree.SqmNode.log;
 import java.util.Collection;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import lombok.RequiredArgsConstructor;
-import reactor.util.retry.Retry;
 import uk.gov.crowncommercial.dts.scale.cat.clients.AgreementsClient;
-import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
-import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
-import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
 /**
- * AS API Service layer. Handles interactions with the external Agreements Service.
+ * Agreements Service API Service layer. Handles interactions with the external service
  */
 @Service
-@RequiredArgsConstructor
 public class AgreementsService {
   @Value("${config.external.agreements-service.apiKey}")
   public String serviceApiKey;
@@ -39,92 +26,70 @@ public class AgreementsService {
   @Autowired
   AgreementsClient agreementsClient;
 
-  private final WebClient agreementsServiceWebClient;
-  private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
-  private final WebclientWrapper webclientWrapper;
-
-  @TrackExecutionTime
+  /**
+   * Get the Event Type Data Templates for a given Lot for a given Agreement
+   */
   @Cacheable(value = "getLotEventTypeDataTemplates",  key = "{#agreementId, #lotId,#eventType.value}")
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
+    // Call the Agreements Service to request the data templates for the given agreement, lot and event type, first formatting the lot ID
     String formattedLotId = formatLotIdForAgreementService(lotId);
-
-    var getLotEventTypeDataTemplatesUri =
-        agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
-
-    final ParameterizedTypeReference<List<DataTemplate>> typeRefTemplateCriteria =
-        new ParameterizedTypeReference<>() {};
+    String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
 
     try {
-      var dataTemplates = ofNullable(agreementsServiceWebClient.get()
-              .uri(getLotEventTypeDataTemplatesUri, agreementId, formattedLotId, eventType.getValue()).retrieve()
-              .bodyToMono(typeRefTemplateCriteria)
-              .onErrorMap(IOException.class, UncheckedIOException::new)
-              .retryWhen(Retry
-                      .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
-                              Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
-                      .filter(WebclientWrapper::is5xxServerError))
-              .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
-              .orElseThrow(() -> new AgreementsServiceApplicationException(String
-                      .format("Unexpected error retrieving {} template from AS", eventType.name())));
-      return dataTemplates;
-    }catch(Throwable e){
-      // TODO This try-catch block and the fallbackQuery function to be removed after agreement service upgraded.
-      return fallbackQuery(agreementId, formattedLotId, eventType);
+      List<DataTemplate> model = agreementsClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), serviceApiKey);
+
+      // Return the model if possible, otherwise throw an error
+      if (model != null) {
+        return model;
+      } else {
+        log.warn("Empty response for Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
+        throw new AgreementsServiceApplicationException(exceptionFormat);
+      }
+    } catch (Exception ex) {
+      log.error("Error getting Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name(), ex);
+      throw new AgreementsServiceApplicationException(exceptionFormat);
     }
   }
 
-  private List<DataTemplate> fallbackQuery(final String agreementId, final String lotId, final ViewEventType eventType) {
-    String formattedLotId = formatLotIdForAgreementService(lotId);
-
-    var getLotEventTypeDataTemplatesUri =
-            agreementServiceAPIConfig.getGetLotEventTypeDataTemplates().get(KEY_URI_TEMPLATE);
-
-    final ParameterizedTypeReference<List<List<TemplateCriteria>>> typeRefTemplateCriteria =
-            new ParameterizedTypeReference<>() {
-            };
-
-    var dataTemplates = ofNullable(agreementsServiceWebClient.get()
-            .uri(getLotEventTypeDataTemplatesUri, agreementId, formattedLotId, eventType.getValue()).retrieve()
-            .bodyToMono(typeRefTemplateCriteria)
-            .onErrorMap(IOException.class, UncheckedIOException::new)
-            .retryWhen(Retry
-                    .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
-                            Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
-                    .filter(WebclientWrapper::is5xxServerError))
-            .block(ofSeconds(agreementServiceAPIConfig.getTimeoutDuration())))
-            .orElseThrow(() -> new AgreementsServiceApplicationException(String
-                    .format("Unexpected error retrieving {} template from AS", eventType.name())));
-
-    return dataTemplates.stream().map(tcs -> DataTemplate.builder().criteria(tcs).build())
-            .collect(Collectors.toList());
-
-  }
-
-  @TrackExecutionTime
+  /**
+   * Gets the details of the suppliers for a given Lot of a given Agreement
+   */
   @Cacheable(value = "getLotSuppliers",  key = "{#agreementId, #lotId}")
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
+    // Call the Agreements Service to request the details of the suppliers attached to a given lot of a given agreement, first formatting the lot ID
     String formattedLotId = formatLotIdForAgreementService(lotId);
-    var getLotSuppliersUri = agreementServiceAPIConfig.getGetLotSuppliers().get(KEY_URI_TEMPLATE);
 
-    var lotSuppliers =
-        webclientWrapper.getOptionalResource(LotSupplier[].class, agreementsServiceWebClient,
-            agreementServiceAPIConfig.getTimeoutDuration(), getLotSuppliersUri, agreementId, formattedLotId);
+    try {
+      Collection<LotSupplier> model = agreementsClient.getLotSuppliers(agreementId, formattedLotId, serviceApiKey);
 
-    return lotSuppliers.isPresent() ? Set.of(lotSuppliers.get()) : Set.of();
+      // Return the model if it has results, otherwise return an empty set
+      return model != null ? model : Set.of();
+    } catch (Exception ex) {
+      log.error("Error getting Lot Suppliers from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
+      return Set.of();
+    }
   }
 
-
-  @TrackExecutionTime
+  /**
+   * Gets the details of a given Agreement
+   */
   @Cacheable(value = "getAgreementDetails", key = "#agreementId")
   public AgreementDetail getAgreementDetails(final String agreementId) {
-    var agreementDetailsUri =
-        agreementServiceAPIConfig.getGetAgreementDetail().get(KEY_URI_TEMPLATE);
+    // Call the Agreements Service to request the details of the given agreement
+    try {
+      AgreementDetail model = agreementsClient.getAgreementDetail(agreementId, serviceApiKey);
 
-    var agreementDetail =
-        webclientWrapper.getOptionalResource(AgreementDetail.class, agreementsServiceWebClient,
-            agreementServiceAPIConfig.getTimeoutDuration(), agreementDetailsUri, agreementId);
+      if (model != null) {
+        return model;
+      } else {
+        log.warn("Empty response for Agreement Details from Agreement Service for " + agreementId);
+      }
+    } catch (Exception ex) {
+      log.error("Error getting Agreement Detail from Agreement Service for " + agreementId, ex);
+    }
 
-    return agreementDetail.orElseThrow();
+    // If we've not got a response by this point, something went wrong so throw an exception
+    throw new NoSuchElementException();
   }
 
   /**
@@ -143,9 +108,11 @@ public class AgreementsService {
       if (model != null) {
         return model;
       } else {
+        log.warn("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
         throw new AgreementsServiceApplicationException(exceptionFormat);
       }
     } catch (Exception ex) {
+      log.error("Error getting Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
       throw new AgreementsServiceApplicationException(exceptionFormat);
     }
   }
@@ -164,6 +131,7 @@ public class AgreementsService {
       // Return the model if it has results, otherwise return an empty set
       return model != null ? model : Set.of();
     } catch (Exception ex) {
+      log.error("Error getting Event Types from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
       return Set.of();
     }
   }
