@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
@@ -35,7 +36,8 @@ public class AgreementsService {
   @Value("${config.external.agreements-service.apiKey}")
   public String serviceApiKey;
 
-  private final AgreementsClient agreementsClient;
+  @Autowired
+  AgreementsClient agreementsClient;
 
   private final WebClient agreementsServiceWebClient;
   private final AgreementsServiceAPIConfig agreementServiceAPIConfig;
