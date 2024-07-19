@@ -11,10 +11,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.ge
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import java.io.InputStream;
 import java.net.URI;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -146,6 +143,7 @@ public class ProcurementProjectService {
   public DraftProcurementProject createFromAgreementDetails(final AgreementDetails agreementDetails, final String principal, final String conclaveOrgId) {
     // Before we do anything, check if we've been given a lot ID as part of the request
     boolean validRequest = true;
+    log.warn("Started create project at " + LocalDateTime.now());
 
     if (agreementDetails.getLotId() == null || agreementDetails.getLotId().isEmpty()) {
       // No lot ID has been provided - so we need to check via the Agreements Service whether or not a lot is required for this agreement
@@ -238,6 +236,8 @@ public class ProcurementProjectService {
 
       // add current user to project
       addProjectUserMapping(jaggaerUserId, procurementProject, principal);
+
+      log.warn("Completed create project at " + LocalDateTime.now());
 
       return tendersAPIModelUtils.buildDraftProcurementProject(agreementDetails,
               procurementProject.getId(), eventSummary.getId(), projectTitle,

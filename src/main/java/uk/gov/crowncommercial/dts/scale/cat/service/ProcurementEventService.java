@@ -45,6 +45,7 @@ import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -150,6 +151,8 @@ public class ProcurementEventService implements EventService {
                                     Boolean downSelectedSuppliers, final String principal) {
         boolean twoStageEvent = false;
         boolean scheduleSupplierSync = false;
+
+        log.warn("Started create event at " + LocalDateTime.now());
 
         // Get project from tenders DB to obtain Jaggaer project id
         var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
@@ -303,6 +306,8 @@ public class ProcurementEventService implements EventService {
             procurementEvent = retryableTendersDBDelegate.save(event);
         }
 
+        log.warn("Starting event creation supplier aspect at " + LocalDateTime.now());
+
         if (scheduleSupplierSync) {
             JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
             List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
@@ -315,6 +320,8 @@ public class ProcurementEventService implements EventService {
                 }
             }
         }
+
+        log.warn("Finished create event at " + LocalDateTime.now());
 
         return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
                 Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
