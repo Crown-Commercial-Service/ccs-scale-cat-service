@@ -43,21 +43,23 @@ public class TaskSchedulingClient {
                 if (agreementModel != null && agreementModel.getLots() != null && !agreementModel.getLots().isEmpty()) {
                     // Now for each lot, get (and generate a cache of) the Lot Details
                     agreementModel.getLots().forEach(lotSummary -> {
-                        LotDetail lotModel = agreementsService.getLotDetails(agreementId, lotSummary.getNumber());
+                        if (!lotSummary.getNumber().equalsIgnoreCase("All")) {
+                            LotDetail lotModel = agreementsService.getLotDetails(agreementId, lotSummary.getNumber());
 
-                        if (lotModel != null) {
-                            // Now fetch (and generate cache of) the event types for the lot
-                            Collection<LotEventType> eventTypes = agreementsService.getLotEventTypes(agreementId, lotSummary.getNumber());
+                            if (lotModel != null) {
+                                // Now fetch (and generate cache of) the event types for the lot
+                                Collection<LotEventType> eventTypes = agreementsService.getLotEventTypes(agreementId, lotSummary.getNumber());
 
-                            if (eventTypes != null && !eventTypes.isEmpty()) {
-                                // Now for each event type trigger a cache spool up of its data templates
-                                eventTypes.forEach(eventType -> {
-                                    agreementsService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
-                                });
+                                if (eventTypes != null && !eventTypes.isEmpty()) {
+                                    // Now for each event type trigger a cache spool up of its data templates
+                                    eventTypes.forEach(eventType -> {
+                                        agreementsService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
+                                    });
+                                }
+
+                                // Finally, trigger a cache spool up of the suppliers for the lot
+                                agreementsService.getLotSuppliers(agreementId, lotSummary.getNumber());
                             }
-
-                            // Finally, trigger a cache spool up of the suppliers for the lot
-                            agreementsService.getLotSuppliers(agreementId, lotSummary.getNumber());
                         }
                     });
                 }
