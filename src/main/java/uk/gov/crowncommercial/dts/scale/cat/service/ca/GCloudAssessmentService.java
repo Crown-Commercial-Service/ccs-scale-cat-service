@@ -38,7 +38,6 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps.updat
 @RequiredArgsConstructor
 @Slf4j
 public class GCloudAssessmentService {
-    private static final String ERR_MSG_FMT_ASSESSMENT_RESULTS_NOT_FOUND = "Assessment [%s] results not found";
     private static final String ERR_MSG_FMT_CONCLAVE_USER_MISSING = "User [%s] not found in Conclave";
     private static final String ERR_MSG_FMT_ASSESSMENT_NOT_FOUND = "Assessment [%s] not found";
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
@@ -287,8 +286,7 @@ public class GCloudAssessmentService {
      * @param externalToolId
      * @return
      */
-
-    @Cacheable(value = "isExternalToolIdValidForGcloud",  key = "{#externalToolId}")
+    @Cacheable(value = "gcloudConfigCache", key = "{#root.methodName-#externalToolId}")
     protected boolean isExternalToolIdValidForGcloud(final String externalToolId) {
         // Always assume the ID isn't valid until the DB tells us otherwise
         boolean isValid = false;

@@ -29,7 +29,7 @@ public class AgreementsService {
   /**
    * Get the Event Type Data Templates for a given Lot for a given Agreement
    */
-  @Cacheable(value = "getLotEventTypeDataTemplates",  key = "{#agreementId, #lotId,#eventType.value}")
+  @Cacheable(value = "agreementsCache", key = "{#root.methodName-#agreementId,#lotId,#eventType.value}")
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
     // Call the Agreements Service to request the data templates for the given agreement, lot and event type, first formatting the lot ID
     String formattedLotId = formatLotIdForAgreementService(lotId);
@@ -54,7 +54,7 @@ public class AgreementsService {
   /**
    * Gets the details of the suppliers for a given Lot of a given Agreement
    */
-  @Cacheable(value = "getLotSuppliers",  key = "{#agreementId, #lotId}")
+  @Cacheable(value = "agreementsCache", key = "{#root.methodName-#agreementId,#lotId}")
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
     // Call the Agreements Service to request the details of the suppliers attached to a given lot of a given agreement, first formatting the lot ID
     String formattedLotId = formatLotIdForAgreementService(lotId);
@@ -73,7 +73,7 @@ public class AgreementsService {
   /**
    * Gets the details of a given Agreement
    */
-  @Cacheable(value = "getAgreementDetails", key = "#agreementId")
+  @Cacheable(value = "agreementsCache", key = "{#root.methodName-#agreementId}")
   public AgreementDetail getAgreementDetails(final String agreementId) {
     // Call the Agreements Service to request the details of the given agreement
     try {
@@ -95,7 +95,7 @@ public class AgreementsService {
   /**
    * Get the details of a given Lot for an Agreement
    */
-  @Cacheable(value = "getLotDetails", key = "{#agreementId, #lotId}")
+  @Cacheable(value = "agreementsCache", key = "{#root.methodName-#agreementId,#lotId}")
   public LotDetail getLotDetails(final String agreementId, final String lotId) {
     // Call the Agreements Service to request the details of the given lot for the given agreement, formatting the Lot ID first
     String formattedLotId = formatLotIdForAgreementService(lotId);
@@ -120,7 +120,7 @@ public class AgreementsService {
   /**
    * Get Event Types for a given Agreement and Lot
    */
-  @Cacheable(value = "getLotEventTypes", key = "{#agreementId, #lotId}")
+  @Cacheable(value = "agreementsCache", key = "{#root.methodName-#agreementId,#lotId}")
   public Collection<LotEventType> getLotEventTypes(final String agreementId, final String lotId) {
     // Call the Agreements Service to request the event types for the given lot and agreement, formatting the Lot ID first
     String formattedLotId = formatLotIdForAgreementService(lotId);
