@@ -532,9 +532,7 @@ public class ProcurementEventService implements EventService {
         if (validationService.isEventAbandoned(exportRfxResponse, updateEvent.getEventType())) {
             var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(procId);
             if (procurementEvents != null && procurementEvents.size() == 1) {
-
-
-                eventTransitionService.terminateEvent(procId, eventId, TerminationType.CANCELLED, principal, true);
+                eventTransitionService.terminateEvent(procId, eventId, TerminationType.CANCELLED, principal);
             }
         }
         var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())

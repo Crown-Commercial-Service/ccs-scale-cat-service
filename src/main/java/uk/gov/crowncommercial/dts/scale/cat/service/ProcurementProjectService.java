@@ -823,11 +823,7 @@ public class ProcurementProjectService {
     if (CollectionUtils.isEmpty(procurementEvents)) {
       log.info("No events exists for this project");
     } else {
-      procurementEvents.forEach(
-              event -> {
-                eventTransitionService.terminateEvent(
-                    projectId, event.getEventID(), terminationType, principal, false);
-              });
+      procurementEvents.forEach(event -> eventTransitionService.terminateEvent(projectId, event.getEventID(), terminationType, principal));
     }
   }
 
