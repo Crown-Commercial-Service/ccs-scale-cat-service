@@ -34,7 +34,7 @@
         <snakeyaml.version>2.3</snakeyaml.version>
         <spring-security.version>6.3.3</spring-security.version>
         <hsql.version>2.7.3</hsql.version>
-        <rollbar.version>1.10.0</rollbar.version>
+        <rollbar.version>1.10.3</rollbar.version>
         <jsoup.version>1.18.1</jsoup.version>
         <jackson.version>2.15.2</jackson.version>
         <hibernate.version>6.3.2.Final</hibernate.version>
