@@ -201,9 +201,6 @@ public class ProjectsController extends AbstractRestController {
                                                    @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
                                                    @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
                                                    @RequestParam (name = "filters", required = false) final String filters) {
-    log.warn("Page size is" + pageSize);
-
-
     ProjectFilters projectFilters = null;
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
@@ -212,8 +209,6 @@ public class ProjectsController extends AbstractRestController {
       String decodedString = new String(Base64.getDecoder().decode(filters));
       projectFilters = mapper.readValue(decodedString, ProjectFilters.class);
     }
-
-    log.warn("Parsed page size is " + size);
 
     return procurementProjectService.getProjectSummery(keyword,lotId, pageNo, size, projectFilters);
   }

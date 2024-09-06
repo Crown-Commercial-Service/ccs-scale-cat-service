@@ -828,20 +828,20 @@ public class ProcurementProjectService {
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
 
-    log.warn("Executing search query with page size of " + pageSize);
     NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-
-
     NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
-  return projectPublicSearchResult;
+
+    return projectPublicSearchResult;
   }
+
   public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
   {
     Map<Object, Boolean> map = new ConcurrentHashMap<>();
@@ -865,10 +865,8 @@ public class ProcurementProjectService {
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
 
-    log.warn("Query builder has page request of " + (pageRequest.getPageNumber() - 1) + " and size of " + pageRequest.getPageSize());
     searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
-    log.warn("Query build have built");
 
     return searchQuery;
   }
@@ -904,13 +902,17 @@ public class ProcurementProjectService {
     }
   }
 
-  private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
+  private NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
+    log.warn("Page size should be " + (int) searchProjectRepo.count());
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(null,projectFilter, keyword);
     searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
-      searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+    searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+    
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
+
     return searchQuery;
   }
+
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
   {
     return results.stream().map(SearchHit::getContent).map(object ->
