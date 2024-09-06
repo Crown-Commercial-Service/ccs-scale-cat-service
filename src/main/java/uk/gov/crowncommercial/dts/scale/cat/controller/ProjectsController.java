@@ -195,20 +195,26 @@ public class ProjectsController extends AbstractRestController {
   @SneakyThrows
   @GetMapping("/search")
   @TrackExecutionTime
-  public ProjectPublicSearchResult getProjectsSummary(@RequestParam(name = "agreement-id", required = true) final String agreementId,
+  public ProjectPublicSearchResult getProjectsSummary(@RequestParam(name = "agreement-id") final String agreementId,
                                                    @RequestParam(name = "keyword", required = false) final String keyword,
                                                    @RequestParam(name= "lot-id", required = false) final String lotId,
                                                    @RequestParam(name = "page", defaultValue ="1", required = false) final String page,
                                                    @RequestParam(name = "page-size",  defaultValue = "20",required = false) final String pageSize,
                                                    @RequestParam (name = "filters", required = false) final String filters) {
-    ProjectFilters projectFilters=null;
+    log.warn("Page size is" + pageSize);
+
+
+    ProjectFilters projectFilters = null;
     int pageNo = Integer.parseInt(page);
     int size = Integer.parseInt(pageSize);
-    if(filters != null) {
+
+    if (filters != null) {
       String decodedString = new String(Base64.getDecoder().decode(filters));
-       projectFilters = mapper.readValue(decodedString, ProjectFilters.class);
+      projectFilters = mapper.readValue(decodedString, ProjectFilters.class);
     }
-    return procurementProjectService.getProjectSummery(keyword,lotId,
-     pageNo, size, projectFilters);
+
+    log.warn("Parsed page size is " + size);
+
+    return procurementProjectService.getProjectSummery(keyword,lotId, pageNo, size, projectFilters);
   }
 }
