@@ -833,11 +833,15 @@ public class ProcurementProjectService {
     SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
     SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
 
+    log.warn("Results found: " + results.stream().count());
+
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
+
+    log.warn("Data should be set for return");
 
     return projectPublicSearchResult;
   }
