@@ -904,10 +904,11 @@ public class ProcurementProjectService {
 
   private NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
     log.warn("Page size should be " + (int) searchProjectRepo.count());
+
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(null,projectFilter, keyword);
     searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
     searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
-    
+
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
 
     return searchQuery;
