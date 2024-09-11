@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig.KEY_URI_TEMPLATE;
 import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
@@ -23,6 +22,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 @RequiredArgsConstructor
 @Slf4j
 public class ConclaveService {
+  public static final String KEY_URI_TEMPLATE = "uriTemplate";
 
   private final ConclaveAPIConfig conclaveAPIConfig;
   private final WebClient conclaveWrapperAPIClient;
@@ -45,7 +45,7 @@ public class ConclaveService {
    * @param email
    * @return an optional user profile (empty if not found)
    */
-  @Cacheable(value = "getUserProfile", key = "#email")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #email")
   public Optional<UserProfileResponseInfo> getUserProfile(final String email) {
 
     final var templateURI = conclaveAPIConfig.getGetUser().get(KEY_URI_TEMPLATE);
@@ -66,7 +66,7 @@ public class ConclaveService {
    * @param userId
    * @return
    */
-  @Cacheable(value = "getUserContacts", key = "#userId")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #userId")
   public UserContactInfoList getUserContacts(final String userId) {
 
     final var templateURI = conclaveAPIConfig.getGetUserContacts().get(KEY_URI_TEMPLATE);
@@ -88,7 +88,7 @@ public class ConclaveService {
    * @param orgId the internal org identifier
    * @return
    */
-  @Cacheable(value = "getOrganisation", key = "#orgId")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisationProfile(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisation().get(KEY_URI_TEMPLATE);
@@ -111,7 +111,7 @@ public class ConclaveService {
    * @param orgId the public identifier e.g. US-DUNS-123456789
    * @return
    */
-  @Cacheable(value = "getOrganisationIdentity", key = "#orgId")
+  @Cacheable(value = "conclaveCache", key = "#root.methodName + '-' + #orgId")
   public Optional<OrganisationProfileResponseInfo> getOrganisationIdentity(final String orgId) {
 
     final var templateURI = conclaveAPIConfig.getGetOrganisationIdentity().get(KEY_URI_TEMPLATE);
