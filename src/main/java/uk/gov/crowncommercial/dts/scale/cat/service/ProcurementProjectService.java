@@ -13,7 +13,9 @@ import java.io.InputStream;
 import java.net.URI;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -31,6 +33,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -824,7 +827,10 @@ public class ProcurementProjectService {
     }
   }
 
-  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) {
+  /**
+   * Returns a model representing publicly available project data
+   */
+  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
@@ -832,13 +838,12 @@ public class ProcurementProjectService {
 
     log.warn("About to start search query at " + DateTime.now());
 
-    NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-    SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
+    CompletableFuture<SearchHits<ProcurementEventSearch>> resultsModel = performProcurementEventSearch(keyword, lotId, page, pageSize, projectFilters);
+    CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
+    CompletableFuture.allOf(resultsModel, countResultsModel).join();
 
-    log.warn("First query complete at " + DateTime.now());
-
-    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-    SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+    SearchHits<ProcurementEventSearch> results = resultsModel.get();
+    SearchHits<ProcurementEventSearch> countResults = countResultsModel.get();
 
     log.warn("Results found: " + results.stream().count() + " at " + DateTime.now());
 
@@ -851,6 +856,28 @@ public class ProcurementProjectService {
     log.warn("Data should be set for return at " + DateTime.now());
 
     return projectPublicSearchResult;
+  }
+
+  /**
+   * Asynchronously perform a search query request based on parameters passed in
+   */
+  @Async
+  public CompletableFuture<SearchHits<ProcurementEventSearch>> performProcurementEventSearch(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) {
+    NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    SearchHits<ProcurementEventSearch> model = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
+
+    return CompletableFuture.completedFuture(model);
+  }
+
+  /**
+   * Asynchronously fetch lot count results based on parameters passed in
+   */
+  @Async
+  public CompletableFuture<SearchHits<ProcurementEventSearch>> performProcurementEventResultsCount(final String keyword, final String lotId, ProjectFilters projectFilters) {
+    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    SearchHits<ProcurementEventSearch> model = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+
+    return CompletableFuture.completedFuture(model);
   }
 
   public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
