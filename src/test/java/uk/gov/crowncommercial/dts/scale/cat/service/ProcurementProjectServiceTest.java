@@ -33,7 +33,6 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.amazonaws.services.s3.AmazonS3;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import uk.gov.crowncommercial.dts.scale.cat.config.AgreementsServiceAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
@@ -130,9 +129,6 @@ class ProcurementProjectServiceTest {
 
   @MockBean
   private ProcurementEventService procurementEventService;
-
-  @MockBean
-  private AgreementsServiceAPIConfig agreementsServiceAPIConfig;
 
   @MockBean
   private WebclientWrapper webclientWrapper;

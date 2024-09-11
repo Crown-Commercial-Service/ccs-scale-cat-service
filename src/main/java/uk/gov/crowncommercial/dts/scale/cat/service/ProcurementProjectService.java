@@ -11,15 +11,15 @@ import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.ge
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
 import java.io.InputStream;
 import java.net.URI;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
 import org.modelmapper.ModelMapper;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
@@ -32,6 +32,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -566,7 +567,7 @@ public class ProcurementProjectService {
         }
       }
     }
-
+    
     throw new ResourceNotFoundException("Project '" + projectId + "' not found");
   }
 
@@ -821,31 +822,58 @@ public class ProcurementProjectService {
     if (CollectionUtils.isEmpty(procurementEvents)) {
       log.info("No events exists for this project");
     } else {
-      procurementEvents.forEach(
-              event -> {
-                eventTransitionService.terminateEvent(
-                    projectId, event.getEventID(), terminationType, principal, false);
-              });
+      procurementEvents.forEach(event -> eventTransitionService.terminateEvent(projectId, event.getEventID(), terminationType, principal));
     }
   }
 
-  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId,
-                                            int page, int pageSize, ProjectFilters projectFilters) {
+  /**
+   * Returns a model representing publicly available project data
+   */
+  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
-    NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
-    SearchHits<ProcurementEventSearch> results = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
-    SearchHits<ProcurementEventSearch> countResults = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+
+    // Perform the searches we need to do asynchronously - they can be slow
+    CompletableFuture<SearchHits<ProcurementEventSearch>> resultsModel = performProcurementEventSearch(keyword, lotId, page, pageSize, projectFilters);
+    CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
+    CompletableFuture.allOf(resultsModel, countResultsModel).join();
+
+    SearchHits<ProcurementEventSearch> results = resultsModel.get();
+    SearchHits<ProcurementEventSearch> countResults = countResultsModel.get();
+
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
-  return projectPublicSearchResult;
+
+    return projectPublicSearchResult;
   }
+
+  /**
+   * Asynchronously perform a search query request based on parameters passed in
+   */
+  @Async
+  public CompletableFuture<SearchHits<ProcurementEventSearch>> performProcurementEventSearch(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) {
+    NativeSearchQuery searchQuery = getSearchQuery(keyword, PageRequest.of(page,pageSize), lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    SearchHits<ProcurementEventSearch> model = elasticsearchOperations.search(searchQuery, ProcurementEventSearch.class);
+
+    return CompletableFuture.completedFuture(model);
+  }
+
+  /**
+   * Asynchronously fetch lot count results based on parameters passed in
+   */
+  @Async
+  public CompletableFuture<SearchHits<ProcurementEventSearch>> performProcurementEventResultsCount(final String keyword, final String lotId, ProjectFilters projectFilters) {
+    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    SearchHits<ProcurementEventSearch> model = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+
+    return CompletableFuture.completedFuture(model);
+  }
+
   public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
   {
     Map<Object, Boolean> map = new ConcurrentHashMap<>();
@@ -868,8 +896,10 @@ public class ProcurementProjectService {
 
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
-   searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
-   NativeSearchQuery searchQuery = searchQueryBuilder.build();
+
+    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
+    NativeSearchQuery searchQuery = searchQueryBuilder.build();
+
     return searchQuery;
   }
 
@@ -904,13 +934,16 @@ public class ProcurementProjectService {
     }
   }
 
-  private  NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
+  private NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(null,projectFilter, keyword);
     searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
-      searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+    searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
+
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
+
     return searchQuery;
   }
+
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
   {
     return results.stream().map(SearchHit::getContent).map(object ->
