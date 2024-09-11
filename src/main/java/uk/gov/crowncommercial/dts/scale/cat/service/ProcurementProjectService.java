@@ -20,7 +20,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.joda.time.DateTime;
 import org.modelmapper.ModelMapper;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
@@ -836,8 +835,7 @@ public class ProcurementProjectService {
     searchCriteria.setKeyword(keyword);
     searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
 
-    log.warn("About to start search query at " + DateTime.now());
-
+    // Perform the searches we need to do asynchronously - they can be slow
     CompletableFuture<SearchHits<ProcurementEventSearch>> resultsModel = performProcurementEventSearch(keyword, lotId, page, pageSize, projectFilters);
     CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
     CompletableFuture.allOf(resultsModel, countResultsModel).join();
@@ -845,15 +843,11 @@ public class ProcurementProjectService {
     SearchHits<ProcurementEventSearch> results = resultsModel.get();
     SearchHits<ProcurementEventSearch> countResults = countResultsModel.get();
 
-    log.warn("Results found: " + results.stream().count() + " at " + DateTime.now());
-
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
     projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
-
-    log.warn("Data should be set for return at " + DateTime.now());
 
     return projectPublicSearchResult;
   }
@@ -941,8 +935,6 @@ public class ProcurementProjectService {
   }
 
   private NativeSearchQuery getLotCount (String keyword, String lotId, ProjectFilter projectFilter) {
-    log.warn("Page size should be " + (int) searchProjectRepo.count());
-
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(null,projectFilter, keyword);
     searchQueryBuilder.withPageable(PageRequest.of(0, (int) searchProjectRepo.count()));
     searchQueryBuilder.withAggregations(AggregationBuilders.terms(COUNT_AGGREGATION).field("lot.raw").size(100));
