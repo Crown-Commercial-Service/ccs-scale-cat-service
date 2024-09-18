@@ -45,6 +45,7 @@ import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -80,13 +81,9 @@ public class ProcurementEventService implements EventService {
 
     public static final String ERR_MSG_FMT_DOCUMENT_NOT_FOUND =
             "Document upload record for ID [%s] not found";
-    public static final String ERR_MSG_ALL_DIMENSION_WEIGHTINGS =
-            "All dimensions must have 100% weightings prior to the supplier(s) can be added to the event";
     public static final Set<String> RESPONSE_STATES = Set.of("Not Replied");
     private static final String ERR_MSG_FMT_NO_SUPPLIER_RESPONSES_FOUND =
             "No Supplier Responses found for the given event '%s'  ";
-    private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
-            "Supplier [%s] not found in Conclave";
     private static final String ERR_MSG_RFX_NOT_FOUND = "Rfx [%s] not found in Jaggaer";
 
     private static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
@@ -122,6 +119,19 @@ public class ProcurementEventService implements EventService {
 
     private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+    /**
+     * Completes an existing event directly, rather than relying on a multitude of background processes
+     * Needed to support PA and other event types that don't naturally complete on their own
+     */
+    @Transactional
+    public void completeEvent(final Integer projectId, final String eventId, final String principal) {
+        // Fetch the event specified, and then trigger completion
+        log.debug("Complete Event {}", eventId);
+
+        ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
+        eventTransitionService.completeExistingEvent(eventModel, principal);
+    }
 
     /**
      * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
@@ -478,6 +488,22 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
+     * Retrieve a single event's review information based on the ID
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public EventDetail getEventReview(final Integer projectId, final String eventId) {
+        // Grab the event as its core RFX format
+        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
+        ExportRfxResponse exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
+
+        // The main difference between this and getEvent is that we always want it to provide us with the eval criteria - it shouldn't be suppressed based on event type
+        return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event, criteriaService.getEvalCriteria(projectId, eventId, true));
+    }
+
+    /**
      * Update Event. If no values are set the method does not carry out updates and no errors are
      * thrown.
      *
@@ -506,9 +532,7 @@ public class ProcurementEventService implements EventService {
         if (validationService.isEventAbandoned(exportRfxResponse, updateEvent.getEventType())) {
             var procurementEvents = retryableTendersDBDelegate.findProcurementEventsByProjectId(procId);
             if (procurementEvents != null && procurementEvents.size() == 1) {
-
-
-                eventTransitionService.terminateEvent(procId, eventId, TerminationType.CANCELLED, principal, true);
+                eventTransitionService.terminateEvent(procId, eventId, TerminationType.CANCELLED, principal);
             }
         }
         var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())

@@ -115,6 +115,16 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.getEvent(procId, eventId);
   }
 
+  @GetMapping("/{eventID}/review")
+  @TrackExecutionTime
+  public EventDetail getEventReview(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getEventReview invoked on behalf of principal: {}", principal);
+
+    // Fetch the event review model
+    return procurementEventService.getEventReview(procId, eventId);
+  }
+
   @PutMapping("/{eventID}")
   @TrackExecutionTime
   public EventSummary updateProcurementEvent(@PathVariable("procID") final Integer procId,
@@ -292,6 +302,17 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  @PutMapping("/{eventID}/complete")
+  @TrackExecutionTime
+  public StringValueResponse completeEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("completeEvent invoked on behalf of principal: {}", principal);
+
+    procurementEventService.completeEvent(procId, eventId, principal);
+
+    return new StringValueResponse("OK");
+  }
+
   @GetMapping("/{eventID}/documents/export")
   @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(
@@ -355,17 +376,17 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.getSupplierResponses(procId, eventId);
   }
 
+  /**
+   * Closes a given event
+   */
   @PutMapping("/{eventID}/termination")
   @TrackExecutionTime
-  public StringValueResponse terminateEvent(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId,
-      @RequestBody @Valid final TerminationEvent type,
-      final JwtAuthenticationToken authentication) {
-
+  public StringValueResponse terminateEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @RequestBody @Valid final TerminationEvent type, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
 
-    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, true);
+    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal);
+
     return new StringValueResponse("OK");
   }
 

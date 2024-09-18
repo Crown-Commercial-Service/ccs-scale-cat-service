@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.agreements;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Agreement Detail.
@@ -39,4 +40,9 @@ public class AgreementDetail {
    * Whether or not a lot is required by this Commercial Agreement
    */
   private Boolean preDefinedLotRequired;
+
+  /**
+   * Which lots are on the agreement
+   */
+  private List<LotSummary> lots;
 }

@@ -1228,8 +1228,7 @@ class ProcurementEventServiceTest {
         .thenReturn(procurementEvent);
 
     // Invoke
-    eventTransitionService.terminateEvent(PROC_PROJECT_ID, PROC_EVENT_ID,
-        TerminationType.CANCELLED, PRINCIPAL, true);
+    eventTransitionService.terminateEvent(PROC_PROJECT_ID, PROC_EVENT_ID, TerminationType.CANCELLED, PRINCIPAL);
 
     // Verify
     verify(jaggaerService).invalidateEvent(request);
