@@ -65,7 +65,7 @@ public class Constants {
           Set.of(ViewEventType.PA,ViewEventType.FCA, ViewEventType.DAA);
 
   public static final Set<ViewEventType> COMPLETE_EVENT_TYPES =
-          Set.of(ViewEventType.RFI,ViewEventType.EOI);
+          Set.of(ViewEventType.RFI,ViewEventType.EOI, ViewEventType.DA, ViewEventType.DAA, ViewEventType.FC, ViewEventType.FCA); // We can create a new set specifically for the extra event type checking for new UI, if it effects the other usage.
 
   public static final Set<ViewEventType> FC_DA_NON_COMPLETE_EVENT_TYPES =
           Set.of(ViewEventType.FC,ViewEventType.DA);
