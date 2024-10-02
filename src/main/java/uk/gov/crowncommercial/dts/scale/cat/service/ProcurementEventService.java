@@ -149,9 +149,6 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
                                     Boolean downSelectedSuppliers, final String principal) {
-
-        System.out.println("1 - Starting createEvent method with projectId: " + projectId);
-
         boolean twoStageEvent = false;
         boolean scheduleSupplierSync = false;
 
@@ -159,49 +156,34 @@ public class ProcurementEventService implements EventService {
         var project = retryableTendersDBDelegate.findProcurementProjectById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
 
-                System.out.println("2 - Found project: " + project.getProjectName() + " with ID: " + project.getId());
-                log.debug("Retrieved project: {}, CA Number: {}, Lot Number: {}", project.getProjectName(), project.getCaNumber(), project.getLotNumber());
-
         // check any valid events existed before
         Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
-    System.out.println("3 - Existing event found: " + existingEventOptional.isPresent() 
-        + (existingEventOptional.isPresent() 
-           ? ", Event ID: " + existingEventOptional.get().getId() 
-           : ""));
 
 
         if (!existingEventOptional.isPresent()) {
-            log.info("4 - No existing events exists for project {}", projectId);
+            log.info("No events exists for this project");
         } else {
             TwoStageEventService twoStageEventService = new TwoStageEventService();
             // complete the event and copy suppliers
             var existingEvent = existingEventOptional.get();
             twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
-            System.out.println("5 - Two-stage event determination: " + twoStageEvent);
-            log.debug("Two-stage event determination: {}", twoStageEvent);
             if (!twoStageEvent) {
-                System.out.println("6a - Completing existing event as non-two-stage");
                 eventTransitionService.completeExistingEvent(existingEvent, principal);
             } else {
-                System.out.println("6b - Marking existing event complete as two-stage");
                 twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
             }
         }
-
 
         // Set defaults if no values supplied
         var createEventNonOCDS = requireNonNullElse(createEvent.getNonOCDS(), new CreateEventNonOCDS());
         var createEventOCDS = requireNonNullElse(createEvent.getOCDS(), new CreateEventOCDS());
         var eventTypeValue = ofNullable(createEventNonOCDS.getEventType())
                 .map(DefineEventType::getValue).orElseGet(ViewEventType.TBD::getValue);
-                System.out.println("7 - Event type determined: " + eventTypeValue);
 
         downSelectedSuppliers = requireNonNullElse(downSelectedSuppliers, Boolean.FALSE);
-        System.out.println("8 - Down selected suppliers: " + downSelectedSuppliers);
 
         var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? createEventOCDS.getTitle()
                 : getDefaultEventTitle(project.getProjectName(), eventTypeValue);
-                System.out.println("9 - Event name determined: " + eventName);
 
         var eventBuilder = ProcurementEvent.builder();
         //setting true by default, need to revisit
@@ -213,24 +195,21 @@ public class ProcurementEventService implements EventService {
 
         if (createEventNonOCDS.getEventType() != null
                 && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
-                    System.out.println("10 - Processing assessment event type");
+
             // Either create a new assessment or validate and link to existing one
             if (createEvent.getNonOCDS().getAssessmentId() == null) {
-                System.out.println("11 - Creating new assessment");
                 var newAssessmentId = assessmentService.createEmptyAssessment(project.getCaNumber(),
                         project.getLotNumber(), createEventNonOCDS.getEventType(), principal);
                 eventBuilder.assessmentId(newAssessmentId);
 
                 var validatedAssessment = assessmentService.getAssessment(
                         newAssessmentId, Boolean.FALSE, Optional.empty());
-                        System.out.println("12 - Created new assessment with ID: " + newAssessmentId);
 
                 setRefreshSuppliersForEvent(eventBuilder, validatedAssessment);
 
                 returnAssessmentId = newAssessmentId;
                 log.debug("Created new empty assessment: {}", newAssessmentId);
             } else {
-                System.out.println("11b - Linking existing assessment: " + createEvent.getNonOCDS().getAssessmentId());
                 var validatedAssessment = assessmentService.getAssessment(
                         createEvent.getNonOCDS().getAssessmentId(), Boolean.FALSE, Optional.empty());
                 eventBuilder.assessmentId(validatedAssessment.getAssessmentId());
@@ -242,22 +221,19 @@ public class ProcurementEventService implements EventService {
         }
 
         if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
-            System.out.println("13 - Processing non-TenderDB-only event type");
 //      List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
             scheduleSupplierSync = true;
             var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
-            System.out.println("14 - Calling Jaggaer service to create/update RFX");
+
             var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
                     createUpdateRfx.getOperationCode());
 
             if (createRfxResponse.getReturnCode() != 0
                     || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
-                        System.out.println("15 - Error from Jaggaer service: " + createRfxResponse);
                 log.error(createRfxResponse.toString());
                 throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
                         createRfxResponse.getReturnMessage());
             }
-            System.out.println("15 - Successfully created Jaggaer RFX: " + createRfxResponse.getRfxId());
             log.info("Created Jaggaer (Rfx) event: {}", createRfxResponse);
             rfxReferenceCode = createRfxResponse.getRfxReferenceCode();
             eventBuilder.externalEventId(createRfxResponse.getRfxId())
@@ -270,7 +246,6 @@ public class ProcurementEventService implements EventService {
         var ocidPrefix = ocdsConfig.getOcidPrefix();
 
         var tenderStatus = TenderStatus.PLANNING.getValue();
-        System.out.println("16 - Setting tender status: " + tenderStatus);
 
         if (exportRfxResponse != null && exportRfxResponse.getRfxSetting() != null) {
             var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
@@ -279,18 +254,14 @@ public class ProcurementEventService implements EventService {
             tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null
                     ? rfxStatus.get(eventTypeValue).getValue()
                     : null;
-                    System.out.println("17 - Updated tender status: " + tenderStatus);
             if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
-                System.out.println("18 - Setting publish date: " + exportRfxResponse.getRfxSetting().getPublishDate());
                 eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
             }
             if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
-                System.out.println("19 - Setting close date: " + exportRfxResponse.getRfxSetting().getCloseDate());
                 eventBuilder.closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
             }
         }
 
-        System.out.println("20 - Building final event object");
         eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
                 .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
 
@@ -298,83 +269,54 @@ public class ProcurementEventService implements EventService {
                 .updatedAt(Instant.now()).tenderStatus(tenderStatus);
 
         if (null != createEvent.getNonOCDS() && null != createEvent.getNonOCDS().getTemplateGroupId()) {
-            System.out.println("21 - Setting template ID: " 
-            + createEvent.getNonOCDS().getTemplateGroupId().intValue());
             eventBuilder.templateId(createEvent.getNonOCDS().getTemplateGroupId().intValue());
         }
 
         if(CollectionUtils.isNotEmpty(project.getProcurementEvents())){
-            System.out.println("22 - Setting refresh suppliers based on project events");
             setRefreshSuppliersForEvent(eventBuilder, project.getProcurementEvents());
         }
 
 
         Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
-        System.out.println("23 - Existing event ID for supplier refresh: " + existingEventId);
 
 
         if(!Objects.isNull(existingEventId)  ){
-            String existingEventType = existingEventOptional.get().getEventType();
-            System.out.println("24 - Checking existing event type for supplier refresh: " + existingEventType);
 
             if(COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEventOptional.get().getEventType()))){
-                System.out.println("25a - Setting refresh suppliers to true");
                 eventBuilder.refreshSuppliers(true);
             }else{
-                System.out.println("25b - Setting refresh suppliers to false");
                 eventBuilder.refreshSuppliers(false);
             }
 
         }
 
-        System.out.println("5 - Building event with type: " + eventTypeValue 
-        + ", downSelectedSuppliers: " + downSelectedSuppliers);
-
 
         var event = eventBuilder.build();
-        System.out.println("26 - Event built, proceeding to save");
         ProcurementEvent procurementEvent;
 
-        System.out.println("27a.1 - twoStageEvent: " + twoStageEvent);
-        System.out.println("27a.2 - eventType: " + (createEventNonOCDS.getEventType() != null ? createEventNonOCDS.getEventType() : "null"));
-        System.out.println("27a.3 - ASSESSMENT_EVENT_TYPES: " + ASSESSMENT_EVENT_TYPES);
         // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
         if (!twoStageEvent && createEventNonOCDS.getEventType() != null
                 && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
-                    System.out.println("27a - Saving assessment event with suppliers to TendersDB");
             procurementEvent = addSuppliersToTendersDB(event,
                     supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true,
                     principal);
         } else {
-            System.out.println("27b - Saving regular event to TendersDB");
             procurementEvent = retryableTendersDBDelegate.save(event);
         }
-        System.out.println("29 - Event saved with ID: " + procurementEvent.getId());
-        System.out.println("29a - Chosen path: " + (procurementEvent == null ? "null" : procurementEvent.getClass().getSimpleName()));
-
 
         if (scheduleSupplierSync) {
-            System.out.println("30 - Preparing supplier sync");
             JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
             List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
-
-            System.out.println("31a - Found " + (suppliers != null ? suppliers.size() : 0) + " suppliers for syncing");
             if (null != suppliers && suppliers.size() > 0) {
-                int threshold = experimentalFlags.getAsyncJaggaerSupplierCountThreshold();
-                System.out.println("32 - Supplier count: " + suppliers.size() + ", Threshold: " + threshold);
-                if (suppliers.size() > threshold) {
-                    System.out.println("33a - Submitting large supplier list for async processing");
-                // if (suppliers.size() > experimentalFlags.getAsyncJaggaerSupplierCountThreshold()) {
+                if (suppliers.size() > experimentalFlags.getAsyncJaggaerSupplierCountThreshold()) {
                     asyncExecutor.submit(principal, JaggaerSupplierPush.class, eventData, "ProcurementEvent", String.valueOf(procurementEvent.getId()));
                 } else {
-                    System.out.println("33b - Executing supplier sync immediately");
                     eventData.setSuppliers(suppliers);
                     asyncExecutor.execute(principal, JaggaerSupplierPush.class, eventData);
                 }
             }
         }
 
-        System.out.println("34 - Building and returning EventSummary");
         return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
                 Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
                 TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
@@ -408,62 +350,27 @@ public class ProcurementEventService implements EventService {
 
 
 
-//debug log
+
     public List<Supplier> getSuppliers(ProcurementProject project, ProcurementEvent existingEvent,
                                        String eventTypeValue, boolean twoStageEvent) {
-        System.out.println("35 - Method parameters:");
-        System.out.println(" a - project: " + (project != null ? "ID=" + project.getId() : "null"));
-        System.out.println(" b - existingEvent: " + (existingEvent != null ? "ID=" + existingEvent.getId() : "null"));
-        System.out.println(" c - eventTypeValue: " + eventTypeValue);
-        System.out.println(" d - twoStageEvent: " + twoStageEvent);
 
         if (null != existingEvent) {
-            System.out.println("36 - Entering existingEvent block");
           //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
                 SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
-                List<Supplier> suppliers = supplierStore.getSuppliers(existingEvent);
-                System.out.println("37 - Suppliers from store: " + (suppliers != null ? suppliers.size() : "null"));
                 return supplierStore.getSuppliers(existingEvent);
           //  }
         }
 
-        System.out.println("37 - Checking ViewEventType.TBD condition");
-        System.out.println("38 - ViewEventType.fromValue(eventTypeValue): " + ViewEventType.fromValue(eventTypeValue));
+                //Get suppliers, which is needed for notifications and messaging once event is created
+            var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
+                    .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
+                    .collect(Collectors.toSet());
 
-        System.out.println("38 - Entering TBD if statement");
-        //get suppliers
-
-        var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
-                .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
-                .collect(Collectors.toSet());
-                System.out.println("39 - Found lotSuppliersOrgIds: " + lotSuppliersOrgIds.size());
-
-        return retryableTendersDBDelegate
-       
-                .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
-                    var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-                    return Supplier.builder().companyData(companyData).build();
-                }).collect(Collectors.toList());
-//Remove if statement
-        // if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
-        //     System.out.println("38 - Entering TBD if statement");
-        //     //get suppliers
-        //     var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
-        //             .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
-        //             .collect(Collectors.toSet());
-        //             System.out.println("39 - Found lotSuppliersOrgIds: " + lotSuppliersOrgIds.size());
-
-        //     return retryableTendersDBDelegate
-        //     // var suppliers = retryableTendersDBDelegate
-        //             .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
-        //                 var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-        //                 return Supplier.builder().companyData(companyData).build();
-        //             }).collect(Collectors.toList());
-                        
-                        // System.out.println("40 - Returning suppliers list size: " + suppliers.size());
-                        // return suppliers;
-        
-        // return null;
+            return retryableTendersDBDelegate
+                    .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+                        var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                        return Supplier.builder().companyData(companyData).build();
+                    }).collect(Collectors.toList());
     }
 
     private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
