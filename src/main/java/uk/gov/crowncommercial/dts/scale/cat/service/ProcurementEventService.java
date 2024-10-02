@@ -429,26 +429,41 @@ public class ProcurementEventService implements EventService {
 
         System.out.println("37 - Checking ViewEventType.TBD condition");
         System.out.println("38 - ViewEventType.fromValue(eventTypeValue): " + ViewEventType.fromValue(eventTypeValue));
-//Remove if statement
-        if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
-            System.out.println("38 - Entering TBD if statement");
-            //get suppliers
-            var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
-                    .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
-                    .collect(Collectors.toSet());
-                    System.out.println("39 - Found lotSuppliersOrgIds: " + lotSuppliersOrgIds.size());
 
-            // return retryableTendersDBDelegate
-            var suppliers = retryableTendersDBDelegate
-                    .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
-                        var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-                        return Supplier.builder().companyData(companyData).build();
-                    }).collect(Collectors.toList());
+        System.out.println("38 - Entering TBD if statement");
+        //get suppliers
+
+        var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
+                .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
+                .collect(Collectors.toSet());
+                System.out.println("39 - Found lotSuppliersOrgIds: " + lotSuppliersOrgIds.size());
+
+        return retryableTendersDBDelegate
+       
+                .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+                    var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                    return Supplier.builder().companyData(companyData).build();
+                }).collect(Collectors.toList());
+//Remove if statement
+        // if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
+        //     System.out.println("38 - Entering TBD if statement");
+        //     //get suppliers
+        //     var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
+        //             .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
+        //             .collect(Collectors.toSet());
+        //             System.out.println("39 - Found lotSuppliersOrgIds: " + lotSuppliersOrgIds.size());
+
+        //     return retryableTendersDBDelegate
+        //     // var suppliers = retryableTendersDBDelegate
+        //             .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+        //                 var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+        //                 return Supplier.builder().companyData(companyData).build();
+        //             }).collect(Collectors.toList());
                         
-                        System.out.println("40 - Returning suppliers list size: " + suppliers.size());
-                        return suppliers;
-        }
-        return null;
+                        // System.out.println("40 - Returning suppliers list size: " + suppliers.size());
+                        // return suppliers;
+        
+        // return null;
     }
 
     private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
