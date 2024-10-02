@@ -335,6 +335,9 @@ public class ProcurementEventService implements EventService {
         System.out.println("26 - Event built, proceeding to save");
         ProcurementEvent procurementEvent;
 
+        System.out.println("27a.1 - twoStageEvent: " + twoStageEvent);
+        System.out.println("27a.2 - eventType: " + (createEventNonOCDS.getEventType() != null ? createEventNonOCDS.getEventType() : "null"));
+        System.out.println("27a.3 - ASSESSMENT_EVENT_TYPES: " + ASSESSMENT_EVENT_TYPES);
         // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
         if (!twoStageEvent && createEventNonOCDS.getEventType() != null
                 && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
@@ -347,13 +350,15 @@ public class ProcurementEventService implements EventService {
             procurementEvent = retryableTendersDBDelegate.save(event);
         }
         System.out.println("29 - Event saved with ID: " + procurementEvent.getId());
+        System.out.println("29a - Chosen path: " + (procurementEvent == null ? "null" : procurementEvent.getClass().getSimpleName()));
+
 
         if (scheduleSupplierSync) {
             System.out.println("30 - Preparing supplier sync");
             JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
             List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
-            System.out.println("31 - Found " + (suppliers != null ? suppliers.size() : 0) 
-            + " suppliers for syncing");
+
+            System.out.println("31a - Found " + (suppliers != null ? suppliers.size() : 0) + " suppliers for syncing");
             if (null != suppliers && suppliers.size() > 0) {
                 int threshold = experimentalFlags.getAsyncJaggaerSupplierCountThreshold();
                 System.out.println("32 - Supplier count: " + suppliers.size() + ", Threshold: " + threshold);
@@ -403,29 +408,45 @@ public class ProcurementEventService implements EventService {
 
 
 
-
+//debug log
     public List<Supplier> getSuppliers(ProcurementProject project, ProcurementEvent existingEvent,
                                        String eventTypeValue, boolean twoStageEvent) {
+        System.out.println("35 - Method parameters:");
+        System.out.println(" a - project: " + (project != null ? "ID=" + project.getId() : "null"));
+        System.out.println(" b - existingEvent: " + (existingEvent != null ? "ID=" + existingEvent.getId() : "null"));
+        System.out.println(" c - eventTypeValue: " + eventTypeValue);
+        System.out.println(" d - twoStageEvent: " + twoStageEvent);
 
         if (null != existingEvent) {
+            System.out.println("36 - Entering existingEvent block");
           //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
                 SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
+                List<Supplier> suppliers = supplierStore.getSuppliers(existingEvent);
+                System.out.println("37 - Suppliers from store: " + (suppliers != null ? suppliers.size() : "null"));
                 return supplierStore.getSuppliers(existingEvent);
           //  }
         }
 
+        System.out.println("37 - Checking ViewEventType.TBD condition");
+        System.out.println("38 - ViewEventType.fromValue(eventTypeValue): " + ViewEventType.fromValue(eventTypeValue));
+//Remove if statement
         if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
+            System.out.println("38 - Entering TBD if statement");
             //get suppliers
             var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
                     .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
                     .collect(Collectors.toSet());
+                    System.out.println("39 - Found lotSuppliersOrgIds: " + lotSuppliersOrgIds.size());
 
-            return retryableTendersDBDelegate
+            // return retryableTendersDBDelegate
+            var suppliers = retryableTendersDBDelegate
                     .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
                         var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
                         return Supplier.builder().companyData(companyData).build();
                     }).collect(Collectors.toList());
-
+                        
+                        System.out.println("40 - Returning suppliers list size: " + suppliers.size());
+                        return suppliers;
         }
         return null;
     }
