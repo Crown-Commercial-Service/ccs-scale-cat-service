@@ -361,8 +361,7 @@ public class ProcurementEventService implements EventService {
           //  }
         }
 
-        if (ViewEventType.TBD.equals(ViewEventType.fromValue(eventTypeValue))) {
-            //get suppliers
+                //Get suppliers, which is needed for notifications and messaging once event is created
             var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
                     .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
                     .collect(Collectors.toSet());
@@ -372,9 +371,6 @@ public class ProcurementEventService implements EventService {
                         var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
                         return Supplier.builder().companyData(companyData).build();
                     }).collect(Collectors.toList());
-
-        }
-        return null;
     }
 
     private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
