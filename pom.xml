@@ -44,7 +44,7 @@
         <spring-boot.version>3.3.4</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
-        <logback.version>1.5.8</logback.version>
+        <logback.version>1.5.11</logback.version>
         <feignclient.version>4.1.3</feignclient.version>
         <ehcache.version>3.10.8</ehcache.version>
     </properties>
