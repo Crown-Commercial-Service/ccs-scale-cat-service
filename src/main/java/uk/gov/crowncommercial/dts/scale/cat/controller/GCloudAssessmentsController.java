@@ -9,10 +9,12 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 
@@ -41,6 +43,8 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private final GCloudAssessmentService assessmentService;
 
     private final AssessmentService coreAssessmentService;
+
+    private final AgreementsService agreementsService;
 
     /**
      * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
@@ -110,7 +114,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
      */
     @GetMapping(produces="text/csv", path="/{assessment-id}/export/gcloud")
     @TrackExecutionTime
-    public void exportGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, final JwtAuthenticationToken authentication, HttpServletResponse response) {
+    public void exportGcloudAssessment(final @PathVariable("assessment-id") Integer assessmentId, @RequestParam(name = "framework-id", required = false) final String frameworkId, final JwtAuthenticationToken authentication, HttpServletResponse response) {
         var principal = getPrincipalFromJwt(authentication);
         log.info("exportGcloudAssessment invoked on behalf of principal: {}", principal);
 
@@ -118,7 +122,18 @@ public class GCloudAssessmentsController extends AbstractRestController {
         GCloudAssessment assessmentModel = assessmentService.getGcloudAssessment(assessmentId);
 
         if (assessmentModel != null) {
-            // We have the model, now we need to output it as CSV in the specified format
+            // We have the model, but before we do anything with it we need to fetch the correct framework name
+            String frameworkName = CSV_STATIC_NAME;
+
+            if (frameworkId != null && !frameworkId.isEmpty()) {
+                AgreementDetail agreementModel = agreementsService.getAgreementDetails(frameworkId);
+
+                if (agreementModel != null && agreementModel.getName() != null && !agreementModel.getName().isEmpty()) {
+                    frameworkName = agreementModel.getName();
+                }
+            }
+
+            // Now we need to output the model as CSV in the specified format
             try {
                 // Start by specifying the headers etc
                 response.setContentType("text/csv");
@@ -137,7 +152,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
                         sanitisedResultsSummary = sanitisedResultsSummary.replace("\"", "\"\"");
                     }
                     writer.write(CSV_GENERIC_HEADERS);
-                    writer.write(CSV_STATIC_NAME + "," + exportTime + ",\"" + sanitisedResultsSummary + "\"\n");
+                    writer.write(frameworkName + "," + exportTime + ",\"" + sanitisedResultsSummary + "\"\n");
 
                     // Now deal with the specific results
                     writer.write(CSV_RESULTS_HEADERS);
