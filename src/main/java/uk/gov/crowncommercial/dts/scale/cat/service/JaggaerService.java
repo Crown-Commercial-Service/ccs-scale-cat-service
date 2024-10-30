@@ -240,41 +240,115 @@ public class JaggaerService {
 
 
   /**
-   * Create or update a company and/or sub-users
-   *
-   * @param createUpdateCompanyRequest
-   * @return response containing code, message and bravoId of company
-   */
-  public CreateUpdateCompanyResponse createUpdateCompany(
-      final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
-    log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
-    final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
-        CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
-        jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
-    log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
+ * Create or update a company and/or sub-users
+ *
+ * @param createUpdateCompanyRequest
+ * @return response containing code, message and bravoId of company
+ */
+public CreateUpdateCompanyResponse createUpdateCompany(
+  final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
+  System.out.println("\n=== Starting Company Creation/Update Process ===");
+  System.out.println("Input Request Details:");
+  System.out.println("Request Object: " + createUpdateCompanyRequest);
+  // Add specific request details if available
+  if (createUpdateCompanyRequest != null) {
+      System.out.println("Company Name: " + createUpdateCompanyRequest.getCompanyName());
+      System.out.println("Company ID: " + createUpdateCompanyRequest.getCompanyId());
+      // Add other relevant request fields
+  }
 
-    // Super user exists is code "-996"...
-    var jaggaerSuccessCodes = Set.of("0", "1", "-996");
+  log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
+  
+  System.out.println("\nPreparing to make API call...");
+  System.out.println("Endpoint: " + jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+  System.out.println("Timeout Duration: " + jaggaerAPIConfig.getTimeoutDuration());
+  
+  final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
+      CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+      jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+  
+  System.out.println("\nAPI Response Received:");
+  System.out.println("Return Code: " + createUpdateCompanyResponse.getReturnCode());
+  System.out.println("Return Message: " + createUpdateCompanyResponse.getReturnMessage());
+  System.out.println("Bravo ID: " + createUpdateCompanyResponse.getBravoId());
+  
+  log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
 
-    if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
+  // Super user exists is code "-996"...
+  var jaggaerSuccessCodes = Set.of("0", "1", "-996");
+  System.out.println("\nValidating Response Code...");
+  System.out.println("Valid Success Codes: " + jaggaerSuccessCodes);
+  System.out.println("Received Code: " + createUpdateCompanyResponse.getReturnCode());
+  System.out.println("Is Success Code? " + jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode()));
+
+  if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
+      System.out.println("ERROR: Invalid return code received. Throwing JaggaerApplicationException");
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
           createUpdateCompanyResponse.getReturnMessage());
-    }
+  }
 
-    if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
-        || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+  System.out.println("\nChecking for User Existence Errors...");
+  System.out.println("Checking for ERRCODE_SUBUSER_EXISTS: " + 
+      createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS));
+  System.out.println("Checking for ERRCODE_SUPERUSER_EXISTS: " + 
+      createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS));
+
+  if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
+      || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+      System.out.println("ERROR: Sub-user or Super-user already exists. Throwing JaggaerApplicationException");
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
           "Jaggaer sub or super user already exists: "
               + createUpdateCompanyResponse.getReturnMessage());
-    }
+  }
 
-    if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
+  if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
+      System.out.println("\nWARNING: Operation succeeded with warnings");
+      System.out.println("Warning Message: " + createUpdateCompanyResponse.getReturnMessage());
       log.warn("Create / update company operation succeeded with warnings: [{}]",
           createUpdateCompanyResponse.getReturnMessage());
-    }
-    return createUpdateCompanyResponse;
-
   }
+
+  System.out.println("\n=== Company Creation/Update Process Completed Successfully ===");
+  System.out.println("Final Response: " + createUpdateCompanyResponse);
+  return createUpdateCompanyResponse;
+}
+
+  // /**
+  //  * Create or update a company and/or sub-users
+  //  *
+  //  * @param createUpdateCompanyRequest
+  //  * @return response containing code, message and bravoId of company
+  //  */
+  // public CreateUpdateCompanyResponse createUpdateCompany(
+  //     final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
+  //   log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
+  //   final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
+  //       CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+  //       jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+  //   log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
+
+  //   // Super user exists is code "-996"...
+  //   var jaggaerSuccessCodes = Set.of("0", "1", "-996");
+
+  //   if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
+  //     throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+  //         createUpdateCompanyResponse.getReturnMessage());
+  //   }
+
+  //   if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
+  //       || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+  //     throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+  //         "Jaggaer sub or super user already exists: "
+  //             + createUpdateCompanyResponse.getReturnMessage());
+  //   }
+
+  //   if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
+  //     log.warn("Create / update company operation succeeded with warnings: [{}]",
+  //         createUpdateCompanyResponse.getReturnMessage());
+  //   }
+  //   return createUpdateCompanyResponse;
+
+  // }
 
   /**
    * Upload a document at the Rfx level.
