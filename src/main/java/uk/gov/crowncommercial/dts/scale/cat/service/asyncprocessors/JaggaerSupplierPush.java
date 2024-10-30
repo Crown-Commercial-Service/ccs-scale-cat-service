@@ -33,32 +33,54 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
     @Override
     @Transactional
     public String accept(String principal, JaggaerSupplierEventData data) {
+        System.out.println("Starting accept() method with principal: " + principal);
+        System.out.println("Input data: " + data);
+
         var event = getEvent(data);
+        System.out.println("Retrieved event: " + event);
+
+        
         ProcurementProject project = event.getProject(); //dbDelegate.findProcurementProjectById(data.getProjectId()).orElseThrow();
+        System.out.println("Project details - ID: " + project.getId() + ", CA Number: " + project.getCaNumber() + ", Lot Number: " + project.getLotNumber());
+
         ProcurementEvent existingEvent = null;
         List<Supplier> suppliers = data.getSuppliers();
+        System.out.println("Initial suppliers from data: " + (suppliers != null ? suppliers.size() : "null"));
 
 
         if (null == suppliers && null != data.getExistingEventId()) {
+            System.out.println("Attempting to find existing event with ID: " + data.getExistingEventId());
             existingEvent = dbDelegate.findProcurementEventById(data.getExistingEventId()).orElse(null);
+            System.out.println("Found existing event: " + (existingEvent != null ? existingEvent.toString() : "null"));
             if (null != existingEvent) {
+                System.out.println("Getting suppliers for existing event. EventType: " + data.getEventType() + ", TwoStageEvent: " + data.getTwoStageEvent());
                 suppliers = eventService.getSuppliers(project, existingEvent, data.getEventType(), data.getTwoStageEvent());
+                System.out.println("Suppliers retrieved from existing event: " + (suppliers != null ? suppliers.size() : "null"));
             }
         }
 
         if (null == suppliers) {
+            System.out.println("Resolving suppliers using CA Number: " + project.getCaNumber() + " and Lot Number: " + project.getLotNumber());
             suppliers = supplierService.resolveSuppliers(project.getCaNumber(), project.getLotNumber());
+            System.out.println("Resolved suppliers count: " + (suppliers != null ? suppliers.size() : "null"));
         }
 
         if(null != suppliers) {
             Map<String, String> options = Map.ofEntries(entry("store", "jaggaer"));
+            System.out.println("Created store options: " + options);
             SupplierStore store = factory.getStore(event);
+            System.out.println("Created supplier store: " + store.getClass().getSimpleName());
             try {
+                System.out.println("Attempting to store suppliers. Overwrite: " + data.getOverWrite());
                 store.storeSuppliers(event, suppliers, data.getOverWrite(), principal, options);
+                System.out.println("Successfully stored suppliers");
             }catch(JaggaerApplicationException jae){
+                System.out.println("Caught JaggaerApplicationException: " + jae.getMessage());
                 if(jae.getMessage().contains("Code: [-998]")){
+                    System.out.println("Retryable exception detected (-998). Rethrowing...");
                     throw new RetryableException("-998", jae.getMessage(), jae);
                 }else
+                    System.out.println("Non-retryable exception. Rethrowing original exception...");
                     throw jae;
             }
             log.info("Successfully pushed {} suppliers to project {}, event {}", suppliers.size(), project.getId(), event.getEventID());
@@ -68,8 +90,7 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
             return "No suppliers available for Jaggaer push";
         }
     }
-
-
+    
     @SneakyThrows
     private ProcurementEvent getEvent(JaggaerSupplierEventData data) {
         var event = dbDelegate.findProcurementEventById(data.getEventId()).orElse(null);

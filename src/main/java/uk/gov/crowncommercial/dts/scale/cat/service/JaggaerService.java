@@ -89,27 +89,72 @@ public class JaggaerService {
    * @param rfx
    * @return
    */
+
   public CreateUpdateRfxResponse createUpdateRfx(final Rfx rfx, final OperationCode operationCode) {
-
+    System.out.println("\n=== Starting RFX Creation/Update Process ===");
+    System.out.println("Input Parameters:");
+    System.out.println("Operation Code: " + operationCode);
+    System.out.println("RFX Details:");
+    System.out.println("- RFX ID: " + rfx.getRfxSetting().getRfxId());
+    System.out.println("- RFX Reference: " + rfx.getRfxSetting().getRfxReferenceCode());
+    
     log.info("Start calling Jaggaer API to create or update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
-    final var createRfxResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-            .bodyValue(new CreateUpdateRfx(operationCode, rfx)).retrieve()
-            .bodyToMono(CreateUpdateRfxResponse.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating Rfx"));
-    log.info("Finish calling Jaggaer API to create or update rfx, Rfx Id: {} ", rfx.getRfxSetting().getRfxId());
 
-    if (createRfxResponse.getReturnCode() != 0
-        || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
-      log.error(createRfxResponse.toString());
-      throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
-          createRfxResponse.getReturnMessage());
+    System.out.println("\nPreparing API Call:");
+    System.out.println("Endpoint: " + jaggaerAPIConfig.getCreateRfx().get(ENDPOINT));
+    System.out.println("Timeout Duration: " + jaggaerAPIConfig.getTimeoutDuration() + " seconds");
+    
+    System.out.println("\nCreating Request Body:");
+    CreateUpdateRfx requestBody = new CreateUpdateRfx(operationCode, rfx);
+    System.out.println("Request Body Created: " + requestBody);
+
+    try {
+        System.out.println("\nExecuting API Call...");
+        final var createRfxResponse =
+            ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+                .bodyValue(requestBody).retrieve()
+                .bodyToMono(CreateUpdateRfxResponse.class)
+                .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                    .orElseThrow(() -> {
+                        System.out.println("ERROR: Null response received from API");
+                        return new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                            "Unexpected error updating Rfx");
+                    });
+
+        System.out.println("\nAPI Response Received:");
+        System.out.println("Return Code: " + createRfxResponse.getReturnCode());
+        System.out.println("Return Message: " + createRfxResponse.getReturnMessage());
+        
+        log.info("Finish calling Jaggaer API to create or update rfx, Rfx Id: {} ", rfx.getRfxSetting().getRfxId());
+
+        System.out.println("\nValidating Response:");
+        System.out.println("Expected Return Code: 0");
+        System.out.println("Actual Return Code: " + createRfxResponse.getReturnCode());
+        System.out.println("Expected Return Message: " + Constants.OK_MSG);
+        System.out.println("Actual Return Message: " + createRfxResponse.getReturnMessage());
+
+        if (createRfxResponse.getReturnCode() != 0
+            || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
+            System.out.println("\nERROR: Invalid response received");
+            System.out.println("Response Details: " + createRfxResponse.toString());
+            log.error(createRfxResponse.toString());
+            throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
+                createRfxResponse.getReturnMessage());
+        }
+
+        System.out.println("\n=== RFX Creation/Update Process Completed Successfully ===");
+        log.info("Updated event: {}", createRfxResponse);
+        return createRfxResponse;
+
+    } catch (Exception e) {
+        System.out.println("\nERROR: Exception occurred during API call");
+        System.out.println("Exception Type: " + e.getClass().getSimpleName());
+        System.out.println("Exception Message: " + e.getMessage());
+        System.out.println("Stack Trace:");
+        e.printStackTrace(System.out);
+        throw e;
     }
-    log.info("Updated event: {}", createRfxResponse);
-    return createRfxResponse;
-  }
+}
 
   /**
    * Get an Rfx (Event).
@@ -247,35 +292,66 @@ public class JaggaerService {
    */
   public CreateUpdateCompanyResponse createUpdateCompany(
       final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
-    log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
-    final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
-        CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
-        jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
-    log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
+      System.out.println("\n=== Starting Company Creation/Update Process ===");
+      System.out.println("Input Request Details:");
+      System.out.println("Request Object: " + createUpdateCompanyRequest);
+      // Add specific request details if available
 
-    // Super user exists is code "-996"...
-    var jaggaerSuccessCodes = Set.of("0", "1", "-996");
+      log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
+      
+      System.out.println("\nPreparing to make API call...");
+      System.out.println("Endpoint: " + jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+      System.out.println("Timeout Duration: " + jaggaerAPIConfig.getTimeoutDuration());
+      
+      final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
+          CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+          jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+      
+      System.out.println("\nAPI Response Received:");
+      System.out.println("Return Code: " + createUpdateCompanyResponse.getReturnCode());
+      System.out.println("Return Message: " + createUpdateCompanyResponse.getReturnMessage());
+      System.out.println("Bravo ID: " + createUpdateCompanyResponse.getBravoId());
+      
+      log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
 
-    if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
-      throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
-          createUpdateCompanyResponse.getReturnMessage());
-    }
+      // Super user exists is code "-996"...
+      var jaggaerSuccessCodes = Set.of("0", "1", "-996");
+      System.out.println("\nValidating Response Code...");
+      System.out.println("Valid Success Codes: " + jaggaerSuccessCodes);
+      System.out.println("Received Code: " + createUpdateCompanyResponse.getReturnCode());
+      System.out.println("Is Success Code? " + jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode()));
 
-    if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
-        || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
-      throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
-          "Jaggaer sub or super user already exists: "
-              + createUpdateCompanyResponse.getReturnMessage());
-    }
+      if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
+          System.out.println("ERROR: Invalid return code received. Throwing JaggaerApplicationException");
+          throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+              createUpdateCompanyResponse.getReturnMessage());
+      }
 
-    if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
-      log.warn("Create / update company operation succeeded with warnings: [{}]",
-          createUpdateCompanyResponse.getReturnMessage());
-    }
-    return createUpdateCompanyResponse;
+      System.out.println("\nChecking for User Existence Errors...");
+      System.out.println("Checking for ERRCODE_SUBUSER_EXISTS: " + 
+          createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS));
+      System.out.println("Checking for ERRCODE_SUPERUSER_EXISTS: " + 
+          createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS));
 
+      if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
+          || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+          System.out.println("ERROR: Sub-user or Super-user already exists. Throwing JaggaerApplicationException");
+          throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
+              "Jaggaer sub or super user already exists: "
+                  + createUpdateCompanyResponse.getReturnMessage());
+      }
+
+      if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
+          System.out.println("\nWARNING: Operation succeeded with warnings");
+          System.out.println("Warning Message: " + createUpdateCompanyResponse.getReturnMessage());
+          log.warn("Create / update company operation succeeded with warnings: [{}]",
+              createUpdateCompanyResponse.getReturnMessage());
+      }
+
+      System.out.println("\n=== Company Creation/Update Process Completed Successfully ===");
+      System.out.println("Final Response: " + createUpdateCompanyResponse);
+      return createUpdateCompanyResponse;
   }
-
   /**
    * Upload a document at the Rfx level.
    *
