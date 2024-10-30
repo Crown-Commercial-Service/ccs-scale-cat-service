@@ -149,6 +149,7 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
                                     Boolean downSelectedSuppliers, final String principal) {
+        System.out.println("Code flow starts. (00)");
         boolean twoStageEvent = false;
         boolean scheduleSupplierSync = false;
 
@@ -163,13 +164,16 @@ public class ProcurementEventService implements EventService {
         if (!existingEventOptional.isPresent()) {
             log.info("No events exists for this project");
         } else {
+            System.out.println("Code flow reached here. (W0)");
             TwoStageEventService twoStageEventService = new TwoStageEventService();
             // complete the event and copy suppliers
             var existingEvent = existingEventOptional.get();
             twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
             if (!twoStageEvent) {
+                System.out.println("Code flow reached here. (W1)");
                 eventTransitionService.completeExistingEvent(existingEvent, principal);
             } else {
+                System.out.println("Code flow reached here. (W2)");
                 twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
             }
         }
@@ -185,6 +189,9 @@ public class ProcurementEventService implements EventService {
         var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? createEventOCDS.getTitle()
                 : getDefaultEventTitle(project.getProjectName(), eventTypeValue);
 
+        log.debug("eventTypeValue: {}", eventTypeValue);
+        log.debug("eventName: {}", eventName);
+        
         var eventBuilder = ProcurementEvent.builder();
         //setting true by default, need to revisit
         eventBuilder.refreshSuppliers(true);
@@ -195,6 +202,8 @@ public class ProcurementEventService implements EventService {
 
         if (createEventNonOCDS.getEventType() != null
                 && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
+
+            System.out.println("Code flow reached here. (X0)");
 
             // Either create a new assessment or validate and link to existing one
             if (createEvent.getNonOCDS().getAssessmentId() == null) {
@@ -210,6 +219,7 @@ public class ProcurementEventService implements EventService {
                 returnAssessmentId = newAssessmentId;
                 log.debug("Created new empty assessment: {}", newAssessmentId);
             } else {
+                System.out.println("Code flow reached here. (X1)");
                 var validatedAssessment = assessmentService.getAssessment(
                         createEvent.getNonOCDS().getAssessmentId(), Boolean.FALSE, Optional.empty());
                 eventBuilder.assessmentId(validatedAssessment.getAssessmentId());
@@ -220,10 +230,16 @@ public class ProcurementEventService implements EventService {
             }
         }
 
+        System.out.println("Code flow reached here. (A0)");
         if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
 //      List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
             scheduleSupplierSync = true;
+            System.out.println("Code flow reached here. (A1)");
             var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
+
+            log.debug("eventTypeValue: {}", eventTypeValue);
+            log.debug("RFX Object: {}", createUpdateRfx.getRfx().toString());
+            log.debug("RFX.Suppliers Object: {}", createUpdateRfx.getRfx().getSuppliersList().toString());
 
             var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
                     createUpdateRfx.getOperationCode());
