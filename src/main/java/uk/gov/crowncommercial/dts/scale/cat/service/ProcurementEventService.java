@@ -127,7 +127,7 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public void completeEvent(final Integer projectId, final String eventId, final String principal) {
         // Fetch the event specified, and then trigger completion
-        log.debug("Complete Event {}", eventId);
+        System.out.println("Complete Event " + eventId);
 
         ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
         eventTransitionService.completeExistingEvent(eventModel, principal);
@@ -189,8 +189,8 @@ public class ProcurementEventService implements EventService {
         var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? createEventOCDS.getTitle()
                 : getDefaultEventTitle(project.getProjectName(), eventTypeValue);
 
-        log.debug("eventTypeValue: {}", eventTypeValue);
-        log.debug("eventName: {}", eventName);
+        System.out.println("eventTypeValue: " + eventTypeValue);
+        System.out.println("eventName: " + eventName);
         
         var eventBuilder = ProcurementEvent.builder();
         //setting true by default, need to revisit
@@ -217,7 +217,7 @@ public class ProcurementEventService implements EventService {
                 setRefreshSuppliersForEvent(eventBuilder, validatedAssessment);
 
                 returnAssessmentId = newAssessmentId;
-                log.debug("Created new empty assessment: {}", newAssessmentId);
+                System.out.println("Created new empty assessment: {}", newAssessmentId);
             } else {
                 System.out.println("Code flow reached here. (X1)");
                 var validatedAssessment = assessmentService.getAssessment(
@@ -237,9 +237,10 @@ public class ProcurementEventService implements EventService {
             System.out.println("Code flow reached here. (A1)");
             var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
 
-            log.debug("eventTypeValue: {}", eventTypeValue);
-            log.debug("RFX Object: {}", createUpdateRfx.getRfx().toString());
-            log.debug("RFX.Suppliers Object: {}", createUpdateRfx.getRfx().getSuppliersList().toString());
+            System.out.println("eventTypeValue: " + eventTypeValue);
+            System.out.println("RFX Object: " + createUpdateRfx.getRfx().toString());
+            System.out.println("RFX.Suppliers Object: " + createUpdateRfx.getRfx().getSuppliersList().toString());
+            System.out.println("RFX.Suppliers Object[0]: " + createUpdateRfx.getRfx().getSuppliersList()[0].toString());
 
             var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
                     createUpdateRfx.getOperationCode());
