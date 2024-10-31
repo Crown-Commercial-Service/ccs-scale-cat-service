@@ -237,10 +237,22 @@ public class ProcurementEventService implements EventService {
             System.out.println("Code flow reached here. (A1)");
             var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
 
+            System.out.println("ViewEventType: " + ViewEventType);
             System.out.println("eventTypeValue: " + eventTypeValue);
             System.out.println("RFX Object: " + createUpdateRfx.getRfx().toString());
-            System.out.println("RFX.Suppliers Object: " + createUpdateRfx.getRfx().getSuppliersList().toString());
-            System.out.println("RFX.Suppliers Object[0]: " + createUpdateRfx.getRfx().getSuppliersList()[0].toString());
+            if (createUpdateRfx != null) {
+                System.out.println("Code flow reached here. (A2)");
+                System.out.println("RFX Object: " + createUpdateRfx.getRfx());
+                if (createUpdateRfx.createUpdateRfx.getRfx() != null) {
+                    System.out.println("Code flow reached here. (A3)");
+                    if (createUpdateRfx.getRfx().getSuppliersList() != null) {
+                        System.out.println("Code flow reached here. (A4)");
+                        System.out.println("RFX.Suppliers Object: " + createUpdateRfx.getRfx().getSuppliersList().toString());
+                        System.out.println("RFX.Suppliers Object[0]: " + createUpdateRfx.getRfx().getSuppliersList()[0].toString());
+                    }
+                }
+                
+            }
 
             var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
                     createUpdateRfx.getOperationCode());
