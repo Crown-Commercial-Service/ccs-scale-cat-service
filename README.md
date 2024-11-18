@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is the Java 11+ SpringBoot implementation of the CaT (Tenders) API [Open API specification](https://github.com/Crown-Commercial-Service/ccs-scale-api-definitions/blob/master/cat/CaT-service.yaml).
+This is the Java 23 SpringBoot implementation of the CaT (Tenders) API [Open API specification](https://github.com/Crown-Commercial-Service/ccs-scale-api-definitions/blob/master/cat/CaT-service.yaml).
 
 ## Deployment
 
@@ -12,10 +12,7 @@ The environments are mapped as follows:
 
 | Environment     | Branch          |
 |-----------------|-----------------|
-| Sandbox 4       | `release/sbx4`  |
 | Development     | `develop`       |
-| Integration     | `release/int`   |
-| NFT             | `release/nft`   |
 | UAT             | `release/uat`   |
 | Pre-Production  | `release/pre`   |
 | Production      | `release/prod`  |

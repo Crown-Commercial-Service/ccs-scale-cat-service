@@ -1,9 +1,9 @@
 ARG APP_DIR=/app
-FROM maven:3.9.6-eclipse-temurin-17-alpine as build
+FROM maven:latest as build
 COPY . /build
 RUN cd /build && mvn package
 
-FROM eclipse-temurin:17.0.10_7-jre-alpine
+FROM openjdk:24-ea-22-oraclelinux8
 ARG APP_DIR
 RUN addgroup -S appuser && \
     adduser -S -G appuser appuser && \
