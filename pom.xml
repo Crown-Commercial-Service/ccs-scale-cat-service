@@ -17,6 +17,8 @@
 
     <properties>
         <java.version>23</java.version>
+        <maven.compiler.source>23</maven.compiler.source>
+        <maven.compiler.target>23</maven.compiler.target>
         <swagger-parser.version>2.1.23</swagger-parser.version>
         <guava.version>33.3.1-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
@@ -632,8 +634,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${compiler.version}</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <release>23</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
