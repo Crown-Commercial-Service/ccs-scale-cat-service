@@ -18,7 +18,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -134,21 +138,37 @@ class ProjectsControllerTest {
         anyString(), anyString());
   }
 
-  @ParameterizedTest
-  @NullAndEmptySource
-  @ValueSource(strings = {"RM 1234.a", " RM1234 .1", " ", "FOOBAR"})
-  void createProcurementProject_400_BadRequest_AgreementId_Missing(final String input)
-      throws Exception {
-    testCreateFromAgreement400BadRequestHelper(
-        new AgreementDetails().agreementId(input).lotId(LOT_NUMBER));
+  @Test
+  void createProcurementProject_400_BadRequest_AgreementId_Missing() throws Exception {
+    List<String> inputValues = new ArrayList(Arrays.asList("RM 1234.a", " RM1234 .1", " ", "FOOBAR", ""));
+
+    inputValues.forEach(input -> {
+        try {
+            testCreateFromAgreement400BadRequestHelper(new AgreementDetails().agreementId(input).lotId(LOT_NUMBER));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    });
   }
 
-  @ParameterizedTest
-  //@NullAndEmptySource
-  @ValueSource(strings = {"_Lot 1", " Lot a", " ", "!"})
-  void createProcurementProject_400_BadRequest_LotId_Missing(final String input) throws Exception {
-    testCreateFromAgreement400BadRequestHelper(
-        new AgreementDetails().agreementId(CA_NUMBER).lotId(input));
+  @Test
+  void createProcurementProject_400_BadRequest_AgreementId_Null() throws Exception {
+    String input = null;
+
+    testCreateFromAgreement400BadRequestHelper(new AgreementDetails().agreementId(input).lotId(LOT_NUMBER));
+  }
+
+  @Test
+  void createProcurementProject_400_BadRequest_LotId_Missing() throws Exception {
+    List<String> inputValues = new ArrayList(Arrays.asList("_Lot 1", " Lot a", " ", "!"));
+
+    inputValues.forEach(input -> {
+        try {
+            testCreateFromAgreement400BadRequestHelper(new AgreementDetails().agreementId(CA_NUMBER).lotId(input));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    });
   }
 
   @Test

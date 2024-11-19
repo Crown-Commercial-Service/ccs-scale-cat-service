@@ -325,8 +325,7 @@ class EventsControllerTest {
 
   @Test
   void publishEvent_400_BadRequest_EndDate() throws Exception {
-    List<String> inputValues = new ArrayList<>();
-    inputValues.addAll(Arrays.asList("2021-12", "2021-12-25T-12:00:00Z", " ", "!", ""));
+    List<String> inputValues = new ArrayList<>(Arrays.asList("2021-12", "2021-12-25T-12:00:00Z", " ", "!", ""));
 
     inputValues.forEach(input -> {
       var publishDates = Collections.singletonMap("endDate", input);
