@@ -8,7 +8,7 @@ COPY . /tmp/build
 
 # TEMP
 RUN mvn -version
-RUN echo $JAVA_HOME
+RUN java -version
 
 RUN mvn clean install
 RUN mvn package
