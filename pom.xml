@@ -17,8 +17,6 @@
 
     <properties>
         <java.version>23</java.version>
-        <maven.compiler.source>23</maven.compiler.source>
-        <maven.compiler.target>23</maven.compiler.target>
         <swagger-parser.version>2.1.23</swagger-parser.version>
         <guava.version>33.3.1-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
