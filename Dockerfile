@@ -1,9 +1,9 @@
 ARG APP_DIR=/app
-FROM maven:3.9.9-amazoncorretto-23 as build
+FROM maven:3.9.9-eclipse-temurin-23 as build
 COPY . /build
 RUN cd /build && mvn package
 
-FROM amazoncorretto:23
+FROM eclipse-temurin:23
 ARG APP_DIR
 RUN addgroup -S appuser && \
     adduser -S -G appuser appuser && \
