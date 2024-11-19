@@ -25,10 +25,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -74,7 +70,6 @@ class ProjectsControllerTest {
   private static final Integer PROC_PROJECT_ID = 1;
   public static final String TENDERS_PROJECTS_AGREEMENTS = "/tenders/projects/agreements";
   public static final String TENDERS_PROJECTS = "/tenders/projects/";
-  public static final String JAGGAER_USER_ID = "12345";
 
   private final AgreementDetails agreementDetails = new AgreementDetails();
 
