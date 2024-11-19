@@ -1,17 +1,36 @@
-ARG APP_DIR=/app
 FROM maven:latest as build
-COPY . /build
-RUN cd /build && mvn package
 
+RUN mkdir -p /tmp/build
+
+WORKDIR /tmp/build
+
+COPY . /tmp/build
+
+RUN mvn clean install
+RUN mvn package
+
+# Use an official OpenJDK runtime as a base image
 FROM openjdk:24-ea-22-oraclelinux8
-ARG APP_DIR
-RUN addgroup -S appuser && \
-    adduser -S -G appuser appuser && \
-    # Create application directory
-    install -o appuser -g appuser -d ${APP_DIR}
-RUN apk upgrade && apk add curl && rm -rf /var/cache/apk/*
-COPY --chown=appuser:appuser --from=build /build/target/ccs-scale-cat-service-*.jar ${APP_DIR}/cat.jar
-USER appuser
-WORKDIR ${APP_DIR}
+
+RUN mkdir /app
+
+# Copy the application JAR file and external configuration files
+COPY --from=build /tmp/build/target/ccs-scale-cat-service-*.jar /app/cat.jar
+
+RUN groupadd ujava; \
+    useradd -m -g ujava -c ujava ujava; \
+    chown -R ujava:ujava /app
+
+USER ujava
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Specify the profile to be used when running the application
+ENV SPRING_PROFILES_ACTIVE=prod
+
+# Expose the port your application will run on
 EXPOSE 8080
-ENTRYPOINT [ "java", "-jar", "./cat.jar" ]
+
+# Command to run your application
+CMD ["java", "-jar", "cat.jar"]
