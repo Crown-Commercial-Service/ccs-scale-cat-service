@@ -52,6 +52,7 @@
         <lombok.version>1.18.36</lombok.version>
         <spring.version>6.3.4</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
+        <compiler.version>3.13.0</compiler.version>
     </properties>
 
     <dependencies>
@@ -624,6 +625,22 @@
                             <value>jakarta.annotation</value>
                         </replacement>
                     </replacements>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${compiler.version}</version>
+                <configuration>
+                    <source>23</source>
+                    <target>23</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
