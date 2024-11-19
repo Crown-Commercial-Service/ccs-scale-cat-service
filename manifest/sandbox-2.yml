@@ -1,4 +1,0 @@
----
-applications:
-- name: sbx2-ccs-scale-cat-service
-  path: ../target/ccs-scale-cat-service-0.0.1-SNAPSHOT.jar
