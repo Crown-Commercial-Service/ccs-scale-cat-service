@@ -1,4 +1,4 @@
-FROM maven:latest as build
+FROM maven:3.9.9-amazoncorretto-23 as build
 
 RUN mkdir -p /tmp/build
 
@@ -6,15 +6,15 @@ WORKDIR /tmp/build
 
 COPY . /tmp/build
 
-# Use an official OpenJDK runtime as a base image
-FROM amazoncorretto:23
-
 # TEMP
 RUN mvn -version
 RUN java -version
 
 RUN mvn clean install
 RUN mvn package
+
+# Use an official OpenJDK runtime as a base image
+FROM amazoncorretto:23
 
 RUN mkdir /app
 
