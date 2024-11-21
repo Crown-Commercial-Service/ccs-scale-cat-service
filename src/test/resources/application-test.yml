@@ -11,6 +11,8 @@ config:
   retry:
     maxAttempts: 3
   external:
+    agreementsService:
+      baseUrl: https://dummy.example.com
     jaggaer:
       rpa: 
         encryptionIv: hjnhgy8k*A?(7y-K
