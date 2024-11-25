@@ -29,14 +29,19 @@ public class CompiledReleasePlanningService {
     private Budget1 getBudget(ProcurementProject pp) {
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
         String maxBudget = EventsHelper.getData("Criterion 3", "Group 20", "Question 2", pe.getProcurementTemplatePayload().getCriteria());
-        if(null != maxBudget && maxBudget.trim().length() > 0){
-            BigDecimal bd = BigDecimal.valueOf(Double.parseDouble(maxBudget));
-            Budget1 result = new Budget1();
-            Value1 amount = new Value1();
-            amount.amount(bd).currency(Currency1.GBP);
-            result.setAmount(amount);
-            return result;
+        if(maxBudget != null && !maxBudget.trim().isEmpty()){
+            try {
+                BigDecimal bd = BigDecimal.valueOf(Double.parseDouble(maxBudget));
+                Budget1 result = new Budget1();
+                Value1 amount = new Value1();
+                amount.amount(bd).currency(Currency1.GBP);
+                result.setAmount(amount);
+                return result;
+            } catch (Exception ex) {
+                log.error("Error parsing project budget to numeric", ex);
+            }
         }
+
         return null;
     }
 

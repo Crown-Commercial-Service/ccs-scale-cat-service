@@ -145,10 +145,9 @@ public class GlobalErrorHandler implements ErrorController {
       IllegalArgumentException.class, MethodArgumentNotValidException.class})
   public Errors handleValidationException(final Exception exception) {
 
-    log.trace("Request validation exception", exception);
+    log.info("Request validation exception", exception);
 
-    return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(),
-        Constants.ERR_MSG_VALIDATION, exception.getMessage());
+    return tendersAPIModelUtils.buildDefaultErrors(BAD_REQUEST.toString(), Constants.ERR_MSG_VALIDATION, exception.getMessage());
   }
 
   @ResponseStatus(INTERNAL_SERVER_ERROR)
