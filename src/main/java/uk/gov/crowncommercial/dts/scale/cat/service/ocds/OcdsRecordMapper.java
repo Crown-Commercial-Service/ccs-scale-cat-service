@@ -87,10 +87,8 @@ public class OcdsRecordMapper  implements InitializingBean {
      * Configure handler instructions for planning mapping tasks
      */
     private void mapCompiledReleasePlanning() {
-        handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING,  (pq, re) -> compiledPlanningService.populateGeneral(re, pq));
+        handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING,  (pq, re) -> compiledPlanningService.populateGeneral(re));
         handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING_BUDGET,  (pq, re) -> compiledPlanningService.populateBudget(re, pq));
-        handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING_DOCUMENTS,  (pq, re) -> compiledPlanningService.populateDocuments(re, pq));
-        handlers.put(OcdsSections.COMPILED_RELEASE_PLANNING_MILESTONES,  (pq, re) -> compiledPlanningService.populateMilestones(re, pq));
     }
 
     /**
