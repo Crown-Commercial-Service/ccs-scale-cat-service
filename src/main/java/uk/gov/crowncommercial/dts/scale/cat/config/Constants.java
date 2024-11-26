@@ -85,4 +85,10 @@ public class Constants {
           TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS.toLowerCase());
 
   public static final String LOT_PREFIX = "Lot ";
+
+  // Project mapping constants
+  public static final String MAPPERS_RELEASE_LANG = "en";
+  public static final String MAPPERS_RELEASE_DESC_CRITERIA = "Criterion 3";
+  public static final String MAPPERS_RELEASE_DESC_GROUP = "Group 3";
+  public static final String MAPPERS_RELEASE_DESC_QUESTION = "Question 1";
 }

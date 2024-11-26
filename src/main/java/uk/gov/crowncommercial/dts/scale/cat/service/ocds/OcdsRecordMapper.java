@@ -63,13 +63,12 @@ public class OcdsRecordMapper  implements InitializingBean {
      */
     @Override
     public void afterPropertiesSet() throws Exception {
-        // Define via handlers all of the mapping tasks that should be run for a request
+        // Define via handlers all the mapping tasks that should be run for a request
         handlers = new HashMap<>();
 
         handlers.put(OcdsSections.COMPILED_RELEASE, (pq, re) -> releaseService.populate(re, pq));
         handlers.put(OcdsSections.COMPILED_RELEASE_PARTIES, (pq, re) -> releaseService.populateParties(re, pq));
         handlers.put(OcdsSections.COMPILED_RELEASE_BUYER, (pq, re) -> releaseService.populateBuyer(re, pq));
-        handlers.put(OcdsSections.COMPILED_RELEASE_CONTRACTS, (pq, re) -> releaseService.populateContracts(re, pq));
 
         mapCompiledReleasePlanning();
         mapCompiledReleaseTender();
