@@ -36,7 +36,7 @@ public class CompiledReleaseAwardsService extends AbstractOcdsService{
      * Populate general award related information regarding the project
      */
     public MapperResponse populateGeneral(Record1 re, ProjectQuery pq) {
-        CompletableFuture cf = null;
+        CompletableFuture<Void> cf = null;
 
         if (pq != null && pq.getProject() != null && re != null) {
             ProcurementProject pp = pq.getProject();

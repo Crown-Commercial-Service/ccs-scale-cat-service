@@ -42,7 +42,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
      * Populate general tender related information regarding the project
      */
     public MapperResponse populateGeneral(Record1 re, ProjectQuery pq) {
-        CompletableFuture cf = null;
+        CompletableFuture<Void> cf = null;
 
         if (pq != null && pq.getProject() != null) {
             Tender1 tender = OcdsHelper.getTender(re);
@@ -153,7 +153,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
      */
     public MapperResponse populateTenderers(Record1 re, ProjectQuery pq) {
         Tender1 tender = OcdsHelper.getTender(re);
-        CompletableFuture cf = null;
+        CompletableFuture<Void> cf = null;
 
         if (pq != null) {
             cf = CompletableFuture.runAsync(() -> {

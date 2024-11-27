@@ -90,7 +90,7 @@ public class CompiledReleaseService{
      */
     public MapperResponse populateParties(Record1 re, ProjectQuery pq) {
         Release release = OcdsHelper.getRelease(re);
-        CompletableFuture cf = null;
+        CompletableFuture<Void> cf = null;
 
         if (release != null) {
             release.setParties(new ArrayList<>());
@@ -122,7 +122,7 @@ public class CompiledReleaseService{
             Release release = OcdsHelper.getRelease(record);
 
             if (release != null && om.getOrganisationId() != null) {
-                CompletableFuture cf = CompletableFuture.runAsync(() -> {
+                CompletableFuture<Void> cf = CompletableFuture.runAsync(() -> {
                     Optional<OrganisationProfileResponseInfo> optOrgProfile = conclaveService.getOrganisationIdentity(om.getOrganisationId());
 
                     if (optOrgProfile.isPresent()) {
