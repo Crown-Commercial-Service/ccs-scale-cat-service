@@ -99,4 +99,10 @@ public class Constants {
   public static final String MAPPERS_TENDER_MINVALUE_QUESTION = "Question 3";
   public static final String MAPPERS_TENDER_MAXVALUE_QUESTION = "Question 2";
   public static final String MAPPERS_ID_DUNS_PREFIX = "US-DUN";
+  public static final String MAPPERS_STATS_INVITED = "suppliersInvited";
+  public static final String MAPPERS_STATS_NO_RESPONSE = "suppliersNotResponded";
+  public static final String MAPPERS_STATS_RESPONDED = "suppliersResponded";
+  public static final String MAPPERS_STATS_DECLINED = "suppliersRespDeclined";
+  public static final String MAPPERS_STATS_EXCLUDED = "suppliersRespExcluded";
+  public static final String MAPPERS_STATS_ACCEPTED = "suppliersRespAccepted";
 }
