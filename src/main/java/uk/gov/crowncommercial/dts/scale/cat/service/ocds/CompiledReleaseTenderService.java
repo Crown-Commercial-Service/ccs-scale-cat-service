@@ -4,10 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -21,15 +20,15 @@ import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+/**
+ * Populates release tender related information regarding a given project
+ */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -39,172 +38,301 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
     private final RetryableTendersDBDelegate tendersDBDelegate;
     private final QuestionAndAnswerService questionAndAnswerService;
 
-
+    /**
+     * Populate general tender related information regarding the project
+     */
     public MapperResponse populateGeneral(Record1 re, ProjectQuery pq) {
-        log.debug("populating General");
-        Tender1 tender = OcdsHelper.getTender(re);
+        CompletableFuture cf = null;
 
-        ProcurementProject pp = pq.getProject();
-        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        List<TemplateCriteria> criters = pe.getProcurementTemplatePayload().getCriteria();
-        tender.setDescription(EventsHelper.getData("Criterion 3", "Group 3", "Question 1", pe.getProcurementTemplatePayload().getCriteria()));
-        tender.setTitle(pp.getProjectName());
-        tender.setValue(getMaxValue(pp));
-        tender.setMinValue(getMinValue(pp));
-        tender.setSubmissionMethod(Arrays.asList(SubmissionMethod.ELECTRONICSUBMISSION));
+        if (pq != null && pq.getProject() != null) {
+            Tender1 tender = OcdsHelper.getTender(re);
+            ProcurementProject pp = pq.getProject();
 
-        CompletableFuture cf = CompletableFuture.runAsync(() -> {
-            populateStatusAndPeriod(tender, pp, pq);
-            populateLots(pq, tender);
-        });
+            if (pp != null) {
+                ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+
+                if (pe != null && pe.getProcurementTemplatePayload() != null && pe.getProcurementTemplatePayload().getCriteria() != null) {
+                    tender.setDescription(EventsHelper.getData(Constants.MAPPERS_RELEASE_DESC_CRITERIA, Constants.MAPPERS_RELEASE_DESC_GROUP, Constants.MAPPERS_RELEASE_DESC_QUESTION, pe.getProcurementTemplatePayload().getCriteria()));
+                }
+
+                if (pp.getProjectName() != null) {
+                    tender.setTitle(pp.getProjectName());
+                }
+
+                tender.setValue(getMaxValue(pp));
+                tender.setMinValue(getMinValue(pp));
+                tender.setSubmissionMethod(List.of(SubmissionMethod.ELECTRONICSUBMISSION));
+
+                cf = CompletableFuture.runAsync(() -> {
+                    populateStatusAndPeriod(tender, pp, pq);
+                    populateLots(pq, tender);
+                });
+            }
+        }
+
         return new MapperResponse(re, cf);
     }
 
+    /**
+     * Populate status and period tender related information regarding the project
+     */
     @SneakyThrows
     private void populateStatusAndPeriod(Tender1 tender, ProcurementProject pp, ProjectQuery pq) {
-        ProcurementEvent pe = EventsHelper.getLastPublishedEvent(pp);
-        ExportRfxResponse exportRfxResponse = getLatestRFXWithSuppliers(pq);
+        if (pp != null && pq != null && tender != null) {
+            ProcurementEvent pe = EventsHelper.getLastPublishedEvent(pp);
+            ExportRfxResponse exportRfxResponse = getLatestRFXWithSuppliers(pq);
 
-        ExportRfxResponse firstRfxResponse = getFirstRFXWithSuppliers(pq);
+            ExportRfxResponse firstRfxResponse = getFirstRFXWithSuppliers(pq);
 
-        if (null != exportRfxResponse) {
-            TenderStatus status = EventStatusHelper.getStatus(exportRfxResponse.getRfxSetting(), pe);
-            tender.setStatus(status);
-            tender.setTenderPeriod(getTenderPeriod(pp, firstRfxResponse.getRfxSetting()));
+            if (exportRfxResponse != null && exportRfxResponse.getRfxSetting() != null && pe != null) {
+                TenderStatus status = EventStatusHelper.getStatus(exportRfxResponse.getRfxSetting(), pe);
+
+                if (status != null) {
+                    tender.setStatus(status);
+                }
+
+                if (firstRfxResponse != null && firstRfxResponse.getRfxSetting() != null) {
+                    tender.setTenderPeriod(getTenderPeriod(firstRfxResponse.getRfxSetting()));
+                }
+            }
         }
     }
 
-    private Period1 getTenderPeriod(ProcurementProject pp, RfxSetting rfxSetting) {
+    /**
+     * Functionality to populate a given tender period for the project
+     */
+    private Period1 getTenderPeriod(RfxSetting rfxSetting) {
         Period1 period = new Period1();
-        period.setStartDate(rfxSetting.getPublishDate());
-        if (null != rfxSetting.getCloseDate())
-            period.setEndDate(rfxSetting.getCloseDate());
+
+        if (rfxSetting != null) {
+            if (rfxSetting.getPublishDate() != null) {
+                period.setStartDate(rfxSetting.getPublishDate());
+            }
+
+            if (rfxSetting.getCloseDate() != null) {
+                period.setEndDate(rfxSetting.getCloseDate());
+            }
+        }
+
         return period;
     }
 
+    /**
+     * Functionality to populate lots for the project
+     */
     private void populateLots(ProjectQuery pq, Tender1 tender) {
         Lot1 l = new Lot1();
-        ProcurementProject pp = pq.getProject();
-        l.setId(pq.getProject().getLotNumber());
-        LotDetail lotDetail = agreementsService.getLotDetails(pp.getCaNumber(), pp.getLotNumber());
-        if (null != lotDetail) {
-            l.setTitle(lotDetail.getName());
-            l.setDescription(lotDetail.getDescription());
+
+        if (pq != null && pq.getProject() != null) {
+            ProcurementProject pp = pq.getProject();
+
+            if (pp != null && pp.getLotNumber() != null) {
+                l.setId(pp.getLotNumber());
+
+                if (pp.getCaNumber() != null && pp.getLotNumber() != null) {
+                    LotDetail lotDetail = agreementsService.getLotDetails(pp.getCaNumber(), pp.getLotNumber());
+
+                    if (lotDetail != null) {
+                        if (lotDetail.getName() != null) {
+                            l.setTitle(lotDetail.getName());
+                        }
+
+                        if (lotDetail.getDescription() != null) {
+                            l.setDescription(lotDetail.getDescription());
+                        }
+                    }
+                }
+
+                tender.setLots(List.of(l));
+            }
         }
-        tender.setLots(Arrays.asList(l));
     }
 
+    /**
+     * Functionality to populate "tenderers" for the project
+     */
     public MapperResponse populateTenderers(Record1 re, ProjectQuery pq) {
-        log.debug("populating Tenderers");
-        ProcurementProject pp = pq.getProject();
-
         Tender1 tender = OcdsHelper.getTender(re);
+        CompletableFuture cf = null;
 
-        CompletableFuture cf = CompletableFuture.runAsync(() -> {
-            ExportRfxResponse rfxResponse = getFirstRFXWithSuppliers(pq);
-            List<Supplier> sdf = rfxResponse.getSuppliersList().getSupplier();
-            Set<Integer> bravoIds = sdf.stream().map(t -> t.getCompanyData().getId()).collect(Collectors.toSet());
-            Set<OrganisationMapping> orgMappings = tendersDBDelegate.findOrganisationMappingByExternalOrganisationIdIn(bravoIds);
-            List<OrganizationReference1> tenderers = rfxResponse.getSuppliersList().getSupplier().stream().map(t -> this.convertSuppliers(t, orgMappings)).toList();
-            tender.setTenderers(tenderers);
-        });
+        if (pq != null) {
+            cf = CompletableFuture.runAsync(() -> {
+                ExportRfxResponse rfxResponse = getFirstRFXWithSuppliers(pq);
+
+                if (rfxResponse != null && rfxResponse.getSuppliersList() != null && rfxResponse.getSuppliersList().getSupplier() != null) {
+                    List<Supplier> sdf = rfxResponse.getSuppliersList().getSupplier();
+                    Set<Integer> bravoIds = sdf.stream().map(t -> t.getCompanyData().getId()).collect(Collectors.toSet());
+                    Set<OrganisationMapping> orgMappings = tendersDBDelegate.findOrganisationMappingByExternalOrganisationIdIn(bravoIds);
+
+                    if (orgMappings != null) {
+                        List<OrganizationReference1> tenderers = rfxResponse.getSuppliersList().getSupplier().stream().map(t -> this.convertSuppliers(t, orgMappings)).toList();
+
+                        tender.setTenderers(tenderers);
+                    }
+                }
+            });
+        }
+
         return new MapperResponse(re, cf);
     }
 
+    /**
+     * Converts organisation mapping and supplier data into organisation reference data
+     */
     private OrganizationReference1 convertSuppliers(Supplier supplier, Set<OrganisationMapping> orgMappings) {
         OrganizationReference1 ref = new OrganizationReference1();
-        Optional<OrganisationMapping> orgMap = orgMappings.stream().filter(t -> t.getExternalOrganisationId().equals(supplier.getCompanyData().getId())).findFirst();
-        if (null != supplier.getCompanyData()) {
+
+        if (supplier != null && supplier.getCompanyData() != null && supplier.getCompanyData().getId() != null && orgMappings != null) {
+            Optional<OrganisationMapping> orgMap = orgMappings.stream().filter(t -> t.getExternalOrganisationId().equals(supplier.getCompanyData().getId())).findFirst();
             CompanyData cData = supplier.getCompanyData();
+
             if (orgMap.isPresent()) {
-                ref.setId(orgMap.get().getCasOrganisationId());
+                if (orgMap.get().getOrganisationId() != null) {
+                    ref.setId(orgMap.get().getCasOrganisationId());
+                }
             }
-            ref.setContactPoint(new ContactPoint1().name(supplier.getStatusCode() + ":" + supplier.getStatus()));
-            ref.setName(cData.getName());
+
+            if (supplier.getStatusCode() != null && supplier.getStatus() != null) {
+                ref.setContactPoint(new ContactPoint1().name(supplier.getStatusCode() + ":" + supplier.getStatus()));
+            }
+
+            if (cData.getName() != null) {
+                ref.setName(cData.getName());
+            }
         }
+
         return ref;
     }
 
-    public MapperResponse populateDocuments(Record1 re, ProjectQuery pq) {
-        log.debug("populating Documents");
-        return new MapperResponse(re);
-    }
-
-    public MapperResponse populateMilestones(Record1 re, ProjectQuery pq) {
-        log.warn("populating Milestones not yet implemented");
-        return new MapperResponse(re);
-    }
-
-    public MapperResponse populateAmendments(Record1 re, ProjectQuery pq) {
-        log.warn("populating Amendments not yet implemented");
-        return new MapperResponse(re);
-    }
-
+    /**
+     * Functionality to populate enquiries data for the project from OCDS question and answer data
+     */
     public MapperResponse populateEnquiries(Record1 re, ProjectQuery pq) {
-        log.debug("populating Enquiries by Q and A");
-        ProcurementProject pp = pq.getProject();
-        Tender1 tender = OcdsHelper.getTender(re);
-        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        QandAWithProjectDetails qandAWithProjectDetails = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(pp.getId(), EventsHelper.getEventId(pe));
-        tender.setEnquiries(qandAWithProjectDetails.getQandA().stream().map(t -> convertQA(t)).toList());
+        if (pq != null && re != null) {
+            ProcurementProject pp = pq.getProject();
+            Tender1 tender = OcdsHelper.getTender(re);
+
+            if (pp != null) {
+                ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+
+                if (pp.getId() != null && pe != null) {
+                    QandAWithProjectDetails qandAWithProjectDetails = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(pp.getId(), EventsHelper.getEventId(pe));
+
+                    if (qandAWithProjectDetails != null && qandAWithProjectDetails.getQandA() != null) {
+                        tender.setEnquiries(qandAWithProjectDetails.getQandA().stream().map(this::convertQA).toList());
+                    }
+                }
+            }
+        }
+
         return new MapperResponse(re);
     }
 
+    /**
+     * Converts a QandA object into an Enquiry1 object
+     */
     private Enquiry1 convertQA(QandA t) {
         Enquiry1 result = new Enquiry1();
-        result.setTitle(t.getQuestion());
-        result.setAnswer(t.getAnswer());
-        result.setDate(t.getCreated());
 
-        if (null != t.getLastUpdated())
-            result.setDateAnswered(t.getLastUpdated());
-        else
-            result.setDateAnswered(t.getCreated());
+        if (t != null) {
+            if (t.getQuestion() != null) {
+                result.setTitle(t.getQuestion());
+            }
 
-        result.setId(String.valueOf(t.getId()));
+            if (t.getAnswer() != null) {
+                result.setAnswer(t.getAnswer());
+            }
+
+            if (t.getCreated() != null) {
+                result.setDate(t.getCreated());
+            }
+
+            if (t.getLastUpdated() != null) {
+                result.setDateAnswered(t.getLastUpdated());
+            } else if (t.getCreated() != null) {
+                result.setDateAnswered(t.getCreated());
+            }
+
+            if (t.getId() != null) {
+                result.setId(String.valueOf(t.getId()));
+            }
+        }
+
         return result;
     }
 
+    /**
+     * Functionality to populate criteria data for the project
+     */
     public MapperResponse populateCriteria(Record1 re, ProjectQuery pq) {
-        log.debug("populating Criteria");
-        Tender1 tender = OcdsHelper.getTender(re);
-        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
-        DataTemplate template = pe.getProcurementTemplatePayload();
-        List<Criterion1> result = template.getCriteria().stream().map((t) -> {
-            return ocdsConverter.convert(t);
-        }).toList();
-        tender.setCriteria(result);
-        return new MapperResponse(re);
-    }
+        if (re != null && pq != null && pq.getProject() != null) {
+            Tender1 tender = OcdsHelper.getTender(re);
+            ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
 
-    public MapperResponse populateSelectionCriteria(Record1 re, ProjectQuery pq) {
-        log.warn("populating selection Criteria not yet implemented");
-        return new MapperResponse(re);
-    }
+            if (pe != null && pe.getProcurementTemplatePayload() != null) {
+                DataTemplate template = pe.getProcurementTemplatePayload();
 
-    public MapperResponse populateTechniques(Record1 re, ProjectQuery pq) {
-        log.warn("populating Techniques not yet implemented");
-        return new MapperResponse(re);
-    }
+                if (template != null && template.getCriteria() != null) {
+                    List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
 
-    private Value1 getMinValue(ProcurementProject pp) {
-        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        return getValue1(pe, "Criterion 3", "Group 18", "Question 3");
-    }
-
-    private Value1 getMaxValue(ProcurementProject pp) {
-        ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
-        return getValue1(pe, "Criterion 3", "Group 18", "Question 2");
-    }
-
-    private static Value1 getValue1(ProcurementEvent pe, String criterionId, String groupId, String reqId) {
-        String maxBudget = EventsHelper.getData(criterionId, groupId, reqId, pe.getProcurementTemplatePayload().getCriteria());
-        if (null != maxBudget && maxBudget.trim().length() > 0) {
-            BigDecimal bd = BigDecimal.valueOf(Double.parseDouble(maxBudget));
-            Value1 amount = new Value1();
-            amount.amount(bd).currency(Currency1.GBP);
-            return amount;
+                    tender.setCriteria(result);
+                }
+            }
         }
+
+        return new MapperResponse(re);
+    }
+
+    /**
+     * Functionality to populate minimum value data for the project from OCDS question and answer data
+     */
+    private Value1 getMinValue(ProcurementProject pp) {
+        if (pp != null) {
+            ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+
+            if (pe != null) {
+                return getValue1(pe, Constants.MAPPERS_TENDER_MINVALUE_QUESTION);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Functionality to populate maximum value data for the project from OCDS question and answer data
+     */
+    private Value1 getMaxValue(ProcurementProject pp) {
+        if (pp != null) {
+            ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pp);
+
+            if (pe != null) {
+                return getValue1(pe, Constants.MAPPERS_TENDER_MAXVALUE_QUESTION);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts OCDS quest and answer data based on provided IDs into a Value1 object
+     */
+    private static Value1 getValue1(ProcurementEvent pe, String reqId) {
+        if (reqId != null && pe != null && pe.getProcurementTemplatePayload() != null && pe.getProcurementTemplatePayload().getCriteria() != null) {
+            String valueStr = EventsHelper.getData(Constants.MAPPERS_TENDER_VALUE_CRITERIA, Constants.MAPPERS_TENDER_VALUE_GROUP, reqId, pe.getProcurementTemplatePayload().getCriteria());
+
+            if (valueStr != null && !valueStr.trim().isEmpty()) {
+                // The value string should be a numeric, but it might not be - so try to map it, but fail silently if it doesn't work so it doesn't take down the project
+                try {
+                    BigDecimal bd = BigDecimal.valueOf(Double.parseDouble(valueStr));
+                    Value1 amount = new Value1();
+                    amount.amount(bd).currency(Currency1.GBP);
+                    return amount;
+                } catch (Exception ex) {
+                    log.warn("Error parsing value string to numeric", ex);
+                }
+            }
+        }
+
         return null;
     }
 }
