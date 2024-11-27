@@ -98,4 +98,5 @@ public class Constants {
   public static final String MAPPERS_TENDER_VALUE_GROUP = "Group 18";
   public static final String MAPPERS_TENDER_MINVALUE_QUESTION = "Question 3";
   public static final String MAPPERS_TENDER_MAXVALUE_QUESTION = "Question 2";
+  public static final String MAPPERS_ID_DUNS_PREFIX = "US-DUN";
 }
