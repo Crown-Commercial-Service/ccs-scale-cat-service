@@ -1,10 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
-import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.ContactPoint;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
@@ -16,74 +16,145 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 
+/**
+ * Provides means for OCDS question and answer data to be converted into various formats
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public final class OcdsConverter {
     private final ModelMapper modelMapper;
 
+    /**
+     * Converts TemplateCriteria objects into Criterion1 objects
+     */
     public Criterion1 convert(TemplateCriteria criteria){
-        Criterion1 result = modelMapper.map(criteria, Criterion1.class);
-        result.setRequirementGroups(criteria
-                .getRequirementGroups().stream()
-                .map(t -> convert(t))
-                .sorted((r, x) -> r.getId().compareTo(x.getId()))
-                .toList());
-        return result;
+        if (criteria != null) {
+            Criterion1 result = modelMapper.map(criteria, Criterion1.class);
+
+            if (result != null && criteria.getRequirementGroups() != null) {
+                result.setRequirementGroups(criteria.getRequirementGroups().stream().map(this::convert).sorted(Comparator.comparing(RequirementGroup1::getId)).toList());
+            }
+
+            return result;
+        }
+
+        return null;
     }
 
+    /**
+     * Converts RequirementGroup objects into RequirementGroup1 objects
+     */
     private RequirementGroup1 convert(RequirementGroup t) {
-        RequirementGroup.OCDS ocds = t.getOcds();
-        RequirementGroup1 result = new RequirementGroup1(); //modelMapper.map(t.getOcds(), RequirementGroup1.class);
-        result.setId(ocds.getId());
-        result.setDescription(ocds.getDescription());
-        result.setRequirements(ocds.getRequirements()
-                .stream().map(this::convert)
-                .sorted((r, x) -> r.getId().compareTo(x.getId()))
-                .toList());
-        return result;
+        if (t != null && t.getOcds() != null) {
+            RequirementGroup.OCDS ocds = t.getOcds();
+            RequirementGroup1 result = new RequirementGroup1();
+
+            if (ocds.getId() != null) {
+                result.setId(ocds.getId());
+            }
+
+            if (ocds.getDescription() != null) {
+                result.setDescription(ocds.getDescription());
+            }
+
+            if (ocds.getRequirements() != null) {
+                result.setRequirements(ocds.getRequirements().stream().map(this::convert).sorted(Comparator.comparing(Requirement1::getId)).toList());
+            }
+
+            return result;
+        }
+
+        return null;
     }
 
+    /**
+     * Converts a Requirement object into a Requirement1 object
+     */
     private Requirement1 convert(Requirement r) {
-        Requirement1 result = modelMapper.map(r.getOcds(), Requirement1.class);
-        result.setDescription(r.getOcds().getDescription());
-        if(null!= r.getNonOCDS().getOptions() && r.getNonOCDS().getOptions().size() > 0)
-            result.setPattern(EventsHelper.serializeValue(r.getNonOCDS().getOptions()));
-        return result;
+        if (r != null && r.getOcds() != null) {
+            Requirement1 result = modelMapper.map(r.getOcds(), Requirement1.class);
+
+            if (result != null) {
+                if (r.getOcds().getDescription() != null) {
+                    result.setDescription(r.getOcds().getDescription());
+                }
+
+                if (r.getNonOCDS() != null && r.getNonOCDS().getOptions() != null && !r.getNonOCDS().getOptions().isEmpty()) {
+                    result.setPattern(EventsHelper.serializeValue(r.getNonOCDS().getOptions()));
+                }
+
+                return result;
+            }
+        }
+
+        return null;
     }
 
+    /**
+     * Converts a LotSupplier object into an OrganizationReference1 object
+     */
     public static OrganizationReference1 convert(LotSupplier lotSupplier) {
         OrganizationReference1 orgRef = new OrganizationReference1();
-        orgRef.id(lotSupplier.getOrganization().getId());
-        orgRef.setName(lotSupplier.getOrganization().getName());
+
+        if (lotSupplier != null && lotSupplier.getOrganization() != null) {
+            if (lotSupplier.getOrganization().getId() != null) {
+                orgRef.id(lotSupplier.getOrganization().getId());
+            }
+
+            if (lotSupplier.getOrganization().getName() != null) {
+                orgRef.setName(lotSupplier.getOrganization().getName());
+            }
+        }
+
         return orgRef;
     }
 
+    /**
+     * Converts a LotSupplier object into an Organization1 object
+     */
     public static Organization1 convertSupplierToOrg(LotSupplier lotSupplier) {
         ModelMapper modelMapper = new ModelMapper();
-        Organization org = lotSupplier.getOrganization();
         Organization1 orgRef = new Organization1();
-        orgRef.id(org.getId());
-        orgRef.setName(org.getName());
-        orgRef.setIdentifier(getId(org.getId()));
 
-        if(null != org.getAddress())
-            orgRef.setAddress(modelMapper.map(org.getAddress(), Address1.class));
-        else{
-            log.trace("Organisation {} does not have Address details", org.getId());
+        if (lotSupplier != null && lotSupplier.getOrganization() != null) {
+            Organization org = lotSupplier.getOrganization();
+
+            if (org.getId() != null) {
+                orgRef.id(org.getId());
+                orgRef.setIdentifier(getId(org.getId()));
+            }
+
+            if (org.getName() != null) {
+                orgRef.setName(org.getName());
+            }
+
+            if (org.getAddress() != null)
+                orgRef.setAddress(modelMapper.map(org.getAddress(), Address1.class));
+            else {
+                log.debug("Organisation {} does not have Address details", org.getId());
+            }
+
+            populateContact(lotSupplier, modelMapper, org, orgRef);
         }
-        populateContact(lotSupplier, modelMapper, org, orgRef);
+
         return orgRef;
     }
 
+    /**
+     * Populates contact information for a given organisation
+     */
     private static void populateContact(LotSupplier lotSupplier, ModelMapper modelMapper, Organization org, Organization1 orgRef) {
-        if(null != lotSupplier.getLotContacts()) {
+        if (lotSupplier != null && lotSupplier.getLotContacts() != null) {
             Optional<Contact> oContact = lotSupplier.getLotContacts().stream().findFirst();
-            if (oContact.isPresent()) {
+
+            if (oContact.isPresent() && oContact.get().getContactPoint() != null) {
                 ContactPoint contact = oContact.get().getContactPoint();
                 orgRef.setContactPoint(modelMapper.map(contact, ContactPoint1.class));
-                String url = contact.getUrl();
-                if(null != url) {
+
+                if (contact.getUrl() != null && org.getId() != null) {
+                    String url = contact.getUrl();
+
                     try {
                         orgRef.getContactPoint().setUrl(new URI(url));
                     } catch (URISyntaxException e) {
@@ -94,18 +165,22 @@ public final class OcdsConverter {
         }
     }
 
-
+    /**
+     * Converts a string ID into an Identifier1 object
+     */
     public static Identifier1 getId(String id){
-        if(id.startsWith("US-DUN")){
-            int len = id.indexOf('-', 3);
-            return new Identifier1().id(id.substring(len+1)).scheme(OrganizationScheme1.XI_DUNS);
-        }
+        if (id != null) {
+            if (id.startsWith(Constants.MAPPERS_ID_DUNS_PREFIX)) {
+                int len = id.indexOf('-', 3);
+                return new Identifier1().id(id.substring(len + 1)).scheme(OrganizationScheme1.XI_DUNS);
+            }
 
-        Optional<OrganizationScheme1> orgScheme = Arrays.stream(OrganizationScheme1.values()).filter(t -> id.startsWith(t.getValue())).findFirst();
+            Optional<OrganizationScheme1> orgScheme = Arrays.stream(OrganizationScheme1.values()).filter(t -> id.startsWith(t.getValue())).findFirst();
 
-        if(orgScheme.isPresent()){
-            int len = orgScheme.get().getValue().length();
-            return new Identifier1().id(id.substring(len+1)).scheme(orgScheme.get());
+            if (orgScheme.isPresent()) {
+                int len = orgScheme.get().getValue().length();
+                return new Identifier1().id(id.substring(len + 1)).scheme(orgScheme.get());
+            }
         }
 
         return null;

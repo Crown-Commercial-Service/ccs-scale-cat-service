@@ -78,11 +78,31 @@ public class Constants {
   public static final String EVALUATED_STATUS = "Final Evaluation";
   public static final String CLOSED_STATUS = "CLOSED";
 
-  public static final String CANCELLED_STATUS = "cancelled";
   public static final String COMPLETE_STATUS = "COMPLETE";
 
   public static final List<String> CLOSED_STATUS_LIST = Arrays.asList(CLOSED_STATUS.toLowerCase(), TerminationType.CANCELLED.getValue(),TerminationType.WITHDRAWN.getValue(),
           TerminationType.UNSUCCESSFUL.getValue(), COMPLETE_STATUS.toLowerCase());
 
   public static final String LOT_PREFIX = "Lot ";
+
+  // Project mapping constants
+  public static final String MAPPERS_RELEASE_LANG = "en";
+  public static final String MAPPERS_RELEASE_DESC_CRITERIA = "Criterion 3";
+  public static final String MAPPERS_RELEASE_DESC_GROUP = "Group 3";
+  public static final String MAPPERS_RELEASE_DESC_QUESTION = "Question 1";
+  public static final String MAPPERS_PLANNING_RATIONALE = "rationale";
+  public static final String MAPPERS_PLANNING_BUDGET_CRITERIA = "Criterion 3";
+  public static final String MAPPERS_PLANNING_BUDGET_GROUP = "Group 20";
+  public static final String MAPPERS_PLANNING_BUDGET_QUESTION = "Question 2";
+  public static final String MAPPERS_TENDER_VALUE_CRITERIA = "Criterion 3";
+  public static final String MAPPERS_TENDER_VALUE_GROUP = "Group 18";
+  public static final String MAPPERS_TENDER_MINVALUE_QUESTION = "Question 3";
+  public static final String MAPPERS_TENDER_MAXVALUE_QUESTION = "Question 2";
+  public static final String MAPPERS_ID_DUNS_PREFIX = "US-DUN";
+  public static final String MAPPERS_STATS_INVITED = "suppliersInvited";
+  public static final String MAPPERS_STATS_NO_RESPONSE = "suppliersNotResponded";
+  public static final String MAPPERS_STATS_RESPONDED = "suppliersResponded";
+  public static final String MAPPERS_STATS_DECLINED = "suppliersRespDeclined";
+  public static final String MAPPERS_STATS_EXCLUDED = "suppliersRespExcluded";
+  public static final String MAPPERS_STATS_ACCEPTED = "suppliersRespAccepted";
 }
