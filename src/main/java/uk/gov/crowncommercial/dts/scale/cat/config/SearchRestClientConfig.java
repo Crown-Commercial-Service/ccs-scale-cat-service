@@ -44,15 +44,8 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
         ClientConfiguration.MaybeSecureClientConfigurationBuilder clientConfigurationBuilder = ClientConfiguration.builder()
             .connectedTo(hostnameurl);
 
-        if(Arrays.stream(environment.getActiveProfiles()).noneMatch(profile -> profile.contains("local")))
-        {
-            // Only add basic auth if configured
-            if(opensearchCredentials.getUsername() != null && opensearchCredentials.getUsername().isPresent() && opensearchCredentials.getPassword() != null && opensearchCredentials.getPassword().isPresent()) {
-                clientConfigurationBuilder.withBasicAuth(opensearchCredentials.getUsername().get(), opensearchCredentials.getPassword().get());
-            }
-            // Enforce use of SSL
-            clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
-        }
+        // Enforce use of SSL
+        clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
 
         clientConfiguration = clientConfigurationBuilder.build();
 
