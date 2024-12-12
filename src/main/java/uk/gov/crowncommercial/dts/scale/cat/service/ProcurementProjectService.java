@@ -13,9 +13,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.time.*;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -840,8 +838,17 @@ public class ProcurementProjectService {
     CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
     CompletableFuture.allOf(resultsModel, countResultsModel).join();
 
-    SearchHits<ProcurementEventSearch> results = resultsModel.get();
-    SearchHits<ProcurementEventSearch> countResults = countResultsModel.get();
+    SearchHits<ProcurementEventSearch> results;
+    SearchHits<ProcurementEventSearch> countResults;
+
+    // Extra logging for open search searching.
+    try {
+      results = resultsModel.get(30, TimeUnit.SECONDS);
+      countResults = countResultsModel.get(30, TimeUnit.SECONDS);
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      log.error("Error fetching search results for keyword [{}], lotId [{}], e [{}]", keyword, lotId, e.getMessage());
+      throw new InterruptedException("Error fetching search results: " + e);
+    }
 
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
