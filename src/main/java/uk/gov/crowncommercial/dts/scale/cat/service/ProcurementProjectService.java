@@ -977,8 +977,26 @@ public class ProcurementProjectService {
       return projectPublicSearchSummary;
     }).toList();
 
+    log.warn("Results has " + results.getSearchHits().size() + " entries, after mapping we have " + model.size() + " entries");
+
+    List<ProjectPublicSearchSummary> dedupedResults = new ArrayList<>();
+
+    model.forEach(result -> {
+      ProjectPublicSearchSummary dupedResult = dedupedResults.stream().filter(p -> Objects.equals(p.getProjectId(), result.getProjectId())).findFirst().orElse(null);
+
+      if (dupedResult == null) {
+        dedupedResults.add(result);
+      }
+    });
+
+    log.warn("After loop de-duping we have " + dedupedResults.size() + " entries");
+
     // Before we return the results we need to de-dupe them, as we expect dupes at this point but don't want to return any
     model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
+
+    log.warn("After stream de-duping we have " + model.size() + " entries");
+
+
 
     return model;
   }
