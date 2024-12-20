@@ -856,7 +856,7 @@ public class ProcurementProjectService {
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
-    projectPublicSearchResult.setTotalResults(countResults.getSearchHits().size());
+    projectPublicSearchResult.setTotalResults(getResultCount(countResults));
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, projectPublicSearchResult.getTotalResults()));
 
     return projectPublicSearchResult;
@@ -981,6 +981,24 @@ public class ProcurementProjectService {
     model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
 
     return model;
+  }
+
+  /**
+   * Converts a set of search results from ElastiCache into a corrected total of de-duped results for return
+   */
+  private Integer getResultCount(SearchHits<ProcurementEventSearch> countResults) {
+    // First, map all the results to a basic model which we can more easily work with
+    List<ProjectPublicSearchSummary> model = countResults.stream().map(SearchHit::getContent).map(object -> {
+      ProjectPublicSearchSummary projectPublicSearchSummary = new ProjectPublicSearchSummary();
+      projectPublicSearchSummary.setProjectId(object.getProjectId());
+
+      return projectPublicSearchSummary;
+    }).toList();
+
+    // Now de-dupe those results, then return a count of the resulting total
+    model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
+
+    return model.size();
   }
 
   private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
