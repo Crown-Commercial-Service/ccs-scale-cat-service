@@ -41,7 +41,7 @@
         <junit.version>5.9.3</junit.version>
         <opensearch.version>1.6.0</opensearch.version>
         <shedlock.version>6.0.2</shedlock.version>
-        <spring-boot.version>3.4.0</spring-boot.version>
+        <spring-boot.version>3.4.1</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.16</logback.version>
