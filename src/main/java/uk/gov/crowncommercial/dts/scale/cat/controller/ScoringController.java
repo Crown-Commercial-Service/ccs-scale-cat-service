@@ -17,41 +17,42 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOC
 import uk.gov.crowncommercial.dts.scale.cat.service.DocumentTemplateService;
 import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 
+/**
+ * Controller for handling requests regarding supplier scoring
+ */
 @RestController
-@RequestMapping(path = "/tenders/projects/{procId}/events/{eventId}/scores",
-    produces = APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/tenders/projects/{procId}/events/{eventId}/scores", produces = APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 @Slf4j
 @Validated
 public class ScoringController extends AbstractRestController {
-
   private final SupplierService supplierService;
   private final DocumentTemplateService documentTemplateService;
   private static final String EVENT_STAGE = "SCORING";
 
-  @PutMapping
-  @TrackExecutionTime
-  public ResponseEntity<String> updateScoreAndComment(@PathVariable("procId") final Integer procId,
-      @PathVariable("eventId") final String eventId,
-      @RequestBody final List<ScoreAndCommentNonOCDS> scoresAndComments,
-      final JwtAuthenticationToken authentication,
-      final @RequestParam(required = false, name = "scoring-complete") boolean scoringComplete) {
-    var principal = getPrincipalFromJwt(authentication);
-    var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
-    log.info("update score and comments to suppliers invoked on behalf of principal: {}", principal,
-        conclaveOrgId);
-    return ResponseEntity.ok(supplierService.updateSupplierScores(principal, procId,
-        eventId, scoresAndComments, scoringComplete));
-  }
-  
+  /**
+   * Get and return a set of supplier scores for a given project / event combination
+   */
   @GetMapping
   @TrackExecutionTime
-  public ResponseEntity<Collection<ScoreAndCommentNonOCDS>> getScores(
-      @PathVariable("procId") final Integer procId, @PathVariable("eventId") final String eventId,
-      final JwtAuthenticationToken authentication) {
-    var principal = getPrincipalFromJwt(authentication);
-    log.debug("getTemplates invoked on behalf of principal: {}", principal);
+  public ResponseEntity<Collection<ScoreAndCommentNonOCDS>> getScores(@PathVariable("procId") final Integer procId, @PathVariable("eventId") final String eventId, final JwtAuthenticationToken authentication) {
+    // Validate the authentication passed to us, then fetch the supplier scores for the given project / event to return
+    getPrincipalFromJwt(authentication);
+
     return ResponseEntity.ok(supplierService.getScoresForSuppliers(procId, eventId));
+  }
+
+  /**
+   * Update a given set of supplier scores for a given project / event combination
+   */
+  @PutMapping
+  @TrackExecutionTime
+  public ResponseEntity<String> updateScoreAndComment(@PathVariable("procId") final Integer procId, @PathVariable("eventId") final String eventId, @RequestBody final List<ScoreAndCommentNonOCDS> scoresAndComments, final JwtAuthenticationToken authentication, final @RequestParam(required = false, name = "scoring-complete") boolean scoringComplete) {
+    // Validate the authentication passed to us, then update the supplier scores attached to this project / event with the values passed to us
+    String principal = getPrincipalFromJwt(authentication);
+    getCiiOrgIdFromJwt(authentication);
+
+    return ResponseEntity.ok(supplierService.updateSupplierScores(principal, procId, eventId, scoresAndComments, scoringComplete));
   }
 
   @GetMapping("/templates")
