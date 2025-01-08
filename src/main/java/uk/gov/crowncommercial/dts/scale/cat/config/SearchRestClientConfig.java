@@ -28,7 +28,7 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
     @Autowired
     Environment environment;
 
-    @Value("${config.flags.devMode}")
+    @Value("${config.flags.devMode:false}")
     boolean devMode;
 
     @SneakyThrows
