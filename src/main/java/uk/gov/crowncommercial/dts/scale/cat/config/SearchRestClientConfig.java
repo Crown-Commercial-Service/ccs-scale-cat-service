@@ -28,8 +28,8 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
     @Autowired
     Environment environment;
 
-    @Value("${config.flags.devMode:false}")
-    boolean devMode;
+    @Value("${config.flags.devMode:}")
+    String devMode;
 
     @SneakyThrows
     @Override
@@ -46,7 +46,7 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
             .connectedTo(hostnameurl);
 
         // Enforce use of SSL when not on a local environment
-        if (!devMode) {
+        if (devMode == null || devMode.isEmpty()) {
             clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
         }
 
