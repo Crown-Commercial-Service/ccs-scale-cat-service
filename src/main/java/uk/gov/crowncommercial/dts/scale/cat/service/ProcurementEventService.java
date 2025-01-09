@@ -801,27 +801,30 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
-     * Returns a list of document attachments at the event level.
-     *
-     * @param procId
-     * @param eventId
-     * @return
+     * Returns a list of supplier responses at the event level.
      */
     @Transactional
     public ResponseSummary getSupplierResponses(final Integer procId, final String eventId) {
+        // First validate the event and then fetch its details from Jaegger
+        log.warn("TEMP - GET RESPONSES - starting Jaggaer response info fetch at " + LocalDateTime.now());
+        ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
 
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
-
-        final var lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
-        var responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
+        log.warn("TEMP - GET RESPONSES - Jaegger response info fetch completed at " + LocalDateTime.now());
+        // Now process any responses received within the last round of responses
+        final LastRound lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
+        ResponseSummary responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
                 .responded(lastRound.getNumSupplResponded()).noResponse(lastRound.getNumSupplNotResponded())
                 .declined(lastRound.getNumSupplRespDeclined());
 
-        return responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
+        log.warn("TEMP - GET RESPONSES - first data processing round finished at " + LocalDateTime.now());
+        ResponseSummary model = responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
                 .map(supplier -> this.convertToResponders(supplier,
                         getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)))
                 .collect(Collectors.toList()));
+
+        log.warn("TEMP - GET RESPONSES - second data processing round finished at " + LocalDateTime.now());
+        return model;
     }
 
     private OffsetDateTime getSupplierResponseDate(final OffersList offerList,
