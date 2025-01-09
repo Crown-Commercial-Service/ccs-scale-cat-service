@@ -184,11 +184,9 @@ public class SupplierService {
    */
   public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId, final String eventId) {
     // First, we need to grab the supplier information for the event from Jaggaer
-    log.warn("TEMP - GET SCORES - starting Jaggaer score info fetch at " + LocalDateTime.now());
     String componentFilter = "EVAL_SUPPLIER_ENVELOPE_COMMENTS==ALL;OFFERS";
     ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     ExportRfxResponse exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(), new HashSet<>(List.of(componentFilter)));
-    log.warn("TEMP - GET SCORES - Jaggaer scores fetch complete at " + LocalDateTime.now());
 
     Collection<ScoreAndCommentNonOCDS> model = exportRfxResponse.getOffersList().getOffer().stream()
             .map(e -> new ScoreAndCommentNonOCDS()
@@ -199,8 +197,6 @@ public class SupplierService {
                     .score(e.getTechPoints()).comment(
                             extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
             .toList();
-
-    log.warn("TEMP - GET SCORES - Score model mapping for return complete at " + LocalDateTime.now());
 
     return model;
   }

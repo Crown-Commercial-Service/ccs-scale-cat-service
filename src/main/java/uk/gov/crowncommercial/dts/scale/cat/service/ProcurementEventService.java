@@ -819,8 +819,17 @@ public class ProcurementEventService implements EventService {
 
         log.warn("TEMP - GET RESPONSES - first data processing round finished at " + LocalDateTime.now());
         ResponseSummary model = responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
-                .map(supplier -> this.convertToResponders(supplier,
-                        getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)))
+                .map(supplier -> {
+                    LocalDateTime startedAt = LocalDateTime.now();
+                    OffsetDateTime responseDate = getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier);
+                    LocalDateTime dateFetchedAt = LocalDateTime.now();
+                    Responders response = convertToResponders(supplier, responseDate);
+                    LocalDateTime responseConverted = LocalDateTime.now();
+
+                    log.warn("TEMP - RESPONSE PROCESSING - Started at " + startedAt + ", Dates Fetched at " + dateFetchedAt + ", converted at " + responseConverted);
+
+                    return response;
+                })
                 .collect(Collectors.toList()));
 
         log.warn("TEMP - GET RESPONSES - second data processing round finished at " + LocalDateTime.now());
