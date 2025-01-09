@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.paas.OpensearchCredentials;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 
 import javax.net.ssl.SSLContext;
+import java.util.Arrays;
 
 @Configuration
 @Data
@@ -27,9 +28,6 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
 
     @Autowired
     Environment environment;
-
-    @Value("${config.flags.devMode:}")
-    String devMode;
 
     @SneakyThrows
     @Override
@@ -46,7 +44,7 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
             .connectedTo(hostnameurl);
 
         // Enforce use of SSL when not on a local environment
-        if (devMode == null || devMode.isEmpty()) {
+        if(Arrays.stream(environment.getActiveProfiles()).noneMatch(profile -> profile.contains("local"))) {
             clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
         }
 
