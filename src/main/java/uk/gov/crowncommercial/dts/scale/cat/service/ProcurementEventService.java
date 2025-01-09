@@ -45,7 +45,6 @@ import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -812,7 +811,6 @@ public class ProcurementEventService implements EventService {
                 .responded(lastRound.getNumSupplResponded()).noResponse(lastRound.getNumSupplNotResponded())
                 .declined(lastRound.getNumSupplRespDeclined());
 
-        log.warn("TEMP - GET RESPONSES - first data processing round finished at " + LocalDateTime.now());
         // Process these asynchronously, otherwise this takes forever
         List<CompletableFuture<Responders>> list =
                 exportRfxResponse.getSuppliersList().getSupplier().stream()
@@ -828,7 +826,6 @@ public class ProcurementEventService implements EventService {
                 .map(CompletableFuture::join)
                 .collect(Collectors.toList()));
 
-        log.warn("TEMP - GET RESPONSES - second data processing round finished at " + LocalDateTime.now());
         return model;
     }
 
