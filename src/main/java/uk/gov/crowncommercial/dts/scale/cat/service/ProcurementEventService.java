@@ -49,10 +49,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -806,11 +803,9 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public ResponseSummary getSupplierResponses(final Integer procId, final String eventId) {
         // First validate the event and then fetch its details from Jaegger
-        log.warn("TEMP - GET RESPONSES - starting Jaggaer response info fetch at " + LocalDateTime.now());
         ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
         ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
 
-        log.warn("TEMP - GET RESPONSES - Jaegger response info fetch completed at " + LocalDateTime.now());
         // Now process any responses received within the last round of responses
         final LastRound lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
         ResponseSummary responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
@@ -818,19 +813,40 @@ public class ProcurementEventService implements EventService {
                 .declined(lastRound.getNumSupplRespDeclined());
 
         log.warn("TEMP - GET RESPONSES - first data processing round finished at " + LocalDateTime.now());
-        ResponseSummary model = responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
-                .map(supplier -> {
-                    LocalDateTime startedAt = LocalDateTime.now();
-                    OffsetDateTime responseDate = getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier);
-                    LocalDateTime dateFetchedAt = LocalDateTime.now();
-                    Responders response = convertToResponders(supplier, responseDate);
-                    LocalDateTime responseConverted = LocalDateTime.now();
+        ExecutorService threadPool = Executors.newFixedThreadPool(10);
 
-                    log.warn("TEMP - RESPONSE PROCESSING - Started at " + startedAt + ", Dates Fetched at " + dateFetchedAt + ", converted at " + responseConverted);
+        //ResponseSummary model = responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
+        //        .map(supplier -> {
+        //            LocalDateTime startedAt = LocalDateTime.now();
+        //            OffsetDateTime responseDate = getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier);
+        //            LocalDateTime dateFetchedAt = LocalDateTime.now();
+        //            Responders response = convertToResponders(supplier, responseDate);
+        //            LocalDateTime responseConverted = LocalDateTime.now();
 
-                    return response;
-                })
+        //            log.warn("TEMP - RESPONSE PROCESSING - Started at " + startedAt + ", Dates Fetched at " + dateFetchedAt + ", converted at " + responseConverted);
+
+        //           return response;
+        //        })
+        //        .collect(Collectors.toList()));
+
+
+
+        List<CompletableFuture<Responders>> list =
+                exportRfxResponse.getSuppliersList().getSupplier().stream()
+                        .map(supplier -> CompletableFuture.supplyAsync(
+                                () -> convertToResponders(supplier, getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)),
+                                threadPool
+                        ))
+                        .toList();
+
+        CompletableFuture.allOf(list.toArray(new CompletableFuture[0])).join();
+
+        ResponseSummary model = responseSummary.responders(list.stream()
+                .map(CompletableFuture::join)
                 .collect(Collectors.toList()));
+
+
+
 
         log.warn("TEMP - GET RESPONSES - second data processing round finished at " + LocalDateTime.now());
         return model;
