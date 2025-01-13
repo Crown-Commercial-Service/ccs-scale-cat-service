@@ -365,13 +365,14 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  /**
+   * Returns details of responses from suppliers to a given project / event combination
+   */
   @GetMapping("/{eventID}/responses")
   @TrackExecutionTime
-  public ResponseSummary getSupplierResponses(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
-    log.info("getDocumentSummaries invoked on behalf of principal: {}", principal);
+  public ResponseSummary getSupplierResponses(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    // First validate the authentication passed to us, and then fetch the data for return
+    getPrincipalFromJwt(authentication);
 
     return procurementEventService.getSupplierResponses(procId, eventId);
   }

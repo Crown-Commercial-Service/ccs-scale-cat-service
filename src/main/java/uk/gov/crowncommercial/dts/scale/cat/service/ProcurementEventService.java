@@ -45,14 +45,10 @@ import jakarta.validation.ValidationException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -118,7 +114,7 @@ public class ProcurementEventService implements EventService {
     private final EventTransitionService eventTransitionService;
 
     private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
-    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(50);
 
     /**
      * Completes an existing event directly, rather than relying on a multitude of background processes
@@ -801,27 +797,36 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
-     * Returns a list of document attachments at the event level.
-     *
-     * @param procId
-     * @param eventId
-     * @return
+     * Returns a list of supplier responses at the event level.
      */
     @Transactional
     public ResponseSummary getSupplierResponses(final Integer procId, final String eventId) {
+        // First validate the event and then fetch its details from Jaegger
+        ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
 
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
-
-        final var lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
-        var responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
+        // Now process any responses received within the last round of responses
+        final LastRound lastRound = exportRfxResponse.getSupplierResponseCounters().getLastRound();
+        ResponseSummary responseSummary = new ResponseSummary().invited(lastRound.getNumSupplInvited())
                 .responded(lastRound.getNumSupplResponded()).noResponse(lastRound.getNumSupplNotResponded())
                 .declined(lastRound.getNumSupplRespDeclined());
 
-        return responseSummary.responders(exportRfxResponse.getSuppliersList().getSupplier().stream()
-                .map(supplier -> this.convertToResponders(supplier,
-                        getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)))
+        // Process these asynchronously, otherwise this takes forever
+        List<CompletableFuture<Responders>> list =
+                exportRfxResponse.getSuppliersList().getSupplier().stream()
+                        .map(supplier -> CompletableFuture.supplyAsync(
+                                () -> convertToResponders(supplier, getSupplierResponseDate(exportRfxResponse.getOffersList(), supplier)),
+                                executorService
+                        ))
+                        .toList();
+
+        CompletableFuture.allOf(list.toArray(new CompletableFuture[0])).join();
+
+        ResponseSummary model = responseSummary.responders(list.stream()
+                .map(CompletableFuture::join)
                 .collect(Collectors.toList()));
+
+        return model;
     }
 
     private OffsetDateTime getSupplierResponseDate(final OffersList offerList,

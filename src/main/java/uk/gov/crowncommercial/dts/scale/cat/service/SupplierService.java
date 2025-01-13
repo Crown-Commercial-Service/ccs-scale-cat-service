@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,19 +27,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.EvaluationCommentList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OwnerUser;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ParameterList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoreParameter;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoringRequest;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ScoringTechEnvelope;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Section;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SectionList;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierIdentification;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScore;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SupplierScoreList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
@@ -189,22 +179,26 @@ public class SupplierService {
     return "Successfully updated scores";
   }
 
+  /**
+   * Fetches supplier scoring information for a given project / event combination
+   */
+  public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId, final String eventId) {
+    // First, we need to grab the supplier information for the event from Jaggaer
+    String componentFilter = "EVAL_SUPPLIER_ENVELOPE_COMMENTS==ALL;OFFERS";
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    ExportRfxResponse exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(), new HashSet<>(List.of(componentFilter)));
 
-  public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId,
-      final String eventId) {
-    var componentFilter = "EVAL_SUPPLIER_ENVELOPE_COMMENTS==ALL;OFFERS";
-    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-    var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
-        new HashSet<>(Arrays.asList(componentFilter)));
-    return exportRfxResponse.getOffersList().getOffer().stream()
-        .map(e -> new ScoreAndCommentNonOCDS()
-            .organisationId(retryableTendersDBDelegate
-                .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
-                .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
-                .getCasOrganisationId())
-            .score(e.getTechPoints()).comment(
-                extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
-        .toList();
+    Collection<ScoreAndCommentNonOCDS> model = exportRfxResponse.getOffersList().getOffer().stream()
+            .map(e -> new ScoreAndCommentNonOCDS()
+                    .organisationId(retryableTendersDBDelegate
+                            .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
+                            .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
+                            .getCasOrganisationId())
+                    .score(e.getTechPoints()).comment(
+                            extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
+            .toList();
+
+    return model;
   }
 
   private String extractComment(Integer supplierId, EvaluationCommentList evaluationCommentList) {
