@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.5</version>
+        <version>3.4.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>uk.gov.crowncommercial.dts</groupId>
@@ -19,34 +19,34 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.23</swagger-parser.version>
-        <guava.version>33.3.1-jre</guava.version>
+        <swagger-parser.version>2.1.25</swagger-parser.version>
+        <guava.version>33.4.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
-        <modelmapper.version>3.2.1</modelmapper.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.2.0</jena-core.version>
-        <commons-io.version>2.17.0</commons-io.version>
-        <aws-java-sdk-s3.version>1.12.778</aws-java-sdk-s3.version>
+        <commons-io.version>2.18.0</commons-io.version>
+        <aws-java-sdk-s3.version>1.12.780</aws-java-sdk-s3.version>
         <tika-core.version>3.0.0</tika-core.version>
         <java-cfenv-boot.version>3.3.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
-        <poi-ooxml.version>5.3.0</poi-ooxml.version>
+        <poi-ooxml.version>5.4.0</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.3</snakeyaml.version>
-        <spring-security.version>6.3.4</spring-security.version>
+        <spring-security.version>6.4.2</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>1.10.3</rollbar.version>
-        <jsoup.version>1.18.1</jsoup.version>
+        <jsoup.version>1.18.3</jsoup.version>
         <hibernate.version>6.3.2.Final</hibernate.version>
         <junit.version>5.11.3</junit.version>
-        <opensearch.version>1.5.3</opensearch.version>
-        <shedlock.version>5.16.0</shedlock.version>
-        <spring-boot.version>3.3.5</spring-boot.version>
+        <opensearch.version>1.6.0</opensearch.version>
+        <shedlock.version>6.2.0</shedlock.version>
+        <spring-boot.version>3.4.1</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
-        <logback.version>1.5.12</logback.version>
-        <feignclient.version>4.1.3</feignclient.version>
+        <logback.version>1.5.16</logback.version>
+        <feignclient.version>4.2.0</feignclient.version>
         <ehcache.version>3.10.8</ehcache.version>
         <retry.version>2.0.10</retry.version>
         <jetty-reactive.version>4.0.8</jetty-reactive.version>

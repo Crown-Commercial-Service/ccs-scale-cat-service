@@ -10,6 +10,7 @@ import org.opensearch.data.client.orhlc.AbstractOpenSearchConfiguration;
 import org.opensearch.data.client.orhlc.ClientConfiguration;
 import org.opensearch.data.client.orhlc.RestClients;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -20,7 +21,6 @@ import javax.net.ssl.SSLContext;
 import java.util.Arrays;
 
 @Configuration
-
 @Data
 public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
     static final String OPEN_SEARCH_PATTERN = "[a-z0-9]+-ccs-scale-cat-opensearch";
@@ -28,7 +28,6 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
 
     @Autowired
     Environment environment;
-
 
     @SneakyThrows
     @Override
@@ -44,13 +43,8 @@ public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
         ClientConfiguration.MaybeSecureClientConfigurationBuilder clientConfigurationBuilder = ClientConfiguration.builder()
             .connectedTo(hostnameurl);
 
-        if(Arrays.stream(environment.getActiveProfiles()).noneMatch(profile -> profile.contains("local")))
-        {
-            // Only add basic auth if configured
-            if(opensearchCredentials.getUsername() != null && opensearchCredentials.getUsername().isPresent() && opensearchCredentials.getPassword() != null && opensearchCredentials.getPassword().isPresent()) {
-                clientConfigurationBuilder.withBasicAuth(opensearchCredentials.getUsername().get(), opensearchCredentials.getPassword().get());
-            }
-            // Enforce use of SSL
+        // Enforce use of SSL when not on a local environment
+        if(Arrays.stream(environment.getActiveProfiles()).noneMatch(profile -> profile.contains("local"))) {
             clientConfigurationBuilder.usingSsl(sslContext, NoopHostnameVerifier.INSTANCE);
         }
 

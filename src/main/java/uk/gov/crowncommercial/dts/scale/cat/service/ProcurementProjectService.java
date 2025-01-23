@@ -1,6 +1,9 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import static java.util.Comparator.comparing;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toCollection;
 import static org.opensearch.index.query.QueryBuilders.boolQuery;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
@@ -13,9 +16,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.time.*;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -731,7 +732,7 @@ public class ProcurementProjectService {
   private ProcurementEvent getCurrentEvent(final ProcurementProject project) {
     // Sort the list of events for the project by the date last updated to be sure we consistently deal with the latest
     List<ProcurementEvent> eventsList = new ArrayList<>(project.getProcurementEvents().stream().toList());
-    eventsList.sort(Comparator.comparing(ProcurementEvent::getUpdatedAt).reversed());
+    eventsList.sort(comparing(ProcurementEvent::getUpdatedAt).reversed());
 
     Optional<ProcurementEvent> event = eventsList.stream().findFirst();
 
@@ -840,14 +841,23 @@ public class ProcurementProjectService {
     CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
     CompletableFuture.allOf(resultsModel, countResultsModel).join();
 
-    SearchHits<ProcurementEventSearch> results = resultsModel.get();
-    SearchHits<ProcurementEventSearch> countResults = countResultsModel.get();
+    SearchHits<ProcurementEventSearch> results;
+    SearchHits<ProcurementEventSearch> countResults;
+
+    // Extra logging for open search searching.
+    try {
+      results = resultsModel.get(30, TimeUnit.SECONDS);
+      countResults = countResultsModel.get(30, TimeUnit.SECONDS);
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      log.error("Error fetching search results for keyword [{}], lotId [{}], e [{}]", keyword, lotId, e.getMessage());
+      throw new InterruptedException("Error fetching search results: " + e);
+    }
 
     searchCriteria.setLots(getProjectLots(countResults, lotId));
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
     projectPublicSearchResult.setResults(convertResults(results));
-    projectPublicSearchResult.setTotalResults((int) results.getTotalHits());
-    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, (int) results.getTotalHits()));
+    projectPublicSearchResult.setTotalResults(getResultCount(countResults));
+    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, projectPublicSearchResult.getTotalResults()));
 
     return projectPublicSearchResult;
   }
@@ -944,11 +954,14 @@ public class ProcurementProjectService {
     return searchQuery;
   }
 
+  /**
+   * Converts a set of search results from ElastiCache into a de-duped list of projects for return
+   */
   private List<ProjectPublicSearchSummary> convertResults(SearchHits<ProcurementEventSearch> results)
   {
-    return results.stream().map(SearchHit::getContent).map(object ->
-    {
-      ProjectPublicSearchSummary projectPublicSearchSummary=new ProjectPublicSearchSummary();
+    // First, map all the results to our desired output model
+    List<ProjectPublicSearchSummary> model = results.stream().map(SearchHit::getContent).map(object -> {
+      ProjectPublicSearchSummary projectPublicSearchSummary = new ProjectPublicSearchSummary();
       projectPublicSearchSummary.setProjectId(object.getProjectId());
       projectPublicSearchSummary.setProjectName(object.getProjectName());
       projectPublicSearchSummary.setAgreement(object.getAgreement());
@@ -960,8 +973,32 @@ public class ProcurementProjectService {
       projectPublicSearchSummary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       projectPublicSearchSummary.setSubStatus(object.getSubStatus());
       projectPublicSearchSummary.setLocation(object.getLocation());
-      return projectPublicSearchSummary;}).collect(Collectors.toList());
 
+      return projectPublicSearchSummary;
+    }).toList();
+
+    // Before we return the results we need to de-dupe them, as we expect dupes at this point but don't want to return any
+    model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
+
+    return model;
+  }
+
+  /**
+   * Converts a set of search results from ElastiCache into a corrected total of de-duped results for return
+   */
+  private Integer getResultCount(SearchHits<ProcurementEventSearch> countResults) {
+    // First, map all the results to a basic model which we can more easily work with
+    List<ProjectPublicSearchSummary> model = countResults.stream().map(SearchHit::getContent).map(object -> {
+      ProjectPublicSearchSummary projectPublicSearchSummary = new ProjectPublicSearchSummary();
+      projectPublicSearchSummary.setProjectId(object.getProjectId());
+
+      return projectPublicSearchSummary;
+    }).toList();
+
+    // Now de-dupe those results, then return a count of the resulting total
+    model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
+
+    return model.size();
   }
 
   private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
