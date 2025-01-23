@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-23 as build
+FROM maven:3.9.9-amazoncorretto-23 as build
 
 RUN mkdir -p /tmp/build
 
@@ -9,17 +9,21 @@ COPY . /tmp/build
 RUN mvn clean install
 RUN mvn package
 
-# Use an official OpenJDK runtime as a base image
-FROM eclipse-temurin:23
+# Use an official Corretto runtime as a base image
+FROM amazoncorretto:23-alpine-jdk
 
-RUN mkdir /app
+# Set the working directory inside the container and install curl
+WORKDIR /app
+RUN apk add --update --no-cache \
+    curl
 
 # Copy the application JAR file and external configuration files
 COPY --from=build /tmp/build/target/ccs-scale-cat-service-*.jar /app/cat.jar
 
-RUN groupadd ujava; \
-    useradd -m -g ujava -c ujava ujava; \
-    chown -R ujava:ujava /app
+# Create the user and usergroup for the app to run as
+RUN addgroup ujava && \
+    adduser -S -G ujava ujava \
+    && chown -R ujava: /app
 
 USER ujava
 
@@ -33,4 +37,4 @@ ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
 # Command to run your application
-CMD ["java", "-jar", "cat.jar"]
+ENTRYPOINT ["java", "-jar", "cat.jar"]
