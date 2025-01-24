@@ -1,25 +1,51 @@
-# CCS Scale CaT Service (API)
+CCS Contract Award Service Tenders API
+===========
 
-## Overview
+Overview
+--------
+This is the code for the user interface of Crown Commercial Service's (_CCS_)
+Tenders API, used by the Contract Award Service (_CAS_).
 
-This is the Java 23 SpringBoot implementation of the CaT (Tenders) API [Open API specification](https://github.com/Crown-Commercial-Service/ccs-scale-api-definitions/blob/master/cat/CaT-service.yaml).
+The specification for the API can be found in the [Open API Specification][].
 
-## Deployment
+Technology Overview
+---------
+The project is implemented as a Spring Boot 3 web application, implemented using Maven.
 
-This application is hosted on [AWS](https://aws.amazon.com/) and we use [Jenkins](https://www.jenkins.io/) to deploy the code.
+The core technologies for the project are:
 
-The environments are mapped as follows:
+* Java 23
+* [Spring Boot][]
+* [Spring Security][]
+* [Ehcache][] for caching
+* [JUnit][] for unit testing
 
-| Environment     | Branch          |
-|-----------------|-----------------|
-| Development     | `develop`       |
-| UAT             | `release/uat`   |
-| Pre-Production  | `release/pre`   |
-| Production      | `release/prod`  |
+Building and Running Locally
+----------------------------
+To run the application locally, you simply need to run the core ccs-scale-cat-service module.
 
-When your code changes are merged you will need to deploy the code manually.
+In order to generate required classes for the application, you need to use Maven to _**Generate Sources and Update Folders**_.
 
-To do this you must run the job to build the docker image for the app.
-Make sure you are targeting the right branch for the environment you wish to deploy to.
+You will need to be supplied with a local secrets file (`local-env-local-pg.yml`) to enable the project to run, which can be supplied by any member of the development team.
 
-Once the image has been built, the job to deploy the code can be run which releases the code to the selected environment.
+Once the application has started it can be accessed via Postman using the URL http://localhost:8080/.
+
+Branches
+--------
+When picking up tickets, branches should be created using the **_feature/*_** format.
+
+When completed, these branches should be pull requested against _**develop**_ for review and approval.  _**develop**_ is then built out onto the **Development** environment.
+
+The **UAT** and **Pre-Production** environments are controlled via means of release and hotfix branches.
+
+Release branches should be created from _**develop**_ using the **_release/*_** format, whilst hotfixes should be created from _**main**_ using the **_hotfix/*_** format.  These branches can then be built out to **UAT** and **Pre-Production** as appropriate.
+
+When releases/hotfixes are ready for deployment to **Production**, the **_release/*_** or **_hotfix/*_** branch in question should be pull requested against the _**main**_ branch for review and approval.  This branch should then be built out to **Production**.
+
+Once a release/hotfix has been completed you should be sure to merge _**main**_ back down into _**develop**_.
+
+[Spring Boot]: https://spring.io/projects/spring-boot
+[Spring Security]: https://spring.io/projects/spring-security
+[JUnit]: https://junit.org/junit5/
+[Ehcache]: https://www.ehcache.org/
+[Open API Specification]: https://github.com/Crown-Commercial-Service/ccs-scale-api-definitions/blob/master/cat/CaT-service.yaml
