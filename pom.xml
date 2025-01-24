@@ -16,7 +16,9 @@
     <description>SCALE CaT (Tenders) API</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>23</java.version>
+        <maven.compiler.source>23</maven.compiler.source>
+        <maven.compiler.target>23</maven.compiler.target>
         <swagger-parser.version>2.1.25</swagger-parser.version>
         <guava.version>33.4.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
@@ -36,9 +38,8 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>1.10.3</rollbar.version>
         <jsoup.version>1.18.3</jsoup.version>
-        <jackson.version>2.15.2</jackson.version>
         <hibernate.version>6.3.2.Final</hibernate.version>
-        <junit.version>5.9.3</junit.version>
+        <junit.version>5.11.3</junit.version>
         <opensearch.version>1.6.0</opensearch.version>
         <shedlock.version>6.2.0</shedlock.version>
         <spring-boot.version>3.4.1</spring-boot.version>
@@ -47,6 +48,13 @@
         <logback.version>1.5.16</logback.version>
         <feignclient.version>4.2.0</feignclient.version>
         <ehcache.version>3.10.8</ehcache.version>
+        <retry.version>2.0.10</retry.version>
+        <jetty-reactive.version>4.0.8</jetty-reactive.version>
+        <postgres.version>42.7.4</postgres.version>
+        <lombok.version>1.18.36</lombok.version>
+        <spring.version>6.3.4</spring.version>
+        <maven-replacer.version>1.5.3</maven-replacer.version>
+        <compiler.version>3.13.0</compiler.version>
     </properties>
 
     <dependencies>
@@ -94,10 +102,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -107,6 +117,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <version>${spring-boot.version}</version>
             <exclusions>
                 <exclusion>
                     <artifactId>spring-security-core</artifactId>
@@ -117,6 +128,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
+            <version>${spring-boot.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.springframework.security</groupId>
@@ -135,27 +147,33 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
+            <version>${spring-boot.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
+            <version>${retry.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-reactive-httpclient</artifactId>
+            <version>${jetty-reactive.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -165,6 +183,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>${postgres.version}</version>
         </dependency>
         <dependency>
             <groupId>io.swagger.parser.v3</groupId>
@@ -202,6 +221,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
+            <version>${spring-boot.version}</version>
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
@@ -213,7 +233,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <version>${lombok.version}</version>
         </dependency>
         <dependency>
             <groupId>org.modelmapper</groupId>
@@ -311,6 +331,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <version>${spring-boot.version}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -326,6 +347,7 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <version>${spring.version}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -337,6 +359,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -577,7 +600,7 @@
             <plugin>
                 <groupId>com.google.code.maven-replacer-plugin</groupId>
                 <artifactId>replacer</artifactId>
-                <version>1.5.3</version>
+                <version>${maven-replacer.version}</version>
                 <executions>
                     <execution>
                         <id>replace-import-javax-by-jakarta</id>
@@ -604,6 +627,21 @@
                             <value>jakarta.annotation</value>
                         </replacement>
                     </replacements>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${compiler.version}</version>
+                <configuration>
+                    <release>23</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

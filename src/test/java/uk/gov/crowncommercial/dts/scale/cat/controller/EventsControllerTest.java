@@ -27,9 +27,6 @@ import java.time.ZoneOffset;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -62,7 +59,6 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 class EventsControllerTest {
 
   private static final String EVENTS_PATH = "/tenders/projects/{procID}/events";
-  private static final String MESSAGES_PATH = "messages";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String EVENT_ID = "ocds-pfhb7i-1";
@@ -323,22 +319,42 @@ class EventsControllerTest {
         PRINCIPAL);
   }
 
-  @ParameterizedTest
-  @NullAndEmptySource
-  @ValueSource(strings = {"2021-12", "2021-12-25T-12:00:00Z", " ", "!"})
-  void publishEvent_400_BadRequest_EndDate(final String input) throws Exception {
+  @Test
+  void publishEvent_400_BadRequest_EndDate() throws Exception {
+    List<String> inputValues = new ArrayList<>(Arrays.asList("2021-12", "2021-12-25T-12:00:00Z", " ", "!", ""));
 
-    var publishDates = Collections.singletonMap("endDate", input);
+    inputValues.forEach(input -> {
+      var publishDates = Collections.singletonMap("endDate", input);
+
+        try {
+            mockMvc
+                .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+                    .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(publishDates)))
+                .andDo(print()).andExpect(status().isBadRequest())
+                .andExpect(content().contentType(APPLICATION_JSON))
+                .andExpect(jsonPath("$.errors", hasSize(1)))
+                .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
+                .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    });
+  }
+
+  @Test
+  void publishEvent_400_NullRequest_EndDate() throws Exception {
+    var publishDates = Collections.singletonMap("endDate", null);
 
     mockMvc
-        .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
-            .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(publishDates)))
-        .andDo(print()).andExpect(status().isBadRequest())
-        .andExpect(content().contentType(APPLICATION_JSON))
-        .andExpect(jsonPath("$.errors", hasSize(1)))
-        .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
-        .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
+            .perform(put(EVENTS_PATH + "/{eventID}/publish", PROC_PROJECT_ID, EVENT_ID)
+                    .with(validJwtReqPostProcessor).contentType(APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(publishDates)))
+            .andDo(print()).andExpect(status().isBadRequest())
+            .andExpect(content().contentType(APPLICATION_JSON))
+            .andExpect(jsonPath("$.errors", hasSize(1)))
+            .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
+            .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
   }
 
   @Test

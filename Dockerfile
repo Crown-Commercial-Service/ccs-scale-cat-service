@@ -1,17 +1,40 @@
-ARG APP_DIR=/app
-FROM maven:3.9.6-eclipse-temurin-17-alpine as build
-COPY . /build
-RUN cd /build && mvn package
+FROM maven:3.9.9-amazoncorretto-23 as build
 
-FROM eclipse-temurin:17.0.10_7-jre-alpine
-ARG APP_DIR
-RUN addgroup -S appuser && \
-    adduser -S -G appuser appuser && \
-    # Create application directory
-    install -o appuser -g appuser -d ${APP_DIR}
-RUN apk upgrade && apk add curl && rm -rf /var/cache/apk/*
-COPY --chown=appuser:appuser --from=build /build/target/ccs-scale-cat-service-*.jar ${APP_DIR}/cat.jar
-USER appuser
-WORKDIR ${APP_DIR}
+RUN mkdir -p /tmp/build
+
+WORKDIR /tmp/build
+
+COPY . /tmp/build
+
+RUN mvn clean install
+RUN mvn package
+
+# Use an official Corretto runtime as a base image
+FROM amazoncorretto:23-alpine-jdk
+
+# Set the working directory inside the container and install curl
+WORKDIR /app
+RUN apk add --update --no-cache \
+    curl
+
+# Copy the application JAR file and external configuration files
+COPY --from=build /tmp/build/target/ccs-scale-cat-service-*.jar /app/cat.jar
+
+# Create the user and usergroup for the app to run as
+RUN addgroup ujava && \
+    adduser -S -G ujava ujava \
+    && chown -R ujava: /app
+
+USER ujava
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Specify the profile to be used when running the application
+ENV SPRING_PROFILES_ACTIVE=prod
+
+# Expose the port your application will run on
 EXPOSE 8080
-ENTRYPOINT [ "java", "-jar", "./cat.jar" ]
+
+# Command to run your application
+ENTRYPOINT ["java", "-jar", "cat.jar"]
