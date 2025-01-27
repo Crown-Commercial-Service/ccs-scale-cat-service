@@ -5,57 +5,361 @@
 #        jwt:
 #          jwk-set-uri: "SET IN ENV"
 
-          
+# App info (for actuator)
+info:
+  app:
+    name: CCS Contract Award Service API
+    description: The API for the CrownCommercialService Contract Award Service, also known as Tenders API
+    version: 1.0.0
+
+# Actuator config
+management:
+  security:
+    enabled: false
+  endpoints:
+    web:
+      base-path: /actuator/
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+
 logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.web.client.RestTemplate: WARN
     org.apache.http: WARN
-    uk.gov.crowncommercial.dts.scale.cat: INFO
-        
+
+# ehCache config
+caching:
+  # Primary cache - 5 mins, 500 entries
+  primary:
+    cacheLength: 300
+    heapSize: 500
+  # Long cache - 1 hour, 500 entries
+  long:
+    cacheLength: 3600
+    heapSize: 500
+  agreements: RM1557.13,RM1043.8,RM6187,RM1557.14
+
 spring:
   jpa:
     open-in-view: false
     database: postgresql
     show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        enable_lazy_load_no_trans: true
     hibernate:
       ddl-auto: validate
   datasource:
     hikari:
       connectionTimeout: 10000
-      
+      maximumPoolSize: 30
+  servlet:
+    multipart:
+      max-file-size: 300MB # must match config.maxSize
+      max-request-size: 300MB # must match config.maxSize
+
+server:
+  error:
+    path: "/error"
+
 config:
+#  rollbar:
+#    accessToken:
+#    environment:
   ocds:
     authority: ocds
-    ocid-prefix: b5fd17
+    ocid-prefix: pfhb7i
   retry:
     maxAttempts: 5
     multiplier: 2
     delay: 1000
-        
+  document:
+    allowedExtentions: 
+      - csv
+      - doc
+      - docx
+      - jpg
+      - jpeg
+      - kml
+      - ods
+      - odt
+      - pdf
+      - png
+      - ppt
+      - pptx
+      - rdf
+      - rtf
+      - txt
+      - xls
+      - xlsx
+      - xml
+      - zip
+    maxSize: 314572800 #300MB
+    maxTotalSize: 1073741824 #1GB
+    oppertunities:
+      published:
+        batch:
+          size: 80
+      awarded:
+        batch:
+          size: 20
+      opensearch:
+        batch:
+          size: 80    
+    
   external:
+#   s3:
+#     oppertunities:
+#       ui:
+#         link: SET IN ENV"
+#       schedule: SET IN ENV"
+#   projects:
+#     sync:
+#       schedule: SET IN ENV"
     jaggaer:
-      baseUrl: https://crowncommercialservice-ws02-prep.bravosolution.co.uk
-      timeoutDuration: 5
+#      baseUrl: "SET IN ENV"
+      timeoutDuration: 300
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
+      defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
+      defaultSupplierRightsProfile: ""
+
+      rfxStatusToTenderStatus:
+        0: PLANNED
+        100: PLANNED
+        200: PLANNED
+        300: ACTIVE
+        350: ACTIVE
+        600: ACTIVE
+        1300: ACTIVE
+        400: ACTIVE
+        750: ACTIVE
+        800: ACTIVE
+        900: ACTIVE
+        975: ACTIVE
+        500: COMPLETE
+        950: COMPLETE
+        1400: COMPLETE
+        1100: WITHDRAWN
+        1000: CANCELLED
+
+      rfxStatusAndEventTypeToTenderStatus:
+        0:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            PLANNING
+          DA:
+            PLANNING
+        300:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            ACTIVE
+          DA:
+            ACTIVE
+        500:
+          FC:
+            COMPLETE
+          DA:
+            COMPLETE
+        800:
+          FC:
+            ACTIVE
+          DA:
+            ACTIVE
+        950:
+          RFI:
+            PLANNING
+          EOI:
+            PLANNING
+          FC:
+            COMPLETE
+          DA:
+            COMPLETE
+        1000:
+          RFI:
+            CANCELLED
+          EOI:
+            CANCELLED
+          FC:
+            CANCELLED
+          DA:
+            CANCELLED
+
+      #createProjectTemplateId: "SET IN ENV"
+      #createRfxTemplateId: "SET IN ENV"
       createProject:
         # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
-        templateId: project_609
-      createEvent:
+      getProject:
+        endpoint: /esop/jint/api/public/ja/v1/projects/{id}
+      getProjectList:
+        endpoint: /esop/jint/api/public/ja/v1/projects?flt={filters}
+      createRfx:
         # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        templateId: itt_543
+        
+      # TODO / NB: Search via SSO data directly only works for super users (i.e. suppliers)
       getBuyerCompanyProfile:
-        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU;SUBUSERLOGIN=={{PRINCIPAL}}
-        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==GURU
-        principalPlaceholder: "{{PRINCIPAL}}"
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
+      getSupplierCompanyProfileByBravoID:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;BRAVOID=={{PRINCIPAL}}        
+      getSupplierCompanyProfileBySSOUserLogin:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID   
+      getSupplierSubUserProfile:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
+        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
+      exportRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
+      exportRfxWithEmailRecipients:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=EMAIL_RECIPIENTS
+      exportRfxWithSuppliers:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=SUPPLIERS
+      exportRfxWithSuppliersOffersAndResponseCounters:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=OFFERS;SUPPLIERS;supplier_Response_Counters
+      exportRfxWithBuyerAndSellerAttachments:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?flt=OFFERS&comp=BUYER_ATTACHMENTS;SELLER_ATTACHMENTS;
+      getRfxByComponent:  
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}?comp={components}
+      getCompanyProfileByDUNSNumber:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=extUniqueCode=={{DUNSNumber}}
+      getCompanyProfileByFiscalCode:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=fiscalCode=={{FISCALCODE}}  
+      getCompanyProfileByBravoID:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID=={{PRINCIPAL}}
 
+      # This is far more performant for summary-level only data
+      searchRfxSummary:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
+      searchRfxSummaryWithComponents:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})&comp={components}  
+      createUpdateCompany:
+        endpoint: /esop/jint/api/public/ja/v1/companyprofiles
+      getAttachment:
+        endpoint: /esop/jint/api/public/ja/v1/attachments?fileId={fileId}&fileName={fileName}
+      publishRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/publish
+      extendRfx:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/extend
+      getMessages:
+        endpoint: /esop/jint/api/public/ja/v1/messages?flt={filters}&comp={components}&start={start}
+      getMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages/{message-id}?comp={components}
+      updateMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages/read
+      startEvaluation:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/start  
+      openEnvelope:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/evaluations/openEnvelope  
+      invalidateEvent:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/invalidate
+      award:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/awardRfx
+      preAward:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/preawardRfx
+      completeTechnical:
+        endpoint: /esop/jint/api/public/ja/v1/rfxworkflows/completetechnical
+      createReplyMessage:
+        endpoint: /esop/jint/api/public/ja/v1/messages
+      creatUpdateScores:
+        endpoint: /esop/jint/api/public/ja/v1/rfxs/scores
+                  
+          
+      # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
+      soap:
+        profileManagementEndpoint: /esop/jint/services/ProfileManagement
+        
+      rpa: 
+#       baseUrl: "SET IN ENV"
+        accessUrl: /api/a/automation
+        authenticationUrl: /api/token
+#       userName: "SET IN ENV"
+#       userPwd: "SET IN ENV"
+#       buyerPwd: "SET IN ENV"
+        source: CaT
+        sourceId: 1
+        profileName: ITTEvaluation
+        timeoutDuration: 120
+        requestTimeout: 3600000
     
+    # RPA Transfer S3
+    s3:
+      rpa:
+        region: eu-west-2
+        # Default to once a week, midnight Monday
+        exportSchedule: "0 0 0 * * MON"
+        
+    agreementsService:
+      # baseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      timeoutDuration: 10
+      getAgreementDetail:
+        uriTemplate: /agreements-service/agreements/{agreement-id}
+      getLotDetailsForAgreement:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}
+      getLotSuppliers:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/suppliers
+      getLotEventTypeDataTemplates:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+      getEventTypesForAgreement:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
+
+    conclaveWrapper:
+      # baseUrl: "SET IN ENV"
+      # identitiesBaseUrl: "SET IN ENV"
+      # apiKey: "SET IN ENV"
+      timeoutDuration: 10
+      # Role keys are incorrectly spelt in Conclave
+      buyerRoleKey: JAEGGER_BUYER
+      catUserRoleKey: CAT_USER
+      supplierRoleKey: JAEGGER_SUPPLIER      
+      getUser:
+        uriTemplate: /user-profile?user-id={user-id}
+      getUserContacts:
+        uriTemplate: /contact-service/user/contacts?user-id={email}
+        
+      # Org ID is the internal ID
+      getOrganisation:
+        uriTemplate: /organisation-profile/{org-id}
+        
+      # Org ID is {scheme}-{registry-id} e.g. US-DUN-123456789
+      getOrganisationIdentity:
+        uriTemplate: /identities/organisations/{org-id}
+        
+    docUploadSvc:
+      timeoutDuration: 10
+      awsRegion: eu-west-2
+      documentStateProcessing: processing
+      documentStateSafe: safe
+      documentStateUnsafe: unsafe
+      postDocument:
+        uriTemplate: /documents
+      getDocumentRecord:
+        uriTemplate: /documents/{document-id}
+      
+  flags:
+    # Prod env set to true
+    resolveUsersBySSO: true
+    resolveBuyerUsersBySSO: true
+    # devMode: "SET IN ENV"
 ---
 spring:
   config:
@@ -69,28 +373,14 @@ spring:
   security:
     oauth2:
       client:
-        provider:
-          jaggaer:
-            token-uri: https://crowncommercialservice-ws02-prep.bravosolution.co.uk/esop/jint/api/public/v1/tokens 
+#        provider:
+#          jaggaer:
+#            token-uri: "SET IN ENV"
         registration:
           jaggaer:
             authorization-grant-type: client_credentials
 #            client-id: "SET IN ENV"
 #            client-secret: "SET IN ENV"
-    
----
-spring:
-  config:
-    activate:
-      on-profile:
-        - local
-  datasource: 
-    url: jdbc:h2:mem:tenders;MODE=PostgreSQL
-  jpa:
-    database: h2
-    show-sql: true
-    hibernate:
-      ddl-auto: create-drop
 
 ---
 spring:
@@ -101,15 +391,15 @@ spring:
         - local-pg
   jpa:
     database: postgresql
-    show-sql: true
+    show-sql: false
     hibernate:
-      ddl-auto: validate      
-      
+      ddl-auto: validate
+
 ---
 spring:
   config:
     activate:
       on-profile:
         - local-pg
-  datasource: 
+  datasource:
     url: jdbc:postgresql://127.0.0.1:5432/cat

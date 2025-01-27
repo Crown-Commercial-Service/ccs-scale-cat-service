@@ -1,36 +1,51 @@
-# CCS Scale CaT Service (API)
+CCS Contract Award Service Tenders API
+===========
 
-## Overview
-Java 11 / SpringBoot skeleton component for the CaT API. Exposes some very basic data in JSON format from the Scale shared Agreements API (currently deployed in AWS).
+Overview
+--------
+This is the code for the user interface of Crown Commercial Service's (_CCS_)
+Tenders API, used by the Contract Award Service (_CAS_).
 
-## Local
-The service can be configured and run locally assuming external IPs are in the Agreements API allowed list.
+The specification for the API can be found in the [Open API Specification][].
 
-### Configure (Eclipse / STS)
+Technology Overview
+---------
+The project is implemented as a Spring Boot 3 web application, implemented using Maven.
 
-1. Clone this repo locally
-2. Import existing Maven project
-3. Open the (Spring) Boot Dashboard view and open the config for the project (right-click menu)
-4. Under the Environment tab add 3 environment variables:
-    - `AGREEMENTS_SERVICE_URL` (base URL including `/[env]/scale/agreements-service` path prefix)
-    - `AGREEMENTS_SERVICE_API_KEY` (environment specific)
-    - `ROLLBAR_ACCESS_TOKEN` (a valid access token for CCS organisation in Rollbar)
+The core technologies for the project are:
 
-### Run (Eclipse / STS)
-Once configured, start the service from the Boot Dashboard and make a GET request in Postman or another API client to http://localhost:8080/agreement-summaries
+* Java 23
+* [Spring Boot][]
+* [Spring Security][]
+* [Ehcache][] for caching
+* [JUnit][] for unit testing
 
-### Build (Maven)
-Run `mvn clean package` from a shell to run the test suite and build the deployable JAR artifact into the target directory
+Building and Running Locally
+----------------------------
+To run the application locally, you simply need to run the core ccs-scale-cat-service module.
 
-## Cloud Foundry
-The application is configured for deployment to the GOV.UK PaaS Cloud Foundry platform in the CCS organisation.
+In order to generate required classes for the application, you need to use Maven to _**Generate Sources and Update Folders**_.
 
-### Configuration
-The Github repository enabled in the CCS Travis CI organisational account on travis-ci.com: https://travis-ci.com/github/Crown-Commercial-Service/ccs-scale-cat-service/.
+You will need to be supplied with a local secrets file (`local-env-local-pg.yml`) to enable the project to run, which can be supplied by any member of the development team.
 
-Multi-environment/branch build and deployment configuration is contained within the `.travis.yml` file.  This file defines a Maven based build (caching the .m2 repo), required environment variables (encrypted where appropriate) and installs the Cloud Foundry CLI tools on the build VM.
+Once the application has started it can be accessed via Postman using the URL http://localhost:8080/.
 
-### Deployment
-For each environment/branch deploy configuration block, the [script](https://docs.travis-ci.com/user/deployment/script/) provider is used to call `deploy.sh` which performs the tasks of logging into Cloud Foundry and pushing the app via its manifest.
+Branches
+--------
+When picking up tickets, branches should be created using the **_feature/*_** format.
 
-The `manifest.yml` file defines the actual Cloud Foundry build and deployment, using the Java Buildpack (specifying version 11) and variable substitution to utilise or pass through into the runtime environment required data from the CI deployment configuration.
+When completed, these branches should be pull requested against _**develop**_ for review and approval.  _**develop**_ is then built out onto the **Development** environment.
+
+The **UAT** and **Pre-Production** environments are controlled via means of release and hotfix branches.
+
+Release branches should be created from _**develop**_ using the **_release/*_** format, whilst hotfixes should be created from _**main**_ using the **_hotfix/*_** format.  These branches can then be built out to **UAT** and **Pre-Production** as appropriate.
+
+When releases/hotfixes are ready for deployment to **Production**, the **_release/*_** or **_hotfix/*_** branch in question should be pull requested against the _**main**_ branch for review and approval.  This branch should then be built out to **Production**.
+
+Once a release/hotfix has been completed you should be sure to merge _**main**_ back down into _**develop**_.
+
+[Spring Boot]: https://spring.io/projects/spring-boot
+[Spring Security]: https://spring.io/projects/spring-security
+[JUnit]: https://junit.org/junit5/
+[Ehcache]: https://www.ehcache.org/
+[Open API Specification]: https://github.com/Crown-Commercial-Service/ccs-scale-api-definitions/blob/master/cat/CaT-service.yaml

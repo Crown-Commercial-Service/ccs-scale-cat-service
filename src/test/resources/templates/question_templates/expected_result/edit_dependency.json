@@ -1,0 +1,2327 @@
+{
+  "criteria": [
+    {
+      "id": "Criterion 1",
+      "title": "About the procurement competition",
+      "source": "buyer",
+      "relatesTo": "buyer",
+      "description": "For Information Only",
+      "relateItems": null,
+      "inheritanceNonOCDS":"Edit",
+      "requirementGroups": [
+        {
+          "OCDS": {
+            "id": "Key Dates",
+            "description": "Timeline",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Publish your requirements. This will always show the current date",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Clarification period closes",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Deadline to publish your responses to the clarification questions",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Deadline for suppliers to submit their response",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 4
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 5",
+                  "title": "Confirm your the next steps to suppliers",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 5
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 6",
+                  "title": "Start suppler evaluation",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 6
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 7",
+                  "title": "Supplier presentations (if you have requested this)",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 7
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 8",
+                  "title": "Standstill start",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "A 10-day pause in the procedure for suppliers to consider if they wish to challenge the decision. \n if you do not require a standstill, change this date to be same as point 9 below",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 8
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 9",
+                  "title": "When you plan to award the contract",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 9
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 10",
+                  "title": "When you expect to the to be signed",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 10
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 11",
+                  "title": "When you expect the supplier to start",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 11
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add timeline",
+            "prompt": "Instructions",
+            "mandatory": false,
+            "order": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "Criterion 2",
+      "title": "How to bid including evaluation criteria.",
+      "source": "buyer",
+      "relatesTo": "buyer",
+      "description": "For Information Only",
+      "relateItems": null,
+      "requirementGroups": [
+        {
+          "OCDS": {
+            "id": "Group 2",
+            "description": "Set the overall weighting between quality and price",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Quality",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": 75,
+                  "minValue": 25,
+                  "description": "Range: 25% to 75%",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Percentage",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Price",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": 75,
+                  "minValue": 10,
+                  "description": "Range: 10% to 75%",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Percentage",
+                  "order": 2
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add overall ratio",
+            "prompt": "You need to set the overall weighting for quality and price according to your requirements. Your total percentage for both must be 100%. <br>Whatever overall weighting you set for quality, you will then need to split again between the 3 categories (technical, cultural fit and social value) in the next screens.<br>If you cannot remember what you originally included in your pricing schedule you can read or edit your uploaded file.",
+            "mandatory": true,
+            "order": 2
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 3",
+            "description": "Set the overall weighting for the question categories",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Technical",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": 75,
+                  "minValue": 10,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Percentage",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Cultural",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": 20,
+                  "minValue": 5,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Percentage",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 1",
+                        "relationshipType": "PercentageGroup"
+                      }
+                    ]
+                  },
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Social value",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": 20,
+                  "minValue": 10,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Percentage",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 2",
+                        "relationshipType": "PercentageGroup"
+                      }
+                    ]
+                  },
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Price",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": 75,
+                  "minValue": 10,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Percentage",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 3",
+                        "relationshipType": "PercentageGroup"
+                      }
+                    ]
+                  },
+                  "order": 4
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Define quality group ratios",
+            "prompt": "Set the ratio between technical, cultural and social value within quality. The total must not equal 100%",
+            "mandatory": true,
+            "order": 3
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 4",
+            "description": "Write your technical questions",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Enter your question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Your question should be specific, and detailed. You can add more information, that will help the supplier to answer your questions fully, in the boxes below. ",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Enter more details about your question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Include any details that the supplier might find useful to be able to fully answer your question.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 1",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Explain what good looks like",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Describe the type of answers you would like to see from suppliers. Include anything specific you might need to know.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 2",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Enter a weighting for this question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "You need to enter a weighting for this individual question.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": true,
+                  "questionType": "Percentage",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 3",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 4
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add technical questions",
+            "prompt": "You now need to decide the weighting for each technical question you want to ask.  The total weighting for this category must add up to 100%.<br>>Technical questions are used to evaluate if the supplier can do the work you need, with the skills and experience they have, and show that they understand your project. Suppliers will submit a separate document in answer to each question. <br>You can add a maximum of 10 questions. The total weighting of all questions in this category must add up to 100%.",
+            "mandatory": true,
+            "order": 4
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 5",
+            "description": "Write your cultural fit questions",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Enter your question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Your question should be specific, and detailed. You can add more information, that will help the supplier to answer your questions fully, in the boxes below. ",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Enter more details about your question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Include any details that the supplier might find useful to be able to fully answer your question.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 1",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Explain what good looks like",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Describe the type of answers you would like to see from suppliers. Include anything specific you might need to know.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 2",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Enter a weighting for this question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "You need to enter a weighting for this individual question.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": true,
+                  "questionType": "Percentage",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 3",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add cultural questions",
+            "prompt": "You now need to decide the weighting for each cultural fit question you want to ask.  The total weighting for this category must add up to 100%. <br>Cultural fit questions are used to evaluate if the supplier''s organisational values align with your organisation''s. This can help you to decide if you will work well together. Suppliers will submit a separate document in answer to each question. <br>You can add a maximum of 10 questions. The total weighting of all questions in this category must add up to 100%.",
+            "mandatory": true,
+            "order": 5
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 6",
+            "description": "Write your social value questions",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Your social value question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Enter another requirement group",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Provide additional detail for your question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 1",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Explain what good looks like",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Enter your another requirement",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 2",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "What weighting do you wish to give this question",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Add another social vue Group Question",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": true,
+                  "questionType": "Percentage",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 3",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 4
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add social questions",
+            "prompt": "Social value questions are used to evaluate if the supplier can provide products or services that will help you to achieve your own organisation''s social value goals.<br>You will use these questions to evaluate suppliers. Suppliers will submit a separate document in answer to each question.<br>You can add a maximum of 10 questions.",
+            "mandatory": true,
+            "order": 6
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 8",
+            "description": "Set your scoring criteria",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Select scoring model",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Select the scoring model you want to use",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": [
+                    {
+                      "value": "1",
+                      "text": "Use CCS 5-tier scoring criteria",
+                      "select": false,
+                      "tableDefinition": {
+                        "editableCols": false,
+                        "editableRows": false,
+                        "titles": {
+                          "columns": [
+                            {
+                              "id": 0,
+                              "name": "Marking Scheme",
+                              "datatype": "string"
+                            },
+                            {
+                              "id": 1,
+                              "name": "Points",
+                              "datatype": "string"
+                            },
+                            {
+                              "id": 2,
+                              "name": "Description",
+                              "datatype": "string"
+                            }
+                          ],
+                          "rows": [
+                            {
+                              "id": 1,
+                              "name": "Excellent"
+                            },
+                            {
+                              "id": 2,
+                              "name": "Good"
+                            },
+                            {
+                              "id": 3,
+                              "name": "Met"
+                            },
+                            {
+                              "id": 4,
+                              "name": "Poor"
+                            },
+                            {
+                              "id": 5,
+                              "name": "Failed"
+                            }
+                          ]
+                        },
+                        "data": [
+                          {
+                            "row": 1,
+                            "cols": [
+                              "100",
+                              "An Excellent comprehensive response that meets the requirements. Indicates an excellent response with detailed supporting evidence and no weaknesses resulting in a high level of confidence."
+                            ]
+                          },
+                          {
+                            "row": 2,
+                            "cols": [
+                              "75",
+                              "A Good response that meets the requirements with good supporting evidence. Demonstrates good understanding"
+                            ]
+                          },
+                          {
+                            "row": 3,
+                            "cols": [
+                              "50",
+                              "Meets the requirements - the response generally meets the requirements, but lacks sufficient detail to warrant a higher mark."
+                            ]
+                          },
+                          {
+                            "row": 4,
+                            "cols": [
+                              "25",
+                              "A poor response with reservations. The response lacks convincing detail with risk that the proposal will not be successful in meeting all the requirements."
+                            ]
+                          },
+                          {
+                            "row": 5,
+                            "cols": [
+                              "0",
+                              "Failed to provide confidence that the proposal will meet the requirements. An unacceptable response with serious reservations."
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "value": "2",
+                      "text": "Use CCS 4-tier scoring criteria",
+                      "select": false,
+                      "tableDefinition": {
+                        "editableCols": false,
+                        "editableRows": false,
+                        "titles": {
+                          "columns": [
+                            {
+                              "id": 0,
+                              "name": "Marking Scheme",
+                              "datatype": "string"
+                            },
+                            {
+                              "id": 1,
+                              "name": "Points",
+                              "datatype": "string"
+                            },
+                            {
+                              "id": 2,
+                              "name": "Description",
+                              "datatype": "string"
+                            }
+                          ],
+                          "rows": [
+                            {
+                              "id": 1,
+                              "name": "Good"
+                            },
+                            {
+                              "id": 2,
+                              "name": "Acceptable - Minor Concerns"
+                            },
+                            {
+                              "id": 3,
+                              "name": "Non Acceptable - Major Concerns"
+                            },
+                            {
+                              "id": 4,
+                              "name": "Unsuitable"
+                            }
+                          ]
+                        },
+                        "data": [
+                          {
+                            "row": 1,
+                            "cols": [
+                              "100",
+                              "The response fully meets all requirement''s with detail provided minimising risks to delivery.\nThe response is comprehensive and unambiguous, demonstrating a thorough understanding of the requirement''s and provides details of how the requirement will be met in full without additional support from the Contracting Authority, other than outlined within the Statement of Requirements"
+                            ]
+                          },
+                          {
+                            "row": 2,
+                            "cols": [
+                              "66",
+                              "The response is acceptable and meets all the basic requirement''s. However, the response, is not sufficiently detailed to minimise the risk and/or the proposed approach may require additional support (in addition to that outlined in the Statement of Requirements) from the Contracting Authority to meet its deliverables"
+                            ]
+                          },
+                          {
+                            "row": 3,
+                            "cols": [
+                              "33",
+                              "The response has met some, but not all elements of the requirement, which poses risk that the proposal will not meet the deliverables required.\nThe response does not demonstrate a full understanding of the requirement posing major concerns."
+                            ]
+                          },
+                          {
+                            "row": 4,
+                            "cols": [
+                              "0",
+                              "The response does not meet any of the requirements or no response has been provided. An unacceptable and/or non-compliant response with serious reservationd, demonstrating no understanding of the requirement."
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "value": "3",
+                      "text": "Create your own scoring criteria",
+                      "select": false,
+                      "tableDefinition": {
+                        "editableCols": false,
+                        "editableRows": true,
+                        "titles": {
+                          "columns": [
+                            {
+                              "id": 0,
+                              "name": "Marking Scheme",
+                              "datatype": "string"
+                            },
+                            {
+                              "id": 1,
+                              "name": "Points",
+                              "datatype": "string"
+                            },
+                            {
+                              "id": 2,
+                              "name": "Description",
+                              "datatype": "string"
+                            }
+                          ],
+                          "rows": [
+                          ]
+                        },
+                        "data": [
+                        ]
+                      }
+                    }
+                  ],
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Table",
+                  "tableData": null,
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Enter the name for this tier",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Add another social value Group Question",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "conditional": {
+                      "dependentOnID": "Question 1",
+                      "dependencyType": "EqualTo",
+                      "dependencyValue": "3"
+                    }
+                  },
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Enter the points for this tier",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "integer",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Add another social value Group Question",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": true,
+                  "questionType": "Integer",
+                  "dependency": {
+                    "conditional": {
+                      "dependentOnID": "Question 1",
+                      "dependencyType": "EqualTo",
+                      "dependencyValue": "3"
+                    },
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 2",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Enter the description for this tier",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Add another tier",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "conditional": {
+                      "dependentOnID": "Question 1",
+                      "dependencyType": "EqualTo",
+                      "dependencyValue": "3"
+                    },
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 3",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 4
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add scoring criteria",
+            "prompt": "Please read this content to understand how to fill in the following sections on evaluation and weighting",
+            "mandatory": true,
+            "order": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "Criterion 3",
+      "title": "Statement of Requirements",
+      "source": "buyer",
+      "relatesTo": "buyer",
+      "description": "For Information Only",
+      "relateItems": null,
+      "requirementGroups": [
+        {
+          "OCDS": {
+            "id": "Group 1",
+            "description": "Learn about adding context and requirements",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Guidance on assessment bases",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "ReadMe",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add context",
+            "prompt": "Please read this content to understand how to fill in the following sections on assessment bases",
+            "mandatory": true,
+            "order": 1
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 2",
+            "description": "IR35 acknowledgement",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": [
+                    {
+                      "value": "I need a contracted out service",
+                      "text": "You outsource all ownership and responsibility for operational delivery to the supplier, including directing and managing the people delivering the service. You will not need to operate the off-payroll working rules but the supplier may do.",
+                      "select": false
+                    },
+                    {
+                      "value": "I need supply of resource",
+                      "text": "You engage a person or team of people to work with your staff and you manage operational direction and control. The off-payroll working rules can apply to anyone who works through a qualifying intermediary such as their own limited company.",
+                      "select": false
+                    }
+                  ],
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "SingleSelect",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Acknowledge IR35 requirements",
+            "prompt": " Instructions for IR35 requirements",
+            "mandatory": true,
+            "order": 2
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 3",
+            "description": "Terms and acronyms",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Write the term or acronym",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Write the term or acronym",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "KeyValuePair",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Write a definition for the term or acronym explaining what it means ",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Add another term or acronym",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "order": 2
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add terms and acronyms",
+            "prompt": "Define any terms and acronyms that suppliers may not be familiar with. This will help suppliers to understand what they mean, particularly if you use them in your project background details in the next step.",
+            "mandatory": false,
+            "order": 3
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 4",
+            "description": "Background to your procurement",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Provide details relating to the requirement''s background and the events leading up to the goods/services being required",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Include any detail relating to the ''Public Services (Social Value) Act 2012'' which will be applied to secure wider social, economic and environmental benefits",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 2
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add background information",
+            "prompt": "<p>To help suppliers understand what problem you want to solve, you will need to give them more\n      information about what you are looking for, for example:</p> <ul class=\"govuk-list govuk-list--bullet\">\n      <li>information about your company or the users</li>\n      <li>outcomes you want to achieve</li>\n      <li>the timeframes for completing the work</li>\n      <li> reasons for the change ( for example legal, regulatory or replacing an existing service)</li>\n      <li> any risks or challenges they should be aware of</li>\n      <li> any impacts on the organisation if you do not do the work needed or complete it in the timeframes given</li>\n    </ul>",
+            "mandatory": true,
+            "order": 4
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 5",
+            "description": "The business problem you need to solve",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 5",
+                  "title": "The business problem you need to solve",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "A supplier will need this information so they understand what you want to achieve. You can include:<br><ul><li>the impact on the organisation if you do not do the work needed</li><li>the impact if it’s not complete in the timeframes available</li></ul>",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "",
+            "prompt": "A problem statement outlines what the situation is and why it needs to be solved. It can also include what your expected deliverables or outcomes are.</p><p>A supplier will need this information so they understand what you want to achieve. You can include: <ul><li>the impact on the organisation if you do not do the work needed</li>li>the impact if it’s not complete in the timeframes available</li></ul></p>",
+            "mandatory": true,
+            "order": 5
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 6",
+            "description": "The people who will use your product or service",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 6",
+                  "title": "First service user type",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Give this group a name",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "KeyValuePair",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add another service user type",
+            "prompt": "Provide some information about the types of people who will use the service you want to develop. This could be the general public or more specific user groups, for example, they could be something like car drivers, van drivers and lorry drivers. Give as much information as possible, including if your service users have specific needs.",
+            "mandatory": false,
+            "order": 6
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 7",
+            "description": "Any work that has been Completed so far",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 8",
+                  "title": "Enter more details about this user type",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add work complete so far",
+            "prompt": "<p>To help suppliers understand what work has been completed prior to the requirements they must fulfil",
+            "mandatory": false,
+            "order": 7
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 8",
+            "description": "Which phase the project is currently in",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 9",
+                  "title": "",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": [
+                    {
+                      "value": "Not started",
+                      "text": "You haven''t started any work on the project.",
+                      "select": false
+                    },
+                    {
+                      "value": "Discovery",
+                      "text": "You still need to find out more about the problem that needs to be solved, including who the people who will use your service are and what they need the service to do, as well as any technology or policy constraints.",
+                      "select": false
+                    },
+                    {
+                      "value": "Alpha",
+                      "text": "You have completed the discovery phase and are now testing solutions, usually by building prototypes and carrying out testing with real users. You are not yet in a position to release anything to the public.",
+                      "select": false
+                    },
+                    {
+                      "value": "Beta",
+                      "text": "You have established your best solution from the alpha phase, and now you are building it for real. At this stage, you are integrating your build with your existing systems and rolling it out to real users.",
+                      "select": false
+                    },
+                    {
+                      "value": "Live",
+                      "text": "Your live service needs sustainable support, as well as iterations to improve and evolve.",
+                      "select": false
+                    },
+                    {
+                      "value": "Not applicable",
+                      "text": "Service design phases aren''t applicable to your project.",
+                      "select": true
+                    }
+                  ],
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "SingleSelect",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "",
+            "prompt": "Let suppliers know if any work has been started, and which phase you think the project is in.<p>Find out more about <a href=https://www.gov.uk/service-manual/the-team/set-up-a-service-team>services design phases</a>.",
+            "mandatory": true,
+            "order": 8
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 9",
+            "description": "Which phase(s) of the project you need resource for",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 10",
+                  "title": "",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": [
+                    {
+                      "value": "Discovery",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "Alpha",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "Beta",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "Live",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "Not Applicable",
+                      "text": "",
+                      "select": true
+                    }
+                  ],
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "MultiSelect",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Define phase resource",
+            "prompt": "Read more about <a href=https://www.gov.uk/service-manual/the-team/set-up-a-service-team>services design phases</a>.",
+            "mandatory": true,
+            "order": 9
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 10",
+            "description": "The expected duration of project",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 11",
+                  "title": "Enter the date you want the project to start  ",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Your project cannot start after:   19 January 2024 \n For example 22 11 2021",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Date",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 12",
+                  "title": "Enter how long you think the project will run for ",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "We recommend that your project should not be for longer than 4 years \n For example 2 years, 4 months, 10 days ",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Duration",
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 13",
+                  "title": "Enter contract extension period ",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "You may want to advise the supplier that the project may be extended. This should not exceed 25% of the length of the original project \n For example 0 years, 6 months, 15 days  ",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Duration",
+                  "order": 3,
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 12",
+                        "relationshipType": "PercentageOf",
+                        "dependencyValue": "25"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Set dates",
+            "prompt": "You need to enter the expected start date and duration so suppliers can confirm they can work to your timelines.  ",
+            "mandatory": true,
+            "order": 10
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 11",
+            "description": "Who the buying organisation is ",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 13",
+                  "title": "Name of the organisation doing the procurement",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Value",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 14",
+                  "title": "Name of the organisation using the products or services that are being procured",
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Value",
+                  "order": 2
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add buyer details",
+            "prompt": "<p class=\"govuk-body\">Name the organisation who will use the products or services you are buying through this procurement.</p><p class=\"govuk-body\">Some organisations might procure products and services on behalf of another organisation who then use and pay for what was procured.</p>",
+            "mandatory": false,
+            "order": 11
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 14",
+            "description": "Describe any market engagement you''ve done ",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 17",
+                  "title": "Summaries the outcome of any relevant pre-market engagement",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add market engagement",
+            "prompt": "Instructions for market engagement to date",
+            "mandatory": false,
+            "order": 14
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 15",
+            "description": "Choose if this is new, replacement or expanded service or product",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 18",
+                  "title": "<p class=\"govuk-body govuk-!-margin-bottom-9\">Choose the option that best describes if this is new, or a replacement\n      or expansion of existing products or services.</p>",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": null,
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": [
+                    {
+                      "value": "Not Applicable",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "New products or services",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "Replacement products or services",
+                      "text": "",
+                      "select": false
+                    },
+                    {
+                      "value": "Expanded products or services",
+                      "text": "",
+                      "select": false
+                    }
+                  ],
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "SingleSelect",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Define if the procurement is New, a replacement or expansion",
+            "prompt": "<div class=\"govuk-grid-column-full govuk-grid-column-two-thirds-from-desktop\">\n    <div class=\"govuk-body\">\n      Is this for new, replacement or expanded products or services?\n    </div>\n\n  </div>",
+            "mandatory": true,
+            "order": 15
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 16",
+            "description": "Tell us if there is an existing supplier",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 19",
+                  "title": "",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": [
+                    {
+                      "value": "Yes",
+                      "text": "<p class=\"govuk-hint\">Please enter the name of the incumbent supplier</p>",
+                      "select": false
+                    },
+                    {
+                      "value": "No",
+                      "text": "<p class=\"govuk-hint\">This is a new project with no existing suppliers providing the products or services.</p>",
+                      "select": false
+                    }
+                  ],
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "SingleSelect",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 20",
+                  "title": "Name of incumbent supplier",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1,
+                  "dependency": {
+                    "conditional": {
+                      "dependentOnID": "Question 19",
+                      "dependencyType": "EqualTo",
+                      "dependencyValue": "Yes"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add incumbent supplier",
+            "prompt": "If you are replacing or expanding an existing service, you may already be working with another supplier. Select the most relevant option below.",
+            "mandatory": true,
+            "order": 16
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 17",
+            "description": "Management information and reporting requirements",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 8",
+                  "title": "Please insert any specific details relating to the provision of management information or reporting by the supplier",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Outline MI and reporting requirements",
+            "prompt": "<p>To help suppliers understand what information they will be expected to supply to you to support your management information and reporting systems",
+            "mandatory": true,
+            "order": 17
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 18",
+            "description": "Set essential and preferred skills",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Publish your RfI",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Clarification period ends",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Deadline for publishing responses to RfI clarification questions",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 3
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 4",
+                  "title": "Deadline for suppliers to submit their RfI response",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 4
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 5",
+                  "title": "Confirm your next steps to suppliers",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "date-time",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "DateTime",
+                  "order": 5
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add essential skills",
+            "prompt": "Instructions for essential skills",
+            "mandatory": true,
+            "order": 18
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 19",
+            "description": "Define your service levels and KPIs",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Name of requirement",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "For example, ''Delivery timescales''",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "KeyValuePair",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Description of the criteria",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "For example, ''Deliveries should be received within three working days of when the order is placed''.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "order": 2
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 3",
+                  "title": "Your success target",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "integer",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "For example, ''98%''",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Percentage",
+                  "order": 2
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Enter your service level requirement / KPI",
+            "prompt": "<p class=\"govuk-body\">Provide information about the service levels that you need from the successful supplier.  Include any key performance indiciators (KPIs) you have, and make sure the service levels are S.M.A.R.T:</p><ul class=\"govuk-list govuk-list--bullet\"><li>specific (clear and unambiguous)</li><li>measurable (quantifiable)</li><li>achievable (realistic)</li><li>relevant (serve the good of the project)</li><li>time-bound (there are clear timescales and deadlines)</li></ul>",
+            "mandatory": true,
+            "order": 19
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 20",
+            "description": "Add any performance incentives and exit strategies",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 8",
+                  "title": "Enter details of any performance incentives or expected actions for poor performance:",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 9",
+                  "title": "Give details about any exit strategy that you would apply if a supplier performed poorly, and you needed to end their contract early:",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": false,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add incentives",
+            "prompt": "<p>Describe how you will incentivise excellent perfomance and/or expect compensation for poor performance (for example, service credits).</p><p>You should also include your exit strategy in the event that the supplier fails to meet your needs and you have to terminate the contract.</p>",
+            "mandatory": true,
+            "order": 20
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 21",
+            "description": "Contract value and how suppliers will meet the project needs within this budget",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 1",
+                  "title": "Maximum estimated contract value",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "This should include any contract extensions<br>For example £30000",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Monetary",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 2",
+                  "title": "Minimum estimated contract value",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "number",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "For example £10000",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": false,
+                  "multiAnswer": false,
+                  "questionType": "Monetary",
+                  "order": 2,
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 1",
+                        "relationshipType": "LessThan"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add supplier will deliver ",
+            "prompt": "Set a defined budget for your project so suppliers can explain how they can deliver what you need within the budget you have available.",
+            "mandatory": false,
+            "order": 21
+          }
+        },
+        {
+          "OCDS": {
+            "id": "Group 24",
+            "description": "Enter your project requirements",
+            "requirements": [
+              {
+                "OCDS": {
+                  "id": "Question 222",
+                  "title": "Name of the group",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Enter a name for the group. Make sure its is clear so that the supplier will understand it.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 223",
+                  "title": "Name of the requirement",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Enter a clear and simple name for the requirement",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 222",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 1
+                }
+              },
+              {
+                "OCDS": {
+                  "id": "Question 224",
+                  "title": "Describe the requirement",
+                  "period": null,
+                  "pattern": null,
+                  "dataType": "string",
+                  "maxValue": null,
+                  "minValue": null,
+                  "description": "Enter more details about the requirement, including anything you would need the supplier to specifically show.",
+                  "expectedValue": null
+                },
+                "nonOCDS": {
+                  "options": null,
+                  "answered": false,
+                  "mandatory": true,
+                  "multiAnswer": true,
+                  "questionType": "Text",
+                  "dependency": {
+                    "relationships": [
+                      {
+                        "dependentOnID": "Question 223",
+                        "relationshipType": "MultiAnswerGroup"
+                      }
+                    ]
+                  },
+                  "order": 1
+                }
+              }
+            ]
+          },
+          "nonOCDS": {
+            "task": "Add another another requirement",
+            "prompt": "Enter the requirements of your project that need to be met by the supplier. This could include any accreditations, qualifications or certifications suppliers need to have, or skills or experience that would be useful.<br>You can sort these requirements into 5 groups, with a maximum of 10 requirements in each group.",
+            "mandatory": true,
+            "order": 24
+          }
+        }
+      ]
+    }
+  ]
+}

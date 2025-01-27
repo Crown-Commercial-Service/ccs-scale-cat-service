@@ -2,11 +2,9 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.time.Instant;
 import java.util.Set;
-import javax.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 
 /**
  * JPA entity representing a mapping between an internal ID, CA/Lot and Jaggaer internal project
@@ -15,7 +13,11 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 @Entity
 @Table(name = "procurement_projects")
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(exclude = "procurementEvents")
 public class ProcurementProject {
 
   @Id
@@ -23,6 +25,7 @@ public class ProcurementProject {
   @Column(name = "project_id")
   Integer id;
 
+  @ToString.Exclude
   @OneToMany(fetch = FetchType.EAGER, mappedBy = "project")
   Set<ProcurementEvent> procurementEvents;
 
@@ -41,6 +44,10 @@ public class ProcurementProject {
   @Column(name = "project_name")
   String projectName;
 
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(name = "organisation_mapping_id")
+  OrganisationMapping organisationMapping;
+
   @Column(name = "created_by", updatable = false)
   String createdBy;
 
@@ -52,30 +59,5 @@ public class ProcurementProject {
 
   @Column(name = "updated_at")
   Instant updatedAt;
-
-  /**
-   * Builds an instance from basic details
-   *
-   * @param agreementDetails
-   * @param externalProjectId The tender project id
-   * @param externalReferenceId The tender reference code
-   * @param projectName aka project title
-   * @param principal
-   * @return a procurement project
-   */
-  public static ProcurementProject of(AgreementDetails agreementDetails, String externalProjectId,
-      String externalReferenceId, String projectName, String principal) {
-    var procurementProject = new ProcurementProject();
-    procurementProject.setCaNumber(agreementDetails.getAgreementID());
-    procurementProject.setLotNumber(agreementDetails.getLotID());
-    procurementProject.setExternalProjectId(externalProjectId);
-    procurementProject.setExternalReferenceId(externalReferenceId);
-    procurementProject.setProjectName(projectName);
-    procurementProject.setCreatedBy(principal); // Or Jaggaer user ID?
-    procurementProject.setCreatedAt(Instant.now());
-    procurementProject.setUpdatedBy(principal); // Or Jaggaer user ID?
-    procurementProject.setUpdatedAt(Instant.now());
-    return procurementProject;
-  }
 
 }

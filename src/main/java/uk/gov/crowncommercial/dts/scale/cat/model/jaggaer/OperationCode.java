@@ -8,6 +8,7 @@ public enum OperationCode {
 
   CREATEUPDATE,
 
-  CREATE_FROM_TEMPLATE;
+  CREATE_FROM_TEMPLATE,
 
+  UPDATE_RESET;
 }
