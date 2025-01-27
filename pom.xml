@@ -50,7 +50,7 @@
         <ehcache.version>3.10.8</ehcache.version>
         <retry.version>2.0.11</retry.version>
         <jetty-reactive.version>4.0.8</jetty-reactive.version>
-        <postgres.version>42.7.4</postgres.version>
+        <postgres.version>42.7.5</postgres.version>
         <lombok.version>1.18.36</lombok.version>
         <spring.version>6.3.4</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
