@@ -142,7 +142,7 @@ public class ProjectsCSVGenerationScheduledTask {
         var csvData = CSVData.builder().firstRfxId(rfxId).tenderstatus(latestStatus)
                 .latestRfxId(latestRfxId)
             .projectId(event.getProject().getId()).oppertunity(event.getProject().getProjectName())
-            .link(env.getProperty(PROJECT_UI_LINK_KEY) + "?projectId=" + event.getProject().getId())
+            .link(env.getProperty(PROJECT_UI_LINK_KEY) + "/" + event.getProject().getId())
             .framework(agreementDetails.getName()).category(lotDetails.getName())
             .orgName(organisationIdentity.get().getIdentifier().getLegalName())
             .buyerDomain(organisationIdentity.get().getIdentifier().getUri())
