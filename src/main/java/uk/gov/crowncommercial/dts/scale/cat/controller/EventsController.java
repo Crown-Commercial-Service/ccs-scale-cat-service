@@ -277,28 +277,23 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  /**
+   * Publishes a given event for a project
+   */
   @PutMapping("/{eventID}/publish")
   @TrackExecutionTime
-  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId,
-      @RequestBody @Valid final PublishDates publishDates,
-      final JwtAuthenticationToken authentication) {
-
-    var principal = getPrincipalFromJwt(authentication);
+  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @RequestBody @Valid final PublishDates publishDates, final JwtAuthenticationToken authentication) {
+    // Firstly validate the user auth
+    String principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
-    StopWatch generateUpdateDocWatch= new StopWatch();
-    generateUpdateDocWatch.start();
-       docGenService.generateAndUploadDocuments(procId, eventId);
-    generateUpdateDocWatch.stop();
-    log.info("publishEvent : Total time taken to generateAndUploadDocuments for procID {} : eventId :{} : Timetaken : {}  ", procId,eventId,generateUpdateDocWatch.getLastTaskTimeMillis());
+    // Next step is generating the necessary documents for the event
+    docGenService.generateAndUploadDocuments(procId, eventId);
 
-
-    StopWatch publishStopWatch= new StopWatch();
-    publishStopWatch.start();
+    // Documents should now be generated, so publish the event now
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
-    publishStopWatch.stop();
-    log.info("publishEvent : Total time taken to publishEvent service for procID {} : eventId :{} , Timetaken : {}  ", procId,eventId,publishStopWatch.getLastTaskTimeMillis());
+
+    // Job done, return an indicator to represent this
     return new StringValueResponse("OK");
   }
 
