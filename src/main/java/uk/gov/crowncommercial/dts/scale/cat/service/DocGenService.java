@@ -278,48 +278,62 @@ public class DocGenService {
     // Something has gone wrong if we're at this point - return an empty string
     return PLACEHOLDER_ERROR;
   }
-  
-  void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish)
-      throws InvalidNavigationException {
 
-    log.debug("Searching document for placeholder: [" + documentTemplateSource.getPlaceholder()
-        + "] to replace with: " + dataReplacement);
+  /**
+   * Performs a single data item replacement within a given document template, using supplied values
+   */
+  private void replacePlaceholder(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish) throws InvalidNavigationException {
+    // This method effectively just hands the app off to a targeted replacement method for the type of data being processed - so just work that out and do it
+    if (documentTemplateSource != null && documentTemplateSource.getTargetType() != null) {
+      try {
+        switch (documentTemplateSource.getTargetType()) {
+          case SIMPLE:
+            // Treat this as a text replacement, using a default value as a substitute if no data has been passed to us
+            replaceText(documentTemplateSource,  dataReplacement != null ? getString(dataReplacement) : PLACEHOLDER_UNKNOWN, textODT, isPublish);
+            break;
 
-    try {
-      switch (documentTemplateSource.getTargetType()) {
-        case SIMPLE:
-          replaceText(documentTemplateSource,
-                  dataReplacement!= null ? getString(dataReplacement) : PLACEHOLDER_UNKNOWN, textODT, isPublish);
-          break;
+          case DATETIME:
+            // Treat this as a text replacement, just format the text into a date/time string first
+            String formattedDatetime = formatDateorDateAndTime(dataReplacement.getFirst());
+            replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
+            break;
 
-        case DATETIME:
-          var formattedDatetime = formatDateorDateAndTime(dataReplacement.get(0));
-          replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
-          break;
+          case DURATION:
+            // Treat this as a text replacement, just format the text into a duration of time string first
+            String formattedPeriod = PLACEHOLDER_UNKNOWN;
 
-        case DURATION:
-          var period = Period.parse(dataReplacement.get(0));
-          var formattedPeriod =
-              String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
-          replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
-          break;
+            try {
+              // Try to fetch the value as a Period then parse it
+              Period period = Period.parse(dataReplacement.getFirst());
+              formattedPeriod = String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+            } catch (Exception ex) {
+              // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
+                log.error("Unable to parse value as a Period for document generation: '{}'", dataReplacement.getFirst(), ex);
+            }
 
-        case TABLE:
-          populateTableColumn(documentTemplateSource, dataReplacement, textODT);
-          break;
+            replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
+            break;
 
-        case LIST:
-          replaceList(documentTemplateSource, dataReplacement, textODT);
-          break;
-        default:
-          replaceText(documentTemplateSource, "", textODT, isPublish);
+          case TABLE:
+            // We're dealing with a table column here - this is complicated. Let the sub-method handle it
+            populateTableColumn(documentTemplateSource, dataReplacement, textODT);
+            break;
+
+          case LIST:
+            // We're dealing with a list here - this is complicated. Let the sub-method handle it
+            replaceList(documentTemplateSource, dataReplacement, textODT);
+            break;
+
+          default:
+            // If nothing else matches, just replace with an empty string
+            replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
+        }
+      } catch (Exception ex) {
+        // There's been an issue. We want this to fail silently, so log the error and replace the placeholder with an empty string
+        log.error("Error in doc gen placeholder replacement for template '{}'", documentTemplateSource.getId(), new DocGenValueException(ex));
+        replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
       }
-    } catch (Exception ex) {
-      log.warn("Error in doc gen placeholder replacement", new DocGenValueException(ex));
-      replaceText(documentTemplateSource, PLACEHOLDER_UNKNOWN, textODT, isPublish);
     }
-
   }
 
   private static String getString(List<String> dataReplacement) {
@@ -327,6 +341,8 @@ public class DocGenService {
   }
 
   String formatDateorDateAndTime(String dateValue) {
+    // TODO: handle if not a datetime
+
     if (dateValue.length() <= 10) {
       return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
     } else {
