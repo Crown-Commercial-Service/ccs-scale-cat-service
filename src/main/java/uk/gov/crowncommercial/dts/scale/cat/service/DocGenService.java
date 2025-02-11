@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -56,6 +57,8 @@ public class DocGenService {
   public static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   public static final String PERIOD_FMT = "%d years, %d months, %d days";
   public static final String DOCUMENT_DESC_JOINER = " pro forma for tender: ";
+  public static final String DB_PLACEHOLDER_PROJECTS = "project";
+  public static final String DB_PLACEHOLDER_METHOD_PREFIX = "get";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -168,7 +171,7 @@ public class DocGenService {
           case JSON -> getQuestionFromJSONDataTemplate(event, documentTemplateSource);
           case JAVA -> getValueFromBean(event, documentTemplateSource, requestCache);
           case SQL -> List.of(getValueFromDB(event, documentTemplateSource));
-          case STATIC -> List.of(getStaticValueFromDB(event, documentTemplateSource));
+          case STATIC -> List.of(getStaticValueFromDB(documentTemplateSource));
         };
       } catch (Exception ex) {
           log.error("Error in document generation value replacement build for data type '{}' and template ID: '{}'", documentTemplateSource.getSourceType(), documentTemplateSource.getId(), new DocGenValueException(ex));
@@ -188,44 +191,92 @@ public class DocGenService {
       String eventData = event.getProcurementTemplatePayloadRaw();
 
       // Now parse the JSON into a list of the values that we need to replace as part of document generation
-      Configuration jsonPathConfig = Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST).jsonProvider(new JacksonJsonProvider(objectMapper)).mappingProvider(new JacksonMappingProvider(objectMapper)).build();
-      TypeRef<List<String>> typeRef = new TypeRef<>() {};
+      try {
+        Configuration jsonPathConfig = Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST).jsonProvider(new JacksonJsonProvider(objectMapper)).mappingProvider(new JacksonMappingProvider(objectMapper)).build();
+        TypeRef<List<String>> typeRef = new TypeRef<>() {};
 
-      return JsonPath.using(jsonPathConfig).parse(eventData).read(documentTemplateSource.getSourcePath(), typeRef);
+        return JsonPath.using(jsonPathConfig).parse(eventData).read(documentTemplateSource.getSourcePath(), typeRef);
+      } catch (Exception ex) {
+          log.error("Error parsing JSON for document template ID: '{}'", documentTemplateSource.getId(), ex);
+      }
     }
 
     // Something has gone wrong if we're at this point - return an empty list
     return List.of(PLACEHOLDER_ERROR);
   }
 
-  List<String> getValueFromBean(final ProcurementEvent event,
-      final DocumentTemplateSource documentTemplateSource,
-      final ConcurrentMap<String, Object> requestCache) {
+  /**
+   * Builds a list of question values which require replacement from a Java Bean
+   */
+  private List<String> getValueFromBean(final ProcurementEvent event, final DocumentTemplateSource documentTemplateSource, final ConcurrentMap<String, Object> requestCache) {
+    // We need to work against a given Java Bean for this, so grab its definition
+    if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null && !documentTemplateSource.getSourcePath().isEmpty()) {
+      String beanName = documentTemplateSource.getSourcePath();
 
-    var beanName = documentTemplateSource.getSourcePath();
-    var documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
+      try {
+        DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
 
-    return documentValueAdaptor.getValue(event, requestCache);
-  }
-
-  String getValueFromDB(final ProcurementEvent event,
-      final DocumentTemplateSource documentTemplateSource) {
-    var tableColumnSource = documentTemplateSource.getSourcePath().split("/");
-    var table = tableColumnSource[0];
-    var column = tableColumnSource[1];
-
-    if ("project".equalsIgnoreCase(table)) {
-      var getter = ReflectionUtils.findMethod(ProcurementProject.class, "get" + column);
-      return (String) ReflectionUtils.invokeMethod(getter, event.getProject());
+        // Now just return the data we need from the Bean
+        return documentValueAdaptor.getValue(event, requestCache);
+      } catch (Exception ex) {
+          log.error("Error parsing Java Bean '{}' for document template ID: '{}'", beanName, documentTemplateSource.getId(), ex);
+      }
     }
-    var getter = ReflectionUtils.findMethod(ProcurementEvent.class, "get" + column);
-    return (String) ReflectionUtils.invokeMethod(getter, event);
+
+    // Something has gone wrong if we're at this point - return an empty list
+    return List.of(PLACEHOLDER_ERROR);
   }
-  
-  String getStaticValueFromDB(final ProcurementEvent event,
-      final DocumentTemplateSource documentTemplateSource) {
-    var tableColumnSource = documentTemplateSource.getSourcePath();
-    return tableColumnSource;
+
+  /**
+   * Builds a question value which requires replacement from the database
+   */
+  private String getValueFromDB(final ProcurementEvent event, final DocumentTemplateSource documentTemplateSource) {
+    // For this, we're using the template source data to build values from the project and event entities (which map to the DB), so first prep that data
+    if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null && !documentTemplateSource.getSourcePath().isEmpty() && event != null && event.getProject() != null) {
+      String[] tableColumnSource = documentTemplateSource.getSourcePath().split("/");
+
+      if (tableColumnSource.length >= 2) {
+        String table = tableColumnSource[0],
+                column = tableColumnSource[1];
+
+        if (table != null && !table.isEmpty() && column != null && !column.isEmpty()) {
+          // We have the info as to which table and column we're interested in from the DB.  So now use the entities to build the value we want to return from that info
+          if (table.equalsIgnoreCase(DB_PLACEHOLDER_PROJECTS)) {
+            // We're dealing with project level data, so use the projects entity and grab the needed column access method
+            Method getter = ReflectionUtils.findMethod(ProcurementProject.class, DB_PLACEHOLDER_METHOD_PREFIX + column);
+
+            if (getter != null) {
+              // We've got the method, so now just call it and return the data
+              return (String) ReflectionUtils.invokeMethod(getter, event.getProject());
+            }
+          } else {
+            // We're dealing with event level data, so use the events entity and grab the needed column access method
+            Method getter = ReflectionUtils.findMethod(ProcurementEvent.class, DB_PLACEHOLDER_METHOD_PREFIX + column);
+
+            if (getter != null) {
+              // We've got the method, so now just call it and return the data
+              return (String) ReflectionUtils.invokeMethod(getter, event);
+            }
+          }
+        }
+      }
+    }
+
+    // Something has gone wrong if we're at this point - return an empty string
+    return PLACEHOLDER_ERROR;
+  }
+
+  /**
+   * Builds a static value which requires replacement from the database
+   */
+  private String getStaticValueFromDB(final DocumentTemplateSource documentTemplateSource) {
+    // In this instance, all we need to do is return the source path of the template - so do that
+    if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null && !documentTemplateSource.getSourcePath().isEmpty()) {
+        return documentTemplateSource.getSourcePath();
+    }
+
+    // Something has gone wrong if we're at this point - return an empty string
+    return PLACEHOLDER_ERROR;
   }
   
   void replacePlaceholder(final DocumentTemplateSource documentTemplateSource,
