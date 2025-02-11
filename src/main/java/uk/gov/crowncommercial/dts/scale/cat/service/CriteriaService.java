@@ -52,6 +52,7 @@ public class CriteriaService {
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
+  private static final String QUESTION_SELECTED = "Yes";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -194,9 +195,9 @@ public class CriteriaService {
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
       List<QuestionNonOCDSOptions> options) {
     if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
-      String maxValue;
-      String minValue;
-      if (Objects.nonNull(requirement.getNonOCDS().getDependency())) {
+      String maxValue = null;
+      String minValue = null;
+      if (Objects.nonNull(requirement.getNonOCDS().getDependency()) && Objects.nonNull(requirement.getNonOCDS().getDependency().getRelationships())) {
         // Min value check
         String questionId = requirement.getNonOCDS().getDependency().getRelationships().stream()
             .map(Relationships::getDependentOnID).findFirst()
@@ -209,6 +210,28 @@ public class CriteriaService {
         minValue = options.stream().findFirst()
             .orElseThrow(() -> new ResourceNotFoundException("Requested Value should not be null"))
             .getValue();
+      } else if (Objects.nonNull(requirement.getNonOCDS().getDependency()) && 
+        Objects.nonNull(requirement.getNonOCDS().getDependency().getConditional())) {
+
+        // Retrieve dependent question ID
+        String questionId = requirement.getNonOCDS().getDependency().getConditional().getDependentOnID();
+
+        var dependentQuestion = group.getOcds().getRequirements().stream()
+          .filter(question -> Objects.equals(question.getOcds().getId(), questionId))
+          .findFirst()
+          .orElseThrow(() -> new ResourceNotFoundException("Dependent question '" + questionId + "' not found"));
+
+        // Find the selected option in the dependent question
+        var selectedOption = dependentQuestion.getNonOCDS().getOptions().stream()
+          .filter(option -> option.getSelect()) // Check which option is selected
+          .findFirst();
+
+        // If "Yes" is selected, ensure this requirement also has a value
+        if (selectedOption.isPresent() && QUESTION_SELECTED.equalsIgnoreCase(selectedOption.get().getValue()) &&
+          Boolean.FALSE.equals(requirement.getNonOCDS().getAnswered())) {
+          throw new ResourceNotFoundException("A value must be provided when 'Yes' is selected for question '" 
+              + requirement.getOcds().getId() + "'");
+        }
       } else {
         // Max value check
         var minValueRequirement = group.getOcds().getRequirements().stream()
