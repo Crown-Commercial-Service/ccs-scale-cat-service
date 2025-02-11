@@ -18,6 +18,9 @@ import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
+import org.odftoolkit.simple.table.Cell;
+import org.odftoolkit.simple.table.Row;
+import org.odftoolkit.simple.table.Table;
 import org.odftoolkit.simple.text.list.ListItem;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
@@ -60,6 +63,7 @@ public class DocGenService {
   public static final String DB_PLACEHOLDER_METHOD_PREFIX = "get";
   public static final String DELIMITER = ",";
   public static final String UNSURE_FIXED_OUTPUT = "The buyer is unsure whether it will be a new or a replacement product or service.";
+  public static final String CELL_LINE_REQUIRED = "1";
 
   public static final String REPLACEMENT_CONDITIONAL = "Conditional";
   public static final String REPLACEMENT_YES = "Yes";
@@ -534,82 +538,118 @@ public class DocGenService {
     }
   }
 
-  void populateTableColumn(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
-    var table = textODT.getTableByName(documentTemplateSource.getTableName());
+  /**
+   * Performs a single data replacement action for database based input
+   */
+  private void populateTableColumn(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+    // We need to start by grabbing the DB table that we need to work against
+    Table table = textODT.getTableByName(documentTemplateSource.getTableName());
+
     if (table != null) {
-      // Append rows if necessary (assume header row present)
+      // Ok, we've got the table - make sure its contents are in line with the data replacement contents (adjusting for headings row).  Append our content if necessary
       if (table.getRowCount() - 1 < dataReplacement.size()) {
         table.appendRows(dataReplacement.size() + 1 - table.getRowCount());
       }
-      var isLineRequired = false;
-      var columnIndex = -1;
-      
-      if(dataReplacement.isEmpty()) {
-        dataReplacement.add("");
-      }
-      
-      for (var r = 1; r <= dataReplacement.size(); r++) {
-        var row = table.getRowByIndex(r);
 
-        if (columnIndex == -1) {
-          // Find the right column by searching for the placeholder
-          for (var c = 0; c < row.getCellCount(); c++) {
-            var checkCell = table.getCellByPosition(c, r);
-            if (StringUtils.hasText(checkCell.getDisplayText())
-                && checkCell.getDisplayText().equals("1")) {
-              isLineRequired = true;
-            }
-            if (StringUtils.hasText(checkCell.getDisplayText())
-                && checkCell.getDisplayText().contains(documentTemplateSource.getPlaceholder())) {
-              columnIndex = c;
-              break;
+      boolean isLineRequired = false;
+      int columnIndex = -1;
+
+      // Before we begin, if our data replacement has no entries we want to add in an empty entry so that gets used everywhere
+      if (dataReplacement.isEmpty()) {
+        dataReplacement.add(PLACEHOLDER_EMPTY);
+      }
+
+      // Now we're ready to actually start. Iterate over each row in the table
+      for (int r = 1; r <= dataReplacement.size(); r++) {
+        Row row = table.getRowByIndex(r);
+
+        if (row != null) {
+          if (columnIndex == -1) {
+            // Now we have the row, we need to find the column index which holds the placeholder value - so iterate over the columns to find it
+            for (int c = 0; c < row.getCellCount(); c++) {
+              Cell checkCell = table.getCellByPosition(c, r);
+
+              if (checkCell != null) {
+                if (checkCell.getDisplayText() != null && StringUtils.hasText(checkCell.getDisplayText()) && checkCell.getDisplayText().equals(CELL_LINE_REQUIRED)) {
+                  // This row is required - remember this
+                  isLineRequired = true;
+                }
+
+                if (checkCell.getDisplayText() != null && documentTemplateSource.getPlaceholder() != null && StringUtils.hasText(checkCell.getDisplayText()) && checkCell.getDisplayText().contains(documentTemplateSource.getPlaceholder())) {
+                  // This is the column index we're looking for - remember it, then break from the iterator
+                  columnIndex = c;
+
+                  break;
+                }
+              }
             }
           }
         }
+
+        // Now, if we found a column index we want to work with, we need to process that cell itself on this row
         if (columnIndex > -1) {
-          var cell = table.getCellByPosition(columnIndex, r);
-          var datum = dataReplacement.get(r - 1);
+          // Start by grabbing the cell, and our replacement data for this row in question
+          Cell cell = table.getCellByPosition(columnIndex, r);
 
-          // Copy the cell text to the one below, so placeholders are present in next row
-          var cellDisplayText = cell.getDisplayText();
-          if (r < dataReplacement.size()) {
-            var cellDown = table.getCellByPosition(columnIndex, r + 1);
+          if (cell != null) {
+            try {
+              String rowData = dataReplacement.get(r - 1);
+              String cellDisplayText = cell.getDisplayText();
 
-            // Check if row number cell, if so increment
-            //TODO unused code need to remove
-            if (columnIndex == 0 && "[0-9]+".matches(Pattern.quote(cellDisplayText))) {
-              cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
-            } else {
-              if (isLineRequired) {
-                var cellNum = table.getCellByPosition(0, r);
+              // Now let's deal with the cell
+              if (r < dataReplacement.size() && cellDisplayText != null) {
+                // Looks like we have an entry for this row in our data replacement input, and display text, so time to process it. Start by copying the cell text to the next row, so that placeholders exist there too
+                Cell cellDown = table.getCellByPosition(columnIndex, r + 1);
+
+                // Looks like the cell could be a cell which just holds a row number.  We need to check this
+                if (columnIndex == 0 && "[0-9]+".matches(Pattern.quote(cellDisplayText))) {
+                  // This appears to be a row number cell, so we need to increment the value
+                  cellDown.setDisplayText(String.valueOf(Integer.parseInt(cellDisplayText) + 1));
+                } else {
+                  if (isLineRequired) {
+                    // This isn't a row number cell, but it's a required row, so we need to make it a row number cell by setting it to the current row number
+                    Cell cellNum = table.getCellByPosition(0, r);
+                    cellNum.setStringValue(String.valueOf(r));
+                  }
+
+                  // This isn't a row number cell, and it's not required, so we just move the display text down into the next row
+                  cellDown.setDisplayText(cellDisplayText);
+                }
+              } else if (isLineRequired) {
+                // Looks like this is a required row, but we don't have a row entry for it in the data replacement input. We still need to convert it into a row number cell though
+                Cell cellNum = table.getCellByPosition(0, r);
                 cellNum.setStringValue(String.valueOf(r));
               }
-              cellDown.setDisplayText(cellDisplayText);
+
+              // Now that all that is done, we need to replace the display text in the row with the row replacement data we found earlier
+              if (cellDisplayText != null) {
+                cell.setStringValue(cellDisplayText.replace(documentTemplateSource.getPlaceholder(), org.apache.commons.lang3.StringUtils.isBlank(rowData) ? PLACEHOLDER_UNKNOWN : rowData));
+              }
+            } catch (Exception ex) {
+              // We encountered an error processing this cell. Could be a number of things, so just log it and move on
+                log.error("Error processing cell for document generation. Table: '{}'  Column Index: '{}'", documentTemplateSource.getTableName(), columnIndex, ex);
             }
-          } else if (isLineRequired) {
-            var cellNum = table.getCellByPosition(0, r);
-            cellNum.setStringValue(String.valueOf(r));
           }
-          
-          // Replace placeholder ONLY in the cell's display text
-          // TODO: Remove OptionsProperty - redundant.
-         cell.setStringValue(cellDisplayText.replace(documentTemplateSource.getPlaceholder(),
-              org.apache.commons.lang3.StringUtils.isBlank(datum) ? PLACEHOLDER_UNKNOWN : datum));
         }
       }
-      
-      if (dataReplacement.isEmpty() || dataReplacement.stream()
-          .anyMatch(org.apache.commons.lang3.StringUtils::isAllBlank)) {
-        var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
-        while (textNavigation.hasNext()) {
-          var item = (TextSelection) textNavigation.nextSelection();
-          item.replaceWith(PLACEHOLDER_UNKNOWN);
+
+      // At this point we should be done with everything passed into us. But we also need to handle if no data input was passed to us
+      if (dataReplacement.isEmpty() || dataReplacement.stream().anyMatch(org.apache.commons.lang3.StringUtils::isAllBlank)) {
+        // With no data passed to us, we need to replace all placeholders with the standard unknown placeholder content
+        if (documentTemplateSource.getPlaceholder() != null) {
+          TextNavigation textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+
+          while (textNavigation.hasNext()) {
+            TextSelection item = (TextSelection) textNavigation.nextSelection();
+
+            // Replace the whole of the item with placeholder content
+            item.replaceWith(PLACEHOLDER_UNKNOWN);
+          }
         }
       }
     } else {
-     
-      log.warn("Unable to find table: [" + documentTemplateSource.getTableName() + "]");
+        // Something has gone very wrong as we couldn't find the DB table - log this
+        log.error("Unable to find database table for document generation: '{}'", documentTemplateSource.getTableName());
     }
   }
 }
