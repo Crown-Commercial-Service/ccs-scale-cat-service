@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -20,6 +21,7 @@ import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -48,12 +50,12 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 @RequiredArgsConstructor
 @Slf4j
 public class DocGenService {
-
   public static final String PLACEHOLDER_ERROR = "";
   public static final String PLACEHOLDER_UNKNOWN = "Not Specified";
-  static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
-  static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-  static final String PERIOD_FMT = "%d years, %d months, %d days";
+  public static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+  public static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+  public static final String PERIOD_FMT = "%d years, %d months, %d days";
+  public static final String DOCUMENT_DESC_JOINER = " pro forma for tender: ";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -62,52 +64,93 @@ public class DocGenService {
   private final JaggaerService jaggaerService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
 
+  /**
+   * Trigger the generation and upload of all documents for a given event
+   */
   public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    for (DocumentTemplate documentTemplate : retryableTendersDBDelegate
-        .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
-            procurementEvent.getEventType(), procurementEvent.getProject().getCaNumber(),
-            procurementEvent.getProject().getLotNumber(), procurementEvent.getTemplateId())) {
-      uploadProforma(procurementEvent, generateDocument(procurementEvent, documentTemplate, Boolean.TRUE),
-          documentTemplate);
+    // Start by validating the event passed into us is good to use
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+
+    if (procurementEvent != null && procurementEvent.getProject() != null) {
+      // We've got the event, now grab the data we need from it and then use that to fetch the list of documents needed for it
+      String eventType = procurementEvent.getEventType(),
+              caNumber = procurementEvent.getProject().getCaNumber(),
+              lotNum = procurementEvent.getProject().getLotNumber();
+      Integer templateId = procurementEvent.getTemplateId();
+
+      if (eventType != null && caNumber != null && lotNum != null) {
+        Set<DocumentTemplate> docTemplates = retryableTendersDBDelegate.findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, caNumber, lotNum, templateId);
+
+        if (docTemplates != null && !docTemplates.isEmpty()) {
+          // Now we have the list of documents needed - iterate over them and process them
+          docTemplates.forEach(template -> {
+            ByteArrayOutputStream document = generateDocument(procurementEvent, template, Boolean.TRUE);
+
+            if (document != null) {
+              // Document has been generated, now trigger the upload
+              uploadProforma(procurementEvent, document, template);
+            }
+          });
+        }
+      }
     }
   }
 
+  /**
+   * Generate a given event's version of a document based on a supplied template
+   */
   @SneakyThrows
   @Transactional
-  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent,
-      final DocumentTemplate documentTemplate, final boolean isPublish) {
+  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isPublish) {
+    // Start by grabbing the template document we need to work against
+    if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
+      Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
 
-    var templateResource =
-        documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
+      if (templateResource != null) {
+        final TextDocument textODT = TextDocument.loadDocument(templateResource.getInputStream());
+        final ConcurrentHashMap<String, Object> requestCache = new ConcurrentHashMap<>();
 
-    final var textODT = TextDocument.loadDocument(templateResource.getInputStream());
-    final var requestCache = new ConcurrentHashMap<String, Object>();
-    for (var documentTemplateSource : documentTemplate.getDocumentTemplateSources()) {
+        // Now we have everything we need to begin, so work our way through each template source (i.e. value we need to populate)
+        documentTemplate.getDocumentTemplateSources().forEach(templateSource -> {
+          // Grab the value for the replacement, and then apply it to our templated source
+          try {
+            List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
 
-      var dataReplacement =
-          getDataReplacement(procurementEvent, documentTemplateSource, requestCache);
-      replacePlaceholder(documentTemplateSource, dataReplacement, textODT, procurementEvent.getPublishDate()==null ? isPublish : Boolean.TRUE);
+            replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
+          } catch (Exception ex) {
+              log.error("Unable to replace document placeholder of {} for event ID {}", templateSource.getId(), procurementEvent.getEventID(), ex);
+          }
+        });
+
+        // Our document should now be complete with all placeholders populated - return it
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        textODT.save(outputStream);
+
+        return outputStream;
+      }
     }
 
-    var outputStream = new ByteArrayOutputStream();
-    textODT.save(outputStream);
-    return outputStream;
+    // Something has gone wrong that wasn't handled elsewhere if we've reached this point - just return null
+    return null;
   }
 
-  private void uploadProforma(final ProcurementEvent procurementEvent,
-      final ByteArrayOutputStream documentOutputStream, final DocumentTemplate documentTemplate) {
-    var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT,
-        procurementEvent.getEventID(), procurementEvent.getEventType(),
-        StringUtils.getFilename(documentTemplate.getTemplateUrl()));
-    var fileDescription =
-        procurementEvent.getEventType() + " pro forma for tender: " + procurementEvent.getEventID();
+  /**
+   * Triggers the upload of a given document into Jaegger
+   */
+  private void uploadProforma(final ProcurementEvent procurementEvent, final ByteArrayOutputStream documentOutputStream, final DocumentTemplate documentTemplate) {
+    if (procurementEvent != null && documentTemplate != null && procurementEvent.getEventID() != null && !procurementEvent.getEventID().isEmpty() && procurementEvent.getEventType() != null && !procurementEvent.getEventType().isEmpty() && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty()) {
+      // Start by generating the necessary descriptive information about our file
+      String fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, procurementEvent.getEventID(), procurementEvent.getEventType(), StringUtils.getFilename(documentTemplate.getTemplateUrl())),
+              fileDescription = procurementEvent.getEventType() + DOCUMENT_DESC_JOINER + procurementEvent.getEventID();
 
-    var multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName,
-        Constants.MEDIA_TYPE_ODT.toString());
+      // Now transform the contents we've been passed into a file which we can upload
+      if (documentOutputStream != null) {
+        ByteArrayMultipartFile multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName, Constants.MEDIA_TYPE_ODT.toString());
 
-    jaggaerService.eventUploadDocument(procurementEvent, fileName, fileDescription, SUPPLIER,
-        multipartFile);
+        // Now finally trigger the upload to Jaegger
+        jaggaerService.eventUploadDocument(procurementEvent, fileName, fileDescription, SUPPLIER, multipartFile);
+      }
+    }
   }
 
   List<String> getDataReplacement(final ProcurementEvent event,
