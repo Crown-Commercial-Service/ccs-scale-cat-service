@@ -10,12 +10,12 @@ import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import jakarta.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
@@ -53,12 +53,26 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 public class DocGenService {
   public static final String PLACEHOLDER_ERROR = "";
   public static final String PLACEHOLDER_UNKNOWN = "Not Specified";
+  public static final String PLACEHOLDER_EMPTY = "";
   public static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
   public static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
   public static final String PERIOD_FMT = "%d years, %d months, %d days";
   public static final String DOCUMENT_DESC_JOINER = " pro forma for tender: ";
   public static final String DB_PLACEHOLDER_PROJECTS = "project";
   public static final String DB_PLACEHOLDER_METHOD_PREFIX = "get";
+  public static final String DELIMITER = ",";
+  public static final String REPLACEMENT_CONDITIONAL = "Conditional";
+  public static final String REPLACEMENT_YES = "Yes";
+  public static final String REPLACEMENT_NO = "No";
+  public static final String REPLACEMENT_CONDITIONAL_STEP = "Step_18 Conditional";
+  public static final String REPLACEMENT_BUDGET_MIN = "«Project_Budget_Min_Conditional»";
+  public static final String REPLACEMENT_BUDGET_MAX = "«Project_Budget_Max»";
+  public static final String REPLACEMENT_BUDGET_TERM = "Conditional Insert Project Term Budget";
+  public static final String REPLACEMENT_PROJECT_BUDGET = "Project_Budget";
+  public static final String REPLACEMENT_PROJECT_BUDGET_TERM = "Project Term Budget";
+  public static final String REPLACEMENT_DOC_FILENAME = "«Upload_document_filename_#n»";
+  public static final String REPLACEMENT_INCUMBENT_NAME = "«Project_Incumbent_Yes_No_Supplier_Name_Step_22»";
+  public static final String REPLACEMENT_DATE_INSERTION = "«Insert Time, Date, Month, Year of #1»";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -282,7 +296,7 @@ public class DocGenService {
   /**
    * Performs a single data item replacement within a given document template, using supplied values
    */
-  private void replacePlaceholder(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish) throws InvalidNavigationException {
+  private void replacePlaceholder(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish) {
     // This method effectively just hands the app off to a targeted replacement method for the type of data being processed - so just work that out and do it
     if (documentTemplateSource != null && documentTemplateSource.getTargetType() != null) {
       try {
@@ -294,7 +308,7 @@ public class DocGenService {
 
           case DATETIME:
             // Treat this as a text replacement, just format the text into a date/time string first
-            String formattedDatetime = formatDateorDateAndTime(dataReplacement.getFirst());
+            String formattedDatetime = formatDateOrDateAndTime(dataReplacement.getFirst());
             replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
             break;
 
@@ -336,71 +350,117 @@ public class DocGenService {
     }
   }
 
+  /**
+   * Calculates a single String value from a list of Strings to return for data replacement
+   */
   private static String getString(List<String> dataReplacement) {
-    return dataReplacement.size() > 1 ? dataReplacement.stream().collect(Collectors.joining(",")) : dataReplacement.stream().filter(value -> value!=null).findFirst().orElse(PLACEHOLDER_UNKNOWN);
-  }
+    if (dataReplacement != null) {
+      // Firstly, filter our list down to contain only non-null entries
+      dataReplacement = dataReplacement.stream().filter(Objects::nonNull).toList();
 
-  String formatDateorDateAndTime(String dateValue) {
-    // TODO: handle if not a datetime
-
-    if (dateValue.length() <= 10) {
-      return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
-    } else {
-      return DATE_FMT.format(OffsetDateTime.parse(dateValue));
+      // Now check the size of the list, as we need to do different things depending on that
+      if (dataReplacement.size() > 1) {
+        // We've more than one entry, so return them as a comma-delimited list
+        return String.join(DELIMITER, dataReplacement);
+      } else if (dataReplacement.size() == 1) {
+        // There's only one entry, so return it directly
+        return dataReplacement.getFirst();
+      } else {
+        // There's no entries, so return a default placeholder
+        return PLACEHOLDER_UNKNOWN;
+      }
     }
+
+    // We weren't given the data we need if we've got this far - return the default placeholder
+    return PLACEHOLDER_UNKNOWN;
   }
 
-  void replaceText(final DocumentTemplateSource documentTemplateSource,
-      String dataReplacement, final TextDocument textODT, final boolean isPublish) throws InvalidNavigationException {
-
-    var textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
-    while (textNavigation.hasNext()) {
-      var item = (TextSelection) textNavigation.nextSelection();
-
-      if (item.getText().contains("Conditional") && !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
-        StringJoiner value = new StringJoiner(" ");
-        value.add(documentTemplateSource.getConditionalValue() == null ? ""
-            : documentTemplateSource.getConditionalValue());
-        
-        //FC-DA related condition
-        //TODO Should move to seperate method
-        if (dataReplacement.contains("Yes")) {
-          //TODO Need to find correct condition for this
-//          value.add("There is an existing supplier providing the products and services");
-          value.add("");
-        } else if (dataReplacement.contains("No") && !dataReplacement.equals(PLACEHOLDER_UNKNOWN)) {
-          value.add("");
+  /**
+   * Formats a given date / time value into a string representation
+   */
+  private String formatDateOrDateAndTime(String dateValue) {
+    if (dateValue != null && !dateValue.isEmpty()) {
+      try {
+        // The format we want to use depends on the length of the input apparently, so check that
+        if (dateValue.length() <= 10) {
+          // Format this as a date only
+          return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
         } else {
-          value.add(dataReplacement);
+          // Format this as a date / time
+          return DATE_FMT.format(OffsetDateTime.parse(dateValue));
         }
-        if(item.getText().contains("Step_18 Conditional") && dataReplacement.isEmpty()){
-          dataReplacement = PLACEHOLDER_UNKNOWN;
-        }else {
-          dataReplacement = value.toString();
+      } catch (Exception ex) {
+        // There was an issue during conversion - the data was likely in an unexpected format.  Log this then return the default placeholder
+        log.error("Error formatting date / time for document generation. Value was '{}'", dateValue, ex);
+        return PLACEHOLDER_UNKNOWN;
+      }
+    }
+
+    // We weren't given the data we need if we've got this far - return the default placeholder
+    return PLACEHOLDER_UNKNOWN;
+  }
+
+  /**
+   * Performs a single data replacement action for text based input
+   */
+  private void replaceText(final DocumentTemplateSource documentTemplateSource, String dataReplacement, final TextDocument textODT, final boolean isPublish) {
+    if (documentTemplateSource != null && documentTemplateSource.getPlaceholder() != null && !documentTemplateSource.getPlaceholder().isEmpty()) {
+      // Iterate over the items in the placeholder data and process them
+      TextNavigation textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+
+      StringJoiner value = new StringJoiner(" ");
+      value.add(documentTemplateSource.getConditionalValue() == null ? "" : documentTemplateSource.getConditionalValue());
+
+      while (textNavigation.hasNext()) {
+        // Grab the item we're working on, then see what we need to do to it
+        try {
+          TextSelection item = (TextSelection) textNavigation.nextSelection();
+
+          if (item.getText() != null && !item.getText().isEmpty() && item.getText().contains(REPLACEMENT_CONDITIONAL) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
+            // This is a conditional item - perform replacements targeted at this
+            if ((dataReplacement.contains(REPLACEMENT_YES)) || (dataReplacement.contains(REPLACEMENT_NO) && !dataReplacement.equals(PLACEHOLDER_UNKNOWN))) {
+              value.add(PLACEHOLDER_EMPTY);
+            } else {
+              value.add(dataReplacement);
+            }
+
+            // We now need to update the data replacement value now, in a general way but specifically overridden for a specific conditional item
+            if (item.getText() != null && item.getText().contains(REPLACEMENT_CONDITIONAL_STEP) && dataReplacement.isEmpty()) {
+              dataReplacement = PLACEHOLDER_UNKNOWN;
+            } else {
+              dataReplacement = value.toString();
+            }
+          }
+
+          // Update the data replacement value with EOI specific data
+          dataReplacement = eoiConditionalAndOptionalData(dataReplacement, documentTemplateSource.getConditionalValue() == null ? "" : documentTemplateSource.getConditionalValue());
+
+          // Budget, Terms, Documents, and Date Insertion specific replacements
+          if (item.getText() != null) {
+            if ((item.getText().equals(REPLACEMENT_BUDGET_MIN) || item.getText().equals(REPLACEMENT_BUDGET_MAX) || item.getText().contains(REPLACEMENT_BUDGET_TERM)) && isNotBlankAndNumeric(dataReplacement)) {
+              dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", PLACEHOLDER_EMPTY);
+            }
+
+            if ((item.getText().contains(REPLACEMENT_PROJECT_BUDGET) || item.getText().contains(REPLACEMENT_PROJECT_BUDGET_TERM) || item.getText().equals(REPLACEMENT_DOC_FILENAME) || item.getText().contains(REPLACEMENT_INCUMBENT_NAME)) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
+              dataReplacement = PLACEHOLDER_UNKNOWN;
+            }
+
+            if (item.getText().equals(REPLACEMENT_DATE_INSERTION) && !isPublish) {
+              dataReplacement = PLACEHOLDER_EMPTY;
+            }
+          }
+
+          // Replacement value should now be finalised - perform the replacement
+          item.replaceWith(dataReplacement);
+        } catch (Exception ex) {
+          // It's errored somewhere - just log this and allow the process to proceed to the next item
+          log.error("Error performing textual data replacement for document generation", ex);
         }
       }
-
-      dataReplacement = eoiConditionalAndOptionalData(dataReplacement,
-          documentTemplateSource.getConditionalValue() == null ? ""
-              : documentTemplateSource.getConditionalValue());
-      if((item.getText().equals("«Project_Budget_Min_Conditional»") || item.getText().equals("«Project_Budget_Max»") || item.getText().contains("Conditional Insert Project Term Budget")) && isNotBlankAndNumeric(dataReplacement))
-      {
-        dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "");
-      }
-      if((item.getText().contains("Project_Budget") || item.getText().contains("Project Term Budget") || item.getText().equals("«Upload_document_filename_#n»") || item.getText().contains("«Project_Incumbent_Yes_No_Supplier_Name_Step_22»"))  && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement))
-      {
-         dataReplacement = PLACEHOLDER_UNKNOWN;
-      }
-      if(item.getText().equals("«Insert Time, Date, Month, Year of #1»") && !isPublish)
-      {
-        dataReplacement = "";
-      }
-
-      log.trace("Found: [" + item + "], replacing with: [" + dataReplacement + "]");
-      item.replaceWith(dataReplacement);
     }
   }
 
+  // TODO: HERE
   private static boolean isNotBlankAndNumeric(String dataReplacement) {
     return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches(Pattern.quote("-?\\d+"));
   }
