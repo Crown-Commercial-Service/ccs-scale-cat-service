@@ -9,10 +9,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -21,6 +18,7 @@ import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
+import org.odftoolkit.simple.text.list.ListItem;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -61,6 +59,8 @@ public class DocGenService {
   public static final String DB_PLACEHOLDER_PROJECTS = "project";
   public static final String DB_PLACEHOLDER_METHOD_PREFIX = "get";
   public static final String DELIMITER = ",";
+  public static final String UNSURE_FIXED_OUTPUT = "The buyer is unsure whether it will be a new or a replacement product or service.";
+
   public static final String REPLACEMENT_CONDITIONAL = "Conditional";
   public static final String REPLACEMENT_YES = "Yes";
   public static final String REPLACEMENT_NO = "No";
@@ -73,6 +73,10 @@ public class DocGenService {
   public static final String REPLACEMENT_DOC_FILENAME = "«Upload_document_filename_#n»";
   public static final String REPLACEMENT_INCUMBENT_NAME = "«Project_Incumbent_Yes_No_Supplier_Name_Step_22»";
   public static final String REPLACEMENT_DATE_INSERTION = "«Insert Time, Date, Month, Year of #1»";
+  public static final String REPLACEMENT_PRODUCT_REPLACEMENT = "Replacement products or services";
+  public static final String REPLACEMENT_PRODUCT_EXPANDED = "Expanded products or services";
+  public static final String REPLACEMENT_PRODUCT_NEW = "New products or services";
+  public static final String REPLACEMENT_UNSURE = "Not sure";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -460,48 +464,72 @@ public class DocGenService {
     }
   }
 
-  // TODO: HERE
+  /**
+   * Performs a check to see whether a value passed is neither blank nor a numeric
+   */
   private static boolean isNotBlankAndNumeric(String dataReplacement) {
+    // Just check to see if the input isn't blank or a numeric then return a boolean representation
     return !org.apache.commons.lang3.StringUtils.isBlank(dataReplacement) && dataReplacement.trim().matches(Pattern.quote("-?\\d+"));
   }
 
-  //TODO remove static content and add in app.yaml file
+  /**
+   * Performs conditional data replacements for EOI events
+   */
   private String eoiConditionalAndOptionalData(String dataReplacement, String conditionalValue) {
-    String conditionlaData = "";
-    if (dataReplacement.contentEquals("Replacement products or services")
-        || dataReplacement.contentEquals("Expanded products or services")
-        || dataReplacement.contentEquals("New products or services")) {
-      conditionlaData = conditionalValue + dataReplacement;
-      return conditionlaData;
-    } else if (dataReplacement.contentEquals("Not sure")) {
-      conditionlaData =
-          "The buyer is unsure whether it will be a new or a replacement product or service.";
-      return conditionlaData;
+    // We want to perform specific data replacements on conditional data entries - so look for them
+    String conditionalData;
+
+    if (dataReplacement != null && !dataReplacement.isEmpty()) {
+      if (dataReplacement.contentEquals(REPLACEMENT_PRODUCT_REPLACEMENT) || dataReplacement.contentEquals(REPLACEMENT_PRODUCT_EXPANDED) || dataReplacement.contentEquals(REPLACEMENT_PRODUCT_NEW)) {
+        // In these instances, we need to concatenate the conditional value to the core data
+        conditionalData = conditionalValue + dataReplacement;
+
+        return conditionalData;
+      } else if (dataReplacement.contentEquals(REPLACEMENT_UNSURE)) {
+        // In this instance, we want to just return a fixed value outright
+        return UNSURE_FIXED_OUTPUT;
+      }
     }
-    
+
+    // Any amendments have now been made, so return the amended data
     return dataReplacement;
   }
 
-  void replaceList(final DocumentTemplateSource documentTemplateSource,
-      final List<String> dataReplacement, final TextDocument textODT) {
+  /**
+   * Performs a single data replacement action for list based input
+   */
+  private void replaceList(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT) {
+    // This list looks like it contains children which can have lists as part of them.  Iterate over the core list to begin
+    Iterator<org.odftoolkit.simple.text.list.List> listIterator = textODT.getListIterator();
 
-    var listIterator = textODT.getListIterator();
-    while (listIterator.hasNext()) {
-      var list = listIterator.next();
-      var foundList = false;
-      for (var li : list.getItems()) {
-        if (StringUtils.hasText(li.getTextContent())
-            && li.getTextContent().matches(Pattern.quote(documentTemplateSource.getPlaceholder()))) {
-          foundList = true;
-          break;
+    if (listIterator != null) {
+      while (listIterator.hasNext()) {
+        // For this item, check its children and try to find a list we want to work against
+        boolean foundList = false;
+        org.odftoolkit.simple.text.list.List list = listIterator.next();
+
+        if (list.getItems() != null && !list.getItems().isEmpty()) {
+          for (ListItem li : list.getItems()) {
+            if (li.getTextContent() != null && documentTemplateSource.getPlaceholder() != null && StringUtils.hasText(li.getTextContent()) && li.getTextContent().matches(Pattern.quote(documentTemplateSource.getPlaceholder()))) {
+              // Looks like we have found a list amongst the children - remember this, and break out of the check
+              foundList = true;
+
+              break;
+            }
+          }
         }
-      }
-      if (foundList) {
-        list.removeItem(0);
-        if(dataReplacement.isEmpty()) {
-          dataReplacement.add(PLACEHOLDER_UNKNOWN);
+
+        // Now, if we found a list for this child as part of the check above, we need to action data replacement
+        if (foundList) {
+          // We basically want to replace this item in the iterator list with our content, so do that
+          list.removeItem(0);
+
+          if (dataReplacement.isEmpty()) {
+            dataReplacement.add(PLACEHOLDER_UNKNOWN);
+          }
+
+          list.addItems(dataReplacement.toArray(new String[0]));
         }
-        list.addItems(dataReplacement.toArray(new String[0]));
       }
     }
   }
