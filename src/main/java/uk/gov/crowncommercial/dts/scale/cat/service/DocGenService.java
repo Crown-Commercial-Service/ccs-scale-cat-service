@@ -118,7 +118,7 @@ public class DocGenService {
 
             replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
           } catch (Exception ex) {
-              log.error("Unable to replace document placeholder of {} for event ID {}", templateSource.getId(), procurementEvent.getEventID(), ex);
+              log.error("Unable to replace document placeholder of '{}' for event ID '{}'", templateSource.getId(), procurementEvent.getEventID(), ex);
           }
         });
 
@@ -148,55 +148,54 @@ public class DocGenService {
         ByteArrayMultipartFile multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName, Constants.MEDIA_TYPE_ODT.toString());
 
         // Now finally trigger the upload to Jaegger
-        jaggaerService.eventUploadDocument(procurementEvent, fileName, fileDescription, SUPPLIER, multipartFile);
+        try {
+          jaggaerService.eventUploadDocument(procurementEvent, fileName, fileDescription, SUPPLIER, multipartFile);
+        } catch (Exception ex) {
+            log.error("Error uploading document '{}' for event ID '{}'", fileName, procurementEvent.getEventID(), ex);
+        }
       }
     }
   }
 
-  List<String> getDataReplacement(final ProcurementEvent event,
-      final DocumentTemplateSource documentTemplateSource,
-      final ConcurrentMap<String, Object> requestCache) {
-
-    try {
-      switch (documentTemplateSource.getSourceType()) {
-
-        // All paths are indefinite, therefore List<String> will always be returned.
-        case JSON:
-          return getQuestionFromJSONDataTemplate(event, documentTemplateSource);
-
-        case JAVA:
-          return getValueFromBean(event, documentTemplateSource, requestCache);
-
-        case SQL:
-          return List.of(getValueFromDB(event, documentTemplateSource));
-        
-        case STATIC:  
-          return List.of(getStaticValueFromDB(event, documentTemplateSource));
-          
-        default:
-          log.warn("Unrecognised source type - unable to process");
-          return List.of(PLACEHOLDER_ERROR);
+  /**
+   * Builds a list of values for replacement within a document template, based on the data source type being requested
+   */
+  private List<String> getDataReplacement(final ProcurementEvent event, final DocumentTemplateSource documentTemplateSource, final ConcurrentMap<String, Object> requestCache) {
+    if (documentTemplateSource != null && documentTemplateSource.getSourceType() != null) {
+      // Populate the value list based on the source type passed to us
+      try {
+        return switch (documentTemplateSource.getSourceType()) {
+          case JSON -> getQuestionFromJSONDataTemplate(event, documentTemplateSource);
+          case JAVA -> getValueFromBean(event, documentTemplateSource, requestCache);
+          case SQL -> List.of(getValueFromDB(event, documentTemplateSource));
+          case STATIC -> List.of(getStaticValueFromDB(event, documentTemplateSource));
+        };
+      } catch (Exception ex) {
+          log.error("Error in document generation value replacement build for data type '{}' and template ID: '{}'", documentTemplateSource.getSourceType(), documentTemplateSource.getId(), new DocGenValueException(ex));
       }
-    } catch (Exception ex) {
-      log.error("Error in doc gen value retrieval for: " + documentTemplateSource,
-          new DocGenValueException(ex));
-      return List.of(PLACEHOLDER_ERROR);
     }
+
+    // We want to return an empty list if nothing has been returned by this point, so it doesn't cause other issues
+    return List.of(PLACEHOLDER_ERROR);
   }
 
-  List<String> getQuestionFromJSONDataTemplate(final ProcurementEvent event,
-      final DocumentTemplateSource documentTemplateSource) {
+  /**
+   * Builds a list of question values which require replacement from a JSON data template source
+   */
+  private List<String> getQuestionFromJSONDataTemplate(final ProcurementEvent event, final DocumentTemplateSource documentTemplateSource) {
+    // We need to work against the raw JSON data for this task, so grab it
+    if (event != null && event.getProcurementTemplatePayloadRaw() != null && !event.getProcurementTemplatePayloadRaw().isEmpty()) {
+      String eventData = event.getProcurementTemplatePayloadRaw();
 
-    var eventData = event.getProcurementTemplatePayloadRaw();
+      // Now parse the JSON into a list of the values that we need to replace as part of document generation
+      Configuration jsonPathConfig = Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST).jsonProvider(new JacksonJsonProvider(objectMapper)).mappingProvider(new JacksonMappingProvider(objectMapper)).build();
+      TypeRef<List<String>> typeRef = new TypeRef<>() {};
 
-    var jsonPathConfig =
-        Configuration.builder().options(com.jayway.jsonpath.Option.ALWAYS_RETURN_LIST)
-            .jsonProvider(new JacksonJsonProvider(objectMapper))
-            .mappingProvider(new JacksonMappingProvider(objectMapper)).build();
+      return JsonPath.using(jsonPathConfig).parse(eventData).read(documentTemplateSource.getSourcePath(), typeRef);
+    }
 
-    TypeRef<List<String>> typeRef = new TypeRef<>() {};
-    return JsonPath.using(jsonPathConfig).parse(eventData)
-        .read(documentTemplateSource.getSourcePath(), typeRef);
+    // Something has gone wrong if we're at this point - return an empty list
+    return List.of(PLACEHOLDER_ERROR);
   }
 
   List<String> getValueFromBean(final ProcurementEvent event,
