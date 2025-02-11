@@ -195,8 +195,8 @@ public class CriteriaService {
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
       List<QuestionNonOCDSOptions> options) {
     if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
-      String maxValue;
-      String minValue;
+      String maxValue = null;
+      String minValue = null;
       if (Objects.nonNull(requirement.getNonOCDS().getDependency()) && Objects.nonNull(requirement.getNonOCDS().getDependency().getRelationships())) {
         // Min value check
         String questionId = requirement.getNonOCDS().getDependency().getRelationships().stream()
