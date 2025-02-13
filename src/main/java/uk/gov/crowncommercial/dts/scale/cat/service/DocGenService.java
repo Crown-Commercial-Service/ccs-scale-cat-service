@@ -93,9 +93,6 @@ public class DocGenService {
    * Trigger the generation and upload of all documents for a given event
    */
   public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
-    String propValue = System.getProperty("java.awt.headless");
-      log.warn("System property value is: {}", propValue);
-
     // Start by validating the event passed into us is good to use
     ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 
