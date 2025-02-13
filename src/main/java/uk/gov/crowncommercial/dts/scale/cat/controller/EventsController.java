@@ -278,6 +278,22 @@ public class EventsController extends AbstractRestController {
   }
 
   /**
+   * Generates documents for a given event
+   */
+  @PutMapping("/{eventID}/documents/generate")
+  @TrackExecutionTime
+  public StringValueResponse generateEventDocs(@PathVariable("procID") final Integer projectId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    // Firstly validate the user auth
+    String principal = getPrincipalFromJwt(authentication);
+
+    // Now generate the documents for this event
+    docGenService.generateAndUploadDocuments(projectId, eventId);
+
+    // Job done, return an indicator to represent this
+    return new StringValueResponse("OK");
+  }
+
+  /**
    * Publishes a given event for a project
    */
   @PutMapping("/{eventID}/publish")
