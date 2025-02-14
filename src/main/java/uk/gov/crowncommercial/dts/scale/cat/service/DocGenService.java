@@ -316,21 +316,25 @@ public class DocGenService {
 
           case DATETIME:
             // Treat this as a text replacement, just format the text into a date/time string first
-            String formattedDatetime = formatDateOrDateAndTime(dataReplacement.getFirst());
-            replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
+            if (dataReplacement != null && !dataReplacement.isEmpty()) {
+              String formattedDatetime = formatDateOrDateAndTime(dataReplacement.getFirst());
+              replaceText(documentTemplateSource, formattedDatetime, textODT, isPublish);
+            }
             break;
 
           case DURATION:
             // Treat this as a text replacement, just format the text into a duration of time string first
             String formattedPeriod = PLACEHOLDER_UNKNOWN;
 
-            try {
-              // Try to fetch the value as a Period then parse it
-              Period period = Period.parse(dataReplacement.getFirst());
-              formattedPeriod = String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
-            } catch (Exception ex) {
-              // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
-              log.error("Unable to parse value as a Period for document generation: '{}'", dataReplacement.getFirst(), ex);
+            if (dataReplacement != null && !dataReplacement.isEmpty()) {
+              try {
+                // Try to fetch the value as a Period then parse it
+                Period period = Period.parse(dataReplacement.getFirst());
+                formattedPeriod = String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+              } catch (Exception ex) {
+                // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
+                log.error("Unable to parse value as a Period for document generation. Value: '{}'", dataReplacement.getFirst(), ex);
+              }
             }
 
             replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
