@@ -330,7 +330,7 @@ public class DocGenService {
               formattedPeriod = String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
             } catch (Exception ex) {
               // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
-                log.error("Unable to parse value as a Period for document generation: '{}'", dataReplacement.getFirst(), ex);
+              log.error("Unable to parse value as a Period for document generation: '{}'", dataReplacement.getFirst(), ex);
             }
 
             replaceText(documentTemplateSource, formattedPeriod, textODT, isPublish);
@@ -352,7 +352,7 @@ public class DocGenService {
         }
       } catch (Exception ex) {
         // There's been an issue. We want this to fail silently, so log the error and replace the placeholder with an empty string
-        log.error("Error in doc gen placeholder replacement for template '{}'", documentTemplateSource.getId(), new DocGenValueException(ex));
+        log.error("Error in doc gen placeholder replacement for template '{}', type '{}'", documentTemplateSource.getId(), documentTemplateSource.getTargetType(), new DocGenValueException(ex));
         replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
       }
     }
