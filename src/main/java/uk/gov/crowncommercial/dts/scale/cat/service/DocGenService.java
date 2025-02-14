@@ -412,57 +412,59 @@ public class DocGenService {
    * Performs a single data replacement action for text based input
    */
   private void replaceText(final DocumentTemplateSource documentTemplateSource, String dataReplacement, final TextDocument textODT, final boolean isPublish) {
-    if (documentTemplateSource != null && documentTemplateSource.getPlaceholder() != null && !documentTemplateSource.getPlaceholder().isEmpty()) {
+    if (documentTemplateSource != null && documentTemplateSource.getPlaceholder() != null && !documentTemplateSource.getPlaceholder().isEmpty() && textODT != null) {
       // Iterate over the items in the placeholder data and process them
       TextNavigation textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
 
       StringJoiner value = new StringJoiner(" ");
       value.add(documentTemplateSource.getConditionalValue() == null ? "" : documentTemplateSource.getConditionalValue());
 
-      while (textNavigation.hasNext()) {
-        // Grab the item we're working on, then see what we need to do to it
-        try {
-          TextSelection item = (TextSelection) textNavigation.nextSelection();
+      if (textNavigation.hasNext()) {
+        while (textNavigation.hasNext()) {
+          // Grab the item we're working on, then see what we need to do to it
+          try {
+            TextSelection item = (TextSelection) textNavigation.nextSelection();
 
-          if (item.getText() != null && !item.getText().isEmpty() && item.getText().contains(REPLACEMENT_CONDITIONAL) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
-            // This is a conditional item - perform replacements targeted at this
-            if ((dataReplacement.contains(REPLACEMENT_YES)) || (dataReplacement.contains(REPLACEMENT_NO) && !dataReplacement.equals(PLACEHOLDER_UNKNOWN))) {
-              value.add(PLACEHOLDER_EMPTY);
-            } else {
-              value.add(dataReplacement);
+            if (item.getText() != null && !item.getText().isEmpty() && item.getText().contains(REPLACEMENT_CONDITIONAL) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
+              // This is a conditional item - perform replacements targeted at this
+              if ((dataReplacement.contains(REPLACEMENT_YES)) || (dataReplacement.contains(REPLACEMENT_NO) && !dataReplacement.equals(PLACEHOLDER_UNKNOWN))) {
+                value.add(PLACEHOLDER_EMPTY);
+              } else {
+                value.add(dataReplacement);
+              }
+
+              // We now need to update the data replacement value now, in a general way but specifically overridden for a specific conditional item
+              if (item.getText() != null && item.getText().contains(REPLACEMENT_CONDITIONAL_STEP) && dataReplacement.isEmpty()) {
+                dataReplacement = PLACEHOLDER_UNKNOWN;
+              } else {
+                dataReplacement = value.toString();
+              }
             }
 
-            // We now need to update the data replacement value now, in a general way but specifically overridden for a specific conditional item
-            if (item.getText() != null && item.getText().contains(REPLACEMENT_CONDITIONAL_STEP) && dataReplacement.isEmpty()) {
-              dataReplacement = PLACEHOLDER_UNKNOWN;
-            } else {
-              dataReplacement = value.toString();
+            // Update the data replacement value with EOI specific data
+            dataReplacement = eoiConditionalAndOptionalData(dataReplacement, documentTemplateSource.getConditionalValue() == null ? "" : documentTemplateSource.getConditionalValue());
+
+            // Budget, Terms, Documents, and Date Insertion specific replacements
+            if (item.getText() != null) {
+              if ((item.getText().equals(REPLACEMENT_BUDGET_MIN) || item.getText().equals(REPLACEMENT_BUDGET_MAX) || item.getText().contains(REPLACEMENT_BUDGET_TERM)) && isNotBlankAndNumeric(dataReplacement)) {
+                dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", PLACEHOLDER_EMPTY);
+              }
+
+              if ((item.getText().contains(REPLACEMENT_PROJECT_BUDGET) || item.getText().contains(REPLACEMENT_PROJECT_BUDGET_TERM) || item.getText().equals(REPLACEMENT_DOC_FILENAME) || item.getText().contains(REPLACEMENT_INCUMBENT_NAME)) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
+                dataReplacement = PLACEHOLDER_UNKNOWN;
+              }
+
+              if (item.getText().equals(REPLACEMENT_DATE_INSERTION) && !isPublish) {
+                dataReplacement = PLACEHOLDER_EMPTY;
+              }
             }
+
+            // Replacement value should now be finalised - perform the replacement
+            item.replaceWith(dataReplacement);
+          } catch (Exception ex) {
+            // It's errored somewhere - just log this and allow the process to proceed to the next item
+            log.error("Error performing textual data replacement for document generation", ex);
           }
-
-          // Update the data replacement value with EOI specific data
-          dataReplacement = eoiConditionalAndOptionalData(dataReplacement, documentTemplateSource.getConditionalValue() == null ? "" : documentTemplateSource.getConditionalValue());
-
-          // Budget, Terms, Documents, and Date Insertion specific replacements
-          if (item.getText() != null) {
-            if ((item.getText().equals(REPLACEMENT_BUDGET_MIN) || item.getText().equals(REPLACEMENT_BUDGET_MAX) || item.getText().contains(REPLACEMENT_BUDGET_TERM)) && isNotBlankAndNumeric(dataReplacement)) {
-              dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", PLACEHOLDER_EMPTY);
-            }
-
-            if ((item.getText().contains(REPLACEMENT_PROJECT_BUDGET) || item.getText().contains(REPLACEMENT_PROJECT_BUDGET_TERM) || item.getText().equals(REPLACEMENT_DOC_FILENAME) || item.getText().contains(REPLACEMENT_INCUMBENT_NAME)) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
-              dataReplacement = PLACEHOLDER_UNKNOWN;
-            }
-
-            if (item.getText().equals(REPLACEMENT_DATE_INSERTION) && !isPublish) {
-              dataReplacement = PLACEHOLDER_EMPTY;
-            }
-          }
-
-          // Replacement value should now be finalised - perform the replacement
-          item.replaceWith(dataReplacement);
-        } catch (Exception ex) {
-          // It's errored somewhere - just log this and allow the process to proceed to the next item
-          log.error("Error performing textual data replacement for document generation", ex);
         }
       }
     }
