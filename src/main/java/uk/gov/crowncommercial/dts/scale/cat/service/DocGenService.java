@@ -64,6 +64,7 @@ public class DocGenService {
   public static final String DELIMITER = ",";
   public static final String UNSURE_FIXED_OUTPUT = "The buyer is unsure whether it will be a new or a replacement product or service.";
   public static final String CELL_LINE_REQUIRED = "1";
+  public static final String UNSUPPORTED_BEAN_NAMES = "DocumentValueAdaptorPricingScheduleFileName,DocumentValueAdaptorTCFileNames,DocumentValueAdaptorAssessmentFileNames";
 
   public static final String REPLACEMENT_CONDITIONAL = "Conditional";
   public static final String REPLACEMENT_YES = "Yes";
@@ -236,16 +237,22 @@ public class DocGenService {
       String beanName = documentTemplateSource.getSourcePath();
 
       try {
-        DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
+        // There are specific names we don't want to deal with here, as they'll always be null. So only carry on if it's not one of these
+        List<String> unsupportedBeanTypes = Arrays.stream(UNSUPPORTED_BEAN_NAMES.split(",")).toList();
+        boolean supportedBean = unsupportedBeanTypes.stream().filter(p -> p.equalsIgnoreCase(beanName)).findFirst().orElse(null) != null;
 
-        // Now just return the data we need from the Bean
-        return documentValueAdaptor.getValue(event, requestCache);
+          if (supportedBean) {
+            DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
+
+            // Now just return the data we need from the Bean
+            return documentValueAdaptor.getValue(event, requestCache);
+        }
       } catch (Exception ex) {
           log.error("Error parsing Java Bean '{}' for document template ID: '{}'", beanName, documentTemplateSource.getId(), ex);
       }
     }
 
-    // Something has gone wrong if we're at this point - return an empty list
+    // Something has gone wrong, or the request was for an unsupported type, if we're at this point - return an empty list
     return List.of(PLACEHOLDER_ERROR);
   }
 
