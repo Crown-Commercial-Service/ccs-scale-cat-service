@@ -238,14 +238,11 @@ public class DocGenService {
 
       try {
         // There are specific names we don't want to deal with here, as they'll always be null. So only carry on if it's not one of these
-        List<String> unsupportedBeanTypes = Arrays.stream(UNSUPPORTED_BEAN_NAMES.split(",")).toList();
-        boolean supportedBean = unsupportedBeanTypes.stream().filter(p -> p.equalsIgnoreCase(beanName)).findFirst().orElse(null) != null;
+        if (isBeanNameSupported(beanName)) {
+          DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
 
-          if (supportedBean) {
-            DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
-
-            // Now just return the data we need from the Bean
-            return documentValueAdaptor.getValue(event, requestCache);
+          // Now just return the data we need from the Bean
+          return documentValueAdaptor.getValue(event, requestCache);
         }
       } catch (Exception ex) {
           log.error("Error parsing Java Bean '{}' for document template ID: '{}'", beanName, documentTemplateSource.getId(), ex);
@@ -254,6 +251,18 @@ public class DocGenService {
 
     // Something has gone wrong, or the request was for an unsupported type, if we're at this point - return an empty list
     return List.of(PLACEHOLDER_ERROR);
+  }
+
+  /**
+   * Returns a boolean indicating whether a given bean is supported for document generation
+   */
+  private boolean isBeanNameSupported(String beanName) {
+    List<String> unsupportedBeanTypes = Arrays.stream(UNSUPPORTED_BEAN_NAMES.split(",")).toList();
+
+    // Unless we find a match for the bean name in the unsupported types, the bean is supported
+    String matchingUnsupportedBeanName = unsupportedBeanTypes.stream().filter(p -> p.equalsIgnoreCase(beanName)).findFirst().orElse(null);
+
+    return matchingUnsupportedBeanName == null;
   }
 
   /**
