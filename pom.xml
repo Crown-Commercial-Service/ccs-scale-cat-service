@@ -34,7 +34,7 @@
         <poi-ooxml.version>5.4.0</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.4</snakeyaml.version>
-        <spring-security.version>6.4.2</spring-security.version>
+        <spring-security.version>6.4.3</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.18.3</jsoup.version>
@@ -52,7 +52,7 @@
         <jetty-reactive.version>4.0.8</jetty-reactive.version>
         <postgres.version>42.7.5</postgres.version>
         <lombok.version>1.18.36</lombok.version>
-        <spring.version>6.4.2</spring.version>
+        <spring.version>6.4.3</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.13.0</compiler.version>
     </properties>
