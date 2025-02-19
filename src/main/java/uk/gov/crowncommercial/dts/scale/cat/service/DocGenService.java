@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 import jakarta.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
-import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
 import org.odftoolkit.simple.table.Cell;
@@ -563,7 +562,7 @@ public class DocGenService {
   /**
    * Performs a single data replacement action for database based input
    */
-  private void populateTableColumn(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT) throws InvalidNavigationException {
+  private void populateTableColumn(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT) {
     // We need to start by grabbing the DB table that we need to work against
     Table table = textODT.getTableByName(documentTemplateSource.getTableName());
 
@@ -657,10 +656,25 @@ public class DocGenService {
 
       // At this point we should be done with everything passed into us. But we also need to handle if no data input was passed to us
       if (dataReplacement.isEmpty() || dataReplacement.stream().anyMatch(org.apache.commons.lang3.StringUtils::isAllBlank)) {
-        // With no data passed to us, we need to replace all placeholders with the standard unknown placeholder content
-        if (documentTemplateSource.getPlaceholder() != null) {
-          TextNavigation textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+        placeholderMappingForDb(documentTemplateSource, textODT);
+      }
+    } else {
+      // The requested DB table couldn't be found. This is somehow expected, so just replace with placeholder content
+      placeholderMappingForDb(documentTemplateSource, textODT);
+    }
+  }
 
+  /**
+   * Applies a default placeholder to all entries in a file
+   * Only used when either no input was passed in for a DB replacement, or the DB mapping couldn't be found
+   */
+  private void placeholderMappingForDb(final DocumentTemplateSource documentTemplateSource, final TextDocument textODT) {
+    try {
+      // At this point we have no data to replace, for whatever reason. We therefore need to replace all placeholders with the standard unknown placeholder content
+      if (documentTemplateSource.getPlaceholder() != null) {
+        TextNavigation textNavigation = new TextNavigation(documentTemplateSource.getPlaceholder(), textODT);
+
+        if (textNavigation.hasNext()) {
           while (textNavigation.hasNext()) {
             TextSelection item = (TextSelection) textNavigation.nextSelection();
 
@@ -669,9 +683,8 @@ public class DocGenService {
           }
         }
       }
-    } else {
-        // Something has gone very wrong as we couldn't find the DB table - log this
-        log.error("Unable to find database table for document generation: '{}'", documentTemplateSource.getTableName());
+    } catch (Exception ex) {
+      log.error("Unable to complete default placeholder mapping for DB table: '{}'", documentTemplateSource.getTableName(), ex);
     }
   }
 }
