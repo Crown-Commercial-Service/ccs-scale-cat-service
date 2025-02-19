@@ -52,7 +52,7 @@
         <jetty-reactive.version>4.0.8</jetty-reactive.version>
         <postgres.version>42.7.5</postgres.version>
         <lombok.version>1.18.36</lombok.version>
-        <spring.version>6.4.2</spring.version>
+        <spring.version>6.4.3</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.13.0</compiler.version>
     </properties>
