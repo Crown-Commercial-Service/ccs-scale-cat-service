@@ -12,10 +12,11 @@ RUN mvn package
 # Use an official Corretto runtime as a base image
 FROM amazoncorretto:23-alpine-jdk
 
-# Set the working directory inside the container and install curl
+# Set the working directory inside the container and install curl and needed fonts
 WORKDIR /app
 RUN apk add --update --no-cache \
     curl
+RUN apk add --no-cache fontconfig ttf-dejavu
 
 # Copy the application JAR file and external configuration files
 COPY --from=build /tmp/build/target/ccs-scale-cat-service-*.jar /app/cat.jar
