@@ -42,4 +42,4 @@ RUN echo $JAVA_OPTS
 EXPOSE 8080
 
 # Command to run your application
-ENTRYPOINT ["java", "-jar", "cat.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar cat.jar"]
