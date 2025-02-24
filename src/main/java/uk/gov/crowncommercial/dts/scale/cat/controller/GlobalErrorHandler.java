@@ -234,5 +234,5 @@ public class GlobalErrorHandler implements ErrorController {
 
   }
 
-  
+
 }
