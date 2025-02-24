@@ -35,10 +35,11 @@ WORKDIR /app
 ENV SPRING_PROFILES_ACTIVE=prod
 
 # Set JVM options
-ENV JAVA_OPTS="-Xms512m -Xmx1024m"
+ENV JAVA_OPTS="-Xmx1024m -Xms512m"
 
 # Expose the port your application will run on
 EXPOSE 8080
 
 # Command to run your application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar cat.jar"]
+# ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar cat.jar"]
+ENTRYPOINT exec java $JAVA_OPTS -jar cat.jar
