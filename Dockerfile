@@ -36,7 +36,6 @@ ENV SPRING_PROFILES_ACTIVE=prod
 
 # Set JVM options
 ENV JAVA_OPTS="-Xms512m -Xmx1024m"
-RUN echo $JAVA_OPTS
 
 # Expose the port your application will run on
 EXPOSE 8080
