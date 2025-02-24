@@ -234,5 +234,15 @@ public class GlobalErrorHandler implements ErrorController {
 
   }
 
+  @GetMapping("/memory-status")
+  public String getMemoryStatistics() {
+    String stats = "";
+    stats += "heapSize = " + (Runtime.getRuntime().totalMemory());
+    stats += ", heapMaxSize = " + (Runtime.getRuntime().maxMemory());
+    stats += ", heapFreeSize = " + (Runtime.getRuntime().freeMemory());
+
+    return stats;
+  }
+
 
 }
