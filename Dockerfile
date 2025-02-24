@@ -41,5 +41,4 @@ ENV JAVA_OPTS="-Xmx1024m -Xms512m"
 EXPOSE 8080
 
 # Command to run your application
-# ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar cat.jar"]
 ENTRYPOINT exec java $JAVA_OPTS -jar cat.jar
