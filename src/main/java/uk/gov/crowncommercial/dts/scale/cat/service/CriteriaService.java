@@ -194,9 +194,9 @@ public class CriteriaService {
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
       List<QuestionNonOCDSOptions> options) {
     if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
-      String maxValue;
-      String minValue;
-      if (Objects.nonNull(requirement.getNonOCDS().getDependency())) {
+      String maxValue = null;
+      String minValue = null;
+      if (Objects.nonNull(requirement.getNonOCDS().getDependency()) && Objects.nonNull(requirement.getNonOCDS().getDependency().getRelationships())) {
         // Min value check
         String questionId = requirement.getNonOCDS().getDependency().getRelationships().stream()
             .map(Relationships::getDependentOnID).findFirst()
@@ -219,6 +219,15 @@ public class CriteriaService {
             .orElseThrow(() -> new ResourceNotFoundException("Requested Value should not be null"))
             .getValue();
         minValue = getOptionsValue(minValueRequirement.getNonOCDS().getOptions());
+
+        // If the previous question is not Monetary, which is now possible, then we need to cleanse the minValue variable, as the API is designed to assume this is always Monetary, when now it might not be.
+        if (minValue != null) {
+          try {
+            new BigDecimal(minValue);
+          } catch(NumberFormatException e){
+            minValue = null;
+          }
+        }
       }
       if (ObjectUtils.allNotNull(maxValue, minValue)) {
         validationService.validateMinMaxValue(new BigDecimal(maxValue), new BigDecimal(minValue));
