@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>3.4.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>uk.gov.crowncommercial.dts</groupId>
@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.3.0</jena-core.version>
         <commons-io.version>2.18.0</commons-io.version>
-        <aws-java-sdk-s3.version>1.12.781</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>1.12.782</aws-java-sdk-s3.version>
         <tika-core.version>3.1.0</tika-core.version>
         <java-cfenv-boot.version>3.3.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -38,11 +38,11 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.18.3</jsoup.version>
-        <hibernate.version>6.6.6.Final</hibernate.version>
-        <junit.version>5.11.4</junit.version>
+        <hibernate.version>6.6.9.Final</hibernate.version>
+        <junit.version>5.12.0</junit.version>
         <opensearch.version>1.6.1</opensearch.version>
         <shedlock.version>6.3.0</shedlock.version>
-        <spring-boot.version>3.4.2</spring-boot.version>
+        <spring-boot.version>3.4.3</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.16</logback.version>
@@ -54,7 +54,7 @@
         <lombok.version>1.18.36</lombok.version>
         <spring.version>6.4.3</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
-        <compiler.version>3.13.0</compiler.version>
+        <compiler.version>3.14.0</compiler.version>
     </properties>
 
     <dependencies>
