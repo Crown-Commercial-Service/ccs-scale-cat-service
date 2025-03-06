@@ -877,26 +877,32 @@ public class ProcurementEventService implements EventService {
                                           final MultipartFile multipartFile, final DocumentAudienceType audience,
                                           final String fileDescription, final String principal) {
 
+        System.out.println("Starting document upload process");
         log.debug("Upload Document to event {}", eventId);
 
         final var fileName = multipartFile.getOriginalFilename();
         final var extension = FilenameUtils.getExtension(fileName);
+        System.out.println("Extracted file info - name: " + fileName + ", extension: " + extension);
 
         // Validate file extension
+        System.out.println("Validating file extension");
         if (!documentConfig.getAllowedExtentions().contains(extension.toLowerCase())) {
             throw new IllegalArgumentException("File is not one of the allowed types: "
                     + documentConfig.getAllowedExtentions().toString());
         }
 
         // Validate file size
+        System.out.println("Validating file size");
         if (multipartFile.getSize() > documentConfig.getMaxSize()) {
             throw new IllegalArgumentException("File is too large: " + multipartFile.getSize()
                     + " bytes. Maximum allowed upload size is: " + documentConfig.getMaxSize() + " bytes");
         }
 
         var event = validationService.validateProjectAndEventIds(procId, eventId);
+        System.out.println("Project and event IDs validated");
 
         // Validate total file size
+        System.out.println("Checking total event file size");
         var totalEventFileSize =
                 event.getDocumentUploads().stream().map(DocumentUpload::getSize).reduce(0L, Long::sum);
         if (Long.sum(totalEventFileSize, multipartFile.getSize()) > documentConfig.getMaxTotalSize()) {
@@ -907,6 +913,7 @@ public class ProcurementEventService implements EventService {
                             + event.getDocumentUploads().size() + " files)");
         }
 
+        System.out.println("All validations passed, proceeding with upload");
         return tendersAPIModelUtils.buildDocumentSummary(documentUploadService.uploadDocument(event,
                 multipartFile, audience, fileDescription, principal));
     }
@@ -1571,42 +1578,52 @@ public class ProcurementEventService implements EventService {
                 .status(awardDetails.getContractStatus());
     }
 
-
     private void retrieveAndUploadDocuments(String principal, ProcurementEvent procurementEvent) {
+        System.out.println("Start: retrieveAndUploadDocuments - Creating document retrieval tasks");
         List<RetrieveDocumentCallable> retrieveDocumentCallableList = procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService, documentUpload, principal)).toList();
         List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> retriveDocumentfutures = null;
+
+        System.out.println("Executing document retrieval tasks");
         try {
             retriveDocumentfutures = executorService.invokeAll(retrieveDocumentCallableList);
+            System.out.println("Document retrieval tasks submitted: " + retrieveDocumentCallableList.size());
         } catch (InterruptedException e) {
+            System.out.println("Error: Document retrieval tasks interrupted");
             // TODO : Handle this and propagate your response properly
             throw new RuntimeException(e);
         }
 
-
+        System.out.println("Start: Creating document upload tasks");
         List<DocumentUploadCallable> documentUploadCallableList = new ArrayList<>();
 
+        System.out.println("Processing document retrieval results");
         retriveDocumentfutures.forEach(retriveDocumentfuture -> {
-
+            System.out.println("Processing a document retrieval result");
             Map<DocumentUpload, ByteArrayMultipartFile> documentMap = null;
 
             try {
                 documentMap = retriveDocumentfuture.get();
+                System.out.println("Successfully retrieved document");
             } catch (InterruptedException | ExecutionException exception) {
+                System.out.println("Error: Failed to get document retrieval result");
                 // TODO : Handle this and propagate your response properly
                 throw new RuntimeException(exception);
             }
 
             var documentUpload = documentMap.keySet().stream().findFirst().get();
             documentUploadCallableList.add(new DocumentUploadCallable(jaggaerService, procurementEvent, documentUpload, documentMap.get(documentUpload)));
+            System.out.println("Created upload task for document ");
         });
 
+        System.out.println("Start: Executing document upload tasks");
         try {
-
             jaggerUploadExecutorService.invokeAll(documentUploadCallableList);
-
+            System.out.println("Document upload tasks completed");
         } catch (InterruptedException e) {
+            System.out.println("Error: Document upload tasks interrupted");
             throw new RuntimeException(e);
         }
+        System.out.println("End: retrieveAndUploadDocuments");
     }
     
     public void startEvaluation(final String profile, final Integer procId, final String eventId) {

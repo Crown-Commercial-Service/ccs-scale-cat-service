@@ -238,7 +238,7 @@ public class EventsController extends AbstractRestController {
     // passed in as string to allow for lower case
     var audienceType = DocumentAudienceType.valueOf(audience.toUpperCase());
     return procurementEventService.uploadDocument(procId, eventId, multipartFile, audienceType,
-        description, principal);
+            description, principal);
   }
 
   @GetMapping(value = "/{eventID}/documents/{documentID}")
