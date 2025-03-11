@@ -52,6 +52,8 @@ public class CriteriaService {
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
+  private static final String KEYVAL_PAIR_QUESTION_TYPE = "KeyValuePair";
+  private static final String TERMS_ACRONYMS_QUESTION_ID = "Question 1";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
