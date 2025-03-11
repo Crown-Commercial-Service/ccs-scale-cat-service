@@ -1571,14 +1571,45 @@ public class ProcurementEventService implements EventService {
                 .status(awardDetails.getContractStatus());
     }
 
-
     private void retrieveAndUploadDocuments(String principal, ProcurementEvent procurementEvent) {
+
+        Hibernate.initialize(procurementEvent.getDocumentUploads());
+
         System.out.println("Start: retrieveAndUploadDocuments - Creating document retrieval tasks");
-        List<RetrieveDocumentCallable> retrieveDocumentCallableList = procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService, documentUpload, principal)).toList();
+
+        System.out.println("All documents in procurementEvent with status:");
+        procurementEvent.getDocumentUploads().forEach(doc ->
+                System.out.println("Document ID: " + doc.getDocumentId() +
+                        ", Status: " + doc.getExternalStatus() +
+                        ", Name: " + doc.getDocumentDescription()));
+
+            // Handle PROCESSING documents - wait for them to complete
+//            waitForProcessingDocuments(procurementEvent);
+
+        Hibernate.initialize(procurementEvent.getDocumentUploads());
+
+//        List<RetrieveDocumentCallable> retrieveDocumentCallableList = procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService, documentUpload, principal)).toList();
+        List<RetrieveDocumentCallable> retrieveDocumentCallableList = procurementEvent.getDocumentUploads().stream()
+                .filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus())
+                .map(documentUpload -> {
+                    // Log each document being processed
+                    System.out.println("Adding document to retrieval list - ID: " + documentUpload.getDocumentId() +
+                            ", Status: " + documentUpload.getExternalStatus() +
+                            ", Name: " + documentUpload.getDocumentDescription());
+                    return new RetrieveDocumentCallable(documentUploadService, documentUpload, principal);
+                })
+                .toList();
+
         System.out.println("Document callable list contents:");
         for (int i = 0; i < retrieveDocumentCallableList.size(); i++) {
             System.out.println("Item " + i + ": " + retrieveDocumentCallableList.get(i));
         }
+
+        if (retrieveDocumentCallableList.isEmpty()) {
+            System.out.println("Warning: No SAFE documents found to retrieve");
+            return;
+        }
+
         List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> retriveDocumentfutures = null;
         System.out.println("Executing document retrieval tasks");
         try {
@@ -1586,8 +1617,9 @@ public class ProcurementEventService implements EventService {
             System.out.println("Document retrieval tasks submitted: " + retrieveDocumentCallableList.size());
         } catch (InterruptedException e) {
             System.out.println("Error: Document retrieval tasks interrupted");
+            Thread.currentThread().interrupt(); // Restore interrupted status
             // TODO : Handle this and propagate your response properly
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to retrieve documents: " + e.getMessage(), e);
         }
 
         System.out.println("Start: Creating document upload tasks");
@@ -1630,3 +1662,4 @@ public class ProcurementEventService implements EventService {
     }
 
 }
+
