@@ -232,6 +232,10 @@ public class CriteriaService {
       if (ObjectUtils.allNotNull(maxValue, minValue)) {
         validationService.validateMinMaxValue(new BigDecimal(maxValue), new BigDecimal(minValue));
       }
+    } else if (Objects.equals(requirement.getNonOCDS().getQuestionType().toUpperCase(), KEYVAL_PAIR_QUESTION_TYPE.toUpperCase()) && Objects.equals(requirement.getOcds().getId().toUpperCase(), TERMS_ACRONYMS_QUESTION_ID.toUpperCase())) {
+      if (options.size() > 20) {
+        throw new IllegalArgumentException("Too many values. Maximum allowed is 20.");
+      }
     }
   }
 
