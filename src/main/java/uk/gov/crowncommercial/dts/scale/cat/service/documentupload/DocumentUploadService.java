@@ -10,10 +10,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.tika.Tika;
 import org.springframework.http.MediaType;
@@ -201,45 +204,169 @@ public class DocumentUploadService {
    * @param unprocessedDocuments
    * @param principal
    */
-  void processDocuments(final Collection<DocumentUpload> unprocessedDocuments,
-      final String principal) {
-    unprocessedDocuments.forEach(unprocessedDocUpload -> {
+//  void processDocuments(final Collection<DocumentUpload> unprocessedDocuments,
+//      final String principal) {
+//    unprocessedDocuments.forEach(unprocessedDocUpload -> {
+//
+//      // Ensure processing of each document takes place only once
+//      // TODO: Replace with Blocking queue + timeout to avoid deadlocks
+//      synchronized (unprocessedDocUpload) {
+//        // Pre-check that the document hasn't just been processed by separate thread
+//        if (unprocessedDocUpload.getExternalStatus() != VirusCheckStatus.PROCESSING) {
+//          log.debug("Document [{}] already processed - skipping",
+//              unprocessedDocUpload.getDocumentId());
+//          return;
+//        }
+//
+//        var documentStatusResponse = webclientWrapper.getOptionalResource(DocumentStatus.class,
+//            docUploadSvcGetWebclient, apiConfig.getTimeoutDuration(),
+//            apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
+//            unprocessedDocUpload.getExternalDocumentId());
+//
+//        documentStatusResponse.ifPresentOrElse(documentStatus -> {
+//
+//          if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
+//            copyDocumentFromRemoteS3(unprocessedDocUpload, documentStatus);
+//            unprocessedDocUpload.setExternalStatus(VirusCheckStatus.SAFE);
+//            unprocessedDocUpload.setTimestamps(
+//                Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
+//          } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(),
+//              documentStatus.getState())) {
+//            unprocessedDocUpload.setExternalStatus(VirusCheckStatus.UNSAFE);
+//            unprocessedDocUpload.setTimestamps(
+//                Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
+//            log.debug("Unsafe document identified, ID: [{}], event: [{}]",
+//                unprocessedDocUpload.getId(),
+//                unprocessedDocUpload.getProcurementEvent().getEventID());
+//          }
+//          documentUploadRepo.save(unprocessedDocUpload);
+//
+//        }, () -> log.error("Unable to get status from doc upload service for document ID: [{}]",
+//            unprocessedDocUpload.getDocumentId()));
+//      }
+//    });
+//  }
 
-      // Ensure processing of each document takes place only once
-      // TODO: Replace with Blocking queue + timeout to avoid deadlocks
+  void processDocuments(final Collection<DocumentUpload> unprocessedDocuments, final String principal) {
+    // Start polling for documents that remain in PROCESSING state
+    System.out.println("Start polling for documents that remain in PROCESSING state");
+    if (!unprocessedDocuments.isEmpty()) {
+      ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+      // Create a reference list that can be modified within the task
+      System.out.println("Create a reference list that can be modified within the task");
+      List<DocumentUpload> remainingDocuments = new ArrayList<>(unprocessedDocuments);
+
+      // Create an AtomicReference to hold the future
+      System.out.println("Create an AtomicReference to hold the future");
+      AtomicReference<ScheduledFuture<?>> futureRef = new AtomicReference<>();
+
+      // Schedule the polling task
+      System.out.println("Schedule the polling task");
+      ScheduledFuture<?> pollingTask = scheduler.scheduleAtFixedRate(() -> {
+        try {
+          // Process any documents still in PROCESSING state
+          System.out.println("Process any documents still in PROCESSING state");
+          Iterator<DocumentUpload> iterator = remainingDocuments.iterator();
+          while (iterator.hasNext()) {
+            DocumentUpload doc = iterator.next();
+
+            // Skip if no longer in PROCESSING state
+            System.out.println("Skip if no longer in PROCESSING state");
+            if (doc.getExternalStatus() != VirusCheckStatus.PROCESSING) {
+              iterator.remove();
+              continue;
+            }
+
+            // Check status from external service
+            System.out.println("Check status from external service");
+            var documentStatusResponse = webclientWrapper.getOptionalResource(
+                    DocumentStatus.class,
+                    docUploadSvcGetWebclient,
+                    apiConfig.getTimeoutDuration(),
+                    apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
+                    doc.getExternalDocumentId());
+
+            documentStatusResponse.ifPresent(documentStatus -> {
+              if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
+                copyDocumentFromRemoteS3(doc, documentStatus);
+                doc.setExternalStatus(VirusCheckStatus.SAFE);
+                doc.setTimestamps(Timestamps.updateTimestamps(doc.getTimestamps(), principal));
+                documentUploadRepo.save(doc);
+                iterator.remove();
+              } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(), documentStatus.getState())) {
+                doc.setExternalStatus(VirusCheckStatus.UNSAFE);
+                doc.setTimestamps(Timestamps.updateTimestamps(doc.getTimestamps(), principal));
+                documentUploadRepo.save(doc);
+                iterator.remove();
+              }
+              // If still processing, keep in the list for next poll
+              System.out.println("If still processing, keep in the list for next poll");
+            });
+          }
+
+          // If all documents are processed, cancel the polling task
+          System.out.println("If all documents are processed, cancel the polling task");
+          if (remainingDocuments.isEmpty()) {
+            ScheduledFuture<?> future = futureRef.get();
+            if (future != null) {
+              future.cancel(false);
+            }
+            scheduler.shutdown();
+          }
+        } catch (Exception e) {
+          log.error("Error during document status polling", e);
+        }
+      }, 2, 2, TimeUnit.SECONDS); // Initial delay of 2 seconds, then poll every 2 seconds
+
+      // Store the future in the AtomicReference
+      futureRef.set(pollingTask);
+
+      // Add a timeout to prevent infinite polling
+      scheduler.schedule(() -> {
+        ScheduledFuture<?> future = futureRef.get();
+        if (future != null) {
+          future.cancel(false);
+        }
+        scheduler.shutdown();
+        if (!remainingDocuments.isEmpty()) {
+          log.warn("{} documents remained in PROCESSING state after timeout", remainingDocuments.size());
+        }
+      }, 30, TimeUnit.SECONDS); // Total timeout of 30 seconds
+      System.out.println("Total timeout of 30 seconds");
+    }
+
+    // Initial processing of all documents
+    System.out.println("Initial processing of all documents");
+    unprocessedDocuments.forEach(unprocessedDocUpload -> {
       synchronized (unprocessedDocUpload) {
-        // Pre-check that the document hasn't just been processed by separate thread
         if (unprocessedDocUpload.getExternalStatus() != VirusCheckStatus.PROCESSING) {
-          log.debug("Document [{}] already processed - skipping",
-              unprocessedDocUpload.getDocumentId());
+          log.debug("Document [{}] already processed - skipping", unprocessedDocUpload.getDocumentId());
           return;
         }
 
         var documentStatusResponse = webclientWrapper.getOptionalResource(DocumentStatus.class,
-            docUploadSvcGetWebclient, apiConfig.getTimeoutDuration(),
-            apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
-            unprocessedDocUpload.getExternalDocumentId());
+                docUploadSvcGetWebclient, apiConfig.getTimeoutDuration(),
+                apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
+                unprocessedDocUpload.getExternalDocumentId());
 
         documentStatusResponse.ifPresentOrElse(documentStatus -> {
-
           if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
             copyDocumentFromRemoteS3(unprocessedDocUpload, documentStatus);
             unprocessedDocUpload.setExternalStatus(VirusCheckStatus.SAFE);
             unprocessedDocUpload.setTimestamps(
-                Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
-          } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(),
-              documentStatus.getState())) {
+                    Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
+          } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(), documentStatus.getState())) {
             unprocessedDocUpload.setExternalStatus(VirusCheckStatus.UNSAFE);
             unprocessedDocUpload.setTimestamps(
-                Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
+                    Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
             log.debug("Unsafe document identified, ID: [{}], event: [{}]",
-                unprocessedDocUpload.getId(),
-                unprocessedDocUpload.getProcurementEvent().getEventID());
+                    unprocessedDocUpload.getId(),
+                    unprocessedDocUpload.getProcurementEvent().getEventID());
           }
           documentUploadRepo.save(unprocessedDocUpload);
-
         }, () -> log.error("Unable to get status from doc upload service for document ID: [{}]",
-            unprocessedDocUpload.getDocumentId()));
+                unprocessedDocUpload.getDocumentId()));
       }
     });
   }
