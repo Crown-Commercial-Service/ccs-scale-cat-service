@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.IOUtils;
@@ -247,94 +248,127 @@ public class DocumentUploadService {
 //    });
 //  }
 
+
   void processDocuments(final Collection<DocumentUpload> unprocessedDocuments, final String principal) {
+    if (unprocessedDocuments.isEmpty()) {
+      return;
+    }
     // Start polling for documents that remain in PROCESSING state
     System.out.println("Start polling for documents that remain in PROCESSING state");
-    if (!unprocessedDocuments.isEmpty()) {
-      ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    System.out.println("Create a reference list that can be modified within the task");
+    List<DocumentUpload> remainingDocuments = new ArrayList<>(unprocessedDocuments);
+    // Create an AtomicReference to hold the future
+    System.out.println("Create an AtomicReference to hold the future");
+    AtomicReference<ScheduledFuture<?>> futureRef = new AtomicReference<>();
 
-      // Create a reference list that can be modified within the task
-      System.out.println("Create a reference list that can be modified within the task");
-      List<DocumentUpload> remainingDocuments = new ArrayList<>(unprocessedDocuments);
+    // Track if we've timed out
+    System.out.println("Track if we've timed out");
+    AtomicBoolean hasTimedOut = new AtomicBoolean(false);
 
-      // Create an AtomicReference to hold the future
-      System.out.println("Create an AtomicReference to hold the future");
-      AtomicReference<ScheduledFuture<?>> futureRef = new AtomicReference<>();
-
-      // Schedule the polling task
-      System.out.println("Schedule the polling task");
-      ScheduledFuture<?> pollingTask = scheduler.scheduleAtFixedRate(() -> {
-        try {
-          // Process any documents still in PROCESSING state
-          System.out.println("Process any documents still in PROCESSING state");
-          Iterator<DocumentUpload> iterator = remainingDocuments.iterator();
-          while (iterator.hasNext()) {
-            DocumentUpload doc = iterator.next();
-
-            // Skip if no longer in PROCESSING state
-            System.out.println("Skip if no longer in PROCESSING state");
-            if (doc.getExternalStatus() != VirusCheckStatus.PROCESSING) {
-              iterator.remove();
-              continue;
-            }
-
-            // Check status from external service
-            System.out.println("Check status from external service");
-            var documentStatusResponse = webclientWrapper.getOptionalResource(
-                    DocumentStatus.class,
-                    docUploadSvcGetWebclient,
-                    apiConfig.getTimeoutDuration(),
-                    apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
-                    doc.getExternalDocumentId());
-
-            documentStatusResponse.ifPresent(documentStatus -> {
-              if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
-                copyDocumentFromRemoteS3(doc, documentStatus);
-                doc.setExternalStatus(VirusCheckStatus.SAFE);
-                doc.setTimestamps(Timestamps.updateTimestamps(doc.getTimestamps(), principal));
-                documentUploadRepo.save(doc);
-                iterator.remove();
-              } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(), documentStatus.getState())) {
-                doc.setExternalStatus(VirusCheckStatus.UNSAFE);
-                doc.setTimestamps(Timestamps.updateTimestamps(doc.getTimestamps(), principal));
-                documentUploadRepo.save(doc);
-                iterator.remove();
-              }
-              // If still processing, keep in the list for next poll
-              System.out.println("If still processing, keep in the list for next poll");
-            });
+    // Schedule the polling task
+    System.out.println("Schedule the polling task");
+    ScheduledFuture<?> pollingTask = scheduler.scheduleAtFixedRate(() -> {
+      try {
+        // If we've timed out, don't process any more documents
+        System.out.println("If we've timed out, don't process any more documents");
+        if (hasTimedOut.get()) {
+          ScheduledFuture<?> future = futureRef.get();
+          if (future != null) {
+            future.cancel(false);
           }
+          return;
+        }
+
+        // Process any documents still in PROCESSING state
+        System.out.println("Process any documents still in PROCESSING state");
+        Iterator<DocumentUpload> iterator = remainingDocuments.iterator();
+        while (iterator.hasNext()) {
+          DocumentUpload doc = iterator.next();
+           // Skip if no longer in PROCESSING state
+          System.out.println("Skip if no longer in PROCESSING state");
+          if (doc.getExternalStatus() != VirusCheckStatus.PROCESSING) {
+            iterator.remove();
+            continue;
+          }
+          // Check status from external service
+          System.out.println("Check status from external service");
+          var documentStatusResponse = webclientWrapper.getOptionalResource(
+                  DocumentStatus.class,
+                  docUploadSvcGetWebclient,
+                  apiConfig.getTimeoutDuration(),
+                  apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
+                  doc.getExternalDocumentId());
+
+          documentStatusResponse.ifPresent(documentStatus -> {
+            if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
+              copyDocumentFromRemoteS3(doc, documentStatus);
+              doc.setExternalStatus(VirusCheckStatus.SAFE);
+              doc.setTimestamps(Timestamps.updateTimestamps(doc.getTimestamps(), principal));
+              documentUploadRepo.save(doc);
+              iterator.remove();
+            } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(), documentStatus.getState())) {
+              doc.setExternalStatus(VirusCheckStatus.UNSAFE);
+              doc.setTimestamps(Timestamps.updateTimestamps(doc.getTimestamps(), principal));
+              documentUploadRepo.save(doc);
+              iterator.remove();
+            }
+            // If still processing, keep in the list for next poll
+            System.out.println("If still processing, keep in the list for next poll");
+          });
+        }
 
           // If all documents are processed, cancel the polling task
-          System.out.println("If all documents are processed, cancel the polling task");
-          if (remainingDocuments.isEmpty()) {
-            ScheduledFuture<?> future = futureRef.get();
-            if (future != null) {
-              future.cancel(false);
-            }
-            scheduler.shutdown();
+        System.out.println("If all documents are processed, cancel the polling task");
+        if (remainingDocuments.isEmpty()) {
+          ScheduledFuture<?> future = futureRef.get();
+          if (future != null) {
+            future.cancel(false);
           }
-        } catch (Exception e) {
-          log.error("Error during document status polling", e);
+          scheduler.shutdown();
         }
-      }, 2, 2, TimeUnit.SECONDS); // Initial delay of 2 seconds, then poll every 2 seconds
+      } catch (Exception e) {
+        log.error("Error during document status polling", e);
+      }
+    }, 2, 2, TimeUnit.SECONDS);
 
-      // Store the future in the AtomicReference
-      futureRef.set(pollingTask);
+    //Store the future in the AtomicReference
+    System.out.println("Store the future in the AtomicReference");
+    futureRef.set(pollingTask);
 
-      // Add a timeout to prevent infinite polling
-      scheduler.schedule(() -> {
-        ScheduledFuture<?> future = futureRef.get();
-        if (future != null) {
-          future.cancel(false);
+    // Add a timeout to prevent infinite polling
+    System.out.println("Add a timeout to prevent infinite polling");
+    scheduler.schedule(() -> {
+      hasTimedOut.set(true);
+
+      ScheduledFuture<?> future = futureRef.get();
+      if (future != null) {
+        future.cancel(false);
+      }
+
+      if (!remainingDocuments.isEmpty()) {
+        log.warn("{} documents remained in PROCESSING state after timeout", remainingDocuments.size());
+
+        //Just log the IDs for later investigation
+        remainingDocuments.forEach(doc -> {
+          log.warn("Document ID [{}] remained in PROCESSING state after timeout", doc.getDocumentId());
+        });
+      }
+
+      scheduler.shutdown();
+
+      // Ensure scheduler is properly terminated
+      System.out.println("Ensure scheduler is properly terminated");
+      try {
+        if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+          scheduler.shutdownNow();
         }
-        scheduler.shutdown();
-        if (!remainingDocuments.isEmpty()) {
-          log.warn("{} documents remained in PROCESSING state after timeout", remainingDocuments.size());
-        }
-      }, 30, TimeUnit.SECONDS); // Total timeout of 30 seconds
-      System.out.println("Total timeout of 30 seconds");
-    }
+      } catch (InterruptedException e) {
+        scheduler.shutdownNow();
+        Thread.currentThread().interrupt();
+      }
+    }, 30, TimeUnit.SECONDS); // Total timeout of 30 seconds
+    System.out.println("Total timeout of 30 seconds");
 
     // Initial processing of all documents
     System.out.println("Initial processing of all documents");
