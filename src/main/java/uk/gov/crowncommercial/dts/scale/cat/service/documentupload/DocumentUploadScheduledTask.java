@@ -30,16 +30,12 @@ public class DocumentUploadScheduledTask {
     if (schedulerLock.tryLock()) {
       try {
         var unprocessedDocuments = documentUploadRepo.findByExternalStatus(VirusCheckStatus.PROCESSING);
-        log.debug("Begin scheduled processing of {} unprocessed documents",
-                unprocessedDocuments.size());
         documentUploadService.processDocuments(unprocessedDocuments, PRINCIPAL);
       } catch (Exception e) {
         log.error("Error during document processing task: {}", e.getMessage(), e);
       } finally {
         schedulerLock.unlock();
       }
-    } else {
-      log.debug("Previous task still running, skipping this execution");
     }
   }
 }
