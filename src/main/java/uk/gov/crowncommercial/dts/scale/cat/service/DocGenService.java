@@ -349,7 +349,7 @@ public class DocGenService {
                 int months = Integer.parseInt(parts[1]);
                 int days = Integer.parseInt(parts[2]);
 
-                formattedPeriod = String.format("%d years, %d months, %d days", years, months, days);
+                formattedPeriod = String.format(PERIOD_FMT, years, months, days);
               } catch (Exception ex) {
                 // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
                 log.error("Unable to parse value as a Period for document generation. Value: '{}'", dataReplacement.getFirst(), ex);
