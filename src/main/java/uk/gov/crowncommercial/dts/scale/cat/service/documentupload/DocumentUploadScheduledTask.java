@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.VirusCheckStatus;
 import uk.gov.crowncommercial.dts.scale.cat.repo.DocumentUploadRepo;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  *
  */
@@ -18,16 +20,22 @@ public class DocumentUploadScheduledTask {
 
   static final String PRINCIPAL = "TENDERS_API_DOC_UPLOAD_DEAMON";
 
+  private final ReentrantLock schedulerLock = new ReentrantLock();
   private final DocumentUploadService documentUploadService;
   private final DocumentUploadRepo documentUploadRepo;
 
-  @Scheduled(fixedDelayString = "PT1M")
+  @Scheduled(fixedDelayString = "PT10S")
   @Transactional
   void checkDocumentStatus() {
-    var unprocessedDocuments = documentUploadRepo.findByExternalStatus(VirusCheckStatus.PROCESSING);
-    log.debug("Begin scheduled processing of {} unprocessed documents",
-        unprocessedDocuments.size());
-    documentUploadService.processDocuments(unprocessedDocuments, PRINCIPAL);
+    if (schedulerLock.tryLock()) {
+      try {
+        var unprocessedDocuments = documentUploadRepo.findByExternalStatus(VirusCheckStatus.PROCESSING);
+        documentUploadService.processDocuments(unprocessedDocuments, PRINCIPAL);
+      } catch (Exception e) {
+        log.error("Error during document processing task: {}", e.getMessage(), e);
+      } finally {
+        schedulerLock.unlock();
+      }
+    }
   }
-
 }

@@ -52,6 +52,8 @@ public class CriteriaService {
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
+  private static final String KEYVAL_PAIR_QUESTION_TYPE = "KeyValuePair";
+  private static final String TERMS_ACRONYMS_QUESTION_ID = "Question 1";
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -231,6 +233,10 @@ public class CriteriaService {
       }
       if (ObjectUtils.allNotNull(maxValue, minValue)) {
         validationService.validateMinMaxValue(new BigDecimal(maxValue), new BigDecimal(minValue));
+      }
+    } else if (Objects.equals(requirement.getNonOCDS().getQuestionType().toUpperCase(), KEYVAL_PAIR_QUESTION_TYPE.toUpperCase()) && Objects.equals(requirement.getOcds().getId().toUpperCase(), TERMS_ACRONYMS_QUESTION_ID.toUpperCase())) {
+      if (options.size() > 20) {
+        throw new IllegalArgumentException("Too many values. Maximum allowed is 20.");
       }
     }
   }

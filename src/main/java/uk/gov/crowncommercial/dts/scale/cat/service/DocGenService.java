@@ -343,9 +343,13 @@ public class DocGenService {
 
             if (dataReplacement != null && !dataReplacement.isEmpty()) {
               try {
-                // Try to fetch the value as a Period then parse it
-                Period period = Period.parse(dataReplacement.getFirst());
-                formattedPeriod = String.format(PERIOD_FMT, period.getYears(), period.getMonths(), period.getDays());
+                // Since format is always "Y-MM-DD" (e.g., "2-00-00"), split and parse as integers.
+                String[] parts = dataReplacement.getFirst().split("-");
+                int years = Integer.parseInt(parts[0]);
+                int months = Integer.parseInt(parts[1]);
+                int days = Integer.parseInt(parts[2]);
+
+                formattedPeriod = String.format(PERIOD_FMT, years, months, days);
               } catch (Exception ex) {
                 // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
                 log.error("Unable to parse value as a Period for document generation. Value: '{}'", dataReplacement.getFirst(), ex);
