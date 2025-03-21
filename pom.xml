@@ -34,7 +34,7 @@
         <poi-ooxml.version>5.4.0</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.4</snakeyaml.version>
-        <spring-security.version>6.4.3</spring-security.version>
+        <spring-security.version>6.4.4</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.19.1</jsoup.version>
@@ -46,7 +46,7 @@
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.17</logback.version>
-        <feignclient.version>4.2.0</feignclient.version>
+        <feignclient.version>4.2.1</feignclient.version>
         <ehcache.version>3.10.8</ehcache.version>
         <retry.version>2.0.11</retry.version>
         <jetty-reactive.version>4.0.9</jetty-reactive.version>
