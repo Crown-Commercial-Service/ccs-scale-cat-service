@@ -103,14 +103,18 @@ public class AgreementsService {
     String exceptionFormat = "Lot with ID: [" + formattedLotId + "] for CA: [" + agreementId + "] not found in AS";
 
     try {
-      LotDetail model = agreementsClient.getLotDetail(agreementId, formattedLotId, serviceApiKey);
+      if (!lotId.equalsIgnoreCase("All")) {
+        LotDetail model = agreementsClient.getLotDetail(agreementId, formattedLotId, serviceApiKey);
 
-      // Return the model if possible, otherwise throw an error
-      if (model != null) {
-        return model;
+        // Return the model if possible, otherwise throw an error
+        if (model != null) {
+          return model;
+        } else {
+          log.warn("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
+          throw new AgreementsServiceApplicationException(exceptionFormat);
+        }
       } else {
-        log.warn("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
-        throw new AgreementsServiceApplicationException(exceptionFormat);
+        return null;
       }
     } catch (Exception ex) {
       log.error("Error getting Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
