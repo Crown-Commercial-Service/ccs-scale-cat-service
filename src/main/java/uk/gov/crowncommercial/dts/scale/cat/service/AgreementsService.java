@@ -1,11 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.hibernate.query.sqm.tree.SqmNode.log;
 import java.util.Collection;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
  * Agreements Service API Service layer. Handles interactions with the external service
  */
 @Service
+@Slf4j
 public class AgreementsService {
   @Value("${config.external.agreementsService.apiKey}")
   public String serviceApiKey;
@@ -102,14 +103,18 @@ public class AgreementsService {
     String exceptionFormat = "Lot with ID: [" + formattedLotId + "] for CA: [" + agreementId + "] not found in AS";
 
     try {
-      LotDetail model = agreementsClient.getLotDetail(agreementId, formattedLotId, serviceApiKey);
+      if (!lotId.equalsIgnoreCase("All")) {
+        LotDetail model = agreementsClient.getLotDetail(agreementId, formattedLotId, serviceApiKey);
 
-      // Return the model if possible, otherwise throw an error
-      if (model != null) {
-        return model;
+        // Return the model if possible, otherwise throw an error
+        if (model != null) {
+          return model;
+        } else {
+          log.warn("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
+          throw new AgreementsServiceApplicationException(exceptionFormat);
+        }
       } else {
-        log.warn("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
-        throw new AgreementsServiceApplicationException(exceptionFormat);
+        return null;
       }
     } catch (Exception ex) {
       log.error("Error getting Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
