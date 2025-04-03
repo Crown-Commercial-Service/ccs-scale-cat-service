@@ -380,7 +380,7 @@ public class CriteriaService {
         .id(r.getOcds().getId())
         .title(r.getOcds().getTitle())
         .description(description)
-        .dataType(DataType.fromValue(r.getOcds().getDataType()))
+        .dataType(DataType.fromValue(r.getOcds().getDataType().toLowerCase()))
         .pattern(r.getOcds().getPattern())
         .expectedValue(new Value1().amount(r.getOcds().getExpectedValue()))
         .minValue(new Value1().amount(r.getOcds().getMinValue()))
