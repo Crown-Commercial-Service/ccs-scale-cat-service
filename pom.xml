@@ -51,7 +51,7 @@
         <retry.version>2.0.11</retry.version>
         <jetty-reactive.version>4.0.9</jetty-reactive.version>
         <postgres.version>42.7.5</postgres.version>
-        <lombok.version>1.18.36</lombok.version>
+        <lombok.version>1.18.38</lombok.version>
         <spring.version>6.4.4</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.0</compiler.version>
