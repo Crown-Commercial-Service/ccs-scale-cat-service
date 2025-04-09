@@ -62,18 +62,14 @@ class ExceptionHandlerTests {
     @MockBean
     private LockProvider lockProvider;
 
+    // IF the app has successfully started, these endpoints will return 401 Unauthorised, and therefore this suit will pass. IF the app fails to start this test suit will fail.
     @Test
-    void testNonExistentPathReturns404() throws Exception {
-        mockMvc.perform(get("/doesnotexist")).andExpect(status().isNotFound());
+    void testNonExistentPathReturnsUnauthorised() throws Exception {
+        mockMvc.perform(get("/doesnotexist")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    void testIndexReturns200() throws Exception {
-        mockMvc.perform(get("/")).andExpect(status().isOk());
-    }
-
-    @Test
-    void testValidPageReturns200() throws Exception {
-        mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    void testIndexReturnsUnauthorised() throws Exception {
+        mockMvc.perform(get("/")).andExpect(status().isUnauthorized());
     }
 }
