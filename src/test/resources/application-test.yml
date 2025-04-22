@@ -1,10 +1,12 @@
+# Core Spring config
 spring:
   security:
     oauth2:
       resourceserver:
         jwt:
           jwk-set-uri: https://dummy.example.com
-          
+
+# Custom config items
 config:
   flags:
     devMode: true        
@@ -13,7 +15,3 @@ config:
   external:
     agreementsService:
       baseUrl: https://dummy.example.com
-    jaggaer:
-      rpa: 
-        encryptionIv: hjnhgy8k*A?(7y-K
-        encryptionKey: uikjnsh657*y%hD*G-KaPdS*kij#3s6v
