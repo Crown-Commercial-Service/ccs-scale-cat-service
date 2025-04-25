@@ -41,7 +41,7 @@
         <hibernate.version>6.6.13.Final</hibernate.version>
         <junitapi.version>5.12.2</junitapi.version>
         <opensearch.version>1.6.2</opensearch.version>
-        <shedlock.version>6.3.1</shedlock.version>
+        <shedlock.version>6.4.0</shedlock.version>
         <spring-boot.version>3.4.4</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
