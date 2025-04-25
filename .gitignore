@@ -55,5 +55,8 @@ build/
 ### Local config ###
 /src/main/resources/application-local.yml
 
+### Local DB ###
+/src/main/resources/data.sql
+
 # Redis files
 dump.rdb
