@@ -34,7 +34,7 @@
         <poi-ooxml.version>5.4.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.4</snakeyaml.version>
-        <spring-security.version>6.4.4</spring-security.version>
+        <spring-security.version>6.4.5</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.19.1</jsoup.version>
@@ -42,7 +42,7 @@
         <junitapi.version>5.12.2</junitapi.version>
         <opensearch.version>1.6.2</opensearch.version>
         <shedlock.version>6.4.0</shedlock.version>
-        <spring-boot.version>3.4.4</spring-boot.version>
+        <spring-boot.version>3.4.5</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.18</logback.version>
@@ -56,6 +56,7 @@
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.0</compiler.version>
         <cucumber.version>7.22.0</cucumber.version>
+        <h2.version>2.3.232</h2.version>
     </properties>
 
     <dependencies>
@@ -404,6 +405,12 @@
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-provider-jdbc-template</artifactId>
             <version>${shedlock.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>${h2.version}</version>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 

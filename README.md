@@ -26,7 +26,9 @@ To run the application locally, you simply need to run the core ccs-scale-cat-se
 
 In order to generate required classes for the application, you need to use Maven to _**Generate Sources and Update Folders**_.
 
-You will need to be supplied with a local secrets file (`local-env-local-pg.yml`) to enable the project to run, which can be supplied by any member of the development team.
+You will need to be supplied with a local secrets file (`resources/application-local.yml`) to enable the project to run, which can be supplied by any member of the development team.
+
+You will also need to be supplied with a local SQL file (`resources/data.sql`) to enable the project to spool up the necessary local database for you at runtime, which can again be supplied by any member of the development team.
 
 Once the application has started it can be accessed via Postman using the URL http://localhost:8080/.
 
