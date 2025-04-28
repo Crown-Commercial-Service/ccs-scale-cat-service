@@ -1,10 +1,3 @@
-#spring:
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          jwk-set-uri: "SET IN ENV"
-
 # App info (for actuator)
 info:
   app:
@@ -29,7 +22,7 @@ management:
     env:
       enabled: true
 
-
+# Logging config
 logging:
   level:
     org.springframework.security: DEBUG
@@ -46,8 +39,10 @@ caching:
   long:
     cacheLength: 3600
     heapSize: 500
+  # Agreements to be cached
   agreements: RM1557.13,RM1043.8,RM6187,RM1557.14
 
+# Core Spring config
 spring:
   jpa:
     open-in-view: false
@@ -64,18 +59,18 @@ spring:
       connectionTimeout: 10000
       maximumPoolSize: 30
   servlet:
+    # Note: Size config must mirror config.maxSize setting
     multipart:
-      max-file-size: 300MB # must match config.maxSize
-      max-request-size: 300MB # must match config.maxSize
+      max-file-size: 300MB
+      max-request-size: 300MB
 
+# Error pathing config
 server:
   error:
     path: "/error"
 
+# Custom config items
 config:
-#  rollbar:
-#    accessToken:
-#    environment:
   ocds:
     authority: ocds
     ocid-prefix: pfhb7i
@@ -118,23 +113,51 @@ config:
           size: 80    
     
   external:
-#   s3:
-#     oppertunities:
-#       ui:
-#         link: SET IN ENV"
-#       schedule: SET IN ENV"
-#   projects:
-#     sync:
-#       schedule: SET IN ENV"
+    agreementsService:
+      timeoutDuration: 10
+      getAgreementDetail:
+        uriTemplate: /agreements-service/agreements/{agreement-id}
+      getLotDetailsForAgreement:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}
+      getLotSuppliers:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/suppliers
+      getLotEventTypeDataTemplates:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+      getEventTypesForAgreement:
+        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
+
+    conclaveWrapper:
+      timeoutDuration: 10
+      buyerRoleKey: JAEGGER_BUYER
+      catUserRoleKey: CAT_USER
+      supplierRoleKey: JAEGGER_SUPPLIER
+      getUser:
+        uriTemplate: /user-profile?user-id={user-id}
+      getUserContacts:
+        uriTemplate: /contact-service/user/contacts?user-id={email}
+      getOrganisation:
+        uriTemplate: /organisation-profile/{org-id}
+      getOrganisationIdentity:
+        uriTemplate: /identities/organisations/{org-id}
+
+    docUploadSvc:
+      timeoutDuration: 10
+      awsRegion: eu-west-2
+      documentStateProcessing: processing
+      documentStateSafe: safe
+      documentStateUnsafe: unsafe
+      postDocument:
+        uriTemplate: /documents
+      getDocumentRecord:
+        uriTemplate: /documents/{document-id}
+
     jaggaer:
-#      baseUrl: "SET IN ENV"
       timeoutDuration: 300
       addDivisionToProjectTeam: false
       headerValueInvalidContentType: "; charset=UTF-8"
       headerValueWWWAuthenticate: 'Bearer error="invalid_or_missing_token"'
       defaultBuyerRightsProfile: "Non-CCS Call-Off Buyer"
       defaultSupplierRightsProfile: ""
-
       rfxStatusToTenderStatus:
         0: PLANNED
         100: PLANNED
@@ -153,7 +176,6 @@ config:
         1400: COMPLETE
         1100: WITHDRAWN
         1000: CANCELLED
-
       rfxStatusAndEventTypeToTenderStatus:
         0:
           RFI:
@@ -201,11 +223,7 @@ config:
             CANCELLED
           DA:
             CANCELLED
-
-      #createProjectTemplateId: "SET IN ENV"
-      #createRfxTemplateId: "SET IN ENV"
       createProject:
-        # CA-Lot-BuyerOrg e.g. RM1234-Lot1a-CCS
         defaultTitleFormat: "%s-%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/projects
       getProject:
@@ -213,11 +231,8 @@ config:
       getProjectList:
         endpoint: /esop/jint/api/public/ja/v1/projects?flt={filters}
       createRfx:
-        # ProjectName-EventType e.g. RM1234-Lot1a-CCS-RFP
         defaultTitleFormat: "%s-%s"
         endpoint: /esop/jint/api/public/ja/v1/rfxs/
-        
-      # TODO / NB: Search via SSO data directly only works for super users (i.e. suppliers)
       getBuyerCompanyProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==BUYER;BRAVOID==${config.external.jaggaer.self-service-id}
       getSupplierCompanyProfileByBravoID:
@@ -226,7 +241,6 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID   
       getSupplierSubUserProfile:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SUBUSERLOGIN=={{PRINCIPAL}}
-        # endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=TYPE==SELLER;SSO_UserLogin=={{PRINCIPAL}};SSO_Code==OPEN_ID
       exportRfx:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/{id}
       exportRfxWithEmailRecipients:
@@ -245,8 +259,6 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?flt=fiscalCode=={{FISCALCODE}}  
       getCompanyProfileByBravoID:
         endpoint: /esop/jint/api/public/ja/v1/companyprofiles?comp=USER;SSO_CODE&flt=BRAVOID=={{PRINCIPAL}}
-
-      # This is far more performant for summary-level only data
       searchRfxSummary:
         endpoint: /esop/jint/api/public/ja/v1/rfxs?flt=rfxId=in=({rfqIds})
       searchRfxSummaryWithComponents:
@@ -281,85 +293,13 @@ config:
         endpoint: /esop/jint/api/public/ja/v1/messages
       creatUpdateScores:
         endpoint: /esop/jint/api/public/ja/v1/rfxs/scores
-                  
-          
-      # Temporary - SOAP API workaround for UPDATE/CREATE/DELETE user profile SSO data
       soap:
         profileManagementEndpoint: /esop/jint/services/ProfileManagement
-        
-      rpa: 
-#       baseUrl: "SET IN ENV"
-        accessUrl: /api/a/automation
-        authenticationUrl: /api/token
-#       userName: "SET IN ENV"
-#       userPwd: "SET IN ENV"
-#       buyerPwd: "SET IN ENV"
-        source: CaT
-        sourceId: 1
-        profileName: ITTEvaluation
-        timeoutDuration: 120
-        requestTimeout: 3600000
-    
-    # RPA Transfer S3
-    s3:
-      rpa:
-        region: eu-west-2
-        # Default to once a week, midnight Monday
-        exportSchedule: "0 0 0 * * MON"
-        
-    agreementsService:
-      # baseUrl: "SET IN ENV"
-      # apiKey: "SET IN ENV"
-      timeoutDuration: 10
-      getAgreementDetail:
-        uriTemplate: /agreements-service/agreements/{agreement-id}
-      getLotDetailsForAgreement:
-        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}
-      getLotSuppliers:
-        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/suppliers
-      getLotEventTypeDataTemplates:
-        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
-      getEventTypesForAgreement:
-        uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
-
-    conclaveWrapper:
-      # baseUrl: "SET IN ENV"
-      # identitiesBaseUrl: "SET IN ENV"
-      # apiKey: "SET IN ENV"
-      timeoutDuration: 10
-      # Role keys are incorrectly spelt in Conclave
-      buyerRoleKey: JAEGGER_BUYER
-      catUserRoleKey: CAT_USER
-      supplierRoleKey: JAEGGER_SUPPLIER      
-      getUser:
-        uriTemplate: /user-profile?user-id={user-id}
-      getUserContacts:
-        uriTemplate: /contact-service/user/contacts?user-id={email}
-        
-      # Org ID is the internal ID
-      getOrganisation:
-        uriTemplate: /organisation-profile/{org-id}
-        
-      # Org ID is {scheme}-{registry-id} e.g. US-DUN-123456789
-      getOrganisationIdentity:
-        uriTemplate: /identities/organisations/{org-id}
-        
-    docUploadSvc:
-      timeoutDuration: 10
-      awsRegion: eu-west-2
-      documentStateProcessing: processing
-      documentStateSafe: safe
-      documentStateUnsafe: unsafe
-      postDocument:
-        uriTemplate: /documents
-      getDocumentRecord:
-        uriTemplate: /documents/{document-id}
       
   flags:
-    # Prod env set to true
     resolveUsersBySSO: true
     resolveBuyerUsersBySSO: true
-    # devMode: "SET IN ENV"
+
 ---
 spring:
   config:
@@ -369,18 +309,12 @@ spring:
         - local
         - local-pg
 
-  # JAGGAER CONFIG
   security:
     oauth2:
       client:
-#        provider:
-#          jaggaer:
-#            token-uri: "SET IN ENV"
         registration:
           jaggaer:
             authorization-grant-type: client_credentials
-#            client-id: "SET IN ENV"
-#            client-secret: "SET IN ENV"
 
 ---
 spring:
@@ -394,12 +328,3 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
-
----
-spring:
-  config:
-    activate:
-      on-profile:
-        - local-pg
-  datasource:
-    url: jdbc:postgresql://127.0.0.1:5432/cat
