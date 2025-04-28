@@ -52,8 +52,11 @@ build/
 # ODT lock files
 **/.~lock*
 
-# Local secrets
-/src/main/resources/local-env-local-pg.yml
+### Local config ###
+/src/main/resources/application-local.yml
+
+### Local DB ###
+/src/main/resources/data.sql
 
 # Redis files
 dump.rdb
