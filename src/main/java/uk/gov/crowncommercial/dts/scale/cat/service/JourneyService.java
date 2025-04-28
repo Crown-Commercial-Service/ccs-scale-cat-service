@@ -22,14 +22,15 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 public class JourneyService {
 
   private static final String CLIENT_ID = "CAT_BUYER_UI";
-  private static final String ERR_FMT_JOURNEY_NOT_FOUND = "Journey [%s] not found";
+  private static final String ERR_FMT_JOURNEY_NOT_FOUND = "";
   private static final String ERR_FMT_JOURNEY_STEP_NOT_FOUND = "Journey step [%s] not found";
+  private static final String ERR_FMT_JOURNEY_EXISTS = "Journey [%s] already exists";
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   public String createJourney(final Journey journey, final String principal) {
 
     if (retryableTendersDBDelegate.findJourneyByExternalId(journey.getJourneyId()).isPresent()) {
-      throw new DataConflictException("Journey [" + journey.getJourneyId() + "] already exists");
+      throw new DataConflictException(String.format(ERR_FMT_JOURNEY_EXISTS, journey.getJourneyId()));
     }
 
     var journeyEntity = JourneyEntity.builder().clientId(CLIENT_ID)
