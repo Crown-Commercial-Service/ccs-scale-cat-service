@@ -15,7 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.journey_service.generated.Step
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
- *
+ * Journey service - for interacting with journeys and journey steps
  */
 @Service
 @RequiredArgsConstructor
@@ -25,6 +25,7 @@ public class JourneyService {
   private static final String ERR_FMT_JOURNEY_NOT_FOUND = "";
   private static final String ERR_FMT_JOURNEY_STEP_NOT_FOUND = "Journey step [%s] not found";
   private static final String ERR_FMT_JOURNEY_EXISTS = "Journey [%s] already exists";
+  private static final String ERR_FML_JOURNEY_NOT_EXIST = "Journey [%s] does not exist";
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   public String createJourney(final Journey journey, final String principal) {
@@ -47,7 +48,7 @@ public class JourneyService {
         retryableTendersDBDelegate.findJourneyByExternalId(journey.getJourneyId());
 
     if (findJourneyByExternalId.isEmpty()) {
-      throw new ResourceNotFoundException("Journey [" + journey.getJourneyId() + "] not exists");
+      throw new ResourceNotFoundException(String.format(ERR_FML_JOURNEY_NOT_EXIST,  journey.getJourneyId()));
     }
     
     JourneyEntity journeyEntity = findJourneyByExternalId.get();
@@ -83,7 +84,6 @@ public class JourneyService {
     var journey = retryableTendersDBDelegate.findJourneyByExternalId(journeyId);
 
     return journey.orElseThrow(
-        () -> new ResourceNotFoundException(String.format(ERR_FMT_JOURNEY_NOT_FOUND, journeyId)));
+        () -> new ResourceNotFoundException(ERR_FMT_JOURNEY_NOT_FOUND));
   }
-
 }
