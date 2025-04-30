@@ -712,8 +712,11 @@ public class ProcurementProjectService {
 
       return teamMember;
     } catch (final ResourceNotFoundException rnfe) {
-      log.warn("Unable to find user '{}' in {} when building Project Team, so ignoring.",
-          jaggaerUserId, rnfe.getMessage());
+      // Modified to only log if the exception is not about Jaggaer
+      if (!"Jaggaer".equals(rnfe.getMessage())) {
+        log.warn("Unable to find user '{}' in {} when building Project Team, so ignoring.",
+                jaggaerUserId, rnfe.getMessage());
+      }
       return null;
     } catch (final Exception e) {
       if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
