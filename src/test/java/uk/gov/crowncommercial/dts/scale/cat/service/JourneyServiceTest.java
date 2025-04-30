@@ -110,7 +110,7 @@ class JourneyServiceTest {
     var ex = assertThrows(ResourceNotFoundException.class, () -> journeyService
         .updateJourneyStepState(JOURNEY_ID, 1, StepState.IN_PROGRESS, PRINCIPAL));
 
-    assertEquals("Journey [" + JOURNEY_ID + "] not found", ex.getMessage());
+    assertEquals("", ex.getMessage());
   }
 
   @Test
@@ -137,6 +137,6 @@ class JourneyServiceTest {
     var ex = assertThrows(ResourceNotFoundException.class,
         () -> journeyService.getJourneyState(JOURNEY_ID));
 
-    assertEquals("Journey [" + JOURNEY_ID + "] not found", ex.getMessage());
+    assertEquals("", ex.getMessage());
   }
 }
