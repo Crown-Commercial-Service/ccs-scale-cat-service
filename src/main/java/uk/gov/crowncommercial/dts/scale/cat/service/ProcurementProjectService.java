@@ -680,7 +680,7 @@ public class ProcurementProjectService {
 
     try {
       var jaggaerUser = userProfileService.resolveBuyerUserByUserId(jaggaerUserId)
-          .orElseThrow(() -> new ResourceNotFoundException("Jaggaer"));
+          .orElseThrow(() -> new ResourceNotFoundException(""));
       if (Objects.isNull(jaggaerUser.getSsoCodeData())){
         throw new ResourceNotFoundException("Conclave");
       }
@@ -712,11 +712,6 @@ public class ProcurementProjectService {
 
       return teamMember;
     } catch (final ResourceNotFoundException rnfe) {
-      // Modified to only log if the exception is not about Jaggaer
-      if (!"Jaggaer".equals(rnfe.getMessage())) {
-        log.warn("Unable to find user '{}' in {} when building Project Team, so ignoring.",
-                jaggaerUserId, rnfe.getMessage());
-      }
       return null;
     } catch (final Exception e) {
       if (e.getCause() != null && e.getCause().getClass() == JaggaerApplicationException.class) {
