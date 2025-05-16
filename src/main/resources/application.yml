@@ -300,6 +300,10 @@ config:
     resolveUsersBySSO: true
     resolveBuyerUsersBySSO: true
 
+# Task scheduling configuration
+scheduling:
+  batchProcessing: PT3M
+
 ---
 spring:
   config:

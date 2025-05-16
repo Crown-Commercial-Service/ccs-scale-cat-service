@@ -66,4 +66,12 @@ public class TaskSchedulingClient {
             });
         }
     }
+
+    /**
+     * At a time increment dictated by configuration, process the Jaegger batching queue
+     */
+    @Scheduled(fixedDelayString = "${scheduling.batchProcessing}")
+    public void processJaeggerBatchQueue() {
+        log.info("executing scheduled batch job");
+    }
 }
