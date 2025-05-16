@@ -10,6 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.BatchingService;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,6 +24,9 @@ import java.util.List;
 public class TaskSchedulingClient {
     @Autowired
     AgreementsService agreementsService;
+
+    @Autowired
+    BatchingService batchingService;
 
     @Value("${caching.agreements}")
     private String activeAgreements;
@@ -72,6 +76,7 @@ public class TaskSchedulingClient {
      */
     @Scheduled(fixedDelayString = "${scheduling.batchProcessing}")
     public void processJaeggerBatchQueue() {
+        // To start we need to grab the contents of the batch queue from the batching service
         log.info("executing scheduled batch job");
     }
 }
