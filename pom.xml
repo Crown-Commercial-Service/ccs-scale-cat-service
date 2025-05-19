@@ -19,7 +19,7 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.27</swagger-parser.version>
+        <swagger-parser.version>2.1.28</swagger-parser.version>
         <guava.version>33.4.8-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
@@ -38,7 +38,7 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.20.1</jsoup.version>
-        <hibernate.version>6.6.14.Final</hibernate.version>
+        <hibernate.version>6.6.15.Final</hibernate.version>
         <junitapi.version>5.12.2</junitapi.version>
         <opensearch.version>1.6.3</opensearch.version>
         <shedlock.version>6.6.1</shedlock.version>
@@ -48,14 +48,14 @@
         <logback.version>1.5.18</logback.version>
         <feignclient.version>4.2.1</feignclient.version>
         <ehcache.version>3.10.8</ehcache.version>
-        <retry.version>2.0.11</retry.version>
+        <retry.version>2.0.12</retry.version>
         <jetty-reactive.version>4.0.9</jetty-reactive.version>
         <postgres.version>42.7.5</postgres.version>
         <lombok.version>1.18.38</lombok.version>
         <spring.version>6.4.5</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.0</compiler.version>
-        <cucumber.version>7.22.1</cucumber.version>
+        <cucumber.version>7.22.2</cucumber.version>
         <h2.version>2.3.232</h2.version>
     </properties>
 
