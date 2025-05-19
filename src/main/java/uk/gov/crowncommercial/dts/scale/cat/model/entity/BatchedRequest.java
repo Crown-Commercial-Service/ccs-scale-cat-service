@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import uk.gov.crowncommercial.dts.scale.cat.model.converters.RfxJsonConverter;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 
 /**
@@ -31,5 +32,6 @@ public class BatchedRequest {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "request_payload")
+    @Convert(converter = RfxJsonConverter.class)
     Rfx requestPayload;
 }
