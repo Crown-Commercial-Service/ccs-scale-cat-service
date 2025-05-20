@@ -81,9 +81,11 @@ public class TaskSchedulingClient {
         List<BatchedRequest> requestQueue = batchingService.getBatchQueueContents();
 
         if (requestQueue != null && !requestQueue.isEmpty()) {
-            log.info("Got queue contents");
-        } else {
-            log.info("Queue is empty it appears");
+            // There are entries in the queue - iterate over them and process them
+            requestQueue.forEach(request -> {
+                // TODO: work in another ticket
+                log.info("Processing queue request item");
+            });
         }
     }
 }

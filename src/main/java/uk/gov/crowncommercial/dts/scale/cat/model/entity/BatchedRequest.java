@@ -1,11 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import uk.gov.crowncommercial.dts.scale.cat.model.converters.RfxJsonConverter;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
 
 /**
@@ -32,6 +33,10 @@ public class BatchedRequest {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "request_payload")
-    @Convert(converter = RfxJsonConverter.class)
-    Rfx requestPayload;
+    String requestPayload;
+
+    public Rfx getPayloadAsRfx() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.readValue(requestPayload, Rfx.class);
+    }
 }
