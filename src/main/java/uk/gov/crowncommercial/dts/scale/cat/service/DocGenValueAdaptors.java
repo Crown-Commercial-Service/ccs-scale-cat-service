@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -157,11 +158,18 @@ public class DocGenValueAdaptors {
         });
   }
 
-  private String getPublishDate(final ProcurementEvent event, final Map<String, Object> requestCache){
-    var formattedDatetime = event.getPublishDate() == null ? OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
-            : OffsetDateTime.ofInstant(event.getPublishDate(), ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+  private String getPublishDate(final ProcurementEvent event, final Map<String, Object> requestCache) {
+    System.out.println("getPublishDate called for event: " + event.getId());
+    // Define UK timezone for BST/GMT
+    ZoneId ukZone = ZoneId.of("Europe/London");
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+
+    var formattedDatetime = event.getPublishDate() == null ? ZonedDateTime.now(ukZone).format(formatter) : event.getPublishDate().atZone(ukZone).format(formatter);
+
+    System.out.println("Formatted date result: " + formattedDatetime);
     return formattedDatetime;
   }
+
   private TeamMember getProcurementProjectLead(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
 
