@@ -157,16 +157,14 @@ public class DocGenValueAdaptors {
                   "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
         });
   }
-
+  /**
+   * Formats the published date in the generated ODT docs that are passed over to Jaggaer
+   */
   private String getPublishDate(final ProcurementEvent event, final Map<String, Object> requestCache) {
-    System.out.println("getPublishDate called for event: " + event.getId());
     // Define UK timezone for BST/GMT
     ZoneId ukZone = ZoneId.of("Europe/London");
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
-
     var formattedDatetime = event.getPublishDate() == null ? ZonedDateTime.now(ukZone).format(formatter) : event.getPublishDate().atZone(ukZone).format(formatter);
-
-    System.out.println("Formatted date result: " + formattedDatetime);
     return formattedDatetime;
   }
 

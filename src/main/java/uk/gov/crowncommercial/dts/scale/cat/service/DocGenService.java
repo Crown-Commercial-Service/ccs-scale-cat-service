@@ -415,15 +415,10 @@ public class DocGenService {
           // Format this as a date only
           return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
         } else {
-          // Format this as a date / time with daylight savings handling
-          System.out.println("Formatting as date/time with DST handling: " + dateValue);
+          // Format date/time to handle daylight savings
           OffsetDateTime odt = OffsetDateTime.parse(dateValue);
-          System.out.println("Parsed OffsetDateTime: " + odt + ", offset: " + odt.getOffset());
-          ZonedDateTime ukTime = odt.atZoneSameInstant(ZoneId.of("Europe/London"));
-          System.out.println("Converted to UK time: " + ukTime + ", zone: " + ukTime.getZone() + ", offset: " + ukTime.getOffset());
-          String result = DATE_FMT.format(ukTime);
-          System.out.println("Formatted result: " + result);
-          return result;
+          ZonedDateTime ukZone = odt.atZoneSameInstant(ZoneId.of("Europe/London"));
+          return DATE_FMT.format(ukZone);
         }
       } catch (Exception ex) {
         // There was an issue during conversion - the data was likely in an unexpected format.  Log this then return the default placeholder
