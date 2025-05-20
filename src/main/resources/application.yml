@@ -304,6 +304,10 @@ config:
 scheduling:
   batchProcessing: PT3M
 
+# Request batching configuration
+batching:
+  processLimit: 350
+
 ---
 spring:
   config:

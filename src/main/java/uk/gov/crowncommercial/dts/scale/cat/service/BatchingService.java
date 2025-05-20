@@ -2,6 +2,9 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchedRequest;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BatchingRepo;
@@ -18,6 +21,9 @@ public class BatchingService {
     @Autowired
     BatchingRepo batchingRepo;
 
+    @Value("${batching.processLimit}")
+    int queueProcessLimit;
+
     /**
      * Get the contents of the batch request queue
      */
@@ -25,8 +31,12 @@ public class BatchingService {
         List<BatchedRequest> model = new ArrayList<>();
 
         try {
-            // Grab the contents of the queue directly from the repository
-            model = batchingRepo.findAll();
+            // Grab the contents of the queue directly from the repository, limited to our configured process cap
+            Page<BatchedRequest> limitedQueue = batchingRepo.findAll(PageRequest.of(0, queueProcessLimit));
+
+            if (limitedQueue.hasContent()) {
+                model = limitedQueue.getContent();
+            }
         } catch (Exception ex) {
             log.error("Error fetching contents of batching queue", ex);
         }
