@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -156,12 +157,17 @@ public class DocGenValueAdaptors {
                   "Project org with ID: [" + projectOrgId + "] not found in Conclave"));
         });
   }
-
-  private String getPublishDate(final ProcurementEvent event, final Map<String, Object> requestCache){
-    var formattedDatetime = event.getPublishDate() == null ? OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
-            : OffsetDateTime.ofInstant(event.getPublishDate(), ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+  /**
+   * Formats the published date in the generated ODT docs that are passed over to Jaggaer
+   */
+  private String getPublishDate(final ProcurementEvent event, final Map<String, Object> requestCache) {
+    // Define UK timezone for BST/GMT
+    ZoneId ukZone = ZoneId.of("Europe/London");
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+    var formattedDatetime = event.getPublishDate() == null ? ZonedDateTime.now(ukZone).format(formatter) : event.getPublishDate().atZone(ukZone).format(formatter);
     return formattedDatetime;
   }
+
   private TeamMember getProcurementProjectLead(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
 
