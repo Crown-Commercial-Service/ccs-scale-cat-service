@@ -199,6 +199,7 @@ public class DocGenService {
     }
 
     // We want to return an empty list if nothing has been returned by this point, so it doesn't cause other issues
+    System.out.println("GDC-2313-1");
     return List.of(PLACEHOLDER_ERROR);
   }
 
@@ -222,6 +223,7 @@ public class DocGenService {
     }
 
     // Something has gone wrong if we're at this point - return an empty list
+    System.out.println("GDC-2313-2");
     return List.of(PLACEHOLDER_ERROR);
   }
 
@@ -247,6 +249,7 @@ public class DocGenService {
     }
 
     // Something has gone wrong, or the request was for an unsupported type, if we're at this point - return an empty list
+    System.out.println("GDC-2313-3");
     return List.of(PLACEHOLDER_ERROR);
   }
 
@@ -298,6 +301,7 @@ public class DocGenService {
     }
 
     // Something has gone wrong if we're at this point - return an empty string
+    System.out.println("GDC-2313-4");
     return PLACEHOLDER_ERROR;
   }
 
@@ -311,6 +315,7 @@ public class DocGenService {
     }
 
     // Something has gone wrong if we're at this point - return an empty string
+    System.out.println("GDC-2313-5");
     return PLACEHOLDER_ERROR;
   }
 
@@ -369,11 +374,13 @@ public class DocGenService {
 
           default:
             // If nothing else matches, just replace with an empty string
+            System.out.println("GDC-2313-6");
             replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
         }
       } catch (Exception ex) {
         // There's been an issue. We want this to fail silently, so log the error and replace the placeholder with an empty string
         log.error("Error in doc gen placeholder replacement for template '{}', type '{}'", documentTemplateSource.getId(), documentTemplateSource.getTargetType(), new DocGenValueException(ex));
+        System.out.println("GDC-2313-7");
         replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
       }
     }
