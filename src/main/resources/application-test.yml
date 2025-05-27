@@ -2,6 +2,15 @@
 spring:
   security:
     oauth2:
+      client:
+        provider:
+          jaggaer:
+            token-uri: https://dummy.example.com
+        registration:
+          jaggaer:
+            client-id: 11111111
+            client-secret: 22222222
+            authorization-grant-type: test
       resourceserver:
         jwt:
           jwk-set-uri: https://dummy.example.com
@@ -14,9 +23,12 @@ spring:
 # Custom config items
 config:
   flags:
-    devMode: true        
+    devMode: true
   retry:
     maxAttempts: 3
   external:
     agreementsService:
       baseUrl: https://dummy.example.com
+
+# VCap config
+VCAP_SERVICES: '{}'
