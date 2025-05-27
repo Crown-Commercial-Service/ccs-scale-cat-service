@@ -1,23 +1,18 @@
 <configuration>
-	<springProperty name="ROLLBAR_ACCESS_TOKEN"
-		source="config.rollbar.access-token" />
-	<springProperty name="ROLLBAR_ENVIRONMENT"
-		source="config.rollbar.environment" />
+	<springProperty name="ROLLBAR_ACCESS_TOKEN" source="config.rollbar.access-token" />
+	<springProperty name="ROLLBAR_ENVIRONMENT" source="config.rollbar.environment" />
 
 	<!-- use Spring default values -->
-	<include
-		resource="org/springframework/boot/logging/logback/defaults.xml" />
+	<include resource="org/springframework/boot/logging/logback/defaults.xml" />
 
-	<appender name="CONSOLE"
-		class="ch.qos.logback.core.ConsoleAppender">
+	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
 			<pattern>${CONSOLE_LOG_PATTERN}</pattern>
 			<charset>utf8</charset>
 		</encoder>
 	</appender>
 
-	<appender name="ROLLBAR"
-		class="com.rollbar.logback.RollbarAppender">
+	<appender name="ROLLBAR" class="com.rollbar.logback.RollbarAppender">
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
 			<level>WARN</level>
 		</filter>
@@ -25,17 +20,15 @@
 		<environment>${ROLLBAR_ENVIRONMENT}</environment>
 	</appender>
 
-	<springProfile name="!local-pg">
-		<logger name="uk.gov.crowncommercial.dts.scale" level="DEBUG"
-			additivity="false">
+	<springProfile name="!local">
+		<logger name="uk.gov.crowncommercial.dts.scale" level="WARN" additivity="false">
 			<appender-ref ref="ROLLBAR" />
 			<appender-ref ref="CONSOLE" />
 		</logger>
 	</springProfile>
 
-	<springProfile name="local-pg">
-		<logger name="uk.gov.crowncommercial.dts.scale" level="DEBUG"
-			additivity="false">
+	<springProfile name="local">
+		<logger name="uk.gov.crowncommercial.dts.scale" level="DEBUG" additivity="false">
 			<appender-ref ref="CONSOLE" />
 		</logger>
 	</springProfile>
@@ -44,6 +37,5 @@
 		<appender-ref ref="CONSOLE" />
 	</root>
 
-	<shutdownHook
-		class="ch.qos.logback.core.hook.DelayingShutdownHook" />
+	<shutdownHook class="ch.qos.logback.core.hook.DefaultShutdownHook" />
 </configuration>
