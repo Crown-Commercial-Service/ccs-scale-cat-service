@@ -234,34 +234,36 @@ public class DocGenService {
     System.out.println("GDC-2313-3.0");
     // We need to work against a given Java Bean for this, so grab its definition
     if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null && !documentTemplateSource.getSourcePath().isEmpty()) {
-      System.out.println("GDC-2313-3.I");
+      System.out.println("GDC-2313-3.I: " + documentTemplateSource.getSourcePath());
       String beanName = documentTemplateSource.getSourcePath();
       System.out.println("GDC-2313-3.documentTemplateSource.getSourcePath(): " + documentTemplateSource.getSourcePath());
       System.out.println("GDC-2313-3.documentTemplateSource.getPlaceholder(): " + documentTemplateSource.getPlaceholder());
       System.out.println("GDC-2313-3.documentTemplateSource.getSourceType(): " + documentTemplateSource.getSourceType());
-      System.out.println("GDC-2313-3.II");
+      System.out.println("GDC-2313-3.II: " + beanName);
 
       try {
         // There are specific names we don't want to deal with here, as they'll always be null. So only carry on if it's not one of these
-        System.out.println("GDC-2313-3.III");
+        System.out.println("GDC-2313-3.III: " + beanName);
         if (isBeanNameSupported(beanName)) {
-          System.out.println("GDC-2313-3.IV");
+          System.out.println("GDC-2313-3.IV: " + beanName);
           DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
-          System.out.println("GDC-2313-3.V");
+          System.out.println("GDC-2313-3.VA: " + beanName);
 
           // Now just return the data we need from the Bean
+          System.out.println("GDC-2313-3.VB: " + documentValueAdaptor.getValue(event, requestCache));
           return documentValueAdaptor.getValue(event, requestCache);
         }
-        System.out.println("GDC-2313-3.VI");
+        System.out.println("GDC-2313-3.VI: " + beanName);
       } catch (Exception ex) {
-          System.out.println("GDC-2313-3.VII");
+          System.out.println("GDC-2313-3.VII: " + beanName);
           log.error("Error parsing Java Bean '{}' for document template ID: '{}'", beanName, documentTemplateSource.getId(), ex);
       }
-      System.out.println("GDC-2313-3.VIII");
+      System.out.println("GDC-2313-3.VIII: " + beanName);
     }
 
     // Something has gone wrong, or the request was for an unsupported type, if we're at this point - return an empty list
-    System.out.println("GDC-2313-3.IX");
+    System.out.println("GDC-2313-3.IXA");
+    if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null) System.out.println("GDC-2313-3.IXB: " + documentTemplateSource.getSourcePath());
     return List.of(PLACEHOLDER_ERROR);
   }
 
