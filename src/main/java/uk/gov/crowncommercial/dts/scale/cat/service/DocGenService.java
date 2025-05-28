@@ -236,6 +236,9 @@ public class DocGenService {
     if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null && !documentTemplateSource.getSourcePath().isEmpty()) {
       System.out.println("GDC-2313-3.I");
       String beanName = documentTemplateSource.getSourcePath();
+      System.out.println("GDC-2313-3.documentTemplateSource.getSourcePath(): " + documentTemplateSource.getSourcePath());
+      System.out.println("GDC-2313-3.documentTemplateSource.getPlaceholder(): " + documentTemplateSource.getPlaceholder());
+      System.out.println("GDC-2313-3.documentTemplateSource.getSourceType(): " + documentTemplateSource.getSourceType());
       System.out.println("GDC-2313-3.II");
 
       try {
