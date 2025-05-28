@@ -266,6 +266,7 @@ public class DocGenService {
    * Returns a boolean indicating whether a given bean is supported for document generation
    */
   private boolean isBeanNameSupported(String beanName) {
+    System.out.println("beanName: " + beanName);
     List<String> unsupportedBeanTypes = Arrays.stream(UNSUPPORTED_BEAN_NAMES.split(",")).toList();
 
     // Unless we find a match for the bean name in the unsupported types, the bean is supported
