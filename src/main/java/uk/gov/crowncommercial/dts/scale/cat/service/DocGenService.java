@@ -88,6 +88,7 @@ public class DocGenService {
   private final DocumentTemplateResourceService documentTemplateResourceService;
 
   int counter = 0;
+  int c2 = 0;
 
   /**
    * Trigger the generation and upload of all documents for a given event
@@ -202,7 +203,7 @@ public class DocGenService {
 
     // We want to return an empty list if nothing has been returned by this point, so it doesn't cause other issues
     System.out.println("GDC-2313-1");
-    return List.of(PLACEHOLDER_ERROR);
+    return List.of("C");
   }
 
   /**
@@ -226,7 +227,7 @@ public class DocGenService {
 
     // Something has gone wrong if we're at this point - return an empty list
     System.out.println("GDC-2313-2");
-    return List.of(PLACEHOLDER_ERROR);
+    return List.of("B");
   }
 
   /**
@@ -267,7 +268,7 @@ public class DocGenService {
     // Something has gone wrong, or the request was for an unsupported type, if we're at this point - return an empty list
     System.out.println("GDC-2313-3.IXA");
     if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null) System.out.println("GDC-2313-3.IXB: " + documentTemplateSource.getSourcePath());
-    return List.of(PLACEHOLDER_ERROR);
+    return List.of("A");
   }
 
   /**
@@ -320,7 +321,7 @@ public class DocGenService {
 
     // Something has gone wrong if we're at this point - return an empty string
     System.out.println("GDC-2313-4");
-    return PLACEHOLDER_ERROR;
+    return "D";
   }
 
   /**
@@ -334,18 +335,24 @@ public class DocGenService {
 
     // Something has gone wrong if we're at this point - return an empty string
     System.out.println("GDC-2313-5");
-    return PLACEHOLDER_ERROR;
+    return "E";
   }
 
   /**
    * Performs a single data item replacement within a given document template, using supplied values
    */
   private void replacePlaceholder(final DocumentTemplateSource documentTemplateSource, final List<String> dataReplacement, final TextDocument textODT, final boolean isPublish) {
+    c2++;
+    System.out.println("GDC-2313-3.documentTemplateSource.getSourcePath().ii: " + documentTemplateSource.getSourcePath() + " " + c2);
+    System.out.println("GDC-2313-3.documentTemplateSource.getPlaceholder().ii: " + documentTemplateSource.getPlaceholder() + " " + c2);
+    System.out.println("GDC-2313-3.dataReplacement: " + dataReplacement + " " + c2);
     // This method effectively just hands the app off to a targeted replacement method for the type of data being processed - so just work that out and do it
     if (documentTemplateSource != null && documentTemplateSource.getTargetType() != null) {
       try {
         switch (documentTemplateSource.getTargetType()) {
           case SIMPLE:
+            System.out.println("GDC-2313-3.dataReplacement.ii: " + dataReplacement + " " + c2);
+            System.out.println("GDC-2313-3.getString(dataReplacement): " + getString(dataReplacement) + " " + c2);
             // Treat this as a text replacement, using a default value as a substitute if no data has been passed to us
             replaceText(documentTemplateSource,  dataReplacement != null ? getString(dataReplacement) : PLACEHOLDER_UNKNOWN, textODT, isPublish);
             break;
@@ -393,13 +400,13 @@ public class DocGenService {
           default:
             // If nothing else matches, just replace with an empty string
             System.out.println("GDC-2313-6");
-            replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
+            replaceText(documentTemplateSource, "F", textODT, isPublish);
         }
       } catch (Exception ex) {
         // There's been an issue. We want this to fail silently, so log the error and replace the placeholder with an empty string
         log.error("Error in doc gen placeholder replacement for template '{}', type '{}'", documentTemplateSource.getId(), documentTemplateSource.getTargetType(), new DocGenValueException(ex));
         System.out.println("GDC-2313-7");
-        replaceText(documentTemplateSource, PLACEHOLDER_ERROR, textODT, isPublish);
+        replaceText(documentTemplateSource, "G", textODT, isPublish);
       }
     }
   }
@@ -476,16 +483,16 @@ public class DocGenService {
             if (item.getText() != null && !item.getText().isEmpty() && item.getText().contains(REPLACEMENT_CONDITIONAL) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
               // This is a conditional item - perform replacements targeted at this
               if ((dataReplacement.contains(REPLACEMENT_YES)) || (dataReplacement.contains(REPLACEMENT_NO) && !dataReplacement.equals(PLACEHOLDER_UNKNOWN))) {
-                value.add(PLACEHOLDER_EMPTY);
+                value.add("H");
               } else {
-                value.add(dataReplacement);
+                value.add(dataReplacement + " " + "Z");
               }
 
               // We now need to update the data replacement value now, in a general way but specifically overridden for a specific conditional item
               if (item.getText() != null && item.getText().contains(REPLACEMENT_CONDITIONAL_STEP) && dataReplacement.isEmpty()) {
                 dataReplacement = PLACEHOLDER_UNKNOWN;
               } else {
-                dataReplacement = value.toString();
+                dataReplacement = value.toString() + " " + "X";
               }
             }
 
@@ -495,7 +502,7 @@ public class DocGenService {
             // Budget, Terms, Documents, and Date Insertion specific replacements
             if (item.getText() != null) {
               if ((item.getText().equals(REPLACEMENT_BUDGET_MIN) || item.getText().equals(REPLACEMENT_BUDGET_MAX) || item.getText().contains(REPLACEMENT_BUDGET_TERM)) && isNotBlankAndNumeric(dataReplacement)) {
-                dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", PLACEHOLDER_EMPTY);
+                dataReplacement = NumberFormat.getCurrencyInstance().format(new BigDecimal(dataReplacement.trim())).substring(1).replaceAll("\\.\\d+$", "I");
               }
 
               if ((item.getText().contains(REPLACEMENT_PROJECT_BUDGET) || item.getText().contains(REPLACEMENT_PROJECT_BUDGET_TERM) || item.getText().equals(REPLACEMENT_DOC_FILENAME) || item.getText().contains(REPLACEMENT_INCUMBENT_NAME)) && org.apache.commons.lang3.StringUtils.isBlank(dataReplacement)) {
@@ -503,7 +510,7 @@ public class DocGenService {
               }
 
               if (item.getText().equals(REPLACEMENT_DATE_INSERTION) && !isPublish) {
-                dataReplacement = PLACEHOLDER_EMPTY;
+                dataReplacement = "J";
               }
             }
 
@@ -606,7 +613,7 @@ public class DocGenService {
 
       // Before we begin, if our data replacement has no entries we want to add in an empty entry so that gets used everywhere
       if (dataReplacement.isEmpty()) {
-        dataReplacement.add(PLACEHOLDER_EMPTY);
+        dataReplacement.add("K");
       }
 
       // Now we're ready to actually start. Iterate over each row in the table
