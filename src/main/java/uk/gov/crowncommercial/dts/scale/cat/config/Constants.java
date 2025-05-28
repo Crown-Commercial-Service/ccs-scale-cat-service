@@ -105,4 +105,7 @@ public class Constants {
   public static final String MAPPERS_STATS_DECLINED = "suppliersRespDeclined";
   public static final String MAPPERS_STATS_EXCLUDED = "suppliersRespExcluded";
   public static final String MAPPERS_STATS_ACCEPTED = "suppliersRespAccepted";
+
+  // Event state constants
+  public static final String EVENT_STATE_CANCELLED = "cancelled";
 }

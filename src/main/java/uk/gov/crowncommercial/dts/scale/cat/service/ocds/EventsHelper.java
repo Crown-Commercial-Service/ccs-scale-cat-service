@@ -7,36 +7,39 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+/**
+ * Helper class containing methods for interrogating events
+ */
 public class EventsHelper {
     private final static ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * Returns the first published event on a project
+     */
     public static ProcurementEvent getFirstPublishedEvent(ProcurementProject pp) {
-        return getPublishedEvent(pp, (d, s) -> {
-            return d.getPublishDate().compareTo(s.getPublishDate());
-        });
+        return getPublishedEvent(pp, Comparator.comparing(ProcurementEvent::getPublishDate));
     }
 
+    /**
+     * Returns the latest published event on a project
+     */
     public static ProcurementEvent getLastPublishedEvent(ProcurementProject pp) {
-        return getPublishedEvent(pp, (s, d) -> {
-            return d.getPublishDate().compareTo(s.getPublishDate());
-        });
+        return getPublishedEvent(pp, (s, d) -> d.getPublishDate().compareTo(s.getPublishDate()));
     }
 
+    /**
+     * Returns the first published event found on the project
+     */
     public static ProcurementEvent getPublishedEvent(ProcurementProject pp, Comparator<ProcurementEvent> comparator) {
-        return pp.getProcurementEvents().stream().filter(s -> null != s.getPublishDate())
-                .sorted(comparator)
-                .findFirst().orElse(null);
+        return pp.getProcurementEvents().stream().filter(s -> null != s.getPublishDate()).min(comparator).orElse(null);
     }
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
@@ -54,11 +57,7 @@ public class EventsHelper {
         List<TemplateCriteria> criteria) {
       Optional<TemplateCriteria> criterias =
           criteria.stream().filter(c -> c.getId().equalsIgnoreCase(criteriaId)).findAny();
-      if (criterias.isPresent()) {
-        return getData(groupId, requirementId, criterias.get().getRequirementGroups());
-      } else {
-        return null;
-      }
+        return criterias.map(templateCriteria -> getData(groupId, requirementId, templateCriteria.getRequirementGroups())).orElse(null);
     }
 
     private static String getData(String groupId, String requirementId,
@@ -93,8 +92,8 @@ public class EventsHelper {
     }
 
     private static String getFirstValue(List<Requirement.Option> options) {
-      return options.stream().filter(t -> t.getSelect())
-          .toList().stream().map(i -> i.getValue()).collect(Collectors.joining(", "));
+      return options.stream().filter(Requirement.Option::getSelect)
+          .toList().stream().map(Requirement.Option::getValue).collect(Collectors.joining(", "));
     }
 
     private static boolean isReqMatch(Requirement r, String requirementId) {
@@ -105,5 +104,4 @@ public class EventsHelper {
       return rg.getOcds().getId().equalsIgnoreCase(groupId)
           && (null != rg.getOcds().getDescription());
     }
-    
 }
