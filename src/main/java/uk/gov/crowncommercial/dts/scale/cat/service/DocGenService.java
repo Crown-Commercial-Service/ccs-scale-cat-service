@@ -231,25 +231,34 @@ public class DocGenService {
    * Builds a list of question values which require replacement from a Java Bean
    */
   private List<String> getValueFromBean(final ProcurementEvent event, final DocumentTemplateSource documentTemplateSource, final ConcurrentMap<String, Object> requestCache) {
+    System.out.println("GDC-2313-3.0");
     // We need to work against a given Java Bean for this, so grab its definition
     if (documentTemplateSource != null && documentTemplateSource.getSourcePath() != null && !documentTemplateSource.getSourcePath().isEmpty()) {
+      System.out.println("GDC-2313-3.I");
       String beanName = documentTemplateSource.getSourcePath();
+      System.out.println("GDC-2313-3.II");
 
       try {
         // There are specific names we don't want to deal with here, as they'll always be null. So only carry on if it's not one of these
+        System.out.println("GDC-2313-3.III");
         if (isBeanNameSupported(beanName)) {
+          System.out.println("GDC-2313-3.IV");
           DocGenValueAdaptor documentValueAdaptor = applicationContext.getBean(beanName, DocGenValueAdaptor.class);
+          System.out.println("GDC-2313-3.V");
 
           // Now just return the data we need from the Bean
           return documentValueAdaptor.getValue(event, requestCache);
         }
+        System.out.println("GDC-2313-3.VI");
       } catch (Exception ex) {
+          System.out.println("GDC-2313-3.VII");
           log.error("Error parsing Java Bean '{}' for document template ID: '{}'", beanName, documentTemplateSource.getId(), ex);
       }
+      System.out.println("GDC-2313-3.VIII");
     }
 
     // Something has gone wrong, or the request was for an unsupported type, if we're at this point - return an empty list
-    System.out.println("GDC-2313-3");
+    System.out.println("GDC-2313-3.IX");
     return List.of(PLACEHOLDER_ERROR);
   }
 
