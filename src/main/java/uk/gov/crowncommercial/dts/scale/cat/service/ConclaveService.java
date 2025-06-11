@@ -2,13 +2,14 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
+import com.rollbar.notifier.Rollbar;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ConclaveApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
@@ -20,7 +21,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class ConclaveService {
   public static final String KEY_URI_TEMPLATE = "uriTemplate";
 
@@ -38,7 +38,8 @@ public class ConclaveService {
     String web;
     String email;
   }
-
+ @Autowired
+  Rollbar rollbar;
   /**
    * Find and return a user profile from Conclave
    *
@@ -55,11 +56,10 @@ public class ConclaveService {
           conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI,
           email.toLowerCase());
     } catch (Exception e) {
-      throw new ConclaveApplicationException(
-          "Unexpected error retrieving User profile from Conclave");
+      rollbar.error(e, "Unexpected error retrieving User profile from Conclave");
+      return Optional.empty();
     }
   }
-
   /**
    * Get User Contact details
    *
@@ -77,9 +77,9 @@ public class ConclaveService {
               conclaveAPIConfig.getTimeoutDuration(), templateURI, userId.toLowerCase())
           .orElseThrow();
     } catch (Exception e) {
-      throw new ConclaveApplicationException(
-          "Unexpected error retrieving User contacts from Conclave");
+        rollbar.error(e, "Unexpected error retrieving User contacts from Conclave");
     }
+      return null;
   }
 
   /**
@@ -99,9 +99,8 @@ public class ConclaveService {
       return webclientWrapper.getOptionalResource(OrganisationProfileResponseInfo.class,
               conclaveWrapperAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI, sanitisedOrgId);
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      throw new ConclaveApplicationException(
-          "Unexpected error retrieving org profile from Conclave for org ID: " + sanitisedOrgId);
+        rollbar.error(e, "Unexpected error retrieving org profile from Conclave for org ID: " + sanitisedOrgId);
+        return Optional.empty();
     }
   }
 
@@ -123,9 +122,8 @@ public class ConclaveService {
           conclaveIdentitiesAPIClient, conclaveAPIConfig.getTimeoutDuration(), templateURI,
           sanitisedOrgId);
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      throw new ConclaveApplicationException(
-          "Unexpected error retrieving org identity from CII for org ID: " + orgId);
+        rollbar.error(e, "Unexpected error retrieving org identity from CII for org ID: " + orgId);
+        return Optional.empty();
     }
   }
 
@@ -138,35 +136,45 @@ public class ConclaveService {
    */
   public UserContactPoints extractUserPersonalContacts(
       final UserContactInfoList userContactInfoList) {
-    var personalContactInfo = userContactInfoList.getContactPoints().stream()
-        .filter(cpi -> "PERSONAL".equals(cpi.getContactPointReason())).findFirst();
+          try{
+                var personalContactInfo = userContactInfoList.getContactPoints().stream()
+                    .filter(cpi -> "PERSONAL".equals(cpi.getContactPointReason())).findFirst();
 
-    final var userContactPoints = UserContactPoints.builder();
+                final var userContactPoints = UserContactPoints.builder();
 
-    if (personalContactInfo.isPresent()) {
+                if (personalContactInfo.isPresent()) {
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "PHONE".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.phone(crd.getContactValue()));
+                  personalContactInfo.get().getContacts().stream()
+                      .filter(crd -> "PHONE".equals(crd.getContactType())).findFirst()
+                      .ifPresent(crd -> userContactPoints.phone(crd.getContactValue()));
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "FAX".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.fax(crd.getContactValue()));
+                  personalContactInfo.get().getContacts().stream()
+                      .filter(crd -> "FAX".equals(crd.getContactType())).findFirst()
+                      .ifPresent(crd -> userContactPoints.fax(crd.getContactValue()));
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "EMAIL".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.email(crd.getContactValue()));
+                  personalContactInfo.get().getContacts().stream()
+                      .filter(crd -> "EMAIL".equals(crd.getContactType())).findFirst()
+                      .ifPresent(crd -> userContactPoints.email(crd.getContactValue()));
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "WEB_ADDRESS".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.web(crd.getContactValue()));
+                  personalContactInfo.get().getContacts().stream()
+                      .filter(crd -> "WEB_ADDRESS".equals(crd.getContactType())).findFirst()
+                      .ifPresent(crd -> userContactPoints.web(crd.getContactValue()));
 
-    }
-    return userContactPoints.build();
+                }
+                return userContactPoints.build();
+          } catch (Exception e) {
+              rollbar.error(e, "Error extracting user personal contacts");
+              return UserContactPoints.builder().build();
+          }
   }
 
   public String getOrganisationIdentifer(final OrganisationProfileResponseInfo org) {
-    var schemeName = org.getIdentifier().getScheme().replace("US-DUN", "US-DUNS");
-    return schemeName + '-' + org.getIdentifier().getId();
+      try{
+        var schemeName = org.getIdentifier().getScheme().replace("US-DUN", "US-DUNS");
+        return schemeName + '-' + org.getIdentifier().getId();
+      } catch (Exception e) {
+          rollbar.error(e, "Error extracting organisation identifier");
+          return "";
+      }
   }
 }

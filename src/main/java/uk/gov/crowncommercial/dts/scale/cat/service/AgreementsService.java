@@ -1,15 +1,14 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 
-import lombok.extern.slf4j.Slf4j;
+import com.rollbar.notifier.Rollbar;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import uk.gov.crowncommercial.dts.scale.cat.clients.AgreementsClient;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
@@ -19,13 +18,13 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
  * Agreements Service API Service layer. Handles interactions with the external service
  */
 @Service
-@Slf4j
 public class AgreementsService {
   @Value("${config.external.agreementsService.apiKey}")
   public String serviceApiKey;
 
   @Autowired
   AgreementsClient agreementsClient;
+  Rollbar rollbar;
 
   /**
    * Get the Event Type Data Templates for a given Lot for a given Agreement
@@ -34,7 +33,6 @@ public class AgreementsService {
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
     // Call the Agreements Service to request the data templates for the given agreement, lot and event type, first formatting the lot ID
     String formattedLotId = formatLotIdForAgreementService(lotId);
-    String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
 
     try {
       List<DataTemplate> model = agreementsClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), serviceApiKey);
@@ -43,12 +41,11 @@ public class AgreementsService {
       if (model != null) {
         return model;
       } else {
-        log.warn("Empty response for Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
-        throw new AgreementsServiceApplicationException(exceptionFormat);
-      }
+        rollbar.debug("Empty response for Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
+        return Collections.emptyList();}
     } catch (Exception ex) {
-      log.error("Error getting Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name(), ex);
-      throw new AgreementsServiceApplicationException(exceptionFormat);
+      rollbar.debug(ex, "Error getting Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
+      return Collections.emptyList();
     }
   }
 
@@ -65,9 +62,21 @@ public class AgreementsService {
 
       // Return the model if it has results, otherwise return an empty set
       return model != null ? model : Set.of();
+    } catch (HttpClientErrorException ex) {
+      if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+        // 404 returns for GCloud14 lot:All - this is expected
+        return Set.of();
+      } else {
+        // Other 4xx errors should be logged
+        String errorMessage = String.format("Client error getting Lot Suppliers from Agreement Service for %s lot %s: %s", agreementId, formattedLotId, ex.getMessage());
+        rollbar.error(ex, errorMessage);
+        throw ex;
+      }
     } catch (Exception ex) {
-      log.error("Error getting Lot Suppliers from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
-      return Set.of();
+      // All other exceptions should be logged
+      String errorMessage = String.format("Error getting Lot Suppliers from Agreement Service for %s lot %s", agreementId, formattedLotId);
+      rollbar.error(ex, errorMessage);
+      throw ex;
     }
   }
 
@@ -83,12 +92,11 @@ public class AgreementsService {
       if (model != null) {
         return model;
       } else {
-        log.warn("Empty response for Agreement Details from Agreement Service for " + agreementId);
+        rollbar.warning("Empty response for Agreement Details from Agreement Service for " + agreementId);
       }
     } catch (Exception ex) {
-      log.error("Error getting Agreement Detail from Agreement Service for " + agreementId, ex);
+      rollbar.error(ex, "Error getting Agreement Detail from Agreement Service for " + agreementId);
     }
-
     // If we've not got a response by this point, something went wrong so throw an exception
     throw new NoSuchElementException();
   }
@@ -110,14 +118,14 @@ public class AgreementsService {
         if (model != null) {
           return model;
         } else {
-          log.warn("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
+          rollbar.warning("Empty response for Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
           throw new AgreementsServiceApplicationException(exceptionFormat);
         }
       } else {
         return null;
       }
     } catch (Exception ex) {
-      log.error("Error getting Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
+      rollbar.error(ex, "Error getting Lot Details from Agreement Service for " + agreementId + ", lot " + formattedLotId);
       throw new AgreementsServiceApplicationException(exceptionFormat);
     }
   }
@@ -136,7 +144,7 @@ public class AgreementsService {
       // Return the model if it has results, otherwise return an empty set
       return model != null ? model : Set.of();
     } catch (Exception ex) {
-      log.error("Error getting Event Types from Agreement Service for " + agreementId + ", lot " + formattedLotId, ex);
+      rollbar.error(ex, "Error getting Event Types from Agreement Service for " + agreementId + ", lot " + formattedLotId);
       return Set.of();
     }
   }

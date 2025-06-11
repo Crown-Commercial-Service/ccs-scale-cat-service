@@ -8,10 +8,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.io.IOUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import com.rollbar.notifier.Rollbar;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
@@ -32,6 +34,9 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 @RequiredArgsConstructor
 @Slf4j
 public class AwardService {
+
+  @Autowired
+  Rollbar rollbar;
 
   private final ValidationService validationService;
   private final UserProfileService userService;
@@ -69,24 +74,28 @@ public class AwardService {
    */
   public String createOrUpdateAwardRfx(final String principal, final Integer projectId,
       final String eventId, final AwardState awardState, final Award2AllOf award, final Integer awardId) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var buyerUser = userService.resolveBuyerUserProfile(principal)
-        .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+    try {
+      var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+      var buyerUser = userService.resolveBuyerUserProfile(principal)
+          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
-    if (award.getSuppliers().size() > 1) {
-      throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
+      if (award.getSuppliers().size() > 1) {
+        throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
+      }
+      var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
+          .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
+
+      var awardOrPreAwardRfxResponse = jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
+          validSuppliers.getFirst().stream().findFirst()
+              .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getCompanyData()
+              .getId().toString(),
+          awardState);
+      retryableTendersDBDelegate.updateEventDate(procurementEvent, principal);
+      return awardOrPreAwardRfxResponse;
+    } catch (Exception e) {
+      rollbar.error(e, "Error creating or updating award RFX");
     }
-    var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
-        .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
-    
-    var awardOrPreAwardRfxResponse = jaggaerService.awardOrPreAwardRfx(procurementEvent, buyerUser.getUserId(),
-        validSuppliers.getFirst().stream().findFirst()
-            .orElseThrow(() -> new JaggaerRPAException(SUPPLIERS_NOT_FOUND)).getCompanyData()
-            .getId().toString(),
-        awardState);
-    log.debug("Successfully {}", awardState.getValue());
-    retryableTendersDBDelegate.updateEventDate(procurementEvent, principal);
-    return awardOrPreAwardRfxResponse;
+      return null;
   }
 
 
@@ -96,18 +105,23 @@ public class AwardService {
    * @return a collection of document summaries
    */
   public Collection<DocumentSummary> getAwardTemplates(final Integer procId, final String eventId) {
-    var documentSummaries = new HashSet<DocumentSummary>();
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
-    documentSummaries
-        .addAll(getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE,event.getProject().getCaNumber()),
-            AWARDED_TEMPLATE_DESCRIPTION));
-    documentSummaries.addAll(getTemplates(retryableTendersDBDelegate
-        .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber()),
-        ORDER_FORM_TEMPLATE_DESCRIPTION));
-    documentSummaries.addAll(
-        getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE,event.getProject().getCaNumber()),
-            UN_SUCCESSFUL_TEMPLATE_DESCRIPTION));
-    return documentSummaries;
+    try {
+      var documentSummaries = new HashSet<DocumentSummary>();
+      var event = validationService.validateProjectAndEventIds(procId, eventId);
+      documentSummaries
+              .addAll(getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE, event.getProject().getCaNumber()),
+                      AWARDED_TEMPLATE_DESCRIPTION));
+      documentSummaries.addAll(getTemplates(retryableTendersDBDelegate
+                      .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber()),
+              ORDER_FORM_TEMPLATE_DESCRIPTION));
+      documentSummaries.addAll(
+              getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(UN_SUCCESSFUL_SUPPLIER_FILE_TYPE, event.getProject().getCaNumber()),
+                      UN_SUCCESSFUL_TEMPLATE_DESCRIPTION));
+      return documentSummaries;
+    } catch (Exception e) {
+      rollbar.error(e, "Error getting award templates - document summary");
+    }
+    return null;
   }
 
   /**
@@ -121,6 +135,7 @@ public class AwardService {
   @SneakyThrows
   public Collection<DocumentAttachment> getAwardTemplate(final Integer procId, final String eventId,
       final DocumentsKey documentKey) {
+    try {
     var documentAttachments = new HashSet<DocumentAttachment>();
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var docs = retryableTendersDBDelegate.findByEventStageAndAgreementNumber(
@@ -134,11 +149,16 @@ public class AwardService {
           .contentType(Constants.MEDIA_TYPE_DOCX).build());
     }
     return documentAttachments;
+    } catch (Exception e) {
+      rollbar.error(e, "Error getting award templates - document attachment");
+    }
+      return null;
   }
 
   @SneakyThrows
   private Set<DocumentSummary> getTemplates(final Set<DocumentTemplate> documentTemplates,
       final String description) {
+    try {
     var documentSummaries = new HashSet<DocumentSummary>();
     for (DocumentTemplate documentTemplate : documentTemplates) {
       var templateResource =
@@ -154,6 +174,10 @@ public class AwardService {
       }
     }
     return documentSummaries;
+    } catch (Exception e) {
+      rollbar.error(e, "Error getting award templates - document summary buyer");
+    }
+      return null;
   }
   
   /**
@@ -166,6 +190,7 @@ public class AwardService {
   @SneakyThrows
   public Collection<DocumentAttachment> getAllAwardTemplate(final Integer procId,
       final String eventId) {
+    try {
     var documentAttachments = new HashSet<DocumentAttachment>();
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var award = retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE, event.getProject().getCaNumber());
@@ -187,6 +212,10 @@ public class AwardService {
           .contentType(Constants.MEDIA_TYPE_DOCX).build());
     }
     return documentAttachments;
+    } catch (Exception e) {
+      rollbar.error(e, "Error getting all award templates - document attachment");
+    }
+    return null;
   }
   
   /**
@@ -198,6 +227,7 @@ public class AwardService {
    */
   public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
       final AwardState awardState) {
+    try {
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
         new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
@@ -221,7 +251,11 @@ public class AwardService {
         .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
             ? AwardState.AWARD
             : AwardState.PRE_AWARD);
-  }
+    } catch (Exception e) {
+      rollbar.error(e, "Error getting award or pre-award details");
+    }
+    return null;
+}
 
   private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
     return offerDetailLastUpdated.compareTo(rfxsettingLastUpdated) >=0 ? offerDetailLastUpdated : rfxsettingLastUpdated;
