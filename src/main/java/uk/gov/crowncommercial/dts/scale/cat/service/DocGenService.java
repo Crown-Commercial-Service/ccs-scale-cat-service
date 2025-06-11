@@ -5,9 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.Period;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -417,8 +415,10 @@ public class DocGenService {
           // Format this as a date only
           return ONLY_DATE_FMT.format(LocalDate.parse(dateValue));
         } else {
-          // Format this as a date / time
-          return DATE_FMT.format(OffsetDateTime.parse(dateValue));
+          // Format date/time to handle daylight savings
+          OffsetDateTime odt = OffsetDateTime.parse(dateValue);
+          ZonedDateTime ukZone = odt.atZoneSameInstant(ZoneId.of("Europe/London"));
+          return DATE_FMT.format(ukZone);
         }
       } catch (Exception ex) {
         // There was an issue during conversion - the data was likely in an unexpected format.  Log this then return the default placeholder
