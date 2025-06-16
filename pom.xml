@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.4.0</jena-core.version>
         <commons-io.version>2.19.0</commons-io.version>
-        <aws-java-sdk-s3.version>1.12.785</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>1.12.787</aws-java-sdk-s3.version>
         <tika-core.version>3.2.0</tika-core.version>
         <java-cfenv-boot.version>3.4.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -50,7 +50,7 @@
         <ehcache.version>3.10.8</ehcache.version>
         <retry.version>2.0.12</retry.version>
         <jetty-reactive.version>4.0.10</jetty-reactive.version>
-        <postgres.version>42.7.6</postgres.version>
+        <postgres.version>42.7.7</postgres.version>
         <lombok.version>1.18.38</lombok.version>
         <spring.version>6.5.0</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
