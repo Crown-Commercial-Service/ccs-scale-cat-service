@@ -43,19 +43,17 @@ public class AwardService {
 
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String SUPPLIERS_NOT_FOUND = "Supplier details not found";
-  public static final String AWARDS_TO_MUTLIPLE_SUPPLIERS =
-      "Awards to multiple suppliers is not currently supported";
+  public static final String AWARDS_TO_MULTIPLE_SUPPLIERS = "Awards to multiple suppliers is not currently supported";
   static final String AWARDED_TEMPLATE_DESCRIPTION = "Awarded Templates";
   static final String UN_SUCCESSFUL_TEMPLATE_DESCRIPTION = "UnSuccessful Supplier Templates";
   static final String ORDER_FORM_TEMPLATE_DESCRIPTION = "Order Form Templates";
   static final String AWARDED_FILE_TYPE = "AWARDED";
   static final String UN_SUCCESSFUL_SUPPLIER_FILE_TYPE = "UNSUCCESSFUL_AWARD";
   static final String ORDER_FORM_FILE_TYPE = "ORDER_FORM";
-  static final String PRE_AWARD_JAGGAER_STATUS = "ORDER_FORM";
   static final String AWARD_STATUS = "Awarded";
   public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
   public static final String AWARD_DETAILS_NOT_FOUND = "Award details not found";
-  public static final String OFFER_COPONENT_FILTER = "OFFERS";
+  public static final String OFFER_COMPONENT_FILTER = "OFFERS";
 
   /**
    * Pre-Award or Award to the supplied suppliers.
@@ -74,7 +72,7 @@ public class AwardService {
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
     if (award.getSuppliers().size() > 1) {
-      throw new JaggaerRPAException(AWARDS_TO_MUTLIPLE_SUPPLIERS);
+      throw new JaggaerRPAException(AWARDS_TO_MULTIPLE_SUPPLIERS);
     }
     var validSuppliers = supplierService.getValidSuppliers(procurementEvent, award.getSuppliers()
         .stream().map(OrganizationReference1::getId).collect(Collectors.toList()));
@@ -200,7 +198,7 @@ public class AwardService {
       final AwardState awardState) {
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
-        new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
+        new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
     var offerDetails =
         exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
             .findFirst().orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
@@ -215,7 +213,7 @@ public class AwardService {
       throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
     }
 
-    // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
+    // At present, we have only one supplier to be awarded or pre-award. so hard-coded the id.
     return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
         .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
         .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
