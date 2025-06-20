@@ -13,9 +13,11 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.BatchingService;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Serves as a central component which holds scheduled tasks that the application may run
@@ -82,10 +84,29 @@ public class TaskSchedulingClient {
 
         if (requestQueue != null && !requestQueue.isEmpty()) {
             // There are entries in the queue - iterate over them and process them
-            requestQueue.forEach(request -> {
-                // TODO: work in another ticket
-                log.info("Processing queue request item");
+            List<BatchedRequest> requestsToProcess = requestQueue.stream()
+                    .limit(350)
+                    .collect(Collectors.toList());
+
+            List<Integer> successfullyProcessedIds = new ArrayList<>();
+
+            requestsToProcess.forEach(request -> {
+                try {
+                    log.info("Processing queue request item with ID: {}", request.getId());
+                    // TODO: Add  processing logic here
+
+                    // If processing succeeds, add to deletion list
+                    successfullyProcessedIds.add((request.getId()));
+                } catch (Exception e) {
+                    log.error("Failed to process request with ID: {}", request.getId(), e);
+                    // Don't add to deletion list - leave in queue for retry
+                }
             });
+
+            if (!successfullyProcessedIds.isEmpty()) {
+                batchingService.deleteProcessedRequests(successfullyProcessedIds);
+                log.info("Deleted {} successfully processed requests from queue", successfullyProcessedIds.size());
+            }
         }
     }
 }

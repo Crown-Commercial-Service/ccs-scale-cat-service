@@ -43,4 +43,18 @@ public class BatchingService {
 
         return model;
     }
+
+    /**
+     * Delete processed requests from the batch queue
+     */
+    public void deleteProcessedRequests(List<Integer> requestIds) {
+        try {
+            log.info("Deleting {} processed requests from batch queue", requestIds.size());
+            batchingRepo.deleteAllById(requestIds);
+            log.info("Successfully deleted {} requests from batch queue", requestIds.size());
+        } catch (Exception ex) {
+            log.error("Error deleting processed requests from batch queue", ex);
+            throw ex; // Re-throw to let the scheduler handle the error
+        }
+    }
 }
