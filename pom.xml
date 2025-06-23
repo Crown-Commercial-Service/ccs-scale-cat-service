@@ -19,7 +19,7 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.29</swagger-parser.version>
+        <swagger-parser.version>2.1.30</swagger-parser.version>
         <guava.version>33.4.8-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
