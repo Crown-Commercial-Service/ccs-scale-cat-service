@@ -38,9 +38,9 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.20.1</jsoup.version>
-        <hibernate.version>6.6.16.Final</hibernate.version>
+        <hibernate.version>6.6.17.Final</hibernate.version>
         <junitapi.version>5.13.1</junitapi.version>
-        <opensearch.version>1.7.0</opensearch.version>
+        <opensearch.version>1.8.0</opensearch.version>
         <shedlock.version>6.9.0</shedlock.version>
         <spring-boot.version>3.5.3</spring-boot.version>
         <jose.version>0.9.6</jose.version>
