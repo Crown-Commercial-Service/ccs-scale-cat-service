@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.5.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>uk.gov.crowncommercial.dts</groupId>
@@ -19,11 +19,11 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.29</swagger-parser.version>
+        <swagger-parser.version>2.1.30</swagger-parser.version>
         <guava.version>33.4.8-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
-        <modelmapper.version>3.2.3</modelmapper.version>
+        <modelmapper.version>3.2.4</modelmapper.version>
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.4.0</jena-core.version>
         <commons-io.version>2.19.0</commons-io.version>
@@ -38,11 +38,11 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.20.1</jsoup.version>
-        <hibernate.version>6.6.16.Final</hibernate.version>
+        <hibernate.version>6.6.17.Final</hibernate.version>
         <junitapi.version>5.13.1</junitapi.version>
-        <opensearch.version>1.7.0</opensearch.version>
+        <opensearch.version>1.8.0</opensearch.version>
         <shedlock.version>6.9.0</shedlock.version>
-        <spring-boot.version>3.5.0</spring-boot.version>
+        <spring-boot.version>3.5.3</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.18</logback.version>
@@ -52,7 +52,7 @@
         <jetty-reactive.version>4.0.10</jetty-reactive.version>
         <postgres.version>42.7.7</postgres.version>
         <lombok.version>1.18.38</lombok.version>
-        <spring.version>6.5.0</spring.version>
+        <spring.version>6.5.1</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.0</compiler.version>
         <cucumber.version>7.23.0</cucumber.version>
