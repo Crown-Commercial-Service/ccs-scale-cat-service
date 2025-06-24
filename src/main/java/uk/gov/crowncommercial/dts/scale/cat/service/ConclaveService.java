@@ -138,31 +138,36 @@ public class ConclaveService {
    */
   public UserContactPoints extractUserPersonalContacts(
       final UserContactInfoList userContactInfoList) {
-    var personalContactInfo = userContactInfoList.getContactPoints().stream()
-        .filter(cpi -> "PERSONAL".equals(cpi.getContactPointReason())).findFirst();
+    try{
+      var personalContactInfo = userContactInfoList.getContactPoints().stream()
+          .filter(cpi -> "PERSONAL".equals(cpi.getContactPointReason())).findFirst();
 
-    final var userContactPoints = UserContactPoints.builder();
+      final var userContactPoints = UserContactPoints.builder();
 
-    if (personalContactInfo.isPresent()) {
+      if (personalContactInfo.isPresent()) {
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "PHONE".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.phone(crd.getContactValue()));
+        personalContactInfo.get().getContacts().stream()
+            .filter(crd -> "PHONE".equals(crd.getContactType())).findFirst()
+            .ifPresent(crd -> userContactPoints.phone(crd.getContactValue()));
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "FAX".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.fax(crd.getContactValue()));
+        personalContactInfo.get().getContacts().stream()
+            .filter(crd -> "FAX".equals(crd.getContactType())).findFirst()
+            .ifPresent(crd -> userContactPoints.fax(crd.getContactValue()));
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "EMAIL".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.email(crd.getContactValue()));
+        personalContactInfo.get().getContacts().stream()
+            .filter(crd -> "EMAIL".equals(crd.getContactType())).findFirst()
+            .ifPresent(crd -> userContactPoints.email(crd.getContactValue()));
 
-      personalContactInfo.get().getContacts().stream()
-          .filter(crd -> "WEB_ADDRESS".equals(crd.getContactType())).findFirst()
-          .ifPresent(crd -> userContactPoints.web(crd.getContactValue()));
+        personalContactInfo.get().getContacts().stream()
+            .filter(crd -> "WEB_ADDRESS".equals(crd.getContactType())).findFirst()
+            .ifPresent(crd -> userContactPoints.web(crd.getContactValue()));
 
+      }
+      return userContactPoints.build();
+    } catch (Exception e) {
+      log.error("Error extracting user personal contacts", e);
+      throw e; // Re-throw the exception to maintain original behavior
     }
-    return userContactPoints.build();
   }
 
   public String getOrganisationIdentifer(final OrganisationProfileResponseInfo org) {
