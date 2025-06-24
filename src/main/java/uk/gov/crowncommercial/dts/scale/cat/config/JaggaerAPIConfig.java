@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 public class JaggaerAPIConfig {
 
   public static final String ENDPOINT = "endpoint";
+  public static final String DEFAULT_USER = "SYSTEM";
   public static final String PRINCIPAL_PLACEHOLDER = "{{PRINCIPAL}}";
   public static final String DUNS_PLACEHOLDER = "{{DUNSNumber}}";
   public static final String FISCALCODE_PLACEHOLDER = "{{FISCALCODE}}";

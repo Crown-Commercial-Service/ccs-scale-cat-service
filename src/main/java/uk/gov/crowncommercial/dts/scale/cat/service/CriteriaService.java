@@ -4,6 +4,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.DEFAULT_USER;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -12,7 +13,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.SerializationUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class CriteriaService {
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
+  private final JaggaerQueueService jaggaerQueueService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
@@ -164,24 +166,29 @@ public class CriteriaService {
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
       var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
+      var url = jaggaerAPIConfig.getCreateRfx().get(ENDPOINT);
+      var jaggaerPayload = new CreateUpdateRfx(OperationCode.UPDATE, rfx);
 
-      log.info("Start calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
-      var createRfxResponse =
-          ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-              .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
-              .bodyToMono(CreateUpdateRfxResponse.class)
-              .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                  .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                      "Unexpected error updating Rfx"));
-      log.info("Finish calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+      log.info("Start call to Jaggaer Queue Service, to queue an update to the rfx for Rfx Id: {}", rfx.getRfxSetting().getRfxId());
 
-      if (createRfxResponse.getReturnCode() != 0
-          || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
-        log.error(createRfxResponse.toString());
-        throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
-            createRfxResponse.getReturnMessage());
+      // Use default if no authenticated user is available.
+      String userId = DEFAULT_USER;
+      try {
+        userId = SecurityContextHolder.getContext().getAuthentication().getName();
+      } catch (Exception e) {
+        log.warn("Could not extract user ID from security context, defaulting");
       }
-      log.info("Updated event: {}", createRfxResponse);
+
+      jaggaerQueueService.queueUpdateRfxRequest(
+        jaggaerPayload,
+        userId,
+        url,
+        projectId,
+        eventId
+      );
+
+      log.info("Finished calling Jaggaer Queue Service, to queue an update to the rfx for Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+      log.info("Jaggaer Rfx update request has been queued. No immediate response will be available.");
     }
 
     // Update Tenders DB

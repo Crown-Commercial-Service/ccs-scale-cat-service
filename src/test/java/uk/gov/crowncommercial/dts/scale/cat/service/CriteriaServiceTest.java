@@ -54,6 +54,9 @@ class CriteriaServiceTest {
   private ValidationService validationService;
 
   @MockBean
+  private JaggaerQueueService jaggaerQueueService;
+
+  @MockBean
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @MockBean
