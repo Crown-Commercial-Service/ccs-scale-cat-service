@@ -5,15 +5,16 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.TestPropertySource;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchedRequest;
-import uk.gov.crowncommercial.dts.scale.cat.repo.BatchingRepo;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchingQueueEntity;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BatchingQueueRepo;
 import uk.gov.crowncommercial.dts.scale.cat.scheduling.TaskSchedulingClient;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,11 +30,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @Slf4j
 public class BatchingServiceTest {
 
-    @MockBean
-    private BatchingRepo batchingRepo;
+    @MockitoBean
+    private BatchingQueueRepo batchingRepo;
 
-    @MockBean
+    @MockitoBean
     private AgreementsService agreementsService;
+
+    @MockitoBean
+    private JaggaerService jaggaerService;
 
     @Autowired
     private BatchingService batchingService;
@@ -44,17 +48,25 @@ public class BatchingServiceTest {
     @Test
     void testProcessJaeggerBatchQueueWithMultipleItems() throws Exception {
         // Create test data - more than 350 to test the limit
-        List<BatchedRequest> testRequests = new ArrayList<>();
+        List<BatchingQueueEntity> testRequests = new ArrayList<>();
+        Instant now = Instant.now();
         for (int i = 1; i <= 400; i++) {
-            BatchedRequest request = new BatchedRequest();
+            BatchingQueueEntity request = new BatchingQueueEntity();
             request.setUserId("test-user-" + i);
+            request.setProjectId(100 + (i % 5));
+            request.setEventId("event-" + String.format("%06d", i));
             request.setRequestUrl("/api/test/endpoint");
             request.setRequestPayload("{\"testField\":\"testValue" + i + "\"}");
-        testRequests.add(request);
-    }
+            request.setRequest_status("PENDING");
+            request.setRequest_status_message(null);
+            request.setRequest_attempts(0);
+            request.setCreatedAt(now.minusSeconds(i));
+            request.setUpdatedAt(now.minusSeconds(i));
+            testRequests.add(request);
+        }
 
         // Create a Page object to match your service's expectation
-        Page<BatchedRequest> mockPage = new PageImpl<>(testRequests.subList(0, 350)); // Simulate the limit from PageRequest
+        Page<BatchingQueueEntity> mockPage = new PageImpl<>(testRequests.subList(0, 350)); // Simulate the limit from PageRequest
 
         // Mock the repository calls
         when(batchingRepo.findAll(any(PageRequest.class))).thenReturn(mockPage);
@@ -78,7 +90,7 @@ public class BatchingServiceTest {
     @Test
     void testProcessJaeggerBatchQueueWithEmptyQueue() throws Exception {
         // Mock empty queue
-        Page<BatchedRequest> emptyPage = new PageImpl<>(new ArrayList<>());
+        Page<BatchingQueueEntity> emptyPage = new PageImpl<>(new ArrayList<>());
         when(batchingRepo.findAll(any(PageRequest.class))).thenReturn(emptyPage);
 
         // Execute the scheduled method
@@ -94,14 +106,14 @@ public class BatchingServiceTest {
     @Test
     void testProcessJaeggerBatchQueueWithFewerThan350Items() throws Exception {
         // Create test data with fewer than 350 items
-        List<BatchedRequest> testRequests = new ArrayList<>();
+        List<BatchingQueueEntity> testRequests = new ArrayList<>();
         for (int i = 1; i <= 50; i++) {
-            BatchedRequest request = new BatchedRequest();
-            request.setId(i);
+            BatchingQueueEntity request = new BatchingQueueEntity();
+            request.setRequestId(i);
             testRequests.add(request);
         }
 
-        Page<BatchedRequest> mockPage = new PageImpl<>(testRequests);
+        Page<BatchingQueueEntity> mockPage = new PageImpl<>(testRequests);
         when(batchingRepo.findAll(any(PageRequest.class))).thenReturn(mockPage);
         doNothing().when(batchingRepo).deleteAllById(any(List.class));
 

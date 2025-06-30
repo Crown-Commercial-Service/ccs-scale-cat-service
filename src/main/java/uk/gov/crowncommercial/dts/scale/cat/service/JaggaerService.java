@@ -6,20 +6,23 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.util.StopWatch;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -31,11 +34,14 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchingQueueEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BatchingQueueRepo;
+
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_RFX_NOT_FOUND;
 
 /**
@@ -47,13 +53,21 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ERR_MSG_RFX_
 public class JaggaerService {
 
   private final JaggaerAPIConfig jaggaerAPIConfig;
+  private final BatchingQueueRepo batchingQueueRepo;
   private final WebClient jaggaerWebClient;
   private final WebclientWrapper webclientWrapper;
+  private final ObjectMapper objectMapper;
+  private final Map<String, Class<?>> endpointToRequestClassMap;
   private static final String MESSAGE_PARAMS =
-      "MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
+          "MESSAGE_BODY;MESSAGE_CATEGORY;MESSAGE_ATTACHMENT;MESSAGE_READING";
 
   private static final String ERRCODE_SUBUSER_EXISTS = "112(loginSubUser)";
   private static final String ERRCODE_SUPERUSER_EXISTS = "112(USER_ALIAS)";
+
+  @PostConstruct
+  private void initialiseMapping() {
+    ((Map<String, Class<?>>) endpointToRequestClassMap).putAll(initialiseEndpointMapping());
+  }
 
   /**
    * Create or update a Project.
@@ -62,21 +76,21 @@ public class JaggaerService {
    * @return
    */
   public CreateUpdateProjectResponse createUpdateProject(
-      final CreateUpdateProject createUpdateProject) {
+          final CreateUpdateProject createUpdateProject) {
 
     log.info("Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
     final var updateProjectResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
-            .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
-            .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating project"));
+            ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
+                    .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)
+                    .block(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                    .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                            "Unexpected error updating project"));
     log.info("Finish calling Jaggaer API to Create or Update project. Response: {}", updateProjectResponse);
 
     if (updateProjectResponse.getReturnCode() != 0
-        || !"OK".equals(updateProjectResponse.getReturnMessage())) {
+            || !"OK".equals(updateProjectResponse.getReturnMessage())) {
       throw new JaggaerApplicationException(updateProjectResponse.getReturnCode(),
-          updateProjectResponse.getReturnMessage());
+              updateProjectResponse.getReturnMessage());
     }
 
 
@@ -93,19 +107,19 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to create or update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
     final var createRfxResponse =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-            .bodyValue(new CreateUpdateRfx(operationCode, rfx)).retrieve()
-            .bodyToMono(CreateUpdateRfxResponse.class)
-            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-                .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                    "Unexpected error updating Rfx"));
+            ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+                    .bodyValue(new CreateUpdateRfx(operationCode, rfx)).retrieve()
+                    .bodyToMono(CreateUpdateRfxResponse.class)
+                    .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+                    .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                            "Unexpected error updating Rfx"));
     log.info("Finish calling Jaggaer API to create or update rfx, Rfx Id: {} ", rfx.getRfxSetting().getRfxId());
 
     if (createRfxResponse.getReturnCode() != 0
-        || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
+            || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
       log.error(createRfxResponse.toString());
       throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
-          createRfxResponse.getReturnMessage());
+              createRfxResponse.getReturnMessage());
     }
     log.info("Updated event: {}", createRfxResponse);
     return createRfxResponse;
@@ -114,10 +128,10 @@ public class JaggaerService {
   /**
    * Get an Rfx (Event).
    *
-   * @deprecated This method (or rather endpoint that it calls) is non-performant and should be
-   *             replaced with calls through {@link #searchRFx(Set)} instead where possible
    * @param externalEventId
    * @return
+   * @deprecated This method (or rather endpoint that it calls) is non-performant and should be
+   * replaced with calls through {@link #searchRFx(Set)} instead where possible
    */
   @Deprecated
   public ExportRfxResponse getRfx(final String externalEventId) {
@@ -182,21 +196,21 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to search rfx, Rfx Ids: {}", rfxIds);
     var searchRfxResponse = webclientWrapper
-        .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
-            jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds)
-        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-            "Unexpected error searching rfxs"));
+            .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
+                    jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds)
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error searching rfxs"));
     log.info("Finish calling Jaggaer API to search rfx, Rfx Ids: {}", rfxIds);
 
     if (searchRfxResponse.getReturnCode() == 0) {
       return searchRfxResponse.getDataList().getRfx();
     }
     throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-        "Unexpected error searching rfxs");
+            "Unexpected error searching rfxs");
   }
-  
+
   public Set<ExportRfxResponse> searchRFxWithComponents(final Set<String> externalEventIds,
-      final Set<String> components) {
+                                                        final Set<String> components) {
 
     var searchRfxUri = jaggaerAPIConfig.getSearchRfxSummaryWithComponents().get(ENDPOINT);
     var rfxIds = externalEventIds.stream().collect(Collectors.joining(","));
@@ -204,19 +218,19 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to search rfx with components. Rfx Id: {}, Components: {}", rfxIds, componentFilters);
     var searchRfxResponse = webclientWrapper
-        .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
-            jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds, componentFilters)
-        .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-            "Unexpected error searching rfxs"));
+            .getOptionalResource(SearchRfxsResponse.class, jaggaerWebClient,
+                    jaggaerAPIConfig.getTimeoutDuration(), searchRfxUri, rfxIds, componentFilters)
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error searching rfxs"));
     log.info("Finish calling Jaggaer API to search rfx with components. Rfx Id: {}, Components: {}", rfxIds, componentFilters);
 
     if (searchRfxResponse.getReturnCode() == 0) {
       return searchRfxResponse.getDataList().getRfx();
     }
     throw new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-        "Unexpected error searching rfxs");
+            "Unexpected error searching rfxs");
   }
-  
+
   /**
    * Get an Rfx by component(Event).
    *
@@ -246,11 +260,11 @@ public class JaggaerService {
    * @return response containing code, message and bravoId of company
    */
   public CreateUpdateCompanyResponse createUpdateCompany(
-      final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
+          final CreateUpdateCompanyRequest createUpdateCompanyRequest) {
     log.info("Start calling Jaggaer API to create or update company, Request: {}", createUpdateCompanyRequest);
     final var createUpdateCompanyResponse = webclientWrapper.postData(createUpdateCompanyRequest,
-        CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
-        jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
+            CreateUpdateCompanyResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+            jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT));
     log.info("Start calling Jaggaer API to create or update company, Response: {}", createUpdateCompanyResponse);
 
     // Super user exists is code "-996"...
@@ -258,19 +272,19 @@ public class JaggaerService {
 
     if (!jaggaerSuccessCodes.contains(createUpdateCompanyResponse.getReturnCode())) {
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
-          createUpdateCompanyResponse.getReturnMessage());
+              createUpdateCompanyResponse.getReturnMessage());
     }
 
     if (createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUBUSER_EXISTS)
-        || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
+            || createUpdateCompanyResponse.getReturnMessage().contains(ERRCODE_SUPERUSER_EXISTS)) {
       throw new JaggaerApplicationException(createUpdateCompanyResponse.getReturnCode(),
-          "Jaggaer sub or super user already exists: "
-              + createUpdateCompanyResponse.getReturnMessage());
+              "Jaggaer sub or super user already exists: "
+                      + createUpdateCompanyResponse.getReturnMessage());
     }
 
     if ("1".equals(createUpdateCompanyResponse.getReturnCode())) {
       log.warn("Create / update company operation succeeded with warnings: [{}]",
-          createUpdateCompanyResponse.getReturnMessage());
+              createUpdateCompanyResponse.getReturnMessage());
     }
     return createUpdateCompanyResponse;
 
@@ -294,12 +308,12 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to upload document. File name: {}", multipartFile.getOriginalFilename());
     final var response =
-        ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
-            .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
-            .retrieve().bodyToMono(CreateUpdateRfxResponse.class).block())
-                .orElseThrow(() -> new JaggaerApplicationException(
-                    "Upload attachment from Jaggaer returned a null response: rfxId:"
-                        + rfx.getRfx().getRfxSetting().getRfxId()));
+            ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
+                    .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
+                    .retrieve().bodyToMono(CreateUpdateRfxResponse.class).block())
+                    .orElseThrow(() -> new JaggaerApplicationException(
+                            "Upload attachment from Jaggaer returned a null response: rfxId:"
+                                    + rfx.getRfx().getRfxSetting().getRfxId()));
     log.info("Finish calling Jaggaer API to upload document. File name: {}", multipartFile.getOriginalFilename());
 
     if (0 != response.getReturnCode()) {
@@ -321,18 +335,18 @@ public class JaggaerService {
     final var getAttachmentUri = jaggaerAPIConfig.getGetAttachment().get(ENDPOINT);
     log.info("Start calling Jaggaer API to get attachment, File name: {}", fileName);
     final var response = jaggaerWebClient.get().uri(getAttachmentUri, fileId, fileName)
-        .header(ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE).retrieve().toEntity(byte[].class)
-        .block();
+            .header(ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE).retrieve().toEntity(byte[].class)
+            .block();
     log.info("Finish calling Jaggaer API to get attachment, File name: {}", fileName);
 
 
     if (response == null) {
       throw new JaggaerApplicationException(
-          "Get attachment from Jaggaer returned a null response: fileId:" + fileId + ", fileName: "
-              + fileName);
+              "Get attachment from Jaggaer returned a null response: fileId:" + fileId + ", fileName: "
+                      + fileName);
     }
     return DocumentAttachment.builder().data(response.getBody())
-        .contentType(response.getHeaders().getContentType()).build();
+            .contentType(response.getHeaders().getContentType()).build();
   }
 
   /**
@@ -343,36 +357,36 @@ public class JaggaerService {
    * @param jaggaerUserId
    */
   public void publishRfx(final ProcurementEvent event, final PublishDates publishDates,
-      final String jaggaerUserId) {
+                         final String jaggaerUserId) {
 
     // TODO: What do we do with `publishDate.startDate`, if supplied?
 
     final var publishRfx = PublishRfx.builder().rfxId(event.getExternalEventId())
-        .rfxReferenceCode(event.getExternalReferenceId())
-        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build())
-        .newClosingDate(publishDates.getEndDate().toInstant()).build();
+            .rfxReferenceCode(event.getExternalReferenceId())
+            .operatorUser(OwnerUser.builder().id(jaggaerUserId).build())
+            .newClosingDate(publishDates.getEndDate().toInstant()).build();
 
     final var publishRfxEndpoint = jaggaerAPIConfig.getPublishRfx().get(ENDPOINT);
 
     log.info("Start calling Jaggaer API to publish rfx, Rfx Id: {}", publishRfx.getRfxId());
     final var publishRfxResponse = webclientWrapper.postData(publishRfx, PublishRfxResponse.class,
-        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), publishRfxEndpoint);
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), publishRfxEndpoint);
     log.info("Finish calling Jaggaer API to publish rfx, Rfx Id: {}", publishRfx.getRfxId());
 
     log.debug("Publish event response: {}", publishRfxResponse);
 
     if (!Objects.equals(0, publishRfxResponse.getReturnCode())
-        || !Constants.OK_MSG.equals(publishRfxResponse.getReturnMessage())) {
+            || !Constants.OK_MSG.equals(publishRfxResponse.getReturnMessage())) {
       throw new JaggaerApplicationException(publishRfxResponse.getReturnCode(),
-          publishRfxResponse.getReturnMessage());
+              publishRfxResponse.getReturnMessage());
     }
   }
 
   /**
    * Get projects list from Jaggaer
    *
-   * @return ProjectList
    * @param jaggaerUserId
+   * @return ProjectList
    */
   public ProjectListResponse getProjectList(final String jaggaerUserId) {
     final var projectListUri = jaggaerAPIConfig.getGetProjectList().get(ENDPOINT);
@@ -414,20 +428,21 @@ public class JaggaerService {
     log.info("Finish calling Jaggaer API to get message, Message Id: {}", messageId);
     return messageResponse;
   }
-  
+
   @Async
   public Future<MessageResponse> updateMessage(final MessageUpdate messageUpdate) {
     final var updateMessageUrl = jaggaerAPIConfig.getUpdateMessage().get(ENDPOINT);
 
-   log.info("Start calling Jaggaer API to update message, Message Id: {}", messageUpdate.getMessageId());
-   final var updateResponse = new AsyncResult<>(ofNullable(jaggaerWebClient.put().uri(updateMessageUrl).body(Mono.just(messageUpdate), MessageUpdate.class).retrieve()
-           .bodyToMono(MessageResponse.class)
-           .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
-           .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
-                   "Unexpected error retrieving messages")));
-   log.info("Finish calling Jaggaer API to update message, Message Id: {}", messageUpdate.getMessageId());
-   return updateResponse;
+    log.info("Start calling Jaggaer API to update message, Message Id: {}", messageUpdate.getMessageId());
+    final var updateResponse = new AsyncResult<>(ofNullable(jaggaerWebClient.put().uri(updateMessageUrl).body(Mono.just(messageUpdate), MessageUpdate.class).retrieve()
+            .bodyToMono(MessageResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving messages")));
+    log.info("Finish calling Jaggaer API to update message, Message Id: {}", messageUpdate.getMessageId());
+    return updateResponse;
   }
+
   /**
    * Start Evaluation Rfx
    *
@@ -441,8 +456,8 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to start evaluation, Rfx Id: {}", event.getExternalEventId());
     final var evaluationResponse =
-        webclientWrapper.postData(startEvaluationRequest, WorkflowRfxResponse.class,
-            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+            webclientWrapper.postData(startEvaluationRequest, WorkflowRfxResponse.class,
+                    jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.info("Finish calling Jaggaer API to start evaluation, Rfx Id: {}", event.getExternalEventId());
 
     log.debug("Start evaluation event response: {}", evaluationResponse);
@@ -464,13 +479,13 @@ public class JaggaerService {
    * @param multipartFile
    */
   public void eventUploadDocument(final ProcurementEvent event, final String fileName,
-      final String fileDescription, final DocumentAudienceType audience,
-      final MultipartFile multipartFile) {
+                                  final String fileDescription, final DocumentAudienceType audience,
+                                  final MultipartFile multipartFile) {
 
     var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId())
-        .rfxReferenceCode(event.getExternalReferenceId()).build();
+            .rfxReferenceCode(event.getExternalReferenceId()).build();
     var attachment =
-        Attachment.builder().fileName(fileName).fileDescription(fileDescription).build();
+            Attachment.builder().fileName(fileName).fileDescription(fileDescription).build();
     Rfx rfx;
 
     switch (audience) {
@@ -488,13 +503,13 @@ public class JaggaerService {
 
     var update = new CreateUpdateRfx(OperationCode.CREATEUPDATE, rfx);
 
-    Instant retrieveDocStart= Instant.now();
+    Instant retrieveDocStart = Instant.now();
 
     this.uploadDocument(multipartFile, update);
-    Instant retrieveDocEnd= Instant.now();
+    Instant retrieveDocEnd = Instant.now();
 
-      log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ", event.getProject().getId(), event.getEventID(),fileName,
-              Duration.between(retrieveDocStart,retrieveDocEnd).toMillis());
+    log.info("JaggaerService : eventUploadDocument  : Total time taken to uploadDocument service for procID {} : eventId :{} , Filename : {},  Timetaken : {}  ", event.getProject().getId(), event.getEventID(), fileName,
+            Duration.between(retrieveDocStart, retrieveDocEnd).toMillis());
 
 
   }
@@ -504,22 +519,21 @@ public class JaggaerService {
    *
    * @param rfx
    * @param operationCode
-   *
    */
   public CreateUpdateRfxResponse extendRfx(final RfxRequest rfx,
-      final OperationCode operationCode) {
+                                           final OperationCode operationCode) {
 
     log.info("Start calling Jaggaer API to extend rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
     final var extendRfxResponse = webclientWrapper.postData(new ExtendEventRfx(operationCode, rfx),
-        CreateUpdateRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
-        jaggaerAPIConfig.getCreateRfx().get(ENDPOINT));
+            CreateUpdateRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+            jaggaerAPIConfig.getCreateRfx().get(ENDPOINT));
     log.info("Finish calling Jaggaer API to extend rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
 
     if (extendRfxResponse.getReturnCode() != 0
-        || !Constants.OK_MSG.equals(extendRfxResponse.getReturnMessage())) {
+            || !Constants.OK_MSG.equals(extendRfxResponse.getReturnMessage())) {
       log.error(extendRfxResponse.toString());
       throw new JaggaerApplicationException(extendRfxResponse.getReturnCode(),
-          extendRfxResponse.getReturnMessage());
+              extendRfxResponse.getReturnMessage());
     }
     log.info("Extended event: {}", extendRfxResponse);
     return extendRfxResponse;
@@ -535,7 +549,7 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to invalidate event, Rfx Id: {}", request.getRfxId());
     final var response = webclientWrapper.postData(request, WorkflowRfxResponse.class,
-        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.info("Finish calling Jaggaer API to invalidate event, Rfx Id: {}", request.getRfxId());
 
     log.debug("Invalidate event response: {}", response);
@@ -556,7 +570,7 @@ public class JaggaerService {
     log.info("Finish calling Jaggaer API to get project using project Id: {}", externalProjectId);
     return project;
   }
-  
+
   /**
    * Award Rfx
    *
@@ -564,13 +578,13 @@ public class JaggaerService {
    * @param jaggaerUserId
    */
   public String awardOrPreAwardRfx(final ProcurementEvent event, final String jaggaerUserId,
-      final String supplierId, AwardState awardState) {
+                                   final String supplierId, AwardState awardState) {
     final var awardRequest = RfxWorkflowRequest.builder()
-        .suppliersList(SuppliersList.builder()
-            .supplier(Arrays.asList(Supplier.builder().id(supplierId).build())).build())
-        .rfxReferenceCode(event.getExternalReferenceId())
-        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
-    
+            .suppliersList(SuppliersList.builder()
+                    .supplier(Arrays.asList(Supplier.builder().id(supplierId).build())).build())
+            .rfxReferenceCode(event.getExternalReferenceId())
+            .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+
     var endPoint = jaggaerAPIConfig.getAward().get(ENDPOINT);
     if (awardState.equals(AwardState.PRE_AWARD)) {
       endPoint = jaggaerAPIConfig.getPreAward().get(ENDPOINT);
@@ -578,19 +592,19 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to award or pre-award rfx, Rfx Id: {}", event.getExternalEventId());
     final var response = webclientWrapper.postData(awardRequest, WorkflowRfxResponse.class,
-        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.info("Finish calling Jaggaer API to award or pre-award rfx, Rfx Id: {}", event.getExternalEventId());
 
     log.debug("Award response: {}", response);
-    
+
     if (!Objects.equals(0, response.getReturnCode())
-        || !Constants.OK_MSG.equals(response.getReturnMessage())) {
+            || !Constants.OK_MSG.equals(response.getReturnMessage())) {
       throw new JaggaerApplicationException(response.getReturnCode(),
-          response.getReturnMessage());
+              response.getReturnMessage());
     }
     return response.getFinalStatus();
   }
-  
+
   /**
    * End Evaluation Rfx
    *
@@ -604,8 +618,8 @@ public class JaggaerService {
 
     log.info("Start calling Jaggaer API to complete technical, Rfx Id: {}", event.getExternalEventId());
     final var response =
-        webclientWrapper.postData(completeTechnicalRequest, WorkflowRfxResponse.class,
-            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+            webclientWrapper.postData(completeTechnicalRequest, WorkflowRfxResponse.class,
+                    jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.info("Finish calling Jaggaer API to complete technical, Rfx Id: {}", event.getExternalEventId());
 
     log.debug("Complete evaluation rfx response: {}", response);
@@ -619,20 +633,20 @@ public class JaggaerService {
    * @param envelopeType
    */
   public void openEnvelope(final ProcurementEvent event, final String jaggaerUserId,
-      final EnvelopeType envelopeType) {
+                           final EnvelopeType envelopeType) {
     final var openEnvelopeRequest = OpenEnvelopeWorkFlowRequest.builder().envelopeType(envelopeType)
-        .rfxReferenceCode(event.getExternalReferenceId())
-        .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
+            .rfxReferenceCode(event.getExternalReferenceId())
+            .operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build();
 
     log.info("Start calling Jaggaer API to open envelope, Rfx Id: {}", event.getExternalEventId());
     final var envelopeResponse = webclientWrapper.postData(openEnvelopeRequest,
-        WorkflowRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
-        jaggaerAPIConfig.getOpenEnvelope().get(ENDPOINT));
+            WorkflowRfxResponse.class, jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(),
+            jaggaerAPIConfig.getOpenEnvelope().get(ENDPOINT));
     log.info("Finish calling Jaggaer API to open envelope, Rfx Id: {}", event.getExternalEventId());
 
     log.debug("Open envelope response: {}", envelopeResponse);
     if (envelopeResponse.getReturnCode() != 0
-        || !Constants.OK_MSG.equals(envelopeResponse.getReturnMessage())) {
+            || !Constants.OK_MSG.equals(envelopeResponse.getReturnMessage())) {
       log.error(envelopeResponse.toString());
     }
   }
@@ -644,7 +658,7 @@ public class JaggaerService {
    * @param jaggaerUserId
    */
   public void startEvaluationAndOpenEnvelope(final ProcurementEvent procurementEvent,
-      final String jaggaerUserId) {
+                                             final String jaggaerUserId) {
     startEvaluation(procurementEvent, jaggaerUserId);
     openEnvelope(procurementEvent, jaggaerUserId, EnvelopeType.TECH);
   }
@@ -653,7 +667,7 @@ public class JaggaerService {
     return this.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
             () -> new TendersDBDataException(format(ERR_MSG_RFX_NOT_FOUND, externalEventId)));
   }
-  
+
   /**
    * Create Reply Message Rfx
    *
@@ -663,29 +677,29 @@ public class JaggaerService {
     final var endPoint = jaggaerAPIConfig.getCreateReplyMessage().get(ENDPOINT);
     log.info("Start calling Jaggaer API to create or reply message, Buyer Id: {}", messageRequest.getOperatorUser().getId());
     final var messageResponse = webclientWrapper.postData(messageRequest, MessageResponse.class,
-        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.info("Finish calling Jaggaer API to create or reply message, Buyer Id: {}", messageRequest.getOperatorUser().getId());
     log.debug("Create-Reply message response: {}", messageResponse);
     return messageResponse;
   }
-  
+
   /**
    * Create Update Scores
    *
    * @param scoringRequest
    */
   public ScoringResponse createUpdateScores(
-      ScoringRequest scoringRequest) {
+          ScoringRequest scoringRequest) {
     final var endPoint = jaggaerAPIConfig.getCreatUpdateScores().get(ENDPOINT);
 
     log.info("Start calling Jaggaer API to create or update scores, Rfx reference code: {}", scoringRequest.getRfxReferenceCode());
     final var scoreResponse = webclientWrapper.postData(scoringRequest, ScoringResponse.class,
-        jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
+            jaggaerWebClient, jaggaerAPIConfig.getTimeoutDuration(), endPoint);
     log.info("Finish calling Jaggaer API to create or update scores, Rfx reference code: {}", scoringRequest.getRfxReferenceCode());
 
     log.debug("Create-update scoring response: {}", scoreResponse);
     if (scoreResponse.getReturnCode() != 0
-        || !Constants.OK_MSG.equals(scoreResponse.getReturnMessage())) {
+            || !Constants.OK_MSG.equals(scoreResponse.getReturnMessage())) {
       log.error(scoreResponse.toString());
     }
     return scoreResponse;
@@ -699,4 +713,138 @@ public class JaggaerService {
                     "Unexpected error retrieving rfx"));
   }
 
+  /**
+   * Initialise the mapping of endpoints to their request classes
+   */
+  private Map<String, Class<?>> initialiseEndpointMapping() {
+    Map<String, Class<?>> mapping = new HashMap<>();
+
+    // Map endpoints to their request classes
+    // TODO: How to handle document upload request to Jaggaer or exclude it from batching job
+    mapping.put(jaggaerAPIConfig.getCreateProject().get(ENDPOINT), CreateUpdateProject.class);
+    mapping.put(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT), CreateUpdateRfx.class);
+    mapping.put(jaggaerAPIConfig.getCreateUpdateCompany().get(ENDPOINT), CreateUpdateCompanyRequest.class);
+    mapping.put(jaggaerAPIConfig.getPublishRfx().get(ENDPOINT), PublishRfx.class);
+    mapping.put(jaggaerAPIConfig.getStartEvaluation().get(ENDPOINT), RfxWorkflowRequest.class);
+    mapping.put(jaggaerAPIConfig.getInvalidateEvent().get(ENDPOINT), InvalidateEventRequest.class);
+    mapping.put(jaggaerAPIConfig.getAward().get(ENDPOINT), RfxWorkflowRequest.class);
+    mapping.put(jaggaerAPIConfig.getPreAward().get(ENDPOINT), RfxWorkflowRequest.class);
+    mapping.put(jaggaerAPIConfig.getCompleteTechnical().get(ENDPOINT), RfxWorkflowRequest.class);
+    mapping.put(jaggaerAPIConfig.getOpenEnvelope().get(ENDPOINT), OpenEnvelopeWorkFlowRequest.class);
+    mapping.put(jaggaerAPIConfig.getCreateReplyMessage().get(ENDPOINT), CreateReplyMessage.class);
+    mapping.put(jaggaerAPIConfig.getCreatUpdateScores().get(ENDPOINT), ScoringRequest.class);
+
+    return mapping;
+  }
+
+  /**
+   * Method to process a queued request
+   * Uses the endpoint URL from request_url field
+   */
+  public void processQueuedRequest(BatchingQueueEntity queueEntity) {
+    log.info("Processing queued request ID: {}, URL: {}",
+            queueEntity.getRequestId(), queueEntity.getRequestUrl());
+
+    // Update status to PROCESSING and increment attempt count
+    queueEntity.setRequest_status("PROCESSING");
+    queueEntity.setRequest_attempts(queueEntity.getRequest_attempts() + 1);
+    queueEntity.setUpdatedAt(Instant.now());
+    batchingQueueRepo.save(queueEntity);
+
+    try {
+      // Parse the payload to the request object
+      Object requestPayload = parseRequestPayload(queueEntity.getRequestPayload(), queueEntity.getRequestUrl());
+
+      // Execute the request using the endpoint URL
+      String response = executeRequest(queueEntity.getRequestUrl(), requestPayload);
+
+      // Validate the response
+      validateJaggaerResponse(response);
+
+      // Mark as completed
+      queueEntity.setRequest_status("COMPLETED");
+      queueEntity.setRequest_status_message("Successfully processed at " + Instant.now());
+      queueEntity.setUpdatedAt(Instant.now());
+      batchingQueueRepo.save(queueEntity);
+
+      log.info("Successfully processed request ID: {}", queueEntity.getRequestId());
+
+    } catch (Exception e) {
+      log.error("Error processing request ID: {}, Error: {}", queueEntity.getRequestId(), e.getMessage(), e);
+
+      // Mark as failed
+      queueEntity.setRequest_status("FAILED");
+      queueEntity.setRequest_status_message("Failed: " + e.getMessage());
+      queueEntity.setUpdatedAt(Instant.now());
+      batchingQueueRepo.save(queueEntity);
+
+      throw e;
+    }
+  }
+
+  /**
+   * Parse the JSON payload to the appropriate request object based on endpoint URL
+   */
+  private Object parseRequestPayload(String jsonPayload, String endpointUrl) {
+    try {
+      Class<?> requestClass = endpointToRequestClassMap.get(endpointUrl);
+      if (requestClass != null) {
+        // Handle CreateRfx endpoint which can have different request types
+        if (endpointUrl.equals(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))) {
+          // Check if it's an ExtendEventRfx by looking at the JSON structure
+          JsonNode jsonNode = objectMapper.readTree(jsonPayload);
+          if (jsonNode.has("extendData") || jsonNode.toString().contains("ExtendEventRfx")) {
+            return objectMapper.readValue(jsonPayload, ExtendEventRfx.class);
+          }
+          // Otherwise it's a CreateUpdateRfx
+          return objectMapper.readValue(jsonPayload, CreateUpdateRfx.class);
+        }
+
+        return objectMapper.readValue(jsonPayload, requestClass);
+      } else {
+        // Fallback for unknown endpoints
+        log.warn("Unknown endpoint URL: {}, using generic JsonNode", endpointUrl);
+        return objectMapper.readTree(jsonPayload);
+      }
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Failed to parse request payload for endpoint: " + endpointUrl, e);
+    }
+  }
+
+  /**
+   * Execute the batched request
+   */
+  private String executeRequest(String endpoint, Object requestPayload) {
+    log.debug("Executing request to endpoint: {}", endpoint);
+
+    return jaggaerWebClient
+            .post()
+            .uri(endpoint)
+            .bodyValue(requestPayload)
+            .retrieve()
+            .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()))
+            .block();
+  }
+
+  /**
+   * Validate Jaggaer API response
+   */
+  private void validateJaggaerResponse(String response) throws JaggaerApplicationException {
+    try {
+      JsonNode responseNode = objectMapper.readTree(response);
+
+      if (responseNode.has("returnCode") && responseNode.has("returnMessage")) {
+        int returnCode = responseNode.get("returnCode").asInt();
+        String returnMessage = responseNode.get("returnMessage").asText();
+
+        if (returnCode != 200 || !"OK".equals(returnMessage)) {
+          throw new JaggaerApplicationException(returnCode, returnMessage);
+        }
+      }
+
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Failed to parse response JSON", e);
+    }
+  }
 }
