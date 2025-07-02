@@ -12,7 +12,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchingQueueEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.BatchingService;
-import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,9 +30,6 @@ public class TaskSchedulingClient {
 
     @Autowired
     BatchingService batchingService;
-
-    @Autowired
-    JaggaerService jaggaerService;
 
     @Value("${caching.agreements}")
     private String activeAgreements;
@@ -98,7 +94,7 @@ public class TaskSchedulingClient {
                 try {
                     log.info("Processing queue request with ID: {}", request.getRequestId());
                     // Execute the Jaggaer requests
-                    jaggaerService.processQueuedRequest(request);
+                    batchingService.processQueuedRequest(request);
 
                     log.info("Successfully processed Jaegger request with ID: {}", request.getRequestId());
 
