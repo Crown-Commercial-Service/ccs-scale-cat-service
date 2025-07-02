@@ -6,8 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchedRequest;
-import uk.gov.crowncommercial.dts.scale.cat.repo.BatchingRepo;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchingQueueEntity;
+import uk.gov.crowncommercial.dts.scale.cat.repo.BatchingQueueRepo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 public class BatchingService {
     @Autowired
-    BatchingRepo batchingRepo;
+    BatchingQueueRepo batchingQueueRepo;
 
     @Value("${batching.processLimit}")
     int queueProcessLimit;
@@ -27,12 +27,12 @@ public class BatchingService {
     /**
      * Get the contents of the batch request queue
      */
-    public List<BatchedRequest> getBatchQueueContents() {
-        List<BatchedRequest> model = new ArrayList<>();
+    public List<BatchingQueueEntity> getBatchQueueContents() {
+        List<BatchingQueueEntity> model = new ArrayList<>();
 
         try {
             // Grab the contents of the queue directly from the repository, limited to our configured process cap
-            Page<BatchedRequest> limitedQueue = batchingRepo.findAll(PageRequest.of(0, queueProcessLimit));
+            Page<BatchingQueueEntity> limitedQueue = batchingQueueRepo.findAll(PageRequest.of(0, queueProcessLimit));
 
             if (limitedQueue.hasContent()) {
                 model = limitedQueue.getContent();
@@ -50,7 +50,7 @@ public class BatchingService {
     public void deleteProcessedRequests(List<Integer> requestIds) {
         try {
             log.info("Deleting {} processed requests from batch queue", requestIds.size());
-            batchingRepo.deleteAllById(requestIds);
+            batchingQueueRepo.deleteAllById(requestIds);
             log.info("Successfully deleted {} requests from batch queue", requestIds.size());
         } catch (Exception ex) {
             log.error("Error deleting processed requests from batch queue", ex);

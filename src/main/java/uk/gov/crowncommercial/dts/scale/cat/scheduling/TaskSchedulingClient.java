@@ -8,10 +8,11 @@ import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchedRequest;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.BatchingQueueEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.BatchingService;
+import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +31,9 @@ public class TaskSchedulingClient {
 
     @Autowired
     BatchingService batchingService;
+
+    @Autowired
+    JaggaerService jaggaerService;
 
     @Value("${caching.agreements}")
     private String activeAgreements;
@@ -80,11 +84,11 @@ public class TaskSchedulingClient {
     @Scheduled(fixedDelayString = "${scheduling.batchProcessing}")
     public void processJaeggerBatchQueue() {
         // To start we need to grab the contents of the batch queue from the batching service
-        List<BatchedRequest> requestQueue = batchingService.getBatchQueueContents();
+        List<BatchingQueueEntity> requestQueue = batchingService.getBatchQueueContents();
 
         if (requestQueue != null && !requestQueue.isEmpty()) {
             // There are entries in the queue - iterate over them and process them
-            List<BatchedRequest> requestsToProcess = requestQueue.stream()
+            List<BatchingQueueEntity> requestsToProcess = requestQueue.stream()
                     .limit(350)
                     .collect(Collectors.toList());
 
@@ -92,13 +96,17 @@ public class TaskSchedulingClient {
 
             requestsToProcess.forEach(request -> {
                 try {
-                    log.info("Processing queue request item with ID: {}", request.getId());
-                    // TODO: Add  processing logic here
+                    log.info("Processing queue request with ID: {}", request.getRequestId());
+                    // Execute the Jaggaer requests
+                    jaggaerService.processQueuedRequest(request);
+
+                    log.info("Successfully processed Jaegger request with ID: {}", request.getRequestId());
+
 
                     // If processing succeeds, add to deletion list
-                    successfullyProcessedIds.add((request.getId()));
+                    successfullyProcessedIds.add((request.getRequestId()));
                 } catch (Exception e) {
-                    log.error("Failed to process request with ID: {}", request.getId(), e);
+                    log.error("Failed to process request ID: {}", request.getRequestId(), e);
                     // Don't add to deletion list - leave in queue for retry
                 }
             });
