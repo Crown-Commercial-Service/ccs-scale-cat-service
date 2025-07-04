@@ -37,7 +37,7 @@
         <spring-security.version>6.5.1</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
-        <jsoup.version>1.20.1</jsoup.version>
+        <jsoup.version>1.21.1</jsoup.version>
         <hibernate.version>6.6.17.Final</hibernate.version>
         <junitapi.version>5.13.2</junitapi.version>
         <opensearch.version>1.8.1</opensearch.version>
