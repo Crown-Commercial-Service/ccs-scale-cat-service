@@ -25,9 +25,9 @@
         <hibernate-types.version>2.21.1</hibernate-types.version>
         <modelmapper.version>3.2.4</modelmapper.version>
         <simple-odf.version>0.9.0</simple-odf.version>
-        <jena-core.version>5.4.0</jena-core.version>
-        <commons-io.version>2.19.0</commons-io.version>
-        <aws-java-sdk-s3.version>1.12.787</aws-java-sdk-s3.version>
+        <jena-core.version>5.5.0</jena-core.version>
+        <commons-io.version>2.20.0</commons-io.version>
+        <aws-java-sdk-s3.version>1.12.788</aws-java-sdk-s3.version>
         <tika-core.version>3.2.1</tika-core.version>
         <java-cfenv-boot.version>3.4.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -55,7 +55,7 @@
         <spring.version>6.5.1</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.0</compiler.version>
-        <cucumber.version>7.25.0</cucumber.version>
+        <cucumber.version>7.26.0</cucumber.version>
         <h2.version>2.3.232</h2.version>
     </properties>
 
