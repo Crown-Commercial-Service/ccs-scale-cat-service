@@ -34,6 +34,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.Role
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.OrganisationActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
+import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -50,6 +51,9 @@ class TendersControllerTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @MockBean
+  private ConclaveService conclaveService;
 
   @MockBean
   private ProfileManagementService profileManagementService;
