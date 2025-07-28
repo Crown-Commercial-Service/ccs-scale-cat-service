@@ -85,18 +85,12 @@ public class ProjectsController extends AbstractRestController {
   }
 
   /**
-   * UPDATE
+   * Returns a ProjectPackageSummary object representing summary data for a project which has been looked up
    */
-  @GetMapping("/{projectId}/test")
+  @GetMapping("/{projectId}/lookup")
   @TrackExecutionTime
-  public String testGet(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
-    ProcurementProject model = projectPackageService.getProjectEntity(projectId);
-
-    if (model != null && model.getProjectName() != null && !model.getProjectName().isEmpty()) {
-      return model.getProjectName();
-    } else {
-      return "missing data";
-    }
+  public ProjectPackageSummary projectLookup(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+    return projectPackageService.lookupProject(projectId);
   }
 
   @PostMapping("/agreements")
