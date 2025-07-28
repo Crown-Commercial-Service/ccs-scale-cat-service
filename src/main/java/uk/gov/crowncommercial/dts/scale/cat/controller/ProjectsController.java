@@ -40,6 +40,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchR
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
@@ -88,7 +89,7 @@ public class ProjectsController extends AbstractRestController {
    */
   @GetMapping("/{projectId}/test")
   @TrackExecutionTime
-  public ProcurementProject testGet(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+  public Project testGet(@PathVariable("projectId") final Integer projectId) {
     return procurementProjectService.testGet(projectId);
   }
 

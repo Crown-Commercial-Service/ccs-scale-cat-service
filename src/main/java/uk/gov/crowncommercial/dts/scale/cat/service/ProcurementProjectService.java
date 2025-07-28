@@ -328,9 +328,10 @@ public class ProcurementProjectService {
   /**
    * UPDATE
    */
-  public ProcurementProject testGet(final Integer projectId) {
-    return retryableTendersDBDelegate.findProcurementProjectById(projectId)
+  public Project testGet(final Integer projectId) {
+    var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
             .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+    return jaggaerService.getProject(dbProject.getExternalProjectId());
   }
 
   /**
