@@ -30,7 +30,7 @@ public class ProjectPackageService {
         return getProjectSummary(query);
     }
 
-    private ProcurementProject getProjectEntity(Integer procId) {
+    public ProcurementProject getProjectEntity(Integer procId) {
         Optional<ProcurementProject> optProject = dbDelegate.findProcurementProjectById(procId);
         if(optProject.isPresent()){
             return optProject.get();

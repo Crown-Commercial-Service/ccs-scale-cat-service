@@ -326,15 +326,6 @@ public class ProcurementProjectService {
   }
 
   /**
-   * UPDATE
-   */
-  public Project testGet(final Integer projectId) {
-    var dbProject = retryableTendersDBDelegate.findProcurementProjectById(projectId)
-            .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
-    return jaggaerService.getProject(dbProject.getExternalProjectId());
-  }
-
-  /**
    * Get Project Team members. This is a combination of Project Team members on the project and
    * email recipients on the rfx.
    *

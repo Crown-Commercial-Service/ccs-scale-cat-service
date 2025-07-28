@@ -89,8 +89,8 @@ public class ProjectsController extends AbstractRestController {
    */
   @GetMapping("/{projectId}/test")
   @TrackExecutionTime
-  public Project testGet(@PathVariable("projectId") final Integer projectId) {
-    return procurementProjectService.testGet(projectId);
+  public ProcurementProject testGet(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+    return projectPackageService.getProjectEntity(projectId);
   }
 
   @PostMapping("/agreements")
