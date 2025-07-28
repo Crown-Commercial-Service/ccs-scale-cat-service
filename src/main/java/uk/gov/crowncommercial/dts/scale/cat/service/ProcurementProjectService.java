@@ -326,6 +326,14 @@ public class ProcurementProjectService {
   }
 
   /**
+   * UPDATE
+   */
+  public ProcurementProject testGet(final Integer projectId) {
+    return retryableTendersDBDelegate.findProcurementProjectById(projectId)
+            .orElseThrow(() -> new ResourceNotFoundException("Project '" + projectId + "' not found"));
+  }
+
+  /**
    * Get Project Team members. This is a combination of Project Team members on the project and
    * email recipients on the rfx.
    *

@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
@@ -80,6 +81,15 @@ public class ProjectsController extends AbstractRestController {
     // Grab the principal from the JWT passed to us, then use it and the requested Project ID to fetch the relevant project summary
     String principal = getPrincipalFromJwt(authentication);
     return procurementProjectService.getProjectSummary(principal, projectId);
+  }
+
+  /**
+   * UPDATE
+   */
+  @GetMapping("/{projectId}/test")
+  @TrackExecutionTime
+  public ProcurementProject testGet(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+    return procurementProjectService.testGet(projectId);
   }
 
   @PostMapping("/agreements")
