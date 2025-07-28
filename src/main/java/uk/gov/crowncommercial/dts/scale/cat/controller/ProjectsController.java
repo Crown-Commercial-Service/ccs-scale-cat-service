@@ -89,8 +89,14 @@ public class ProjectsController extends AbstractRestController {
    */
   @GetMapping("/{projectId}/test")
   @TrackExecutionTime
-  public ProcurementProject testGet(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
-    return projectPackageService.getProjectEntity(projectId);
+  public String testGet(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+    ProcurementProject model = projectPackageService.getProjectEntity(projectId);
+
+    if (model != null && model.getProjectName() != null && !model.getProjectName().isEmpty()) {
+      return model.getProjectName();
+    } else {
+      return "missing data";
+    }
   }
 
   @PostMapping("/agreements")
