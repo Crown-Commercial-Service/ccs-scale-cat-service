@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.StringValueResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DraftProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProcurementProjectName;
@@ -40,7 +39,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicSearchR
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Project;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementProjectService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.OcdsSections;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.ProjectPackageService;
