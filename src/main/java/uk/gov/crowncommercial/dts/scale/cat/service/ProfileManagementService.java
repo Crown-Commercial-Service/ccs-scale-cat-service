@@ -294,6 +294,26 @@ public class ProfileManagementService {
     return registerUserResponse;
   }
 
+  public boolean updateBuyerSso(String userEmail) {
+    return true;
+    
+    if(jaggaerBuyer.isPresent() && !ssoCodeDataExists(jaggaerBuyer.get().getSsoCodeData()))
+    {
+      throw new SSOObjectMissingException("SSO Object is not present for the User"+ jaggaerBuyer.get().getEmail());
+    }else {
+      createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
+              conclaveUserContacts, jaggaerBuyer, jaggaerAPIConfig.getSelfServiceId(),
+              jaggaerAPIConfig.getDefaultBuyerRightsProfile());
+
+      log.debug("Updating buyer user: [{}]", conclaveUser.getUserName());
+      jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+      userProfileService.refreshBuyerCache(conclaveUser.getUserName());
+
+      registerUserResponse.userAction(UserActionEnum.EXISTED);
+      registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
+    }
+  }
+
   private void createUpdateSupplierSubUser(final String jaggaerSupplierOrgId,
       final CreateUpdateCompanyRequestBuilder createUpdateCompanyDataBuilder,
       final UserProfileResponseInfo conclaveUser, OrganisationProfileResponseInfo conclaveUserOrg,

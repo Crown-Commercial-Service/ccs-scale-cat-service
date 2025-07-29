@@ -103,6 +103,32 @@ public class TendersController extends AbstractRestController {
     }
   }
 
+  /**
+   * Link or unlink the SSO config for any existing buyer account, matching the given email.
+   */
+  @PutMapping("/users/{user-id}/sso")
+  @TrackExecutionTime
+  public ResponseEntity<RegisterUserResponse> updateBuyerSso(
+      @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+
+    log.info("updateUserSso invoked on behalf of principal: {} for user-id: {}", principal, userId);
+
+    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
+      throw new AuthorisationFailureException(
+          "Authenticated user does not match requested user-id");
+    }
+
+    boolean response = profileManagementService.updateBuyerSso(userId);
+
+    if (response) {
+      return ResponseEntity.status(HttpStatus.OK).body(null);
+    } else {
+      return ResponseEntity.status(HttpStatus.CREATED).body(null);
+    }
+  }
+
 
   @GetMapping("/users")
   @TrackExecutionTime
