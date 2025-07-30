@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackage;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPackageSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Record1;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RecordPackageAllOfPublisher;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -20,6 +21,24 @@ public class ProjectPackageService {
     private final ProjectRecordService projectRecordService;
     private final NonOCDSProjectService nonOCDSService;
     private final RetryableTendersDBDelegate dbDelegate;
+
+    /**
+     * Looks up a given project and returns an instance of ProjectPackageSummary
+     */
+    public ProjectPackageSummary lookupProject(Integer projectId) {
+        // First, grab the project
+        ProcurementProject project = getProjectEntity(projectId);
+
+        // Now map the data to our output model - no need to null check here, it's been handled above if the data wasn't found
+        ProjectPackageSummary model = new ProjectPackageSummary();
+        model.setProjectId(project.getId());
+        model.setProjectName(project.getProjectName());
+        model.setAgreementId(project.getCaNumber());
+        model.setLotId(project.getLotNumber());
+
+        // Job done, return our model
+        return model;
+    }
 
     public ProjectPackage getProjectPackage(Integer procId, String principal, List<String> sections) {
         ProjectRequest query = new ProjectRequest();
