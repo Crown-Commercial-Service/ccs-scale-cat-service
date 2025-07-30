@@ -6,6 +6,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserRespon
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.GetUserResponse.RolesEnum.SUPPLIER;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
 import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
@@ -294,24 +297,115 @@ public class ProfileManagementService {
     return registerUserResponse;
   }
 
-  public boolean updateBuyerSso(String userEmail) {
-    return true;
-    
-    if(jaggaerBuyer.isPresent() && !ssoCodeDataExists(jaggaerBuyer.get().getSsoCodeData()))
-    {
-      throw new SSOObjectMissingException("SSO Object is not present for the User"+ jaggaerBuyer.get().getEmail());
-    }else {
-      createUpdateSubUserHelper(createUpdateCompanyDataBuilder, conclaveUser, conclaveUserOrg,
-              conclaveUserContacts, jaggaerBuyer, jaggaerAPIConfig.getSelfServiceId(),
-              jaggaerAPIConfig.getDefaultBuyerRightsProfile());
+  public CreateUpdateCompanyResponse updateBuyerSso(String userEmail, Integer requestType) {
+    log.debug("Updating buyer user account sso link state for: [{}]", userEmail);
 
-      log.debug("Updating buyer user: [{}]", conclaveUser.getUserName());
-      jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
-      userProfileService.refreshBuyerCache(conclaveUser.getUserName());
-
-      registerUserResponse.userAction(UserActionEnum.EXISTED);
-      registerUserResponse.organisationAction(OrganisationActionEnum.EXISTED);
+    if (userEmail == null || userEmail.isBlank() ||  !userEmail.toLowerCase().matches("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$")) {
+      throw new ResourceNotFoundException("Email Address is missing or not a valid email: " + userEmail);
     }
+
+    // I don't think this is needed, since the users will have existed longer than 30 mins, before this request can happen. Leaving commented for visibility:
+    // userProfileService.refreshBuyerCache(userEmail);
+    Optional<SubUser> searchedSubUser = userProfileService.resolveSubUserFromSelfServiceCompanyByEmail(userEmail);
+
+    AtomicReference<CreateUpdateCompanyResponse> response = new AtomicReference<>();
+
+    searchedSubUser.ifPresentOrElse(
+        subUser -> {
+          CreateUpdateCompany createUpdateCompany = CreateUpdateCompany.builder()
+            .operationCode(OperationCode.UPDATE)
+            .companyInfo(CompanyInfo.builder().bravoId("TEST").build())////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            .build();
+
+          // Request is to LINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
+          if (requestType == 1 && ssoCodeDataExists(subUser.getSsoCodeData())) {
+            // SubUser is immutable, so we need to create a new one for the request.
+            SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(subUser.getSsoCodeData(), userEmail)).build();
+
+            SubUsers subUsers = SubUsers.builder()
+              .operationCode(OperationCode.UPDATE)
+              .subUsers(Set.of(newSubUser))
+              .build();
+
+            response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
+
+          // Request is to LINK SSO with buyer account and sso code data DOES NOT exist, so then proceed to update account.
+          } else if (requestType == 1 && !ssoCodeDataExists(subUser.getSsoCodeData())) {
+            // SubUser is immutable, so we need to create a new one for the request.
+            SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(null, userEmail)).build();
+
+            SubUsers subUsers = SubUsers.builder()
+              .operationCode(OperationCode.UPDATE)
+              .subUsers(Set.of(newSubUser))
+              .build();
+
+            response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
+
+          // Request is to UNLINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
+          } else if (requestType == 2 && ssoCodeDataExists(subUser.getSsoCodeData())) {
+            // SubUser is immutable, so we need to create a new one for the request.
+            SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(subUser.getSsoCodeData(), "")).build();
+
+            SubUsers subUsers = SubUsers.builder()
+              .operationCode(OperationCode.UPDATE)
+              .subUsers(Set.of(newSubUser))
+              .build();
+
+            response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
+
+          // No Update Required, due to the request type and the buyer accounts current SSO state.
+          } else {
+            log.info("No update required for user [{}]", userEmail);
+
+            response.set(
+              CreateUpdateCompanyResponse.builder()
+                .returnCode("No update needed")
+                .returnMessage("No update needed")
+                .build()
+            );
+          }
+        },
+        () -> {
+          throw new ResourceNotFoundException("A buyer was not found with the searched email address: " + userEmail);
+        }
+    );
+
+    return response.get();
+  }
+
+  private SSOCodeData updateSsoCodeData(SSOCodeData ssoCodeData, String userEmail) {
+    // Handle null input by building a new SSOCodeData with a single OPEN_ID code
+    if (ssoCodeData == null) {
+      return SSOCodeData.builder()
+        .ssoCode(Set.of(
+          SSOCodeData.SSOCode.builder()
+          .ssoCodeValue("OPEN_ID")
+          .ssoUserLogin(userEmail)
+          .build()
+        ))
+        .build();
+    }
+
+    // Otherwise, update only the OPEN_ID entry (if present)
+    Set<SSOCodeData.SSOCode> updatedSsoCodes = ssoCodeData.getSsoCode().stream().map(ssoCode -> {
+      if ("OPEN_ID".equals(ssoCode.getSsoCodeValue())) {
+        return SSOCodeData.SSOCode.builder()
+        .ssoCodeValue("OPEN_ID")
+        .ssoUserLogin(userEmail)
+        .build();
+      }
+      return ssoCode;
+    }).collect(Collectors.toSet());
+
+    // If unchanged, return the original object
+    if (updatedSsoCodes.equals(ssoCodeData.getSsoCode())) {
+      return ssoCodeData;
+    }
+
+    // Otherwise, return the updated object
+    return SSOCodeData.builder()
+      .ssoCode(updatedSsoCodes)
+      .build();
   }
 
   private void createUpdateSupplierSubUser(final String jaggaerSupplierOrgId,
