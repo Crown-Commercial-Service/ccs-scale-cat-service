@@ -136,9 +136,8 @@ public class UserProfileService {
    */
   @SneakyThrows
   public Optional<SubUser> resolveSubUserFromSelfServiceCompanyByEmail(final String email) {
-    if (email == null || email.isBlank() || !email.toLowerCase().matches("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$")) return Optional.empty();
-
     var returnCompanyData = getSelfServiceBuyerCompany();
+
     var subUsers = Optional.ofNullable(returnCompanyData.getReturnSubUser())
         .map(SubUsers::getSubUsers)
         .orElse(Collections.emptySet());

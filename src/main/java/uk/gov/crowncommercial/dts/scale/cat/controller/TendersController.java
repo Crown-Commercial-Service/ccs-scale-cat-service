@@ -15,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyResponse;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 
@@ -108,24 +109,27 @@ public class TendersController extends AbstractRestController {
    */
   @PutMapping("/users/{user-id}/sso")
   @TrackExecutionTime
-  public ResponseEntity<RegisterUserResponse> updateBuyerSso(
-      @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+  public ResponseEntity<CreateUpdateCompanyResponse> updateBuyerSso(
+    @PathVariable("user-id") final String userId,
+    @PathVariable("request-type") final String requestType,
+    final JwtAuthenticationToken authentication
+  ) {
 
     var principal = getPrincipalFromJwt(authentication);
 
     log.info("updateUserSso invoked on behalf of principal: {} for user-id: {}", principal, userId);
 
-    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
+    if (principal == null || principal.isEmpty()) {
       throw new AuthorisationFailureException(
-          "Authenticated user does not match requested user-id");
+          "Not Authenticated.");
     }
 
-    boolean response = profileManagementService.updateBuyerSso(userId);
+    CreateUpdateCompanyResponse response = profileManagementService.updateBuyerSso(userId, requestType);
 
-    if (response) {
-      return ResponseEntity.status(HttpStatus.OK).body(null);
+    if (response.getReturnCode() == "400") {
+      return ResponseEntity.status(HttpStatus.OK).body(response);
     } else {
-      return ResponseEntity.status(HttpStatus.CREATED).body(null);
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
   }
 

@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
 import joptsimple.internal.Strings;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.data.util.Pair;
@@ -297,11 +296,15 @@ public class ProfileManagementService {
     return registerUserResponse;
   }
 
-  public CreateUpdateCompanyResponse updateBuyerSso(String userEmail, Integer requestType) {
+  public CreateUpdateCompanyResponse updateBuyerSso(String userEmail, String requestType) {
     log.debug("Updating buyer user account sso link state for: [{}]", userEmail);
 
     if (userEmail == null || userEmail.isBlank() ||  !userEmail.toLowerCase().matches("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$")) {
       throw new ResourceNotFoundException("Email Address is missing or not a valid email: " + userEmail);
+    }
+
+    if (!"1".equals(requestType) && !"2".equals(requestType)) {
+      throw new IllegalArgumentException("Invalid requestType: " + requestType);
     }
 
     // I don't think this is needed, since the users will have existed longer than 30 mins, before this request can happen. Leaving commented for visibility:
@@ -318,7 +321,7 @@ public class ProfileManagementService {
             .build();
 
           // Request is to LINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
-          if (requestType == 1 && ssoCodeDataExists(subUser.getSsoCodeData())) {
+          if (requestType == "1" && ssoCodeDataExists(subUser.getSsoCodeData())) {
             // SubUser is immutable, so we need to create a new one for the request.
             SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(subUser.getSsoCodeData(), userEmail)).build();
 
@@ -330,7 +333,7 @@ public class ProfileManagementService {
             response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
 
           // Request is to LINK SSO with buyer account and sso code data DOES NOT exist, so then proceed to update account.
-          } else if (requestType == 1 && !ssoCodeDataExists(subUser.getSsoCodeData())) {
+          } else if (requestType == "1" && !ssoCodeDataExists(subUser.getSsoCodeData())) {
             // SubUser is immutable, so we need to create a new one for the request.
             SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(null, userEmail)).build();
 
@@ -342,7 +345,7 @@ public class ProfileManagementService {
             response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
 
           // Request is to UNLINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
-          } else if (requestType == 2 && ssoCodeDataExists(subUser.getSsoCodeData())) {
+          } else if (requestType == "2" && ssoCodeDataExists(subUser.getSsoCodeData())) {
             // SubUser is immutable, so we need to create a new one for the request.
             SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(subUser.getSsoCodeData(), "")).build();
 
@@ -359,8 +362,8 @@ public class ProfileManagementService {
 
             response.set(
               CreateUpdateCompanyResponse.builder()
-                .returnCode("No update needed")
-                .returnMessage("No update needed")
+                .returnCode("400")
+                .returnMessage("User Account is already in the required state. No update needed.")
                 .build()
             );
           }
@@ -374,7 +377,7 @@ public class ProfileManagementService {
   }
 
   private SSOCodeData updateSsoCodeData(SSOCodeData ssoCodeData, String userEmail) {
-    // Handle null input by building a new SSOCodeData with a single OPEN_ID code
+    // Handle null input by building a new SSOCodeData with a single OPEN_ID code.
     if (ssoCodeData == null) {
       return SSOCodeData.builder()
         .ssoCode(Set.of(
@@ -386,7 +389,7 @@ public class ProfileManagementService {
         .build();
     }
 
-    // Otherwise, update only the OPEN_ID entry (if present)
+    // Otherwise, update only the OPEN_ID entry, (if present).
     Set<SSOCodeData.SSOCode> updatedSsoCodes = ssoCodeData.getSsoCode().stream().map(ssoCode -> {
       if ("OPEN_ID".equals(ssoCode.getSsoCodeValue())) {
         return SSOCodeData.SSOCode.builder()
