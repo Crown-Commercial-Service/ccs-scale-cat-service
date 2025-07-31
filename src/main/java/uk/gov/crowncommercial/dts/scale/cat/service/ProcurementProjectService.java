@@ -828,37 +828,133 @@ public class ProcurementProjectService {
   /**
    * Returns a model representing publicly available project data
    */
+
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
+    System.out.println("=== Starting getProjectSummery ===");
+    System.out.println("Input parameters:");
+    System.out.println("  keyword: " + keyword);
+    System.out.println("  lotId: " + lotId);
+    System.out.println("  page: " + page);
+    System.out.println("  pageSize: " + pageSize);
+    System.out.println("  projectFilters: " + (projectFilters != null ? projectFilters.toString() : "null"));
+
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
-    ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
+    System.out.println("Created new ProjectPublicSearchResult instance");
+
+    ProjectSearchCriteria searchCriteria = new ProjectSearchCriteria();
+    System.out.println("Created new ProjectSearchCriteria instance");
+
     searchCriteria.setKeyword(keyword);
-    searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
+    System.out.println("Set keyword in searchCriteria: " + keyword);
+
+    searchCriteria.setFilters(projectFilters != null ? projectFilters.getFilters() : null);
+    System.out.println("Set filters in searchCriteria: " + (projectFilters != null ? projectFilters.getFilters() : "null"));
 
     // Perform the searches we need to do asynchronously - they can be slow
+    System.out.println("Starting asynchronous searches...");
+
+    System.out.println("Initiating performProcurementEventSearch with parameters - keyword: " + keyword + ", lotId: " + lotId + ", page: " + page + ", pageSize: " + pageSize);
     CompletableFuture<SearchHits<ProcurementEventSearch>> resultsModel = performProcurementEventSearch(keyword, lotId, page, pageSize, projectFilters);
+    System.out.println("performProcurementEventSearch CompletableFuture created");
+
+    System.out.println("Initiating performProcurementEventResultsCount with parameters - keyword: " + keyword + ", lotId: " + lotId);
     CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
+    System.out.println("performProcurementEventResultsCount CompletableFuture created");
+
+    System.out.println("Waiting for both async operations to complete...");
     CompletableFuture.allOf(resultsModel, countResultsModel).join();
+    System.out.println("Both async operations completed");
 
     SearchHits<ProcurementEventSearch> results;
     SearchHits<ProcurementEventSearch> countResults;
 
     // Extra logging for open search searching.
+    System.out.println("Retrieving results from CompletableFutures with 30 second timeout...");
     try {
+      System.out.println("Getting results from resultsModel...");
       results = resultsModel.get(30, TimeUnit.SECONDS);
+      System.out.println("Successfully retrieved results. Result count: " + (results != null ? results.getTotalHits() : "null"));
+
+      System.out.println("Getting results from countResultsModel...");
       countResults = countResultsModel.get(30, TimeUnit.SECONDS);
+      System.out.println("Successfully retrieved countResults. Count result hits: " + (countResults != null ? countResults.getTotalHits() : "null"));
+
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      System.err.println("ERROR: Exception occurred while fetching search results");
+      System.err.println("  keyword: " + keyword);
+      System.err.println("  lotId: " + lotId);
+      System.err.println("  exception type: " + e.getClass().getSimpleName());
+      System.err.println("  exception message: " + e.getMessage());
+      System.err.println("  stack trace:");
+      e.printStackTrace();
+
       log.error("Error fetching search results for keyword [{}], lotId [{}], e [{}]", keyword, lotId, e.getMessage());
       throw new InterruptedException("Error fetching search results: " + e);
     }
 
+    System.out.println("Processing search results...");
+    System.out.println("Getting project lots from countResults...");
     searchCriteria.setLots(getProjectLots(countResults, lotId));
+    System.out.println("Set lots in searchCriteria");
+
+    System.out.println("Setting searchCriteria in projectPublicSearchResult...");
     projectPublicSearchResult.setSearchCriteria(searchCriteria);
+    System.out.println("SearchCriteria set successfully");
+
+    System.out.println("Converting results...");
     projectPublicSearchResult.setResults(convertResults(results));
-    projectPublicSearchResult.setTotalResults(getResultCount(countResults));
+    System.out.println("Results converted and set successfully");
+
+    System.out.println("Getting result count...");
+    int totalResults = getResultCount(countResults);
+    projectPublicSearchResult.setTotalResults(totalResults);
+    System.out.println("Total results count: " + totalResults);
+
+    System.out.println("Generating links with parameters - keyword: " + keyword + ", page: " + page + ", pageSize: " + pageSize + ", totalResults: " + totalResults);
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, projectPublicSearchResult.getTotalResults()));
+    System.out.println("Links generated and set successfully");
+
+    System.out.println("=== getProjectSummery completed successfully ===");
+    System.out.println("Final result summary:");
+    System.out.println("  Total results: " + projectPublicSearchResult.getTotalResults());
+    System.out.println("  Results size: " + (projectPublicSearchResult.getResults() != null ? projectPublicSearchResult.getResults().size() : "null"));
+    System.out.println("  Links: " + (projectPublicSearchResult.getLinks() != null ? projectPublicSearchResult.getLinks().toString() : "null"));
 
     return projectPublicSearchResult;
   }
+
+
+//  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
+//    ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
+//    ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
+//    searchCriteria.setKeyword(keyword);
+//    searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
+//
+//    // Perform the searches we need to do asynchronously - they can be slow
+//    CompletableFuture<SearchHits<ProcurementEventSearch>> resultsModel = performProcurementEventSearch(keyword, lotId, page, pageSize, projectFilters);
+//    CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
+//    CompletableFuture.allOf(resultsModel, countResultsModel).join();
+//
+//    SearchHits<ProcurementEventSearch> results;
+//    SearchHits<ProcurementEventSearch> countResults;
+//
+//    // Extra logging for open search searching.
+//    try {
+//      results = resultsModel.get(30, TimeUnit.SECONDS);
+//      countResults = countResultsModel.get(30, TimeUnit.SECONDS);
+//    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+//      log.error("Error fetching search results for keyword [{}], lotId [{}], e [{}]", keyword, lotId, e.getMessage());
+//      throw new InterruptedException("Error fetching search results: " + e);
+//    }
+//
+//    searchCriteria.setLots(getProjectLots(countResults, lotId));
+//    projectPublicSearchResult.setSearchCriteria(searchCriteria);
+//    projectPublicSearchResult.setResults(convertResults(results));
+//    projectPublicSearchResult.setTotalResults(getResultCount(countResults));
+//    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, projectPublicSearchResult.getTotalResults()));
+//
+//    return projectPublicSearchResult;
+//  }
 
   /**
    * Asynchronously perform a search query request based on parameters passed in
@@ -874,13 +970,76 @@ public class ProcurementProjectService {
   /**
    * Asynchronously fetch lot count results based on parameters passed in
    */
+
   @Async
   public CompletableFuture<SearchHits<ProcurementEventSearch>> performProcurementEventResultsCount(final String keyword, final String lotId, ProjectFilters projectFilters) {
-    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+    System.out.println("=== Starting performProcurementEventResultsCount (Async) ===");
+    System.out.println("Thread: " + Thread.currentThread().getName());
+    System.out.println("Input parameters:");
+    System.out.println("  keyword: " + keyword);
+    System.out.println("  lotId: " + lotId);
+    System.out.println("  projectFilters: " + (projectFilters != null ? projectFilters.toString() : "null"));
+
+    System.out.println("Processing projectFilters...");
+    ProjectFilter firstFilter = null;
+    if (projectFilters != null) {
+      System.out.println("  projectFilters is not null");
+      if (projectFilters.getFilters() != null) {
+        System.out.println("  projectFilters.getFilters() is not null");
+        System.out.println("  filters stream size: " + projectFilters.getFilters().stream().count());
+
+        if (projectFilters.getFilters().stream().findFirst().isPresent()) {
+          firstFilter = projectFilters.getFilters().stream().findFirst().get();
+          System.out.println("  first filter found: " + firstFilter);
+          System.out.println("  first filter type: " + firstFilter.getClass().getSimpleName());
+        } else {
+          System.out.println("  no first filter found in stream");
+        }
+      } else {
+        System.out.println("  projectFilters.getFilters() is null");
+      }
+    } else {
+      System.out.println("  projectFilters is null, using null for first filter");
+    }
+
+    System.out.println("Calling getLotCount with parameters:");
+    System.out.println("  keyword: " + keyword);
+    System.out.println("  lotId: " + lotId);
+    System.out.println("  firstFilter: " + firstFilter);
+    System.out.println("  firstFilter type: " + (firstFilter != null ? firstFilter.getClass().getSimpleName() : "null"));
+
+    NativeSearchQuery searchCountQuery = getLotCount(keyword, lotId, firstFilter);
+    System.out.println("getLotCount completed successfully");
+    System.out.println("searchCountQuery created: " + (searchCountQuery != null ? "not null" : "null"));
+
+    System.out.println("Executing elasticsearch search...");
+    System.out.println("  Query class: ProcurementEventSearch.class");
+
     SearchHits<ProcurementEventSearch> model = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
 
-    return CompletableFuture.completedFuture(model);
+    System.out.println("Elasticsearch search completed");
+    System.out.println("Search results:");
+    System.out.println("  model: " + (model != null ? "not null" : "null"));
+    System.out.println("  total hits: " + (model != null ? model.getTotalHits() : "N/A"));
+    System.out.println("  search hits size: " + (model != null ? model.getSearchHits().size() : "N/A"));
+    System.out.println("  has search hits: " + (model != null && model.hasSearchHits() ? "yes" : "no"));
+
+    System.out.println("Creating CompletableFuture with results...");
+    CompletableFuture<SearchHits<ProcurementEventSearch>> result = CompletableFuture.completedFuture(model);
+
+    System.out.println("=== performProcurementEventResultsCount completed successfully ===");
+    System.out.println("Returning CompletableFuture on thread: " + Thread.currentThread().getName());
+
+    return result;
   }
+
+//  @Async
+//  public CompletableFuture<SearchHits<ProcurementEventSearch>> performProcurementEventResultsCount(final String keyword, final String lotId, ProjectFilters projectFilters) {
+//    NativeSearchQuery searchCountQuery = getLotCount(keyword,lotId, projectFilters!=null ? projectFilters.getFilters().stream().findFirst().get() : null);
+//    SearchHits<ProcurementEventSearch> model = elasticsearchOperations.search(searchCountQuery, ProcurementEventSearch.class);
+//
+//    return CompletableFuture.completedFuture(model);
+//  }
 
   public static <T> Predicate<T> distinctByKey(Function<? super T, Object> keyExtractor)
   {
@@ -984,20 +1143,57 @@ public class ProcurementProjectService {
   /**
    * Converts a set of search results from ElastiCache into a corrected total of de-duped results for return
    */
+
   private Integer getResultCount(SearchHits<ProcurementEventSearch> countResults) {
+    System.out.println("=== Starting getResultCount ===");
+    System.out.println("Input parameters:");
+    System.out.println("  countResults: " + (countResults != null ? "not null" : "null"));
+    System.out.println("  countResults total hits: " + (countResults != null ? countResults.getTotalHits() : "N/A"));
+    System.out.println("  countResults stream size: " + (countResults != null ? countResults.stream().count() : "N/A"));
+
     // First, map all the results to a basic model which we can more easily work with
+    System.out.println("Starting mapping of SearchHits to ProjectPublicSearchSummary objects...");
     List<ProjectPublicSearchSummary> model = countResults.stream().map(SearchHit::getContent).map(object -> {
+      System.out.println("  Processing object with projectId: " + (object != null ? object.getProjectId() : "null"));
       ProjectPublicSearchSummary projectPublicSearchSummary = new ProjectPublicSearchSummary();
       projectPublicSearchSummary.setProjectId(object.getProjectId());
-
+      System.out.println("  Created ProjectPublicSearchSummary with projectId: " + projectPublicSearchSummary.getProjectId());
       return projectPublicSearchSummary;
     }).toList();
 
+    System.out.println("Mapping completed. Initial model size: " + model.size());
+    System.out.println("Initial model project IDs: " + model.stream().map(ProjectPublicSearchSummary::getProjectId).toList());
+
     // Now de-dupe those results, then return a count of the resulting total
+    System.out.println("Starting deduplication process...");
+    System.out.println("Before deduplication - model size: " + model.size());
+
     model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
 
-    return model.size();
+    System.out.println("After deduplication - model size: " + model.size());
+    System.out.println("Deduplicated model project IDs: " + model.stream().map(ProjectPublicSearchSummary::getProjectId).toList());
+
+    Integer finalCount = model.size();
+    System.out.println("Final result count: " + finalCount);
+    System.out.println("=== getResultCount completed ===");
+
+    return finalCount;
   }
+
+//  private Integer getResultCount(SearchHits<ProcurementEventSearch> countResults) {
+//    // First, map all the results to a basic model which we can more easily work with
+//    List<ProjectPublicSearchSummary> model = countResults.stream().map(SearchHit::getContent).map(object -> {
+//      ProjectPublicSearchSummary projectPublicSearchSummary = new ProjectPublicSearchSummary();
+//      projectPublicSearchSummary.setProjectId(object.getProjectId());
+//
+//      return projectPublicSearchSummary;
+//    }).toList();
+//
+//    // Now de-dupe those results, then return a count of the resulting total
+//    model = model.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))), ArrayList::new));
+//
+//    return model.size();
+//  }
 
   private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
   {
