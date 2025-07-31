@@ -126,7 +126,7 @@ public class TendersController extends AbstractRestController {
 
     CreateUpdateCompanyResponse response = profileManagementService.updateBuyerSso(userId, requestType);
 
-    if (response.getReturnCode() == "400") {
+    if (response.getReturnCode() == "409") {
       return ResponseEntity.status(HttpStatus.OK).body(response);
     } else {
       return ResponseEntity.status(HttpStatus.CREATED).body(response);

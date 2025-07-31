@@ -51,6 +51,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Slf4j
 public class ProfileManagementService {
 
+  static final String ENDPOINT = "endpoint";
   static final String SYSID_CONCLAVE = "Conclave";
   static final String SYSID_JAGGAER = "Jaggaer";
   static final String ERR_MSG_FMT_ROLES_CONFLICT =
@@ -315,9 +316,11 @@ public class ProfileManagementService {
 
     searchedSubUser.ifPresentOrElse(
         subUser -> {
+          var endpoint = jaggaerAPIConfig.getGetBuyerCompanyProfile().get(ENDPOINT);
+
           CreateUpdateCompany createUpdateCompany = CreateUpdateCompany.builder()
             .operationCode(OperationCode.UPDATE)
-            .companyInfo(CompanyInfo.builder().bravoId("TEST").build())////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            .companyInfo(CompanyInfo.builder().bravoId(endpoint.substring(endpoint.lastIndexOf("==") + 2)).build())
             .build();
 
           // Request is to LINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
@@ -362,7 +365,7 @@ public class ProfileManagementService {
 
             response.set(
               CreateUpdateCompanyResponse.builder()
-                .returnCode("400")
+                .returnCode("409")
                 .returnMessage("User Account is already in the required state. No update needed.")
                 .build()
             );
