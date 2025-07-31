@@ -15,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyResponse;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProfileManagementService;
 
@@ -100,6 +101,35 @@ public class TendersController extends AbstractRestController {
       return ResponseEntity.status(HttpStatus.OK).body(registerUserResponse);
     } else {
       return ResponseEntity.status(HttpStatus.CREATED).body(registerUserResponse);
+    }
+  }
+
+  /**
+   * Link or unlink the SSO config for any existing buyer account, matching the given email.
+   */
+  @PutMapping("/users/{user-id}/sso")
+  @TrackExecutionTime
+  public ResponseEntity<CreateUpdateCompanyResponse> updateBuyerSso(
+    @PathVariable("user-id") final String userId,
+    @PathVariable("request-type") final String requestType,
+    final JwtAuthenticationToken authentication
+  ) {
+
+    var principal = getPrincipalFromJwt(authentication);
+
+    log.info("updateUserSso invoked on behalf of principal: {} for user-id: {}", principal, userId);
+
+    if (principal == null || principal.isEmpty()) {
+      throw new AuthorisationFailureException(
+          "Not Authenticated.");
+    }
+
+    CreateUpdateCompanyResponse response = profileManagementService.updateBuyerSso(userId, requestType);
+
+    if (response.getReturnCode() == "409") {
+      return ResponseEntity.status(HttpStatus.OK).body(response);
+    } else {
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
   }
 

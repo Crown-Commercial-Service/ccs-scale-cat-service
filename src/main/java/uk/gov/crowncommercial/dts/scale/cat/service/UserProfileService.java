@@ -128,6 +128,31 @@ public class UserProfileService {
         .getFirst();
   }
 
+  /**
+   * Resolves the SubUser that matches the given email from the buyer company.
+   *
+   * @param email The email address to match
+   * @return A pair of ReturnCompanyData and the matching SubUser, if any
+   */
+  @SneakyThrows
+  public Optional<SubUser> resolveSubUserFromSelfServiceCompanyByEmail(final String email) {
+    var returnCompanyData = getSelfServiceBuyerCompany();
+
+    var subUsers = Optional.ofNullable(returnCompanyData.getReturnSubUser())
+        .map(SubUsers::getSubUsers)
+        .orElse(Collections.emptySet());
+
+    var matchingSubUser = subUsers.stream()
+        .filter(subUser -> email.equalsIgnoreCase(subUser.getEmail()))
+        .findFirst();
+
+    if (matchingSubUser.isPresent()) {
+      return Optional.of(matchingSubUser.get());
+    }
+
+    return Optional.empty();
+  }
+
   @SneakyThrows
   public Optional<SubUser> resolveBuyerUserByUserId(final String userId) {
     return jaggaerBuyerUserCache.get(new SubUserIdentity(userId, getFilterPredicateUserId(userId)))
