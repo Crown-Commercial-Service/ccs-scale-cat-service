@@ -829,6 +829,7 @@ public class ProcurementProjectService {
    * Returns a model representing publicly available project data
    */
 
+
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
     System.out.println("=== Starting getProjectSummery ===");
     System.out.println("Input parameters:");
@@ -905,10 +906,19 @@ public class ProcurementProjectService {
     projectPublicSearchResult.setResults(convertResults(results));
     System.out.println("Results converted and set successfully");
 
-    System.out.println("Getting result count...");
-    int totalResults = getResultCount(countResults);
+//    System.out.println("Getting result count...");
+//    int totalResults = getResultCount(countResults);
+//    projectPublicSearchResult.setTotalResults(totalResults);
+//    System.out.println("Total results count: " + totalResults);
+
+    System.out.println("Getting total results count from main search results...");
+    int totalResults = results != null ? (int) results.getTotalHits() : 0;
     projectPublicSearchResult.setTotalResults(totalResults);
-    System.out.println("Total results count: " + totalResults);
+    System.out.println("Total results count (unpaginated): " + totalResults);
+
+    System.out.println("Getting deduplicated count for reference...");
+    int deduplicatedCount = getResultCount(countResults);
+    System.out.println("Deduplicated count: " + deduplicatedCount + " (not used for totalResults)");
 
     System.out.println("Generating links with parameters - keyword: " + keyword + ", page: " + page + ", pageSize: " + pageSize + ", totalResults: " + totalResults);
     projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, projectPublicSearchResult.getTotalResults()));
