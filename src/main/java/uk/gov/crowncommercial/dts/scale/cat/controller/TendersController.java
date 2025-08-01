@@ -107,7 +107,7 @@ public class TendersController extends AbstractRestController {
   /**
    * Link or unlink the SSO config for any existing buyer account, matching the given email.
    */
-  @PutMapping("/users/{user-id}/sso")
+  @PutMapping("/users/{user-id}/sso/{request-type}")
   @TrackExecutionTime
   public ResponseEntity<CreateUpdateCompanyResponse> updateBuyerSso(
     @PathVariable("user-id") final String userId,
