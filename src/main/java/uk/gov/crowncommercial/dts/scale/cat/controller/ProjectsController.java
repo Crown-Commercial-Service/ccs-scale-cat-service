@@ -82,6 +82,15 @@ public class ProjectsController extends AbstractRestController {
     return procurementProjectService.getProjectSummary(principal, projectId);
   }
 
+  /**
+   * Returns a ProjectPackageSummary object representing summary data for a project which has been looked up
+   */
+  @GetMapping("/{projectId}/lookup")
+  @TrackExecutionTime
+  public ProjectPackageSummary projectLookup(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
+    return projectPackageService.lookupProject(projectId);
+  }
+
   @PostMapping("/agreements")
   @TrackExecutionTime
   public DraftProcurementProject createProcurementProject(
