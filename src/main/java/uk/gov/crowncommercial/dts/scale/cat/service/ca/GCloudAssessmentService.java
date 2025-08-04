@@ -114,61 +114,151 @@ public class GCloudAssessmentService {
      * @return
      */
     @Transactional
+
     public void updateGcloudAssessment(final GCloudAssessment assessment, final Integer assessmentId, final String principal) {
-        log.debug("Updating Gcloud assessment " + assessmentId);
+        long startTime = System.nanoTime();
+        long findAssessmentTime = 0;
+        long updateAssessmentTime = 0;
+        long deleteResultsTime = 0;
+        long saveResultsTime = 0;
+        long mappingTime = 0;
+        Set<GCloudAssessmentResult> gCloudAssessmentResultSet = null;
 
-        // First of all, retrieve the existing assessment from the database, to make sure it exists
-        GCloudAssessmentEntity model = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+        try {
+            log.debug("Updating Gcloud assessment " + assessmentId);
 
-        // Make sure the object we've been passed contains the GCloud ExternalToolId before proceeding
-        if (!isExternalToolIdValidForGcloud(assessment.getExternalToolId())) {
-            throw new NotSupportedException(String.format(ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID, assessment.getExternalToolId()));
-        }
+            // First of all, retrieve the existing assessment from the database, to make sure it exists
+            long findStart = System.nanoTime();
+            GCloudAssessmentEntity model = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+            findAssessmentTime = System.nanoTime() - findStart;
 
-        if (model != null) {
-            // We now know the assessment does exist, so now we can proceed to update it
-            model.setId(assessmentId);
-            model.setAssessmentName(assessment.getAssessmentName());
-
-            if (assessment.getStatus() == AssessmentStatus.ACTIVE) {
-                model.setStatus(AssessmentStatusEntity.ACTIVE);
-            } else {
-                model.setStatus(AssessmentStatusEntity.COMPLETE);
+            // Make sure the object we've been passed contains the GCloud ExternalToolId before proceeding
+            if (!isExternalToolIdValidForGcloud(assessment.getExternalToolId())) {
+                throw new NotSupportedException(String.format(ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID, assessment.getExternalToolId()));
             }
 
-            model.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
-            model.setDimensionRequirements(assessment.getDimensionRequirements());
-            model.setResultsSummary(assessment.getResultsSummary());
-            model.setTimestamps(updateTimestamps(model.getTimestamps(), principal));
+            if (model != null) {
+                // We now know the assessment does exist, so now we can proceed to update it
+                model.setId(assessmentId);
+                model.setAssessmentName(assessment.getAssessmentName());
 
-            // We do not map results here - we need to now update the core record, then clear down results and re-create them fresh
-            retryableTendersDBDelegate.save(model);
+                if (assessment.getStatus() == AssessmentStatus.ACTIVE) {
+                    model.setStatus(AssessmentStatusEntity.ACTIVE);
+                } else {
+                    model.setStatus(AssessmentStatusEntity.COMPLETE);
+                }
 
-            // Now we first need to clear down all the existing results for this assessment in the DB
-            retryableTendersDBDelegate.deleteGcloudAssessmentResultsById(assessmentId);
+                model.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
+                model.setDimensionRequirements(assessment.getDimensionRequirements());
+                model.setResultsSummary(assessment.getResultsSummary());
+                model.setTimestamps(updateTimestamps(model.getTimestamps(), principal));
 
-            // Finally we can now spool up our results and re-save them
-            Set<GCloudAssessmentResult> gCloudAssessmentResultSet= Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result->{
-                GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
+                // We do not map results here - we need to now update the core record, then clear down results and re-create them fresh
+                long updateStart = System.nanoTime();
+                retryableTendersDBDelegate.save(model);
+                updateAssessmentTime = System.nanoTime() - updateStart;
 
-                resultEntity.setAssessmentId(assessmentId);
-                resultEntity.setServiceName(result.getServiceName());
-                resultEntity.setSupplierName(result.getSupplier().getName());
-                resultEntity.setServiceDescription(result.getServiceDescription());
-                resultEntity.setServiceLink(result.getServiceLink().toString());
-                resultEntity.setTimestamps(createTimestamps(principal));
+                // Now we first need to clear down all the existing results for this assessment in the DB
+                long deleteStart = System.nanoTime();
+                retryableTendersDBDelegate.deleteGcloudAssessmentResultsById(assessmentId);
+                deleteResultsTime = System.nanoTime() - deleteStart;
 
-                return resultEntity;
-            }).collect(Collectors.toSet());
+                // Finally we can now spool up our results and re-save them
+                long mappingStart = System.nanoTime();
+                gCloudAssessmentResultSet = Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result->{
+                    GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
 
+                    resultEntity.setAssessmentId(assessmentId);
+                    resultEntity.setServiceName(result.getServiceName());
+                    resultEntity.setSupplierName(result.getSupplier().getName());
+                    resultEntity.setServiceDescription(result.getServiceDescription());
+                    resultEntity.setServiceLink(result.getServiceLink().toString());
+                    resultEntity.setTimestamps(createTimestamps(principal));
 
-            if (CollectionUtils.isNotEmpty(gCloudAssessmentResultSet)) {
-                retryableTendersDBDelegate.saveAll(gCloudAssessmentResultSet);
+                    return resultEntity;
+                }).collect(Collectors.toSet());
+                mappingTime = System.nanoTime() - mappingStart;
+
+                if (CollectionUtils.isNotEmpty(gCloudAssessmentResultSet)) {
+                    long saveStart = System.nanoTime();
+                    retryableTendersDBDelegate.saveAll(gCloudAssessmentResultSet);
+                    saveResultsTime = System.nanoTime() - saveStart;
+                }
             }
+
+        } finally {
+            long totalTime = System.nanoTime() - startTime;
+
+            // Print timing information
+            System.out.println(String.format("Update GCloud Assessment timing for ID %d: Total=%.2fms, Find=%.2fms, Update=%.2fms, Delete=%.2fms, Mapping=%.2fms, Save Results=%.2fms, Results Count=%d",
+                    assessmentId,
+                    totalTime / 1_000_000.0,
+                    findAssessmentTime / 1_000_000.0,
+                    updateAssessmentTime / 1_000_000.0,
+                    deleteResultsTime / 1_000_000.0,
+                    mappingTime / 1_000_000.0,
+                    saveResultsTime / 1_000_000.0,
+                    gCloudAssessmentResultSet != null ? gCloudAssessmentResultSet.size() : 0));
         }
     }
+
+//    public void updateGcloudAssessment(final GCloudAssessment assessment, final Integer assessmentId, final String principal) {
+//        log.debug("Updating Gcloud assessment " + assessmentId);
+//
+//        // First of all, retrieve the existing assessment from the database, to make sure it exists
+//        GCloudAssessmentEntity model = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+//                .orElseThrow(() -> new ResourceNotFoundException(
+//                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+//
+//        // Make sure the object we've been passed contains the GCloud ExternalToolId before proceeding
+//        if (!isExternalToolIdValidForGcloud(assessment.getExternalToolId())) {
+//            throw new NotSupportedException(String.format(ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID, assessment.getExternalToolId()));
+//        }
+//
+//        if (model != null) {
+//            // We now know the assessment does exist, so now we can proceed to update it
+//            model.setId(assessmentId);
+//            model.setAssessmentName(assessment.getAssessmentName());
+//
+//            if (assessment.getStatus() == AssessmentStatus.ACTIVE) {
+//                model.setStatus(AssessmentStatusEntity.ACTIVE);
+//            } else {
+//                model.setStatus(AssessmentStatusEntity.COMPLETE);
+//            }
+//
+//            model.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
+//            model.setDimensionRequirements(assessment.getDimensionRequirements());
+//            model.setResultsSummary(assessment.getResultsSummary());
+//            model.setTimestamps(updateTimestamps(model.getTimestamps(), principal));
+//
+//            // We do not map results here - we need to now update the core record, then clear down results and re-create them fresh
+//            retryableTendersDBDelegate.save(model);
+//
+//            // Now we first need to clear down all the existing results for this assessment in the DB
+//            retryableTendersDBDelegate.deleteGcloudAssessmentResultsById(assessmentId);
+//
+//            // Finally we can now spool up our results and re-save them
+//            Set<GCloudAssessmentResult> gCloudAssessmentResultSet= Optional.ofNullable(assessment.getResults()).orElse(Collections.emptyList()).stream().map(result->{
+//                GCloudAssessmentResult resultEntity = new GCloudAssessmentResult();
+//
+//                resultEntity.setAssessmentId(assessmentId);
+//                resultEntity.setServiceName(result.getServiceName());
+//                resultEntity.setSupplierName(result.getSupplier().getName());
+//                resultEntity.setServiceDescription(result.getServiceDescription());
+//                resultEntity.setServiceLink(result.getServiceLink().toString());
+//                resultEntity.setTimestamps(createTimestamps(principal));
+//
+//                return resultEntity;
+//            }).collect(Collectors.toSet());
+//
+//
+//            if (CollectionUtils.isNotEmpty(gCloudAssessmentResultSet)) {
+//                retryableTendersDBDelegate.saveAll(gCloudAssessmentResultSet);
+//            }
+//        }
+//    }
 
     /**
      * Gets a summary model for a GCloud Assessment
@@ -209,49 +299,124 @@ public class GCloudAssessmentService {
      * @return
      */
     @Transactional
+
     public GCloudAssessment getGcloudAssessment(final Integer assessmentId) {
-        GCloudAssessmentEntity assessment = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+        long startTime = System.nanoTime();
+        long dbQueryTime = 0;
+        long resultsQueryTime = 0;
+        long mappingTime = 0;
 
-        // Now build the results
-        Set<GCloudAssessmentResult> results = retryableTendersDBDelegate.findGcloudResultsByAssessmentId(assessmentId);
+        Set<GCloudAssessmentResult> results = null;
+        try {
+            // Database query for assessment
+            long dbQueryStart = System.nanoTime();
+            GCloudAssessmentEntity assessment = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+            dbQueryTime = System.nanoTime() - dbQueryStart;
 
-        ArrayList<GCloudResult> resultsList = new ArrayList<>();
+            // Database query for results
+            long resultsQueryStart = System.nanoTime();
+            results = retryableTendersDBDelegate.findGcloudResultsByAssessmentId(assessmentId);
+            resultsQueryTime = System.nanoTime() - resultsQueryStart;
 
-        for (GCloudAssessmentResult result : results) {
-            GCloudResult resultModel = new GCloudResult();
-            resultModel.setServiceName(result.getServiceName());
-            resultModel.setServiceDescription(result.getServiceDescription());
-            resultModel.setServiceLink(URI.create(result.getServiceLink()));
+            // Mapping and processing
+            long mappingStart = System.nanoTime();
+            ArrayList<GCloudResult> resultsList = new ArrayList<>();
 
-            Supplier supplierModel = new Supplier();
-            supplierModel.setName(result.getSupplierName());
-            resultModel.setSupplier(supplierModel);
+            for (GCloudAssessmentResult result : results) {
+                GCloudResult resultModel = new GCloudResult();
+                resultModel.setServiceName(result.getServiceName());
+                resultModel.setServiceDescription(result.getServiceDescription());
+                resultModel.setServiceLink(URI.create(result.getServiceLink()));
 
-            resultsList.add(resultModel);
+                Supplier supplierModel = new Supplier();
+                supplierModel.setName(result.getSupplierName());
+                resultModel.setSupplier(supplierModel);
+
+                resultsList.add(resultModel);
+            }
+
+            // Now map everything to our return model and output
+            GCloudAssessment responseModel = new GCloudAssessment();
+            responseModel.setAssessmentId(assessment.getId());
+            responseModel.setAssessmentName(assessment.getAssessmentName());
+            responseModel.setExternalToolId(assessment.getExternalToolId().toString());
+            responseModel.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
+            responseModel.setDimensionRequirements(assessment.getDimensionRequirements());
+            responseModel.setResultsSummary(assessment.getResultsSummary());
+            responseModel.setResults(resultsList);
+
+            Timestamps timestamps = assessment.getTimestamps();
+
+            if (timestamps.getUpdatedAt() != null) {
+                responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME)));
+            } else {
+                responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME)));
+            }
+
+            mappingTime = System.nanoTime() - mappingStart;
+
+            return responseModel;
+
+        } finally {
+            long totalTime = System.nanoTime() - startTime;
+
+            // Print timing information
+            System.out.println(String.format("GCloud Assessment timing for ID %d: Total=%.2fms, DB Query=%.2fms, Results Query=%.2fms, Mapping=%.2fms, Results Count=%d",
+                    assessmentId,
+                    totalTime / 1_000_000.0,
+                    dbQueryTime / 1_000_000.0,
+                    resultsQueryTime / 1_000_000.0,
+                    mappingTime / 1_000_000.0,
+                    results != null ? results.size() : 0));
         }
-
-        // Now map everything to our return model and output
-        GCloudAssessment responseModel = new GCloudAssessment();
-        responseModel.setAssessmentId(assessment.getId());
-        responseModel.setAssessmentName(assessment.getAssessmentName());
-        responseModel.setExternalToolId(assessment.getExternalToolId().toString());
-        responseModel.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
-        responseModel.setDimensionRequirements(assessment.getDimensionRequirements());
-        responseModel.setResultsSummary(assessment.getResultsSummary());
-        responseModel.setResults(resultsList);
-
-        Timestamps timestamps = assessment.getTimestamps();
-
-        if (timestamps.getUpdatedAt() != null) {
-            responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME)));
-        } else {
-            responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME)));
-        }
-
-        return responseModel;
     }
+
+
+//    public GCloudAssessment getGcloudAssessment(final Integer assessmentId) {
+//        GCloudAssessmentEntity assessment = retryableTendersDBDelegate.findGcloudAssessmentById(assessmentId)
+//                .orElseThrow(() -> new ResourceNotFoundException(
+//                        format(ERR_MSG_FMT_ASSESSMENT_NOT_FOUND, assessmentId)));
+//
+//        // Now build the results
+//        Set<GCloudAssessmentResult> results = retryableTendersDBDelegate.findGcloudResultsByAssessmentId(assessmentId);
+//
+//        ArrayList<GCloudResult> resultsList = new ArrayList<>();
+//
+//        for (GCloudAssessmentResult result : results) {
+//            GCloudResult resultModel = new GCloudResult();
+//            resultModel.setServiceName(result.getServiceName());
+//            resultModel.setServiceDescription(result.getServiceDescription());
+//            resultModel.setServiceLink(URI.create(result.getServiceLink()));
+//
+//            Supplier supplierModel = new Supplier();
+//            supplierModel.setName(result.getSupplierName());
+//            resultModel.setSupplier(supplierModel);
+//
+//            resultsList.add(resultModel);
+//        }
+//
+//        // Now map everything to our return model and output
+//        GCloudAssessment responseModel = new GCloudAssessment();
+//        responseModel.setAssessmentId(assessment.getId());
+//        responseModel.setAssessmentName(assessment.getAssessmentName());
+//        responseModel.setExternalToolId(assessment.getExternalToolId().toString());
+//        responseModel.setStatus(AssessmentStatus.fromValue(assessment.getStatus().toString().toLowerCase()));
+//        responseModel.setDimensionRequirements(assessment.getDimensionRequirements());
+//        responseModel.setResultsSummary(assessment.getResultsSummary());
+//        responseModel.setResults(resultsList);
+//
+//        Timestamps timestamps = assessment.getTimestamps();
+//
+//        if (timestamps.getUpdatedAt() != null) {
+//            responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getUpdatedAt(), ZoneId.of(TIMEZONE_NAME)));
+//        } else {
+//            responseModel.setLastUpdate(OffsetDateTime.ofInstant(timestamps.getCreatedAt(), ZoneId.of(TIMEZONE_NAME)));
+//        }
+//
+//        return responseModel;
+//    }
 
     /**
      * Delete a GCloud Assessment.
