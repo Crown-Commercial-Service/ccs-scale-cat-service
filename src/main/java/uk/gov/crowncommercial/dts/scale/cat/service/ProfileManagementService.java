@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.UserRegistrationNotificationConfig;
+import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.LoginDirectorEdgeCaseException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.SSOObjectMissingException;
@@ -297,8 +298,8 @@ public class ProfileManagementService {
     return registerUserResponse;
   }
 
-  public CreateUpdateCompanyResponse updateBuyerSso(String userEmail, String requestType) {
-    log.debug("Updating buyer user account sso link state for: [{}]", userEmail);
+  public UpdateCompanyResponse updateBuyerSso(String userEmail, String requestType) {
+    log.debug("Updating buyer user account sso link state for: [{}] and request type: [{}]", userEmail, requestType);
 
     if (userEmail == null || userEmail.isBlank() ||  !userEmail.toLowerCase().matches("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$")) {
       throw new ResourceNotFoundException("Email Address is missing or not a valid email: " + userEmail);
@@ -324,7 +325,7 @@ public class ProfileManagementService {
             .build();
 
           // Request is to LINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
-          if (requestType == "1" && ssoCodeDataExists(subUser.getSsoCodeData())) {
+          if ("1".equals(requestType) && ssoCodeDataExists(subUser.getSsoCodeData())) {
             // SubUser is immutable, so we need to create a new one for the request.
             SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(subUser.getSsoCodeData(), userEmail)).build();
 
@@ -336,7 +337,7 @@ public class ProfileManagementService {
             response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
 
           // Request is to LINK SSO with buyer account and sso code data DOES NOT exist, so then proceed to update account.
-          } else if (requestType == "1" && !ssoCodeDataExists(subUser.getSsoCodeData())) {
+          } else if ("1".equals(requestType) && !ssoCodeDataExists(subUser.getSsoCodeData())) {
             // SubUser is immutable, so we need to create a new one for the request.
             SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(null, userEmail)).build();
 
@@ -348,7 +349,7 @@ public class ProfileManagementService {
             response.set(jaggaerService.createUpdateCompany(CreateUpdateCompanyRequest.builder().company(createUpdateCompany).subUsers(subUsers).build()));
 
           // Request is to UNLINK SSO with buyer account and sso code data DOES exist, so then proceed to update account.
-          } else if (requestType == "2" && ssoCodeDataExists(subUser.getSsoCodeData())) {
+          } else if ("2".equals(requestType) && ssoCodeDataExists(subUser.getSsoCodeData())) {
             // SubUser is immutable, so we need to create a new one for the request.
             SubUser newSubUser = SubUser.builder().userId(subUser.getUserId()).ssoCodeData(updateSsoCodeData(subUser.getSsoCodeData(), "")).build();
 
@@ -376,7 +377,14 @@ public class ProfileManagementService {
         }
     );
 
-    return response.get();
+    if (response.get() == null ) {
+      throw new JaggaerApplicationException("Expected response is missing.");
+    }
+
+    return UpdateCompanyResponse.builder()
+      .returnCode(response.get().getReturnCode())
+      .returnMessage(response.get().getReturnMessage())
+      .build();
   }
 
   private SSOCodeData updateSsoCodeData(SSOCodeData ssoCodeData, String userEmail) {
