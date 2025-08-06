@@ -79,6 +79,8 @@ public class ProjectsController extends AbstractRestController {
   public ProjectPackageSummary getProjectSummary(@PathVariable("projectId") final Integer projectId, final JwtAuthenticationToken authentication) {
     // Grab the principal from the JWT passed to us, then use it and the requested Project ID to fetch the relevant project summary
     String principal = getPrincipalFromJwt(authentication);
+    boolean hasAdminAccess = doesTokenAllowAdminAccess(authentication);
+    
     return procurementProjectService.getProjectSummary(principal, projectId);
   }
 
