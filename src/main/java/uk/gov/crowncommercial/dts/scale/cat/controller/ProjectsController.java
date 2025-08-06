@@ -81,7 +81,7 @@ public class ProjectsController extends AbstractRestController {
     String principal = getPrincipalFromJwt(authentication);
     boolean hasAdminAccess = doesTokenAllowAdminAccess(authentication);
     
-    return procurementProjectService.getProjectSummary(principal, projectId);
+    return procurementProjectService.getProjectSummary(principal, projectId, hasAdminAccess);
   }
 
   /**
