@@ -28,7 +28,7 @@
         <jena-core.version>5.5.0</jena-core.version>
         <commons-io.version>2.20.0</commons-io.version>
         <aws-java-sdk-s3.version>1.12.788</aws-java-sdk-s3.version>
-        <tika-core.version>3.2.1</tika-core.version>
+        <tika-core.version>3.2.2</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.4.1</poi-ooxml.version>
