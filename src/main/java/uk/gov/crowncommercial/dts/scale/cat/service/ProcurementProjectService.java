@@ -535,41 +535,62 @@ public class ProcurementProjectService {
   /**
    * Get a specific project summary
    */
-  public ProjectPackageSummary getProjectSummary(final String principal, final Integer projectId) {
-    // Grab the Jaegger details we need to start from the authentication
+  public ProjectPackageSummary getProjectSummary(final String principal, final Integer projectId, final boolean hasAdminAccess) {
+    // Grab the Jaggaer details we need to start from the authentication
     String userId = userProfileService.resolveBuyerUserProfile(principal).orElseThrow(() -> new AuthorisationFailureException("Jaggaer user not found")).getUserId();
 
-    if (userId != null && !userId.isEmpty()) {
-      // Now fetch the projects mapped against this user from our Tenders DB
+    ProjectPackageSummary mappedProject = null;
+
+    if (hasAdminAccess) {
+      // This is an admin user - we need to lookup by the project ID without worrying about the owning user
+      Set<ProjectUserMapping> foundProjects = retryableTendersDBDelegate.findProjectUserMappingByProjectId(projectId);
+
+      mappedProject = convertProjectUserMappingsToProjectPackageSummary(foundProjects.stream().toList(), projectId);
+    } else if (userId != null && !userId.isEmpty()) {
+      // This isn't an admin - so we want to fetch the projects mapped against this user from our Tenders DB
       List<ProjectUserMapping> userProjects = retryableTendersDBDelegate.findProjectUserMappingByUserId(userId,null,null, PageRequest.of(0, 20, Sort.by("project.procurementEvents.updatedAt").descending()));
 
-      if (userProjects != null && !userProjects.isEmpty()) {
-        // Now we need to filter down to only include the project we're after
-        ProjectUserMapping projectMapping = userProjects.stream()
-                .filter(p -> p.getProject().getId().equals(projectId))
-                .findFirst()
-                .orElse(null);
+      mappedProject = convertProjectUserMappingsToProjectPackageSummary(userProjects, projectId);
+    }
 
-        if (projectMapping != null) {
-          // Great, now fetch the final details we need and map to our summary model
-          Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+    if (mappedProject != null) {
+      return mappedProject;
+    } else {
+      throw new ResourceNotFoundException("Project '" + projectId + "' not found");
+    }
+  }
 
-          if (!externalEventIds.isEmpty()) {
-            Set<ExportRfxResponse> projectRfxs = jaggaerService.searchRFx(externalEventIds);
+  /**
+   * Takes a set of ProjectUserMappings and converts to a single ProjectPackageSummary
+   */
+  private ProjectPackageSummary convertProjectUserMappingsToProjectPackageSummary(List<ProjectUserMapping> projects, Integer projectId) {
+    if (projects != null && !projects.isEmpty()) {
+      // Now we need to filter down to only include the project we're after
+      ProjectUserMapping projectMapping = projects.stream()
+              .filter(p -> p.getProject().getId().equals(projectId))
+              .findFirst()
+              .orElse(null);
 
-            if (!projectRfxs.isEmpty()) {
-              Optional<ProjectPackageSummary> projectSummary = convertProjectToProjectPackageSummary(projectMapping, projectRfxs);
+      if (projectMapping != null) {
+        // Great, now fetch the final details we need and map to our summary model
+        Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
 
-              if (projectSummary.isPresent()) {
-                return projectSummary.get();
-              }
+        if (!externalEventIds.isEmpty()) {
+          Set<ExportRfxResponse> projectRfxs = jaggaerService.searchRFx(externalEventIds);
+
+          if (!projectRfxs.isEmpty()) {
+            Optional<ProjectPackageSummary> projectSummary = convertProjectToProjectPackageSummary(projectMapping, projectRfxs);
+
+            if (projectSummary.isPresent()) {
+              return projectSummary.get();
             }
           }
         }
       }
     }
-    
-    throw new ResourceNotFoundException("Project '" + projectId + "' not found");
+
+    // We either couldn't find or map the relevant project, so return null
+    return null;
   }
 
   /**
