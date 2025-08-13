@@ -34,6 +34,7 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -849,6 +850,7 @@ public class ProcurementProjectService {
   /**
    * Returns a model representing publicly available project data
    */
+  @Cacheable(value = "projectSearchCache", key = "'search-' + (#keyword ? : '') + '-' + (#lotId ? : '') + '-' + (#projectFilters != null ? #projectFilters.hashCode() : 0) + '-' + #page")
   public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
     ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
     ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();

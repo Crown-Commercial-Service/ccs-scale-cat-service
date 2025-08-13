@@ -30,6 +30,12 @@ public class CacheConfig {
     @Value("${caching.long.heapSize}")
     String longCacheSize;
 
+    @Value("${caching.longer.cacheLength}")
+    String longerCacheLength;
+
+    @Value("${caching.longer.heapSize}")
+    String longerCacheSize;
+
     /**
      * Initialise the caches we want to use based on life configuration settings
      */
@@ -40,12 +46,14 @@ public class CacheConfig {
 
         javax.cache.configuration.Configuration<Object, Object> primaryCacheConfig = getCacheConfigForSpecifiedLifespan(primaryCacheLength, primaryCacheSize);
         javax.cache.configuration.Configuration<Object, Object> longCacheConfig = getCacheConfigForSpecifiedLifespan(longCacheLength, longCacheSize);
+        javax.cache.configuration.Configuration<Object, Object> longerCacheConfig = getCacheConfigForSpecifiedLifespan(longerCacheLength, longerCacheSize);
 
         // Establish primary caches
         cacheManager.createCache("agreementsCache", longCacheConfig);
         cacheManager.createCache("gcloudConfigCache", primaryCacheConfig);
         cacheManager.createCache("tendersCache", primaryCacheConfig);
         cacheManager.createCache("conclaveCache", primaryCacheConfig);
+        cacheManager.createCache("projectSearchCache", longerCacheConfig);
 
         return cacheManager;
     }
