@@ -14,6 +14,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
  */
 @UtilityClass
 public class Constants {
+  // User roles
+  public static final String ROLES_ADMIN = "CAT_ADMIN";
 
   // Remote service response related
   public static final String OK_MSG = "OK";
