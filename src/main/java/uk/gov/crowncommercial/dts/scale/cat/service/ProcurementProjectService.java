@@ -20,6 +20,7 @@ import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.modelmapper.ModelMapper;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
@@ -34,7 +35,8 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -94,6 +96,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@EnableScheduling
 public class ProcurementProjectService {
 
   // TODO: Migrate these to use the JaggaerService wrapper as time allows
@@ -123,6 +126,9 @@ public class ProcurementProjectService {
 
   private static final String COUNT_AGGREGATION = "count_lot";
   private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
+
+  private final Map<String, List<ProcurementEventSearch>> projectCache = new ConcurrentHashMap<>();
+  private static final String ALL_RESULTS_CACHE_KEY = "ALL_RESULTS";
 
 
   /**
@@ -848,42 +854,128 @@ public class ProcurementProjectService {
   }
 
   /**
+   * Refresh the cache every 24 hours (86400000 ms).
+   */
+  @Scheduled(fixedRate = 86_400_000)
+  public void refreshCacheDaily() {
+    log.info("Scheduled refresh of ProcurementEventSearch cache started...");
+    fetchAllFromElasticsearch();
+    log.info("Scheduled refresh of ProcurementEventSearch cache completed.");
+  }
+
+  /**
+   * Load all procurement events from Elasticsearch into cache (one-time bulk load).
+   */
+  public synchronized void fetchAllFromElasticsearch() {
+    log.info("Fetching all ProcurementEventSearch records from Elasticsearch into cache...");
+    // Using a large page size to fetch everything, adjust if dataset is very large
+    NativeSearchQuery query = new NativeSearchQueryBuilder()
+            .withPageable(PageRequest.of(0, 10000)) // adjust batch size if needed
+            .build();
+
+    SearchHits<ProcurementEventSearch> hits =
+            elasticsearchOperations.search(query, ProcurementEventSearch.class);
+
+    List<ProcurementEventSearch> allResults = hits.stream()
+            .map(SearchHit::getContent)
+            .collect(Collectors.toList());
+
+    projectCache.put(ALL_RESULTS_CACHE_KEY, allResults);
+    log.info("Cached {} ProcurementEventSearch records", allResults.size());
+  }
+
+  /**
+   * Return cached results, or fetch fresh if cache is empty.
+   */
+  private List<ProcurementEventSearch> getCachedResults() {
+    if (!projectCache.containsKey(ALL_RESULTS_CACHE_KEY)) {
+      fetchAllFromElasticsearch();
+    }
+    return projectCache.get(ALL_RESULTS_CACHE_KEY);
+  }
+
+  /**
    * Returns a model representing publicly available project data
    */
-  @Cacheable(value = "projectSearchCache", key = "'search-' + (#keyword ? : '') + '-' + (#lotId ? : '') + '-' + (#projectFilters != null ? #projectFilters.hashCode() : 0) + '-' + #page")
-  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) throws ExecutionException, InterruptedException {
-    ProjectPublicSearchResult projectPublicSearchResult = new ProjectPublicSearchResult();
-    ProjectSearchCriteria searchCriteria= new ProjectSearchCriteria();
-    searchCriteria.setKeyword(keyword);
-    searchCriteria.setFilters(projectFilters!=null ? projectFilters.getFilters() : null);
+  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) {
 
-    // Perform the searches we need to do asynchronously - they can be slow
-    CompletableFuture<SearchHits<ProcurementEventSearch>> resultsModel = performProcurementEventSearch(keyword, lotId, page, pageSize, projectFilters);
-    CompletableFuture<SearchHits<ProcurementEventSearch>> countResultsModel = performProcurementEventResultsCount(keyword, lotId, projectFilters);
-    CompletableFuture.allOf(resultsModel, countResultsModel).join();
+    List<ProcurementEventSearch> allResults = getCachedResults();
 
-    SearchHits<ProcurementEventSearch> results;
-    SearchHits<ProcurementEventSearch> countResults;
+    // Apply filters in-memory
+    Stream<ProcurementEventSearch> stream = allResults.stream();
 
-    // Extra logging for open search searching.
-    try {
-      results = resultsModel.get(30, TimeUnit.SECONDS);
-      countResults = countResultsModel.get(30, TimeUnit.SECONDS);
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      log.error("Error fetching search results for keyword [{}], lotId [{}], e [{}]", keyword, lotId, e.getMessage());
-      throw new InterruptedException("Error fetching search results: " + e);
+    if (lotId != null && !lotId.isEmpty()) {
+      stream = stream.filter(p -> lotId.equalsIgnoreCase(p.getLot()));
     }
 
-    searchCriteria.setLots(getProjectLots(countResults, lotId));
-    projectPublicSearchResult.setSearchCriteria(searchCriteria);
-    projectPublicSearchResult.setResults(convertResults(results));
+    if (projectFilters != null && !CollectionUtils.isEmpty(projectFilters.getFilters())) {
+      List<String> selectedStatuses = projectFilters.getFilters().stream()
+              .filter(f -> "status".equalsIgnoreCase(f.getName()))
+              .flatMap(f -> f.getOptions().stream())
+              .filter(o -> Boolean.TRUE.equals(o.getSelected()))
+              .map(o -> o.getText())
+              .toList();
 
-    int totalResults = results != null ? (int) results.getTotalHits() : 0;
-    projectPublicSearchResult.setTotalResults(totalResults);
+      if (!selectedStatuses.isEmpty()) {
+        stream = stream.filter(p -> selectedStatuses.contains(p.getStatus()));
+      }
+    }
 
-    projectPublicSearchResult.setLinks(generateLinks(keyword, page, pageSize, projectPublicSearchResult.getTotalResults()));
+    if (keyword != null && !keyword.isBlank()) {
+      String lowerKeyword = keyword.toLowerCase();
+      stream = stream.filter(p ->
+              (p.getProjectName() != null && p.getProjectName().toLowerCase().contains(lowerKeyword)) ||
+                      (p.getDescription() != null && p.getDescription().toLowerCase().contains(lowerKeyword))
+      );
+    }
 
-    return projectPublicSearchResult;
+    List<ProcurementEventSearch> filtered = stream.toList();
+
+    // Pagination
+    int fromIndex = Math.max((page - 1) * pageSize, 0);
+    int toIndex = Math.min(fromIndex + pageSize, filtered.size());
+    List<ProcurementEventSearch> pageResults =
+            fromIndex > filtered.size() ? Collections.emptyList() : filtered.subList(fromIndex, toIndex);
+
+    // Build response
+    ProjectPublicSearchResult result = new ProjectPublicSearchResult();
+    ProjectSearchCriteria searchCriteria = new ProjectSearchCriteria();
+    searchCriteria.setKeyword(keyword);
+    searchCriteria.setFilters(projectFilters != null ? projectFilters.getFilters() : null);
+
+    result.setSearchCriteria(searchCriteria);
+    result.setResults(convertResultsFromCache(pageResults));
+    result.setTotalResults(filtered.size());
+    result.setLinks(generateLinks(keyword, page, pageSize, filtered.size()));
+
+    return result;
+  }
+
+  /**
+   * Convert cached ProcurementEventSearch list to summaries.
+   */
+  private List<ProjectPublicSearchSummary> convertResultsFromCache(List<ProcurementEventSearch> results) {
+    List<ProjectPublicSearchSummary> model = results.stream().map(object -> {
+      ProjectPublicSearchSummary summary = new ProjectPublicSearchSummary();
+      summary.setProjectId(object.getProjectId());
+      summary.setProjectName(object.getProjectName());
+      summary.setAgreement(object.getAgreement());
+      summary.setBudgetRange(object.getBudgetRange());
+      summary.setDescription(object.getDescription());
+      summary.setBuyerName(object.getBuyerName());
+      summary.setLot(object.getLot());
+      summary.setLotName(object.getLotDescription());
+      summary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
+      summary.setSubStatus(object.getSubStatus());
+      summary.setLocation(object.getLocation());
+      return summary;
+    }).toList();
+
+    // Deduplicate by projectId
+    return model.stream()
+            .collect(collectingAndThen(
+                    toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))),
+                    ArrayList::new));
   }
 
   /**
