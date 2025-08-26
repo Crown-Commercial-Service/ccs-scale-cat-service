@@ -1023,7 +1023,7 @@ public class ProcurementProjectService {
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
 
-    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
+    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "_score")));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
 
     return searchQuery;
