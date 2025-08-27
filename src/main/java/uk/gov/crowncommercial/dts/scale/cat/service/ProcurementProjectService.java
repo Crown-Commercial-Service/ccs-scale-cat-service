@@ -931,11 +931,17 @@ public class ProcurementProjectService {
 
     List<ProcurementEventSearch> filtered = stream.toList();
 
-    // Pagination
+    // DEDUPLICATE HERE - BEFORE PAGINATION
+    List<ProcurementEventSearch> deduplicated = filtered.stream()
+        .collect(collectingAndThen(
+            toCollection(() -> new TreeSet<>(comparing(ProcurementEventSearch::getProjectId))),
+            ArrayList::new));
+
+    // Pagination on deduplicated results
     int fromIndex = Math.max((page - 1) * pageSize, 0);
-    int toIndex = Math.min(fromIndex + pageSize, filtered.size());
+    int toIndex = Math.min(fromIndex + pageSize, deduplicated.size());
     List<ProcurementEventSearch> pageResults =
-            fromIndex > filtered.size() ? Collections.emptyList() : filtered.subList(fromIndex, toIndex);
+            fromIndex > deduplicated.size() ? Collections.emptyList() : deduplicated.subList(fromIndex, toIndex);
 
     // Build response
     ProjectPublicSearchResult result = new ProjectPublicSearchResult();
@@ -945,8 +951,8 @@ public class ProcurementProjectService {
 
     result.setSearchCriteria(searchCriteria);
     result.setResults(convertResultsFromCache(pageResults));
-    result.setTotalResults(filtered.size());
-    result.setLinks(generateLinks(keyword, page, pageSize, filtered.size()));
+    result.setTotalResults(deduplicated.size());
+    result.setLinks(generateLinks(keyword, page, pageSize, deduplicated.size()));
 
     return result;
   }
@@ -955,7 +961,8 @@ public class ProcurementProjectService {
    * Convert cached ProcurementEventSearch list to summaries.
    */
   private List<ProjectPublicSearchSummary> convertResultsFromCache(List<ProcurementEventSearch> results) {
-    List<ProjectPublicSearchSummary> model = results.stream().map(object -> {
+    // Just convert, no deduplication needed since it's handled before pagination
+    return results.stream().map(object -> {
       ProjectPublicSearchSummary summary = new ProjectPublicSearchSummary();
       summary.setProjectId(object.getProjectId());
       summary.setProjectName(object.getProjectName());
@@ -970,12 +977,6 @@ public class ProcurementProjectService {
       summary.setLocation(object.getLocation());
       return summary;
     }).toList();
-
-    // Deduplicate by projectId
-    return model.stream()
-            .collect(collectingAndThen(
-                    toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))),
-                    ArrayList::new));
   }
 
   /**
