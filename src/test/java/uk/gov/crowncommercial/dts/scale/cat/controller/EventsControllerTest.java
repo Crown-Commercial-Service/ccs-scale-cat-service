@@ -27,6 +27,9 @@ import java.time.ZoneOffset;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -56,6 +59,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @WebMvcTest(EventsController.class)
 @Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class, OAuth2Config.class})
 @ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 class EventsControllerTest {
 
   private static final String EVENTS_PATH = "/tenders/projects/{procID}/events";
@@ -86,25 +90,25 @@ class EventsControllerTest {
   @Autowired
   private ObjectMapper objectMapper;
 
-  @MockBean
+  @Mock
   private ProcurementEventService procurementEventService;
 
-  @MockBean
+  @Mock
   private EventTransitionService eventTransitionService;
 
-  @MockBean
+  @Mock
   private DocGenService docGenService;
 
-  @MockBean
+  @Mock
   private AssessmentScoreExportService exportService;
 
-  @MockBean
+  @Mock
   private Principal principal;
 
-  @MockBean
+  @Mock
   private EventSummary eventSummary;
   
-  @MockBean
+  @Mock
   private LockProvider lockProvider;
 
   private JwtRequestPostProcessor validJwtReqPostProcessor;

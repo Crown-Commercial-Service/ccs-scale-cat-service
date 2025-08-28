@@ -15,6 +15,9 @@ import java.util.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -39,6 +42,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @WebMvcTest(AssessmentsController.class)
 @Import({TendersAPIModelUtils.class, JaggaerAPIConfig.class, ApplicationFlagsConfig.class, OAuth2Config.class})
 @ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 class AssessmentsControllerTest {
 
   private static final String ASSESSMENTS_PATH = "/assessments";
@@ -66,10 +70,10 @@ class AssessmentsControllerTest {
   @Autowired
   private MockMvc mockMvc;
 
-  @MockBean
+  @Mock
   private AssessmentService assessmentService;
   
-  @MockBean
+  @Mock
   private LockProvider lockProvider;
 
   private JwtRequestPostProcessor validJwtReqPostProcessor;
