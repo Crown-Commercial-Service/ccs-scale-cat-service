@@ -613,6 +613,9 @@
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
                                 <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
+                                <discriminatorPropertyName>type</discriminatorPropertyName>
+                                <generateAliasAsModel>true</generateAliasAsModel>
+                                <legacyDiscriminatorBehavior>false</legacyDiscriminatorBehavior>
                             </configOptions>
                         </configuration>
                     </execution>
