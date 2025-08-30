@@ -8,15 +8,12 @@ import java.util.Arrays;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ContextConfiguration;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -31,10 +28,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = {SupplierService.class},
-    webEnvironment = WebEnvironment.NONE)
-@Slf4j
-@ContextConfiguration(classes = {ObjectMapper.class})
+@ExtendWith(MockitoExtension.class)
 class SupplierServiceTest {
 
   static final String AGREEMENT_NUMBER = "RM1234";
@@ -66,31 +60,31 @@ class SupplierServiceTest {
 
   static final ProcurementProject project = ProcurementProject.builder().build();
 
-  @MockBean
+  @Mock
   private AgreementsService agreementsService;
 
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @Autowired
+  @InjectMocks
   private SupplierService supplierService;
 
-  @MockBean
+  @Mock
   private UserProfileService userProfileService;
 
-  @MockBean
+  @Mock
   private ValidationService validationService;
 
-  @MockBean
+  @Mock
   private JaggaerService jaggaerService;
 
-  @MockBean
+  @Mock
   private WebclientWrapper webclientWrapper;
 
-  @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;
 
-  @MockBean
+  @Mock
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
 

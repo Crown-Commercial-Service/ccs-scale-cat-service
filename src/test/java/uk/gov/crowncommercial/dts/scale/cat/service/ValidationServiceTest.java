@@ -1,13 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -27,8 +25,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(classes = {ValidationService.class}, webEnvironment = WebEnvironment.NONE)
-@EnableConfigurationProperties(JaggaerAPIConfig.class)
+@ExtendWith(MockitoExtension.class)
 class ValidationServiceTest {
 
   private static final Integer PROC_PROJECT_ID = 1;
@@ -38,16 +35,16 @@ class ValidationServiceTest {
   private static final String PROC_EVENT_PREFIX = "pfhb7i";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
 
-  @Autowired
+  @InjectMocks
   ValidationService validationService;
 
-  @MockBean
+  @Mock
   RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @MockBean
+  @Mock
   AssessmentService assessmentService;
 
-  @MockBean
+  @Mock
   Clock clock;
 
   @Test
