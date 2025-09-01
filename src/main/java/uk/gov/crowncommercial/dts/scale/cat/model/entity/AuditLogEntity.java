@@ -38,8 +38,8 @@ public class AuditLogEntity {
     @Column(name = "before_update")
     NVarcharJdbcType before_update;
 
-    //@Column(name = "after_update")
-    //String after_update;
+    @Column(name = "after_update")
+    NVarcharJdbcType after_update;
 
     @Column(name = "timestamp")
     LocalDateTime timestamp;

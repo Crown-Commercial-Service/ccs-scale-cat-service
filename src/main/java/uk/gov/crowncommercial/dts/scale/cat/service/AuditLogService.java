@@ -4,17 +4,17 @@ import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.dto.AuditLogDTO;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.AuditLogMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.audit.AuditLogModel;
-import uk.gov.crowncommercial.dts.scale.cat.repo.AuditLogRepository;
+import uk.gov.crowncommercial.dts.scale.cat.repo.AuditLogRepo;
 import java.time.LocalDateTime;
 
 @Service
 public class AuditLogService {
 
     private final AuditLogMapper auditLogMapper;
-    private final AuditLogRepository auditLogRepository;
+    private final AuditLogRepo auditLogRepo;
 
-    public AuditLogService(AuditLogRepository auditLogRepository, AuditLogMapper auditLogMapper) {
-        this.auditLogRepository = auditLogRepository;
+    public AuditLogService(AuditLogRepo auditLogRepo, AuditLogMapper auditLogMapper) {
+        this.auditLogRepo = auditLogRepo;
         this.auditLogMapper = auditLogMapper;
     }
 
@@ -24,7 +24,7 @@ public class AuditLogService {
         AuditLogModel auditLogModel = new AuditLogModel();
         auditLogModel.setFromDate(fromDate);
         auditLogModel.setToDate(toDate);
-        auditLogDto = auditLogMapper.toAuditLogDto(auditLogModel);
+        auditLogDto = auditLogMapper.convertAuditLogModelToAuditLogDto(auditLogModel);
         return auditLogDto;
        }
 }
