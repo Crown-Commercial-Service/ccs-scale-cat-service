@@ -8,11 +8,11 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DataConflictException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
@@ -24,17 +24,17 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = {JourneyService.class}, webEnvironment = WebEnvironment.NONE)
+@ExtendWith(MockitoExtension.class)
 class JourneyServiceTest {
 
   private static final String JOURNEY_ID = "ocds-abc-123";
   private static final String PRINCIPAL = "jsmith@ccs.org.uk";
   private static final String CLIENT_ID = "CAT_BUYER_UI";
 
-  @Autowired
+  @InjectMocks
   private JourneyService journeyService;
 
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   @Test

@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.crowncommercial.dts.scale.cat.service.NotificationService;
 import uk.gov.service.notify.NotificationClientException;
 
@@ -29,7 +30,7 @@ class EmailControllerTest {
     @Autowired
     private EmailController emailController;
 
-    @MockBean
+    @MockitoBean
     private NotificationService notificationService;
 
     private static final String TEST_TEMPLATE_ID = "test-template-123";
