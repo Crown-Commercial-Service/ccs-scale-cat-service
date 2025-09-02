@@ -139,7 +139,7 @@ public class TendersController extends AbstractRestController {
    * Update supplier details
    */
 
-  @PutMapping("/companies/{extUniqueCode}")
+  @PutMapping("/orgs/{extUniqueCode}")
   @TrackExecutionTime
   public ResponseEntity<CreateUpdateCompanyResponse> updateCompany(
           @PathVariable("extUniqueCode") final String extUniqueCode,
