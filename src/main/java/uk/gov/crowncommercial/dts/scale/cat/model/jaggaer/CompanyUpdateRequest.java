@@ -14,6 +14,7 @@ public class CompanyUpdateRequest {
         private String bizEmail;
         private String bizPhone;
         private String website;
+        private String userEmail;
         private String extUniqueCode;
         private String extCode;
         private String address;

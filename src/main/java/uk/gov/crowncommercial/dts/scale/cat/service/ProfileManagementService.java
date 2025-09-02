@@ -545,6 +545,10 @@ public class ProfileManagementService {
       companyInfoBuilder.webSite(updateRequest.getWebsite().trim());
     }
 
+    if (updateRequest.getUserEmail() != null) {
+      companyInfoBuilder.userEmail(updateRequest.getUserEmail().trim());
+    }
+
     if (updateRequest.getExtUniqueCode() != null) {
       companyInfoBuilder.extUniqueCode(updateRequest.getExtUniqueCode().trim());
     }
