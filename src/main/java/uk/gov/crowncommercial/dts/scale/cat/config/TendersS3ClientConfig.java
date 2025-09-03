@@ -2,10 +2,10 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
@@ -28,16 +28,19 @@ public class TendersS3ClientConfig {
   }
 
   @Bean("tendersS3Client")
-  public AmazonS3 amazonS3(final AWSS3Service awsS3Bucket) {
+  public S3Client s3Client(final AWSS3Service awsS3Bucket) {
     var bucketCredentials = awsS3Bucket.getCredentials();
     if(bucketCredentials.getAwsAccessKeyId() != null && bucketCredentials.getAwsAccessKeyId().isPresent() && bucketCredentials.getAwsSecretAccessKey() != null && bucketCredentials.getAwsSecretAccessKey().isPresent()) {
-      AWSStaticCredentialsProvider awsCredentials = new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-          bucketCredentials.getAwsAccessKeyId().get(), bucketCredentials.getAwsSecretAccessKey().get()));
+      AwsBasicCredentials awsCredentials = AwsBasicCredentials.create(
+          bucketCredentials.getAwsAccessKeyId().get(), bucketCredentials.getAwsSecretAccessKey().get());
 
-      return AmazonS3ClientBuilder.standard().withRegion(bucketCredentials.getAwsRegion())
-          .withCredentials(awsCredentials).build();
+      return S3Client.builder()
+          .region(Region.of(bucketCredentials.getAwsRegion()))
+          .credentialsProvider(StaticCredentialsProvider.create(awsCredentials))
+          .build();
     } else {
-      return AmazonS3ClientBuilder.standard().withRegion(bucketCredentials.getAwsRegion())
+      return S3Client.builder()
+          .region(Region.of(bucketCredentials.getAwsRegion()))
           .build();
     }
   }

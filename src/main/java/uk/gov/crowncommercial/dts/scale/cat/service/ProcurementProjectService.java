@@ -42,8 +42,8 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriUtils;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -114,7 +114,7 @@ public class ProcurementProjectService {
   private final AgreementsService agreementsService;
 
   private final ElasticsearchOperations elasticsearchOperations;
-  private final AmazonS3 tendersS3Client;
+  private final S3Client tendersS3Client;
   private final AWSS3Service tendersS3Service;
 
 
@@ -1122,9 +1122,13 @@ public class ProcurementProjectService {
    */
   public InputStream downloadProjectsData() {
     try {
-      S3Object tendersS3Object = tendersS3Client
-          .getObject(tendersS3Service.getCredentials().getBucketName(), CSV_FILE_PREFIX + CSV_FILE_NAME);
-      return tendersS3Object.getObjectContent();
+      var getObjectRequest = GetObjectRequest.builder()
+          .bucket(tendersS3Service.getCredentials().getBucketName())
+          .key(CSV_FILE_PREFIX + CSV_FILE_NAME)
+          .build();
+      
+      var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
+      return tendersS3Object;
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
       throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");

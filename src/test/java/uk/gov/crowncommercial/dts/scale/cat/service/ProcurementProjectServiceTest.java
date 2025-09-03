@@ -20,7 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.amazonaws.services.s3.AmazonS3;
+import software.amazon.awssdk.services.s3.S3Client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -106,7 +106,7 @@ class ProcurementProjectServiceTest {
   @Mock
   private ModelMapper modelMapper;
   @Mock
-  private AmazonS3 tendersS3Client;
+  private S3Client tendersS3Client;
   @Mock
   private AWSS3Service tendersS3Service;
   @Mock
