@@ -40,7 +40,7 @@
         <jsoup.version>1.21.1</jsoup.version>
         <hibernate.version>6.6.22.Final</hibernate.version>
         <junitapi.version>5.13.4</junitapi.version>
-        <opensearch.version>2.0.0</opensearch.version>
+        <opensearch.version>2.0.1</opensearch.version>
         <shedlock.version>6.9.2</shedlock.version>
         <spring-boot.version>3.5.4</spring-boot.version>
         <jose.version>0.9.6</jose.version>
