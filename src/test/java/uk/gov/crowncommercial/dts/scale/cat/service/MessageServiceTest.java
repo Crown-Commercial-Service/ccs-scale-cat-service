@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import static uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message.builder;
 import java.time.OffsetDateTime;
@@ -9,7 +10,11 @@ import java.util.Arrays;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -48,13 +53,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  * Message Service layer tests
  */
-@SpringBootTest(
-    classes = {MessageService.class, JaggaerAPIConfig.class, ModelMapper.class,
-        ApplicationFlagsConfig.class, SupplierService.class},
-    webEnvironment = WebEnvironment.NONE)
-@EnableConfigurationProperties({JaggaerAPIConfig.class})
-@ContextConfiguration(classes = {ObjectMapper.class})
-@Slf4j
+@ExtendWith(MockitoExtension.class)
 class MessageServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
@@ -66,6 +65,7 @@ class MessageServiceTest {
 
   private static final String JAGGAER_SUPPLIER_NAME_1 = "Doshi Industries";
 
+
   static final Integer EXT_ORG_ID = 123455;
   static final Integer EXT_ORG_ID_1 = 123456;
   static final Integer EXT_ORG_ID_2 = 123457;
@@ -73,7 +73,9 @@ class MessageServiceTest {
   static final String SUPPLIER_ORG_ID_1 = "GB-COH-1234567";
   static final String SUPPLIER_ORG_ID = "1234567";
 
-  static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder().build();
+  static final OrganisationMapping ORG_MAPPING = OrganisationMapping.builder()
+          .externalOrganisationId(1234567)  // must match SUPPLIER_ORG_ID
+          .build();
   static final OrganisationMapping ORG_MAPPING_1 = OrganisationMapping.builder().build();
   static final OrganisationMapping ORG_MAPPING_2 = OrganisationMapping.builder().build();
 
@@ -84,34 +86,34 @@ class MessageServiceTest {
 
   static final ProcurementProject project = ProcurementProject.builder().build();
 
-  @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;
 
-  @MockBean
+  @Mock
   private UserProfileService userProfileService;
 
-  @MockBean
+  @Mock
   private JaggaerService jaggaerService;
 
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @MockBean
+  @Mock
   private ConclaveService conclaveService;
 
-  @MockBean
+  @Mock
   private ValidationService validationService;
 
-  @MockBean
+  @Mock
   private WebclientWrapper webclientWrapper;
 
-  @MockBean
+  @Mock
   private AgreementsService agreementsService;
 
-  @Autowired
+  @InjectMocks
   private MessageService messageService;
 
-  @MockBean
+  @Mock
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
   @BeforeEach
@@ -146,8 +148,8 @@ class MessageServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
-    when(retryableTendersDBDelegate
-        .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
+    lenient().when(retryableTendersDBDelegate
+            .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
 
     var response = messageService.getMessagesSummary(messageRequestInfo);
@@ -186,7 +188,7 @@ class MessageServiceTest {
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
             .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
-    when(retryableTendersDBDelegate
+    lenient().when(retryableTendersDBDelegate
             .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
 
@@ -224,7 +226,7 @@ class MessageServiceTest {
     when(jaggaerService.getMessage("1")).thenReturn(message);
     when(jaggaerService.getDocument(FILE_ID, FILE_NAME)).thenReturn(DocumentAttachment.builder()
         .fileName(FILE_NAME).contentType(MediaType.APPLICATION_OCTET_STREAM).build());
-    when(retryableTendersDBDelegate
+    lenient().when(retryableTendersDBDelegate
         .findOrganisationMappingByExternalOrganisationId(Integer.valueOf(SUPPLIER_ORG_ID)))
             .thenReturn(Optional.of(ORG_MAPPING));
 

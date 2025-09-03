@@ -1,7 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.core.sync.RequestBody;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +54,7 @@ public class ProjectsCSVGenerationScheduledTask {
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
   private final Environment env;
-  private final AmazonS3 tendersS3Client;
+  private final S3Client tendersS3Client;
   private final AWSS3Service tendersS3Service;
   private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
@@ -310,11 +311,16 @@ public class ProjectsCSVGenerationScheduledTask {
     try {
       var fileStream = Files.newInputStream(tempFile);
       var tendersS3ObjectKey = CSV_FILE_PREFIX + CSV_FILE_NAME;
-      var objectMetadata = new ObjectMetadata();
-      objectMetadata.setContentLength(Files.readAllBytes(tempFile).length);
-      objectMetadata.setContentType("text/csv");
-      tendersS3Client.putObject(tendersS3Service.getCredentials().getBucketName(),
-          tendersS3ObjectKey, fileStream, objectMetadata);
+      var fileBytes = Files.readAllBytes(tempFile);
+      
+      var putObjectRequest = PutObjectRequest.builder()
+          .bucket(tendersS3Service.getCredentials().getBucketName())
+          .key(tendersS3ObjectKey)
+          .contentLength((long) fileBytes.length)
+          .contentType("text/csv")
+          .build();
+      
+      tendersS3Client.putObject(putObjectRequest, RequestBody.fromInputStream(fileStream, fileBytes.length));
       log.info("Successfully uploaded oppertunities file to S3: {}", tendersS3ObjectKey);
       // Delete the temporary file
       Files.delete(tempFile);

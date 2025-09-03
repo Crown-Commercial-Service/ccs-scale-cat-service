@@ -42,11 +42,8 @@ public class OAuth2Config {
     log.info("Configuring resource server...");
 
     http
-      .authorizeHttpRequests()
-      .requestMatchers("/actuator/**").permitAll()
-      .and()
-      .authorizeHttpRequests(authz ->
-      authz
+      .authorizeHttpRequests(authz -> authz
+        .requestMatchers("/actuator/**").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*/events/*/documents/export").permitAll()
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
@@ -59,12 +56,13 @@ public class OAuth2Config {
         .requestMatchers("/error/**").hasAnyAuthority(
             Stream.concat(Arrays.stream(CAT_ROLES), Arrays.stream(LD_ROLES)).toArray(String[]::new))
         .anyRequest().denyAll()
-    )
-    .csrf(CsrfConfigurer::disable)
-    .oauth2ResourceServer()
-      .authenticationEntryPoint(unauthorizedResponseDecorator)
-      .accessDeniedHandler(accessDeniedResponseDecorator)
-      .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter());
+      )
+      .csrf(CsrfConfigurer::disable)
+      .oauth2ResourceServer(oauth2 -> oauth2
+        .authenticationEntryPoint(unauthorizedResponseDecorator)
+        .accessDeniedHandler(accessDeniedResponseDecorator)
+        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+      );
 
     return http.build();
   }
