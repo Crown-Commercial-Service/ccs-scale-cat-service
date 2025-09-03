@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.5.0</jena-core.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <aws-java-sdk-s3.version>1.12.788</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.33.0</aws-java-sdk-s3.version>
         <tika-core.version>3.2.2</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -296,8 +296,8 @@
             <version>${jsonpath.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
             <version>${aws-java-sdk-s3.version}</version>
         </dependency>
         <dependency>
@@ -471,6 +471,7 @@
                                 <useOptional>true</useOptional>
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -501,6 +502,7 @@
                                 <useOptional>true</useOptional>
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -531,6 +533,7 @@
                                 <useOptional>true</useOptional>
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -561,6 +564,7 @@
                                 <useOptional>true</useOptional>
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -591,6 +595,7 @@
                                 <useOptional>true</useOptional>
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -623,6 +628,10 @@
                                 <useOptional>true</useOptional>
                                 <useJakartaEe>true</useJakartaEe>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
+                                <discriminatorPropertyName>type</discriminatorPropertyName>
+                                <generateAliasAsModel>true</generateAliasAsModel>
+                                <legacyDiscriminatorBehavior>false</legacyDiscriminatorBehavior>
                             </configOptions>
                         </configuration>
                     </execution>

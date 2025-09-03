@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
@@ -21,7 +22,7 @@ import javax.net.ssl.SSLContext;
 import java.util.Arrays;
 
 @Configuration
-@Data
+@RequiredArgsConstructor
 public class SearchRestClientConfig extends AbstractOpenSearchConfiguration {
     static final String OPEN_SEARCH_PATTERN = "[a-z0-9]+-ccs-scale-cat-opensearch";
     private final VCAPServices vcapServices;

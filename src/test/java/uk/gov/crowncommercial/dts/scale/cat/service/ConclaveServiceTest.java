@@ -4,12 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.ConclaveAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserContactInfoList;
@@ -18,29 +17,27 @@ import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.Use
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {ConclaveService.class, ConclaveAPIConfig.class},
-    webEnvironment = WebEnvironment.NONE)
-@EnableConfigurationProperties(ConclaveAPIConfig.class)
+@ExtendWith(MockitoExtension.class)
 class ConclaveServiceTest {
 
   private static final String CONCLAVE_USER_ID = "12345";
 
-  @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient conclaveWebClient;
 
-  @MockBean
+  @Mock
   private UserProfileResponseInfo userProfileResponseInfo;
 
-  @MockBean
+  @Mock
   private WebclientWrapper webclientWrapper;
 
-  @MockBean
+  @Mock
   private UserContactInfoList userContactInfoList;
 
-  @Autowired
+  @Mock
   private ConclaveAPIConfig conclaveAPIConfig;
 
-  @Autowired
+  @InjectMocks
   private ConclaveService conclaveService;
 
   @Test
