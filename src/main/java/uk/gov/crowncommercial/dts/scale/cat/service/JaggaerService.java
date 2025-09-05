@@ -275,6 +275,29 @@ public class JaggaerService {
     return createUpdateCompanyResponse;
 
   }
+  /**
+   * Get Company Details by extUniqueCode(DUNS).
+   * @param extUniqueCode
+   * @return
+   */
+  public GetCompanyDataResponse getCompanyByExtUniqueCode(String extUniqueCode) {
+    final var companyUriTemplate = jaggaerAPIConfig.getGetCompanyProfileByDUNSNumber().get(ENDPOINT);
+    // Replace the {{DUNSNumber}} placeholder with extUniqueCode
+    final var companyUri = companyUriTemplate.replace("{{DUNSNumber}}", extUniqueCode);
+
+    log.info("Start calling Jaggaer API to get company by DUNS: {}", extUniqueCode);
+
+    final var companyResponse = ofNullable(jaggaerWebClient.get()
+            .uri(companyUri)
+            .retrieve()
+            .bodyToMono(GetCompanyDataResponse.class)
+            .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
+            .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
+                    "Unexpected error retrieving company data for extUniqueCode: " + extUniqueCode));
+
+    log.info("Finish calling Jaggaer API to get company by DUNS: {}", extUniqueCode);
+    return companyResponse;
+  }
 
   /**
    * Upload a document at the Rfx level.
