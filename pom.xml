@@ -38,7 +38,7 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.21.1</jsoup.version>
-        <hibernate.version>6.6.22.Final</hibernate.version>
+        <hibernate.version>7.1.0.Final</hibernate.version>
         <junitapi.version>5.13.4</junitapi.version>
         <opensearch.version>2.0.1</opensearch.version>
         <shedlock.version>6.10.0</shedlock.version>
