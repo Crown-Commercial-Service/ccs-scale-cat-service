@@ -52,7 +52,7 @@ public class OAuth2Config {
         .requestMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
-        .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_ROLES)
+        .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/error/**").hasAnyAuthority(
             Stream.concat(Arrays.stream(CAT_ROLES), Arrays.stream(LD_ROLES)).toArray(String[]::new))
         .anyRequest().denyAll()
