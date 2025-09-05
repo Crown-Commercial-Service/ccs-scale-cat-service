@@ -196,31 +196,97 @@ public class AwardService {
    * @param eventId
    * @return a document attachment containing the template files
    */
+//  public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
+//      final AwardState awardState) {
+//    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+//    var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
+//        new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
+//    var offerDetails =
+//        exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
+//            .findFirst().orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
+//    var supplier = retryableTendersDBDelegate
+//        .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
+//        .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
+//
+//    var recievedState =
+//        exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
+//            : AwardState.PRE_AWARD;
+//    if (!awardState.equals(recievedState)) {
+//      throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+//    }
+//
+//    // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
+//    return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
+//        .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
+//        .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
+//            ? AwardState.AWARD
+//            : AwardState.PRE_AWARD);
+//  }
+//
+//  private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
+//    return offerDetailLastUpdated.compareTo(rfxsettingLastUpdated) >=0 ? offerDetailLastUpdated : rfxsettingLastUpdated;
+//  }
+
   public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
-      final AwardState awardState) {
+                                                final AwardState awardState) {
+    System.out.println("Starting getAwardOrPreAwardDetails - procId: " + procId + ", eventId: " + eventId + ", awardState: " + awardState);
+
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    System.out.println("Validated procurement event - externalEventId: " + procurementEvent.getExternalEventId());
+
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
-        new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
+            new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
+    System.out.println("Retrieved RFX response - offers count: " +
+            (exportRfxResponse.getOffersList() != null && exportRfxResponse.getOffersList().getOffer() != null ?
+                    exportRfxResponse.getOffersList().getOffer().size() : 0));
+
+    // Log winner offers filtering
+    var winnerOffers = exportRfxResponse.getOffersList().getOffer().stream()
+            .filter(off -> off.getIsWinner() == 1)
+            .collect(java.util.stream.Collectors.toList());
+    System.out.println("Winner offers found: " + winnerOffers.size());
+
+    if (winnerOffers.isEmpty()) {
+      System.out.println("ERROR: No winning offers found - throwing AWARD_DETAILS_NOT_FOUND");
+    }
+
     var offerDetails =
-        exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
-            .findFirst().orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
+            exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
+                    .findFirst().orElseThrow(() -> {
+                      System.out.println("EXCEPTION: No winning offer found - AWARD_DETAILS_NOT_FOUND will be thrown");
+                      return new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+                    });
+
+    System.out.println("Found winning offer - supplierId: " + offerDetails.getSupplierId());
+
     var supplier = retryableTendersDBDelegate
-        .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
-        .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
+            .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
+            .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
+    System.out.println("Found supplier mapping - casOrganisationId: " + supplier.getCasOrganisationId());
+
+    var rfxStatus = exportRfxResponse.getRfxSetting().getStatus();
+    System.out.println("RFX Status: " + rfxStatus + ", AWARD_STATUS: " + AWARD_STATUS);
 
     var recievedState =
-        exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
-            : AwardState.PRE_AWARD;
+            rfxStatus.contentEquals(AWARD_STATUS) ? AwardState.AWARD : AwardState.PRE_AWARD;
+    System.out.println("Received state: " + recievedState + ", Expected state: " + awardState);
+
     if (!awardState.equals(recievedState)) {
+      System.out.println("ERROR: State mismatch - Expected: " + awardState + ", Received: " + recievedState +
+              " - throwing AWARD_DETAILS_NOT_FOUND");
       throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
     }
 
+    System.out.println("State validation passed - proceeding to build AwardSummary");
+
     // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
-    return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
-        .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
-        .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
-            ? AwardState.AWARD
-            : AwardState.PRE_AWARD);
+    var awardSummary = new AwardSummary().id("1")
+            .date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
+            .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
+            .state(rfxStatus.contentEquals(AWARD_STATUS) ? AwardState.AWARD : AwardState.PRE_AWARD);
+
+    System.out.println("Successfully created AwardSummary with state: " + awardSummary.getState());
+    return awardSummary;
   }
 
   private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
