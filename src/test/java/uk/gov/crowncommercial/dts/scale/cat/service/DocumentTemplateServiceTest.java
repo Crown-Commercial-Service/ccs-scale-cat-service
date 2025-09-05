@@ -3,7 +3,10 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -11,10 +14,8 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -29,7 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = {DocumentTemplateService.class}, webEnvironment = WebEnvironment.NONE)
+@ExtendWith(MockitoExtension.class)
 class DocumentTemplateServiceTest {
 
   private static final Integer PROC_PROJECT_ID = 1;
@@ -51,39 +52,39 @@ class DocumentTemplateServiceTest {
   private static final DocumentTemplate DOC_TEMPLATE2 = DocumentTemplate.builder().id(2)
       .eventType("RFI").templateUrl("https://example.com/" + TEMPLATE_RESOURCE2_FILENAME).build();
 
-  @Autowired
+  @InjectMocks
   private DocumentTemplateService documentTemplateService;
 
-  @MockBean
+  @Mock
   private ValidationService validationService;
 
-  @MockBean
+  @Mock
   private DocumentTemplateResourceService documentTemplateResourceService;
 
-  @MockBean
+  @Mock
   private DocGenService docGenService;
 
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @MockBean(name = "templateResource1")
+  @Mock(name = "templateResource1")
   private Resource templateResource1;
 
-  @MockBean(name = "templateResource2")
+  @Mock(name = "templateResource2")
   private Resource templateResource2;
 
   @BeforeEach
   void beforeEach() throws IOException {
     // Mock resource behaviour
-    when(templateResource1.getFilename()).thenReturn(TEMPLATE_RESOURCE1_FILENAME);
-    when(templateResource2.getFilename()).thenReturn(TEMPLATE_RESOURCE2_FILENAME);
+    lenient().when(templateResource1.getFilename()).thenReturn(TEMPLATE_RESOURCE1_FILENAME);
+    lenient().when(templateResource2.getFilename()).thenReturn(TEMPLATE_RESOURCE2_FILENAME);
 
-    when(templateResource1.contentLength()).thenReturn(1024L);
-    when(templateResource2.contentLength()).thenReturn(512L);
+    lenient().when(templateResource1.contentLength()).thenReturn(1024L);
+    lenient().when(templateResource2.contentLength()).thenReturn(512L);
 
-    when(templateResource1.getInputStream())
+    lenient().when(templateResource1.getInputStream())
         .thenReturn(new ByteArrayInputStream(TEMPLATE_RESOURCE1_CONTENT));
-    when(templateResource2.getInputStream())
+    lenient().when(templateResource2.getInputStream())
         .thenReturn(new ByteArrayInputStream(TEMPLATE_RESOURCE2_CONTENT));
   }
 

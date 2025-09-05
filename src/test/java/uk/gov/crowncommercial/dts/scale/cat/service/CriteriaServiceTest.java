@@ -3,12 +3,11 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
-import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
@@ -35,8 +34,7 @@ import static org.mockito.Mockito.*;
 /**
  * Service layer tests
  */
-@SpringBootTest(classes = {CriteriaService.class, JaggaerAPIConfig.class, ObjectMapper.class},
-    webEnvironment = WebEnvironment.NONE)
+@ExtendWith(MockitoExtension.class)
 class CriteriaServiceTest {
 
   private static final String EVENT_OCID = "ocds-abc123-1";
@@ -47,34 +45,34 @@ class CriteriaServiceTest {
   private static final String QUESTION_ID = "Question 1";
   private static final String AGREEMENT_NO = "TEST";
 
-  @MockBean
+  @Mock
   private AgreementsService agreementsService;
 
-  @MockBean
+  @Mock
   private ValidationService validationService;
 
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @MockBean
+  @Mock
   private WebClient jaggaerWebClient;
 
-  @MockBean
+  @Mock
   private DependencyMapper dependencyMapper;
 
-  @MockBean
+  @Mock
   private TimelineDependencyMapper timelineDependencyMapper;
 
-  @Autowired
+  @InjectMocks
   private CriteriaService criteriaService;
 
-  @Autowired
+  @InjectMocks
   private ObjectMapper objectMapper;
 
-  @MockBean
+  @Mock
   private DataTemplateProcessor templateProcessor;
 
-  @MockBean
+  @Mock
   private ProcurementEventHelperService eventHelperService;
 
   @Test
