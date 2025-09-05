@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
@@ -41,25 +41,25 @@ class ExceptionHandlerTests {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private ProcurementEventService procurementEventService;
 
-    @MockBean
+    @MockitoBean
     private EventTransitionService eventTransitionService;
 
-    @MockBean
+    @MockitoBean
     private DocGenService docGenService;
 
-    @MockBean
+    @MockitoBean
     private AssessmentScoreExportService exportService;
 
-    @MockBean
+    @MockitoBean
     private Principal principal;
 
-    @MockBean
+    @MockitoBean
     private EventSummary eventSummary;
 
-    @MockBean
+    @MockitoBean
     private LockProvider lockProvider;
 
     // IF the app has successfully started, these endpoints will return 401 Unauthorised, and therefore this suit will pass. IF the app fails to start this test suit will fail.

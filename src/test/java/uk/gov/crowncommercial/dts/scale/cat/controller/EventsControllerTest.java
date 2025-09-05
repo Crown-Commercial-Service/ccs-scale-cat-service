@@ -36,6 +36,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.javacrumbs.shedlock.core.LockProvider;
@@ -86,25 +87,25 @@ class EventsControllerTest {
   @Autowired
   private ObjectMapper objectMapper;
 
-  @MockBean
+  @MockitoBean
   private ProcurementEventService procurementEventService;
 
-  @MockBean
+  @MockitoBean
   private EventTransitionService eventTransitionService;
 
-  @MockBean
+  @MockitoBean
   private DocGenService docGenService;
 
-  @MockBean
+  @MockitoBean
   private AssessmentScoreExportService exportService;
 
-  @MockBean
+  @MockitoBean
   private Principal principal;
 
-  @MockBean
+  @MockitoBean
   private EventSummary eventSummary;
   
-  @MockBean
+  @MockitoBean
   private LockProvider lockProvider;
 
   private JwtRequestPostProcessor validJwtReqPostProcessor;

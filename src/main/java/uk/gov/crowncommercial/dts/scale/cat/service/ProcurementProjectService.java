@@ -42,8 +42,8 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriUtils;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -114,7 +114,7 @@ public class ProcurementProjectService {
   private final AgreementsService agreementsService;
 
   private final ElasticsearchOperations elasticsearchOperations;
-  private final AmazonS3 tendersS3Client;
+  private final S3Client tendersS3Client;
   private final AWSS3Service tendersS3Service;
 
 
@@ -931,11 +931,17 @@ public class ProcurementProjectService {
 
     List<ProcurementEventSearch> filtered = stream.toList();
 
-    // Pagination
+    // DEDUPLICATE HERE - BEFORE PAGINATION
+    List<ProcurementEventSearch> deduplicated = filtered.stream()
+        .collect(collectingAndThen(
+            toCollection(() -> new TreeSet<>(comparing(ProcurementEventSearch::getProjectId))),
+            ArrayList::new));
+
+    // Pagination on deduplicated results
     int fromIndex = Math.max((page - 1) * pageSize, 0);
-    int toIndex = Math.min(fromIndex + pageSize, filtered.size());
+    int toIndex = Math.min(fromIndex + pageSize, deduplicated.size());
     List<ProcurementEventSearch> pageResults =
-            fromIndex > filtered.size() ? Collections.emptyList() : filtered.subList(fromIndex, toIndex);
+            fromIndex > deduplicated.size() ? Collections.emptyList() : deduplicated.subList(fromIndex, toIndex);
 
     // Build response
     ProjectPublicSearchResult result = new ProjectPublicSearchResult();
@@ -945,8 +951,8 @@ public class ProcurementProjectService {
 
     result.setSearchCriteria(searchCriteria);
     result.setResults(convertResultsFromCache(pageResults));
-    result.setTotalResults(filtered.size());
-    result.setLinks(generateLinks(keyword, page, pageSize, filtered.size()));
+    result.setTotalResults(deduplicated.size());
+    result.setLinks(generateLinks(keyword, page, pageSize, deduplicated.size()));
 
     return result;
   }
@@ -955,7 +961,8 @@ public class ProcurementProjectService {
    * Convert cached ProcurementEventSearch list to summaries.
    */
   private List<ProjectPublicSearchSummary> convertResultsFromCache(List<ProcurementEventSearch> results) {
-    List<ProjectPublicSearchSummary> model = results.stream().map(object -> {
+    // Just convert, no deduplication needed since it's handled before pagination
+    return results.stream().map(object -> {
       ProjectPublicSearchSummary summary = new ProjectPublicSearchSummary();
       summary.setProjectId(object.getProjectId());
       summary.setProjectName(object.getProjectName());
@@ -970,12 +977,6 @@ public class ProcurementProjectService {
       summary.setLocation(object.getLocation());
       return summary;
     }).toList();
-
-    // Deduplicate by projectId
-    return model.stream()
-            .collect(collectingAndThen(
-                    toCollection(() -> new TreeSet<>(comparing(ProjectPublicSearchSummary::getProjectId))),
-                    ArrayList::new));
   }
 
   /**
@@ -1023,7 +1024,7 @@ public class ProcurementProjectService {
   private  NativeSearchQuery getSearchQuery (String keyword, PageRequest pageRequest, String lotId, ProjectFilter projectFilter) {
     NativeSearchQueryBuilder searchQueryBuilder = getFilterQuery(lotId,projectFilter, keyword);
 
-    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "lastUpdated")));
+    searchQueryBuilder.withPageable(PageRequest.of(pageRequest.getPageNumber()-1, pageRequest.getPageSize(), Sort.by(Sort.Direction.DESC, "_score")));
     NativeSearchQuery searchQuery = searchQueryBuilder.build();
 
     return searchQuery;
@@ -1121,9 +1122,13 @@ public class ProcurementProjectService {
    */
   public InputStream downloadProjectsData() {
     try {
-      S3Object tendersS3Object = tendersS3Client
-          .getObject(tendersS3Service.getCredentials().getBucketName(), CSV_FILE_PREFIX + CSV_FILE_NAME);
-      return tendersS3Object.getObjectContent();
+      var getObjectRequest = GetObjectRequest.builder()
+          .bucket(tendersS3Service.getCredentials().getBucketName())
+          .key(CSV_FILE_PREFIX + CSV_FILE_NAME)
+          .build();
+      
+      var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
+      return tendersS3Object;
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
       throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");

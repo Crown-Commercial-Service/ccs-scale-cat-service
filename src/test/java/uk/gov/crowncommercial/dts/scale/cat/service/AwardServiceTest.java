@@ -2,8 +2,13 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -12,14 +17,9 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ContextConfiguration;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.util.Pair;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
@@ -39,10 +39,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  *
  */
-@SpringBootTest(classes = {AwardService.class, SupplierService.class},
-    webEnvironment = WebEnvironment.NONE)
-@Slf4j
-@ContextConfiguration(classes = {ObjectMapper.class})
+@ExtendWith(MockitoExtension.class)
 class AwardServiceTest {
 
   static final String AGREEMENT_NUMBER = "RM1234";
@@ -86,34 +83,34 @@ class AwardServiceTest {
   private static final Optional<SubUser> JAGGAER_USER = Optional
       .of(SubUser.builder().userId(JAGGAER_USER_ID).email(PRINCIPAL).name(BUYER_USER_NAME).build());
 
-  @MockBean
+  @Mock
   private AgreementsService agreementsService;
 
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @Autowired
+  @InjectMocks
   private AwardService awardService;
 
-  @MockBean
+  @Mock
   private UserProfileService userProfileService;
 
-  @MockBean
+  @Mock
   private ValidationService validationService;
 
-  @MockBean
+  @Mock
   private JaggaerService jaggaerService;
 
-  @MockBean
-  private WebclientWrapper webclientWrapper;
+  @Mock
+  private SupplierService supplierService;
 
-  @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
+  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private WebClient rpaServiceWebClient;
 
-  @MockBean
+  @Mock
   private BuyerUserDetailsRepo buyerDetailsRepo;
 
-  @MockBean
+  @Mock
   private DocumentTemplateResourceService documentTemplateResourceService;
 
 
@@ -149,15 +146,21 @@ class AwardServiceTest {
     var procurementEvent = ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
     .externalEventId(RFX_ID).build();
     // Mock behaviours
-    when(jaggaerService.getRfxWithSuppliers(RFX_ID)).thenReturn(rfxResponse);
-    when(retryableTendersDBDelegate
-        .findOrganisationMappingByCasOrganisationIdIn(Set.of(SUPPLIER_ORG_ID_1)))
-            .thenReturn(Set.of(ORG_MAPPING_1));
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
     when(jaggaerService.awardOrPreAwardRfx(procurementEvent, JAGGAER_USER_ID, EXT_ORG_ID_1+"", AwardState.AWARD)).thenReturn("Awarded");
+
+    List<Supplier> matchedSuppliers = List.of(
+            Supplier.builder().companyData(CompanyData.builder().id(EXT_ORG_ID_1).build()).id(EXT_ORG_ID_1.toString()).build()
+    );
+    Set<OrganisationMapping> orgMappings = Set.of(ORG_MAPPING_1);
+
+    when(supplierService.getValidSuppliers(
+            any(ProcurementEvent.class), anyList()))
+            .thenReturn(Pair.of(matchedSuppliers, orgMappings));
+
     // Invoke
     var awardResponse = awardService.createOrUpdateAwardRfx(PRINCIPAL, PROC_PROJECT_ID, EVENT_OCID,
         AwardState.AWARD, award, null);
