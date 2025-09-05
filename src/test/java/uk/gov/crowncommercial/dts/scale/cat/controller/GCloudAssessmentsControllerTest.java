@@ -6,11 +6,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
@@ -44,13 +44,13 @@ public class GCloudAssessmentsControllerTest {
     private static final Integer TOOL_ID = 2;
     private static final String PRINCIPAL = "jsmith@ccs.org.uk";
 
-    @MockBean
+    @MockitoBean
     private GCloudAssessmentService assessmentService;
 
-    @MockBean
+    @MockitoBean
     private AssessmentService coreAssessmentService;
 
-    @MockBean
+    @MockitoBean
     private AgreementsService agreementsService;
 
     @Autowired
@@ -59,7 +59,7 @@ public class GCloudAssessmentsControllerTest {
     @Autowired
     private MockMvc mockMvc;
     
-    @MockBean
+    @MockitoBean
     private LockProvider lockProvider;
 
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validJwtReqPostProcessor;
