@@ -25,10 +25,14 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.SdkClientException;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.S3Object;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.core.sync.RequestBody;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -62,8 +66,8 @@ public class DocumentUploadService {
   static final Tika TIKA = new Tika();
   static final long DEFAULT_SIZE_VALIDATION = 1000;
 
-  private final AmazonS3 documentUploadS3Client;
-  private final AmazonS3 tendersS3Client;
+  private final S3Client documentUploadS3Client;
+  private final S3Client tendersS3Client;
   private final AWSS3Service tendersS3Service;
   private final DocumentUploadAPIConfig apiConfig;
   private final WebClient docUploadSvcUploadWebclient;
@@ -134,9 +138,11 @@ public class DocumentUploadService {
 
     // Document should only exist in Tenders S3 if safe
     if (documentUpload.getExternalStatus() == VirusCheckStatus.SAFE) {
-      tendersS3Client.deleteObject(tendersS3Service.getCredentials().getBucketName(),
-          tendersS3ObjectKey(event.getProject().getId(), event.getEventID(),
-              documentUpload.getDocumentId()));
+      tendersS3Client.deleteObject(DeleteObjectRequest.builder()
+          .bucket(tendersS3Service.getCredentials().getBucketName())
+          .key(tendersS3ObjectKey(event.getProject().getId(), event.getEventID(),
+              documentUpload.getDocumentId()))
+          .build());
     }
     documentUploadRepo.delete(documentUpload);
     event.getDocumentUploads().remove(documentUpload);
@@ -246,23 +252,31 @@ public class DocumentUploadService {
 
   private void copyDocumentFromRemoteS3(final DocumentUpload unprocessedDocUpload,
       final DocumentStatus documentStatus) {
-    var remoteS3Object = documentUploadS3Client.getObject(apiConfig.getS3Bucket(),
-        documentStatus.getDocumentFile().getUrl());
+    var getObjectRequest = GetObjectRequest.builder()
+        .bucket(apiConfig.getS3Bucket())
+        .key(documentStatus.getDocumentFile().getUrl())
+        .build();
+    
+    var remoteS3Object = documentUploadS3Client.getObject(getObjectRequest);
 
     var tendersS3ObjectKey =
         tendersS3ObjectKey(unprocessedDocUpload.getProcurementEvent().getProject().getId(),
             unprocessedDocUpload.getProcurementEvent().getEventID(),
             unprocessedDocUpload.getDocumentId());
 
-    var s3ObjectMetadata = remoteS3Object.getObjectMetadata();
-
     log.debug(
         "Copying object: [{}] from remote S3 bucket: [{}] to object: [{}] in Tenders S3 bucket: [{}]",
         documentStatus.getDocumentFile().getUrl(), apiConfig.getS3Bucket(), tendersS3ObjectKey,
         tendersS3Service.getCredentials().getBucketName());
 
-    tendersS3Client.putObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey,
-        remoteS3Object.getObjectContent(), s3ObjectMetadata);
+    var putObjectRequest = PutObjectRequest.builder()
+        .bucket(tendersS3Service.getCredentials().getBucketName())
+        .key(tendersS3ObjectKey)
+        .contentLength(remoteS3Object.response().contentLength())
+        .contentType(remoteS3Object.response().contentType())
+        .build();
+
+    tendersS3Client.putObject(putObjectRequest, RequestBody.fromInputStream(remoteS3Object, remoteS3Object.response().contentLength()));
   }
 
   private byte[] getFromTendersS3(final String tendersS3ObjectKey, final String documentId, final String principal)
@@ -273,10 +287,14 @@ public class DocumentUploadService {
   private InputStream getFromTendersS3Stream(final String tendersS3ObjectKey, final String documentId, final String principal)
           throws IOException {
     try {
-      S3Object tendersS3Object = tendersS3Client
-              .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
-      return tendersS3Object.getObjectContent();
-    } catch (AmazonServiceException e) {
+      var getObjectRequest = GetObjectRequest.builder()
+          .bucket(tendersS3Service.getCredentials().getBucketName())
+          .key(tendersS3ObjectKey)
+          .build();
+      
+      var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
+      return tendersS3Object;
+    } catch (NoSuchKeyException e) {
       var objectData = processFailedS3DocumentsStream(tendersS3ObjectKey, documentId, principal);
       if (Objects.isNull(objectData))
         throw e;
@@ -285,7 +303,7 @@ public class DocumentUploadService {
   }
   
   private byte[] processFailedS3Documents(final String tendersS3ObjectKey, final String documentId, final String principal)
-      throws AmazonServiceException, SdkClientException, IOException {
+      throws SdkException, IOException {
     var failedDoc = processFailedS3DocumentsStream(tendersS3ObjectKey, documentId, principal);
     if (failedDoc != null) {
       return IOUtils.toByteArray(failedDoc);
@@ -294,7 +312,7 @@ public class DocumentUploadService {
   }
 
   private InputStream processFailedS3DocumentsStream(final String tendersS3ObjectKey, final String documentId, final String principal)
-          throws AmazonServiceException, SdkClientException, IOException {
+          throws SdkException, IOException {
     // reference of doc key format - tendersS3ObjectKey();
     log.debug("Processing failed s3 documents");
     log.debug("Document Id: {}", documentId);
@@ -304,10 +322,15 @@ public class DocumentUploadService {
       docStatus.setExternalStatus(VirusCheckStatus.PROCESSING);
       docStatus = documentUploadRepo.save(docStatus);
       this.processDocuments(Set.of(docStatus), principal);
-      var tendersS3Object = tendersS3Client
-              .getObject(tendersS3Service.getCredentials().getBucketName(), tendersS3ObjectKey);
+      
+      var getObjectRequest = GetObjectRequest.builder()
+          .bucket(tendersS3Service.getCredentials().getBucketName())
+          .key(tendersS3ObjectKey)
+          .build();
+      
+      var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
       log.debug("Document processed successfully and found in s3 bucket");
-      return tendersS3Object.getObjectContent();
+      return tendersS3Object;
     }
     log.debug("Document upload data not found with id: {}", documentId);
     return null;

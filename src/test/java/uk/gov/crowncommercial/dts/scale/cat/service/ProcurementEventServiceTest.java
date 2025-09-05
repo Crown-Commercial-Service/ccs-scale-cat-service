@@ -20,6 +20,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -90,116 +91,116 @@ class ProcurementEventServiceTest {
   private static final Integer WEIGHTING = 10;
   private static final Integer ASSESSMENT_SUPPLIER_TARGET = 10;
 
-  @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
+  @MockitoBean
   private WebClient jaggaerWebClient;
 
-  @MockBean
+  @MockitoBean
   private UserProfileService userProfileService;
 
-  @MockBean
+  @MockitoBean
   private GCloudAssessmentRepo gCloudAssessmentRepo;
 
-  @MockBean
+  @MockitoBean
   private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
 
-  @MockBean
+  @MockitoBean
   private ProcurementProjectRepo procurementProjectRepo;
 
-  @MockBean
+  @MockitoBean
   private ProcurementEventRepo procurementEventRepo;
 
-  @MockBean
+  @MockitoBean
   private SupplierService supplierService;
 
-  @MockBean
+  @MockitoBean
   private OrganisationMappingRepo organisationMappingRepo;
 
   @Autowired
   private ProcurementEventService procurementEventService;
 
-  @MockBean
+  @MockitoBean
   private QueuedAsyncExecutor asyncExecutor;
 
   @Autowired
   private JaggaerAPIConfig jaggaerAPIConfig;
 
-  @MockBean
+  @MockitoBean
   private JaggaerService jaggaerService;
 
-  @MockBean
+  @MockitoBean
   private ValidationService validationService;
 
-  @MockBean
+  @MockitoBean
   private DocumentTemplateRepo documentTemplateRepo;
 
-  @MockBean
+  @MockitoBean
   private CriteriaService criteriaService;
 
-  @MockBean
+  @MockitoBean
   private AssessmentService assessmentService;
 
-  @MockBean
+  @MockitoBean
   private ConclaveService conclaveService;
 
-  @MockBean
+  @MockitoBean
   private JourneyRepo journeyRepo;
 
-  @MockBean
+  @MockitoBean
   private AssessmentRepo assessmentRepo;
 
-  @MockBean
+  @MockitoBean
   private AssessmentToolRepo assessmentToolRepo;
 
-  @MockBean
+  @MockitoBean
   private AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
 
-  @MockBean
+  @MockitoBean
   private DimensionRepo dimensionRepo;
 
-  @MockBean
+  @MockitoBean
   private AssessmentSelectionRepo assessmentSelectionRepo;
 
-  @MockBean
+  @MockitoBean
   private RequirementTaxonRepo requirementTaxonRepo;
 
-  @MockBean
+  @MockitoBean
   private AssessmentTaxonRepo assessmentTaxonRepo;
 
-  @MockBean
+  @MockitoBean
   private CalculationBaseRepo calculationBaseRepo;
 
-  @MockBean
+  @MockitoBean
   private AssessmentResultRepo assessmentResultRepo;
 
-  @MockBean
+  @MockitoBean
   private ProjectUserMappingRepo projectUserMappingRepo;
 
-  @MockBean
+  @MockitoBean
   private SupplierSelectionRepo supplierSelectionRepo;
 
-  @MockBean
+  @MockitoBean
   private SupplierSubmissionRepo supplierSubmissionRepo;
 
-  @MockBean
+  @MockitoBean
   private DocumentUploadService documentUploadService;
 
-  @MockBean
+  @MockitoBean
   private DocumentTemplateService documentTemplateService;
 
 
-  @MockBean
+  @MockitoBean
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
 
-  @MockBean
+  @MockitoBean
   private AgreementsService agreementsService;
   
-  @MockBean
+  @MockitoBean
   private ContractDetailsRepo contractDetailsRepo;
   
-  @MockBean
+  @MockitoBean
   private AwardService awardService;
 
-  @MockBean
+  @MockitoBean
   private EventTransitionService eventTransitionService;
 
   @Autowired
@@ -214,7 +215,7 @@ class ProcurementEventServiceTest {
   @Autowired
   private DOS6SupplierStore dos6SupplierStore;
   
-  @MockBean
+  @MockitoBean
   private QuestionAndAnswerRepo questionAndAnswerRepo;
 
   private final CreateEvent createEvent = new CreateEvent();
