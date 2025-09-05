@@ -479,6 +479,128 @@ public class ProfileManagementService {
     }
   }
 
+  /**
+   * Update supplier details based on admin ui
+   */
+  public CreateUpdateCompanyResponse updateCompanyByExtUniqueCode(String extUniqueCode, CompanyUpdateRequest updateRequest) {
+    try {
+      // Get company details using extUniqueCode
+      GetCompanyDataResponse existingData = getCompanyByExtUniqueCode(extUniqueCode);
+
+      if (existingData == null || existingData.getReturnCompanyData() == null ||
+              existingData.getReturnCompanyData().isEmpty()) {
+        CreateUpdateCompanyResponse errorResponse = CreateUpdateCompanyResponse.builder()
+                .returnCode("404")
+                .returnMessage("Company not found with extUniqueCode: " + extUniqueCode)
+                .build();
+        return errorResponse;
+      }
+      // Convert Company response to Company Data
+      ReturnCompanyData companyData = existingData.getReturnCompanyData().stream().findFirst().orElse(null);
+
+      //Build update request using CreateUpdateCompany
+      CreateUpdateCompany updateCompanyRequest = buildUpdateCompanyRequest(companyData, updateRequest);
+
+      // Wrap in request builder
+      var createUpdateCompanyDataBuilder = CreateUpdateCompanyRequest.builder()
+              .company(updateCompanyRequest);
+
+      //Use jaggaerService to send the update to Jaggaer
+      return jaggaerService.createUpdateCompany(createUpdateCompanyDataBuilder.build());
+
+    } catch (Exception e) {
+      log.error("Error updating company with extUniqueCode: {}", extUniqueCode, e);
+      CreateUpdateCompanyResponse errorResponse = CreateUpdateCompanyResponse.builder()
+              .returnCode("500")
+              .returnMessage("Failed to update company: " + e.getMessage())
+              .build();
+      return errorResponse;
+    }
+  }
+
+  private CreateUpdateCompany buildUpdateCompanyRequest(
+          ReturnCompanyData existingCompanyData,
+          CompanyUpdateRequest updateRequest) {
+
+    var existingCompanyInfo = existingCompanyData.getReturnCompanyInfo();
+
+    // Build CompanyInfo with existing bravoId and updated fields
+    var companyInfoBuilder = CompanyInfo.builder()
+            .bravoId(existingCompanyInfo.getBravoId()); // Always required for updates
+
+    // Update only the fields provided in the request
+    if (updateRequest.getCompanyName() != null) {
+      companyInfoBuilder.companyName(updateRequest.getCompanyName().trim());
+    }
+
+    if (updateRequest.getBizEmail() != null) {
+      companyInfoBuilder.bizEmail(updateRequest.getBizEmail().trim());
+    }
+
+    if (updateRequest.getBizPhone() != null) {
+      companyInfoBuilder.bizPhone(updateRequest.getBizPhone().trim());
+    }
+
+    if (updateRequest.getWebsite() != null) {
+      companyInfoBuilder.webSite(updateRequest.getWebsite().trim());
+    }
+
+    if (updateRequest.getUserEmail() != null) {
+      companyInfoBuilder.userEmail(updateRequest.getUserEmail().trim());
+    }
+
+    if (updateRequest.getExtUniqueCode() != null) {
+      companyInfoBuilder.extUniqueCode(updateRequest.getExtUniqueCode().trim());
+    }
+
+    if (updateRequest.getExtCode() != null) {
+      companyInfoBuilder.extCode(updateRequest.getExtCode().trim());
+    }
+
+    // Address fields
+    if (updateRequest.getAddress() != null) {
+      companyInfoBuilder.address(updateRequest.getAddress().trim());
+    }
+
+    if (updateRequest.getZip() != null) {
+      companyInfoBuilder.zip(updateRequest.getZip().trim());
+    }
+
+    if (updateRequest.getCity() != null) {
+      companyInfoBuilder.city(updateRequest.getCity().trim());
+    }
+
+    if (updateRequest.getProvince() != null) {
+      companyInfoBuilder.province(updateRequest.getProvince().trim());
+    }
+
+    if (updateRequest.getIsoCountry() != null) {
+      companyInfoBuilder.isoCountry(updateRequest.getIsoCountry().trim());
+    }
+
+    // Build the CreateUpdateCompany using your existing DTO
+    return CreateUpdateCompany.builder()
+            .operationCode(OperationCode.UPDATE)
+            .companyInfo(companyInfoBuilder.build())
+            .build();
+  }
+
+  private GetCompanyDataResponse getCompanyByExtUniqueCode(String extUniqueCode) {
+    try {
+      var searchResponse = jaggaerService.getCompanyByExtUniqueCode(extUniqueCode);
+      if (searchResponse != null &&
+              searchResponse.getReturnCompanyData () != null &&
+              !searchResponse.getReturnCompanyData().isEmpty()) {
+//        may need to create new GetCompanyDataResponse for suppliers as it's a list not a set
+        return searchResponse;
+      }
+      return null;
+    } catch (Exception e) {
+      log.error("Error fetching company by extUniqueCode: {}", extUniqueCode, e);
+      return null;
+    }
+  }
+
   private void updateSupplier(final UserProfileResponseInfo conclaveUser,
       final OrganisationProfileResponseInfo conclaveUserOrg,
       final UserContactInfoList conclaveUserContacts,
