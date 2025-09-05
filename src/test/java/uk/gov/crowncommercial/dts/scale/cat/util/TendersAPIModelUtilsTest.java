@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Errors;
@@ -20,7 +21,7 @@ class TendersAPIModelUtilsTest {
   private static final String ERROR_TITLE = "error title";
   private static final String ERROR_MESSAGE = "error message";
 
-  @MockBean
+  @MockitoBean
   ApplicationFlagsConfig appFlagsConfig;
 
   @Autowired

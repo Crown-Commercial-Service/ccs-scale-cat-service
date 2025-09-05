@@ -15,6 +15,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.RegisterUserResponse.UserActionEnum;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.User;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyUpdateRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateCompanyResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.UpdateCompanyResponse;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
@@ -134,6 +135,48 @@ public class TendersController extends AbstractRestController {
     }
   }
 
+  /**
+   * Update supplier details
+   */
+
+  @PutMapping("/orgs/{extUniqueCode}")
+  @TrackExecutionTime
+  public ResponseEntity<CreateUpdateCompanyResponse> updateCompany(
+          @PathVariable("extUniqueCode") final String extUniqueCode,
+          @RequestBody final CompanyUpdateRequest updateRequest,
+          final JwtAuthenticationToken authentication
+  ) {
+
+    var principal = getPrincipalFromJwt(authentication);
+
+    log.info("updateCompany invoked on behalf of principal: {} for extUniqueCode: {}",
+            principal, extUniqueCode);
+
+    if (principal == null || principal.isEmpty()) {
+      throw new AuthorisationFailureException("Not Authenticated.");
+    }
+
+    try {
+      CreateUpdateCompanyResponse response = profileManagementService.updateCompanyByExtUniqueCode(
+              extUniqueCode, updateRequest);
+
+      if ("0".equals(response.getReturnCode())) {
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+      } else if ("409".equals(response.getReturnCode())) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+      } else {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+      }
+
+    } catch (Exception e) {
+      log.error("Error updating company with extUniqueCode: {}", extUniqueCode, e);
+      CreateUpdateCompanyResponse errorResponse = CreateUpdateCompanyResponse.builder()
+              .returnCode("500")
+              .returnMessage("Internal server error")
+              .build();
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+  }
 
   @GetMapping("/users")
   @TrackExecutionTime

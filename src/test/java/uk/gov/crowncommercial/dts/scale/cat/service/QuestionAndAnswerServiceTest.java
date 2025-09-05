@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
@@ -27,7 +27,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.LotDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
@@ -36,7 +35,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 /**
  * QuestionAndAnswerService Service layer tests
  */
-@SpringBootTest(classes = {QuestionAndAnswerService.class}, webEnvironment = WebEnvironment.NONE)
+@ExtendWith(MockitoExtension.class)
 class QuestionAndAnswerServiceTest {
 
   private static final String PRINCIPAL = "venki@bric.org.uk";
@@ -56,28 +55,28 @@ class QuestionAndAnswerServiceTest {
   private static final RolePermissionInfo ROLE_PERMISSION_INFO_BUYER =
       new RolePermissionInfo().roleKey(ROLEKEY_BUYER);
 
-  @MockBean
+  @Mock
   private UserProfileService userProfileService;
 
-  @MockBean
+  @Mock
   private ValidationService validationService;
 
-  @Autowired
+  @InjectMocks
   private QuestionAndAnswerService questionAndAnswerService;
 
-  @MockBean
+  @Mock
   private QuestionAndAnswerRepo questionAndAnswerRepo;
   
-  @MockBean
+  @Mock
   private ConclaveService conclaveService;
   
-  @MockBean
+  @Mock
   private JaggaerService jaggaerService;
   
-  @MockBean
+  @Mock
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
   
-  @MockBean
+  @Mock
   private AgreementsService agreementsService;
 
   @Test
@@ -164,8 +163,6 @@ class QuestionAndAnswerServiceTest {
         new UserProfileResponseInfo().detail(
             new UserResponseDetail().rolePermissionInfo(List.of(ROLE_PERMISSION_INFO_BUYER)));
 
-    // Mock behaviours
-    when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
     var projectDetails = new ProcurementProject();
     projectDetails.setId(1);
     projectDetails.setProjectName("porject name");
