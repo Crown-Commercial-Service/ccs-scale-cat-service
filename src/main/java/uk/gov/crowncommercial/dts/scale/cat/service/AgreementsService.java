@@ -43,11 +43,12 @@ public class AgreementsService {
       if (model != null) {
         return model;
       } else {
-        log.warn("Empty response for Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
+        // Lowered log level this is not an issue in the application however logs should be reverted once DevOps resolve.
+        log.info("Empty response for Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
         throw new AgreementsServiceApplicationException(exceptionFormat);
       }
     } catch (Exception ex) {
-      log.error("Error getting Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name(), ex);
+      log.info("Error getting Data Templates from Agreement Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name(), ex);
       throw new AgreementsServiceApplicationException(exceptionFormat);
     }
   }
@@ -57,8 +58,13 @@ public class AgreementsService {
    */
   @Cacheable(value = "agreementsCache", key = "#root.methodName + '-' + #agreementId + '-' + #lotId")
   public Collection<LotSupplier> getLotSuppliers(final String agreementId, final String lotId) {
+
     // Call the Agreements Service to request the details of the suppliers attached to a given lot of a given agreement, first formatting the lot ID
     String formattedLotId = formatLotIdForAgreementService(lotId);
+    // Gcloud14 returns 404 but this is expected
+    if ("RM1557.14".equals(agreementId) && "All".equals(formattedLotId)) {
+      return Set.of(); // Return empty set without calling the service
+    }
 
     try {
       Collection<LotSupplier> model = agreementsClient.getLotSuppliers(agreementId, formattedLotId, serviceApiKey);
