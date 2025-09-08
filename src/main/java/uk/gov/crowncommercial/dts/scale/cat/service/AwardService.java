@@ -202,6 +202,11 @@ public class AwardService {
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
         new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
 
+    if (exportRfxResponse.getOffersList().getOffer() == null ||
+            exportRfxResponse.getOffersList().getOffer().isEmpty()) {
+      return null;
+    }
+
     var offerDetails =
         exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
             .findFirst().orElse(null);
