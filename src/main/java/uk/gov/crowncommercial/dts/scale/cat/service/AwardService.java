@@ -216,25 +216,12 @@ public class AwardService {
       throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
     }
 
-    // At present, we have only one supplier to be awarded or pre-award. so hard-coded the id.
-    var awardSummary = new AwardSummary().id("1")
-            .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
-                    ? AwardState.AWARD
-                    : AwardState.PRE_AWARD);
-
-    // Set date - use offerDetails date if available, otherwise rfx setting date
-    if (offerDetails != null) {
-      awardSummary.date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()));
-    } else {
-      awardSummary.date(exportRfxResponse.getRfxSetting().getLastUpdate());
-    }
-
-    // Add supplier only if it exists
-    if (supplier != null) {
-      awardSummary.addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()));
-    }
-
-    return awardSummary;
+    // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
+    return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
+        .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
+        .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
+            ? AwardState.AWARD
+            : AwardState.PRE_AWARD);
   }
 
   private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
