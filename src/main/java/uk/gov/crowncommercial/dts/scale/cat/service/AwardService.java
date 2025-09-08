@@ -55,7 +55,7 @@ public class AwardService {
   static final String AWARD_STATUS = "Awarded";
   public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
   public static final String AWARD_DETAILS_NOT_FOUND = "Award details not found";
-  public static final String OFFER_COPONENT_FILTER = "OFFERS";
+  public static final String OFFER_COMPONENT_FILTER = "OFFERS";
 
   /**
    * Pre-Award or Award to the supplied suppliers.
@@ -200,7 +200,7 @@ public class AwardService {
       final AwardState awardState) {
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
-        new HashSet<>(Arrays.asList(OFFER_COPONENT_FILTER)));
+        new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
 
     if (exportRfxResponse.getOffersList().getOffer() == null ||
             exportRfxResponse.getOffersList().getOffer().isEmpty()) {

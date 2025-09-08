@@ -56,6 +56,7 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
+import static uk.gov.crowncommercial.dts.scale.cat.service.AwardService.OFFER_COMPONENT_FILTER;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.*;
 
 /**
@@ -1564,6 +1565,16 @@ public class ProcurementEventService implements EventService {
         userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
         var event = validationService.validateProjectAndEventIds(procId, eventId);
+        // Check if event has been awarded before proceeding
+        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
+                new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
+        if (exportRfxResponse.getOffersList().getOffer() == null ||
+                exportRfxResponse.getOffersList().getOffer().isEmpty()) {
+            return null;
+        }
+        // Check for contract exists before proceeding
+
         var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
         return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
