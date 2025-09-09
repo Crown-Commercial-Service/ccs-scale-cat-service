@@ -196,7 +196,6 @@ public class AwardService {
    * @param eventId
    * @return a document attachment containing the template files
    */
-  // TODO: Award still throws award details not found execption, evaluating throws contract not found
   public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
                                                 final AwardState awardState) {
     // Get details of the event
@@ -204,7 +203,7 @@ public class AwardService {
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
             new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
 
-    // Check if offers list exists and is not empty (Event Published state Scenario)
+    // Check if offers list exists and is not empty (Event Published state scenario)
     if (exportRfxResponse.getOffersList() == null ||
             exportRfxResponse.getOffersList().getOffer() == null ||
             exportRfxResponse.getOffersList().getOffer().isEmpty()) {
@@ -213,30 +212,17 @@ public class AwardService {
 
     var offers = exportRfxResponse.getOffersList().getOffer();
 
-    // Check if all offers have isWinner are -1 or 0(To be Evaluated or Evaluating scenarios)
+    // Check if all offers have isWinner are -1 or 0 (To be Evaluated or Evaluating scenarios)
     boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
     boolean evaluating = offers.stream().allMatch(off -> off.getIsWinner() == 0);
     if (toBeEvaluated || evaluating) {
       return null;
     }
       // Find award details this should be Award or Pre-award
-//      var offerDetails = offers.stream()
-//              .filter(off -> off.getIsWinner() == 1)
-//              .findFirst()
-//              .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
-
-    System.out.println("Searching for winner in " + offers.size() + " offers");
-    offers.forEach(offer -> System.out.println("Offer isWinner: " + offer.getIsWinner()));
-
-    var offerDetails = offers.stream()
-            .filter(off -> off.getIsWinner() == 1)
-            .findFirst()
-            .orElseThrow(() -> {
-              System.out.println("No offer with isWinner == 1 found - throwing exception");
-              return new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
-            });
-
-    System.out.println("Found winner offer: " + offerDetails.getSupplierId());
+      var offerDetails = offers.stream()
+              .filter(off -> off.getIsWinner() == 1)
+              .findFirst()
+              .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
 
       var supplier = retryableTendersDBDelegate
               .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
@@ -245,14 +231,7 @@ public class AwardService {
       var receivedState =
               exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
                       : AwardState.PRE_AWARD;
-    System.out.println("=== DETAILED STATE COMPARISON ===");
-    System.out.println("awardState: '" + awardState + "' (enum: " + awardState.name() + ")");
-    System.out.println("receivedState: '" + receivedState + "' (enum: " + receivedState.name() + ")");
-    System.out.println("exportRfxResponse status: '" + exportRfxResponse.getRfxSetting().getStatus() + "'");
-    System.out.println("AWARD_STATUS constant: '" + AWARD_STATUS + "'");
-    System.out.println("Status equals AWARD_STATUS: " + exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS));
       if (!awardState.equals(receivedState)) {
-        System.out.println("THROWING EXCEPTION - " + awardState.name() + " != " + receivedState.name());
         throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
       }
       // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.

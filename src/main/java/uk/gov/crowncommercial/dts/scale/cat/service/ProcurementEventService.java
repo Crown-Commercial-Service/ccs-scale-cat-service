@@ -1565,6 +1565,7 @@ public class ProcurementEventService implements EventService {
         userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
         var event = validationService.validateProjectAndEventIds(procId, eventId);
+
         // Check if event has been awarded before proceeding
         var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
         var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
@@ -1573,8 +1574,16 @@ public class ProcurementEventService implements EventService {
                 exportRfxResponse.getOffersList().getOffer().isEmpty()) {
             return null;
         }
-        // Check for contract exists before proceeding
+        var offers = exportRfxResponse.getOffersList().getOffer();
 
+        // Check if all offers have isWinner are -1 or 0 (To be Evaluated or Evaluating scenarios)
+        boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
+        boolean evaluating = offers.stream().allMatch(off -> off.getIsWinner() == 0);
+        if (toBeEvaluated || evaluating) {
+            return null;
+        }
+
+        // Check for contract exists before proceeding
         var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
         return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
