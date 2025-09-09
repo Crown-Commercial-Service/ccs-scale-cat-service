@@ -220,11 +220,24 @@ public class AwardService {
       return null;
     }
       // Find award details this should be Award or Pre-award
-      var offerDetails = offers.stream()
-              .filter(off -> off.getIsWinner() == 1)
-              .findFirst()
-              .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
-    System.out.println("offer details" + offerDetails);
+//      var offerDetails = offers.stream()
+//              .filter(off -> off.getIsWinner() == 1)
+//              .findFirst()
+//              .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
+
+    System.out.println("Searching for winner in " + offers.size() + " offers");
+    offers.forEach(offer -> System.out.println("Offer isWinner: " + offer.getIsWinner()));
+
+    var offerDetails = offers.stream()
+            .filter(off -> off.getIsWinner() == 1)
+            .findFirst()
+            .orElseThrow(() -> {
+              System.out.println("No offer with isWinner == 1 found - throwing exception");
+              return new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+            });
+
+    System.out.println("Found winner offer: " + offerDetails.getSupplierId());
+
       var supplier = retryableTendersDBDelegate
               .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
               .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
@@ -232,12 +245,16 @@ public class AwardService {
       var receivedState =
               exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
                       : AwardState.PRE_AWARD;
-    System.out.println("checking award state equals received state");
+    System.out.println("=== DETAILED STATE COMPARISON ===");
+    System.out.println("awardState: '" + awardState + "' (enum: " + awardState.name() + ")");
+    System.out.println("receivedState: '" + receivedState + "' (enum: " + receivedState.name() + ")");
+    System.out.println("exportRfxResponse status: '" + exportRfxResponse.getRfxSetting().getStatus() + "'");
+    System.out.println("AWARD_STATUS constant: '" + AWARD_STATUS + "'");
+    System.out.println("Status equals AWARD_STATUS: " + exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS));
       if (!awardState.equals(receivedState)) {
+        System.out.println("THROWING EXCEPTION - " + awardState.name() + " != " + receivedState.name());
         throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
       }
-    System.out.println("received state" + receivedState);
-    System.out.println("award state" + awardState);
       // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
       return new AwardSummary().id("1")
               .date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
