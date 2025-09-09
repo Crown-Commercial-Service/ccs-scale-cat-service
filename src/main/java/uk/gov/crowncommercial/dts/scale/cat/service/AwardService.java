@@ -26,7 +26,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
