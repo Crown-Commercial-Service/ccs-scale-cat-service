@@ -232,7 +232,7 @@ public class AwardService {
               exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
                       : AwardState.PRE_AWARD;
       if (!awardState.equals(receivedState)) {
-        throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+        return null;
       }
       // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
       return new AwardSummary().id("1")
