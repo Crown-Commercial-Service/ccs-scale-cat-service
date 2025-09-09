@@ -1560,7 +1560,7 @@ public class ProcurementEventService implements EventService {
      * @param eventId
      * @param principal
      */
-    public Contract getContract(final Integer procId, final String eventId, final String principal, ExportRfxResponse exportRfxResponse) {
+    public Contract getContract(final Integer procId, final String eventId, final String principal) {
         userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
         var event = validationService.validateProjectAndEventIds(procId, eventId);
