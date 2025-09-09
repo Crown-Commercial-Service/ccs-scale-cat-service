@@ -203,7 +203,7 @@ public class AwardService {
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
             new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
 
-    // Check if offers list exists and is not empty (Event published Scenario)
+    // Check if offers list exists and is not empty (Event Published state Scenario)
     if (exportRfxResponse.getOffersList() == null ||
             exportRfxResponse.getOffersList().getOffer() == null ||
             exportRfxResponse.getOffersList().getOffer().isEmpty()) {
@@ -212,17 +212,13 @@ public class AwardService {
 
     var offers = exportRfxResponse.getOffersList().getOffer();
 
-    // Check if any offer has isWinner == 1 (Awarded, pre-award or various evaluation scenarios)
-    boolean hasWinner = offers.stream().anyMatch(off -> off.getIsWinner() == 1);
-
-    // Check if all offers have isWinner == -1 (to be evaluated scenario)
+    // Check if all offers have isWinner are -1 or 0(To be Evaluated or Evaluating scenarios)
     boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
-    if (toBeEvaluated) {
+    boolean evaluating = offers.stream().allMatch(off -> off.getIsWinner() == 0);
+    if (toBeEvaluated || evaluating) {
       return null;
     }
-
-    if (hasWinner) {
-      // There should be a winner, find it
+      // Find award details this should be Award or Pre-award
       var offerDetails = offers.stream()
               .filter(off -> off.getIsWinner() == 1)
               .findFirst()
@@ -245,10 +241,8 @@ public class AwardService {
               .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
                       ? AwardState.AWARD
                       : AwardState.PRE_AWARD);
-    }
-    // This shouldn't happen, but will handle unexpected issues
-    throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
   }
+
 
   private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
     return offerDetailLastUpdated.compareTo(rfxsettingLastUpdated) >=0 ? offerDetailLastUpdated : rfxsettingLastUpdated;
