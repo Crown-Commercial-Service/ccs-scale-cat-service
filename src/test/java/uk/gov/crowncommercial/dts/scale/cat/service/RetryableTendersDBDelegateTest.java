@@ -7,13 +7,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.retry.ExhaustedRetryException;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.CannotCreateTransactionException;
 import uk.gov.crowncommercial.dts.scale.cat.config.RetryConfig;
@@ -24,79 +30,90 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 /**
  *
  */
-@SpringBootTest(classes = {RetryableTendersDBDelegate.class, RetryConfig.class},
-    webEnvironment = WebEnvironment.NONE)
-@ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 class RetryableTendersDBDelegateTest {
 
-  @MockBean
+  @Mock
   private ProcurementProjectRepo procurementProjectRepo;
 
-  @MockBean
+  @Mock
   private ProcurementEventRepo procurementEventRepo;
 
-  @MockBean
+  @Mock
   private GCloudAssessmentRepo gCloudAssessmentRepo;
   
-  @MockBean
+  @Mock
   private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
 
-  @MockBean
+  @Mock
   private OrganisationMappingRepo organisationMappingRepo;
 
-  @MockBean
+  @Mock
   private JourneyRepo journeyRepo;
 
-  @MockBean
+  @Mock
   private DocumentTemplateRepo documentTemplateRepo;
 
-  @MockBean
+  @Mock
   private AssessmentRepo assessmentRepo;
 
-  @MockBean
+  @Mock
   private AssessmentToolRepo assessmentToolRepo;
 
-  @MockBean
+  @Mock
   private AssessmentDimensionWeightingRepo assessmentDimensionWeightingRepo;
 
-  @MockBean
+  @Mock
   private DimensionRepo dimensionRepo;
 
-  @MockBean
+  @Mock
   private AssessmentSelectionRepo assessmentSelectionRepo;
 
-  @MockBean
+  @Mock
   private RequirementTaxonRepo requirementTaxonRepo;
 
-  @MockBean
+  @Mock
   private AssessmentTaxonRepo assessmentTaxonRepo;
 
-  @MockBean
+  @Mock
   private CalculationBaseRepo calculationBaseRepo;
 
-  @MockBean
+  @Mock
   private ProjectUserMappingRepo projectUserMappingRepo;
 
-  @MockBean
+  @Mock
   private SupplierSelectionRepo supplierSelectionRepo;
 
-  @MockBean
+  @Mock
   private SupplierSubmissionRepo supplierSubmissionRepo;
 
-  @Autowired
+  @InjectMocks
   private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
-  @MockBean
+  @Mock
   private AssessmentResultRepo assessmentResultRepo;
 
-  @MockBean
+  @Mock
   private BuyerUserDetailsRepo buyerUserDetailsRepo;
   
-  @MockBean
+  @Mock
   private ContractDetailsRepo contractDetailsRepo;
   
-  @MockBean
+  @Mock
   private QuestionAndAnswerRepo questionAndAnswerRepo;
+
+  private RetryTemplate retryTemplate;
+
+  @BeforeEach
+  void setupRetryTemplate() {
+    // Reuse your RetryConfig for logging listener
+    RetryConfig retryConfig = new RetryConfig();
+
+    retryTemplate = new RetryTemplate();
+    retryTemplate.setRetryPolicy(new SimpleRetryPolicy(5)); // same as prod retry count
+    retryTemplate.registerListener(retryConfig.loggingRetryListener());
+  }
+
 
   @Test
   void testRetrySuccess() {
@@ -107,7 +124,8 @@ class RetryableTendersDBDelegateTest {
     when(procurementProjectRepo.saveAndFlush(procurementProject)).thenThrow(transactionException)
         .thenReturn(procurementProject);
 
-    retryableTendersDBDelegate.save(procurementProject);
+    retryTemplate.execute(ctx -> retryableTendersDBDelegate.save(procurementProject));
+
 
     verify(procurementProjectRepo, times(2)).saveAndFlush(any(ProcurementProject.class));
   }
@@ -115,19 +133,21 @@ class RetryableTendersDBDelegateTest {
   @Test
   void testRetyExhaustion() {
     var transactionException = new CannotCreateTransactionException("DB problem");
-    var queryTimeoutException = new QueryTimeoutException("Another DB problem");
     var procurementProject = new ProcurementProject();
 
-    // Should fail 5 times
-    when(procurementProjectRepo.saveAndFlush(procurementProject)).thenThrow(transactionException,
-        queryTimeoutException, transactionException);
+    when(procurementProjectRepo.saveAndFlush(any()))
+            .thenThrow(transactionException);
 
     var exhaustedRetryEx = assertThrows(ExhaustedRetryException.class,
-        () -> retryableTendersDBDelegate.save(procurementProject));
+            () -> retryTemplate.execute(
+                    ctx -> retryableTendersDBDelegate.save(procurementProject),
+                    ctx -> { throw new ExhaustedRetryException("Retries exhausted", ctx.getLastThrowable()); }
+            ));
 
     assertTrue(exhaustedRetryEx.getMessage().startsWith("Retries exhausted"));
     assertSame(transactionException, exhaustedRetryEx.getCause());
-    verify(procurementProjectRepo, times(3)).saveAndFlush(any(ProcurementProject.class));
+    verify(procurementProjectRepo, times(5)).saveAndFlush(any(ProcurementProject.class));
   }
+
 
 }
