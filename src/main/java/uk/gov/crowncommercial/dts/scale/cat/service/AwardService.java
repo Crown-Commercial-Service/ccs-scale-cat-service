@@ -196,6 +196,7 @@ public class AwardService {
    * @param eventId
    * @return a document attachment containing the template files
    */
+  // TODO: Award still throws award details not found execption, evaluating throws contract not found
   public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
                                                 final AwardState awardState) {
     // Get details of the event
@@ -223,7 +224,7 @@ public class AwardService {
               .filter(off -> off.getIsWinner() == 1)
               .findFirst()
               .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
-
+    System.out.println("offer details" + offerDetails);
       var supplier = retryableTendersDBDelegate
               .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
               .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
@@ -231,9 +232,12 @@ public class AwardService {
       var receivedState =
               exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
                       : AwardState.PRE_AWARD;
+    System.out.println("checking award state equals received state");
       if (!awardState.equals(receivedState)) {
         throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
       }
+    System.out.println("received state" + receivedState);
+    System.out.println("award state" + awardState);
       // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
       return new AwardSummary().id("1")
               .date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
