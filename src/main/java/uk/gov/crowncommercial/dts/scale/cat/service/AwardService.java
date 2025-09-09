@@ -26,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -196,30 +197,17 @@ public class AwardService {
    * @param eventId
    * @return a document attachment containing the template files
    */
-  public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
-                                                final AwardState awardState) {
+  public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId, final AwardState awardState) {
     // Get details of the event
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
             new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
 
-    // Check if offers list exists and is not empty (Event Published state scenario)
-    if (exportRfxResponse.getOffersList() == null ||
-            exportRfxResponse.getOffersList().getOffer() == null ||
-            exportRfxResponse.getOffersList().getOffer().isEmpty()) {
+    if (!isEventAwarded(exportRfxResponse)) {
       return null;
     }
-
-    var offers = exportRfxResponse.getOffersList().getOffer();
-
-    // Check if all offers have isWinner are -1 or 0 (To be Evaluated or Evaluating scenarios)
-    boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
-    boolean evaluating = offers.stream().allMatch(off -> off.getIsWinner() == 0);
-    if (toBeEvaluated || evaluating) {
-      return null;
-    }
-      // Find award details this should be Award or Pre-award
-      var offerDetails = offers.stream()
+      // Find award details
+      var offerDetails = exportRfxResponse.getOffersList().getOffer().stream()
               .filter(off -> off.getIsWinner() == 1)
               .findFirst()
               .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
@@ -228,12 +216,13 @@ public class AwardService {
               .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
               .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
 
-      var receivedState =
-              exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
+      // Check if the expected state matches the actual state from UI request, it sends both
+      var receivedState = exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
                       : AwardState.PRE_AWARD;
       if (!awardState.equals(receivedState)) {
         return null;
       }
+
       // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
       return new AwardSummary().id("1")
               .date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
@@ -243,8 +232,27 @@ public class AwardService {
                       : AwardState.PRE_AWARD);
   }
 
-
   private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
     return offerDetailLastUpdated.compareTo(rfxsettingLastUpdated) >=0 ? offerDetailLastUpdated : rfxsettingLastUpdated;
+  }
+
+  private boolean isEventAwarded(ExportRfxResponse exportRfxResponse) {
+    // Check if offers list exists and is not empty (Event Published state)
+    if (exportRfxResponse.getOffersList() == null ||
+            exportRfxResponse.getOffersList().getOffer() == null ||
+            exportRfxResponse.getOffersList().getOffer().isEmpty()) {
+      return false;
+    }
+
+    var offers = exportRfxResponse.getOffersList().getOffer();
+
+    // Check if all offers have isWinner are -1 or 0 (To be Evaluated or Evaluating)
+    boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
+    boolean evaluating = offers.stream().allMatch(off -> off.getIsWinner() == 0);
+
+    if (toBeEvaluated || evaluating) {
+      return false;
+    }
+    return true;
   }
 }

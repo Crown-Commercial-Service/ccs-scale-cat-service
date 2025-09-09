@@ -56,7 +56,6 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.Optional.ofNullable;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
-import static uk.gov.crowncommercial.dts.scale.cat.service.AwardService.OFFER_COMPONENT_FILTER;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.*;
 
 /**
@@ -1561,25 +1560,14 @@ public class ProcurementEventService implements EventService {
      * @param eventId
      * @param principal
      */
-    public Contract getContract(final Integer procId, final String eventId, final String principal) {
+    public Contract getContract(final Integer procId, final String eventId, final String principal, ExportRfxResponse exportRfxResponse) {
         userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
         var event = validationService.validateProjectAndEventIds(procId, eventId);
 
-        // Check if event has been awarded before proceeding
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
-        var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
-                new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
-        if (exportRfxResponse.getOffersList().getOffer() == null ||
-                exportRfxResponse.getOffersList().getOffer().isEmpty()) {
-            return null;
-        }
-        var offers = exportRfxResponse.getOffersList().getOffer();
-
-        // Check if all offers have isWinner are -1 or 0 (To be Evaluated or Evaluating scenarios)
-        boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
-        boolean evaluating = offers.stream().allMatch(off -> off.getIsWinner() == 0);
-        if (toBeEvaluated || evaluating) {
+        // Check if event has completed status
+        var eventStatus = event.getTenderStatus();
+        if (!eventStatus.equals(COMPLETE_STATUS)) {
             return null;
         }
 
