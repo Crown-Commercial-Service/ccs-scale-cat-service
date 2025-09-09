@@ -26,6 +26,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 @Service
@@ -197,36 +198,57 @@ public class AwardService {
    * @return a document attachment containing the template files
    */
   public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId,
-      final AwardState awardState) {
+                                                final AwardState awardState) {
+    // Get details of the event
     var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
-        new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
+            new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
 
-    if (exportRfxResponse.getOffersList().getOffer() == null ||
+    // Check if offers list exists and is not empty (Event published Scenario)
+    if (exportRfxResponse.getOffersList() == null ||
+            exportRfxResponse.getOffersList().getOffer() == null ||
             exportRfxResponse.getOffersList().getOffer().isEmpty()) {
       return null;
     }
 
-    var offerDetails =
-        exportRfxResponse.getOffersList().getOffer().stream().filter(off -> off.getIsWinner() == 1)
-            .findFirst().orElse(null);
-    var supplier = (offerDetails != null) ? retryableTendersDBDelegate
-        .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
-        .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND)): null;
+    var offers = exportRfxResponse.getOffersList().getOffer();
 
-    var recievedState =
-        exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
-            : AwardState.PRE_AWARD;
-    if (!awardState.equals(recievedState)) {
-      throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+    // Check if any offer has isWinner == 1 (Awarded, pre-award or various evaluation scenarios)
+    boolean hasWinner = offers.stream().anyMatch(off -> off.getIsWinner() == 1);
+
+    // Check if all offers have isWinner == -1 (to be evaluated scenario)
+    boolean toBeEvaluated = offers.stream().allMatch(off -> off.getIsWinner() == -1);
+    if (toBeEvaluated) {
+      return null;
     }
 
-    // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
-    return new AwardSummary().id("1").date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
-        .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
-        .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
-            ? AwardState.AWARD
-            : AwardState.PRE_AWARD);
+    if (hasWinner) {
+      // There should be a winner, find it
+      var offerDetails = offers.stream()
+              .filter(off -> off.getIsWinner() == 1)
+              .findFirst()
+              .orElseThrow(() -> new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND));
+
+      var supplier = retryableTendersDBDelegate
+              .findOrganisationMappingByExternalOrganisationId(offerDetails.getSupplierId())
+              .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND));
+
+      var receivedState =
+              exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS) ? AwardState.AWARD
+                      : AwardState.PRE_AWARD;
+      if (!awardState.equals(receivedState)) {
+        throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
+      }
+      // At present we have only one supplier to be awarded or pre-award. so hard-coded the id.
+      return new AwardSummary().id("1")
+              .date(getLastUpdate(exportRfxResponse.getRfxSetting().getLastUpdate(), offerDetails.getLastUpdateDate()))
+              .addSuppliersItem(new OrganizationReference1().id(supplier.getCasOrganisationId()))
+              .state(exportRfxResponse.getRfxSetting().getStatus().contentEquals(AWARD_STATUS)
+                      ? AwardState.AWARD
+                      : AwardState.PRE_AWARD);
+    }
+    // This shouldn't happen, but will handle unexpected issues
+    throw new ResourceNotFoundException(AWARD_DETAILS_NOT_FOUND);
   }
 
   private static OffsetDateTime getLastUpdate(OffsetDateTime rfxsettingLastUpdated, OffsetDateTime offerDetailLastUpdated) {
