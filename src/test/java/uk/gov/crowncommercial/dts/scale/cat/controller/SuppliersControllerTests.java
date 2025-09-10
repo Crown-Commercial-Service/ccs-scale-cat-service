@@ -10,12 +10,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.SupplierDunsUpdate;
+import uk.gov.crowncommercial.dts.scale.cat.service.SupplierService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import static org.hamcrest.Matchers.containsString;
@@ -35,6 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class SuppliersControllerTests {
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    SupplierService supplierService;
 
     private static final String PRINCIPAL = "test@testmail.com";
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validCATJwtReqPostProcessor;

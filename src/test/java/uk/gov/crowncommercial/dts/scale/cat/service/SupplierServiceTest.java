@@ -1,10 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anySet;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,19 +16,19 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
+import uk.gov.crowncommercial.dts.scale.cat.exception.SupplierNotMatchException;
+import uk.gov.crowncommercial.dts.scale.cat.model.SupplierDunsUpdate;
+import uk.gov.crowncommercial.dts.scale.cat.model.SupplierLink;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SuppliersList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
- *
+ * Tests for the SupplierService class
  */
 @ExtendWith(MockitoExtension.class)
 class SupplierServiceTest {
@@ -58,8 +60,6 @@ class SupplierServiceTest {
   private static final Integer JAGGAER_SUPPLIER_ID_1 = 8765432;
   private static final String JAGGAER_SUPPLIER_NAME_1 = "Doshi Industries";
 
-  static final ProcurementProject project = ProcurementProject.builder().build();
-
   @Mock
   private AgreementsService agreementsService;
 
@@ -86,6 +86,9 @@ class SupplierServiceTest {
 
   @Mock
   private BuyerUserDetailsRepo buyerDetailsRepo;
+
+  @Mock
+  private TenderDBSupplierLinkService supplierLinkService;
 
 
   @BeforeAll
@@ -157,5 +160,35 @@ class SupplierServiceTest {
     rfxResponse.setSuppliersList(suppliersList);
     return rfxResponse;
   }
+    @Test
+    public void whenUpdateSupplierDuns_WithAllRecords_ThenNoError() {
+        SupplierDunsUpdate mockData = new SupplierDunsUpdate();
+        mockData.setCurrentDunsNumber("12345");
+        mockData.setReplacementDunsNumber("6789");
 
+        OrganisationMapping mappingMock = new OrganisationMapping();
+
+        when(jaggaerService.getCompanyByExtUniqueCode(anyString())).thenReturn(new GetCompanyDataResponse());
+        when(supplierLinkService.getByDuns(anyString())).thenReturn(new SupplierLink());
+        when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(anyString())).thenReturn(Optional.empty());
+        when(retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(anyString())).thenReturn(Optional.of(mappingMock));
+
+        assertDoesNotThrow(() -> supplierService.updateSupplierDuns(mockData));
+    }
+
+    @Test
+    public void whenUpdateSupplierDuns_WithMissingRecords_ThenError() {
+        SupplierDunsUpdate mockData = new SupplierDunsUpdate();
+        mockData.setCurrentDunsNumber("12345");
+        mockData.setReplacementDunsNumber("6789");
+
+        when(jaggaerService.getCompanyByExtUniqueCode(anyString())).thenReturn(null);
+        when(supplierLinkService.getByDuns(anyString())).thenReturn(new SupplierLink());
+        when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(anyString())).thenReturn(Optional.empty());
+        when(retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(anyString())).thenReturn(Optional.empty());
+
+        SupplierNotMatchException ex = assertThrows(SupplierNotMatchException.class, () -> supplierService.updateSupplierDuns(mockData));
+
+        assertTrue(ex.getMessage().contains(Constants.ERR_MSG_SUPPLIER_MAPPINGS_NOT_FOUND));
+    }
 }

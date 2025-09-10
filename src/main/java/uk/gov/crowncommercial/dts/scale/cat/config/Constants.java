@@ -90,4 +90,5 @@ public class Constants {
 
     // Error messages
     public static final String ERR_MSG_INCOMPLETE_DATA = "Incomplete data supplied. Cannot process request";
+    public static final String ERR_MSG_SUPPLIER_MAPPINGS_NOT_FOUND = "Could not find one or more supplier mapping records. Cannot process request";
 }
