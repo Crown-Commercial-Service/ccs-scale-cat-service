@@ -279,6 +279,12 @@ public class SupplierService {
         if (jaeggerData != null && supplierLinkData != null && orgMappingData.isPresent()) {
             // Yep, we have all our data.  So now process it
             // TODO: work
+
+            // Supplier Link Data is mapped to a different model - do I instead need to have it give me the entity, then it's easy to just amend and add a save method?
+
+            // Org Mapping returns the entity directly, so that should be easier to use directly for update
+
+            // Find Org Mapping is cached - will need to flush that cache when I update
         } else {
             // Looks like we couldn't find one or more of the records we need.  Throw an exception
             throw new SupplierNotMatchException(Constants.ERR_MSG_SUPPLIER_MAPPINGS_NOT_FOUND);
