@@ -266,13 +266,13 @@ public class SupplierService {
      */
     public void updateSupplierDuns(SupplierDunsUpdate dunsInfo) {
         // First, we need to start by fetching the records we need to work with.  There should be two mapping records, and a Jaegger supplier profile
-        GetCompanyDataResponse jaeggerData = jaggaerService.getCompanyByExtUniqueCode(dunsInfo.getCurrentDunsNumber());
-        SupplierLink supplierLinkData = supplierLinkService.getByDuns(dunsInfo.getCurrentDunsNumber());
-        Optional<OrganisationMapping> orgMappingData = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(dunsInfo.getCurrentDunsNumber());
+        GetCompanyDataResponse jaeggerData = jaggaerService.getCompanyByExtUniqueCode(dunsInfo.getCleanedCurrentDunsNumber());
+        SupplierLink supplierLinkData = supplierLinkService.getByDuns(dunsInfo.getCleanedCurrentDunsNumber());
+        Optional<OrganisationMapping> orgMappingData = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(dunsInfo.getFormattedCurrentDunsNumber());
 
         // In the case of the org mapping record, this could have the DUNs populated in two fields - so if we didn't find it with the first lookup, try looking via the second field
         if (orgMappingData.isEmpty()) {
-            orgMappingData = retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(dunsInfo.getCurrentDunsNumber());
+            orgMappingData = retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(dunsInfo.getFormattedCurrentDunsNumber());
         }
 
         // We should now have all the data we need, so verify this
