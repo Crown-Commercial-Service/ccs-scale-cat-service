@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -459,4 +461,19 @@ public class RetryableTendersDBDelegate {
     throw new ExhaustedRetryException("Retries exhausted", e);
   }
 
+    /**
+     * Removes a given OrganisationMapping looked up via OrganisationId from the cache.  Called when we're changing state in a way that would affect the cache
+     */
+    @CacheEvict(value = "tendersCache", key = "'findOrganisationMappingByOrganisationId-' + #orgId")
+    public void removeMappingByOrgIdFromCache(String orgId) {
+        // Take no action here - the method annotation deals with the action
+    }
+
+    /**
+     * Removes a given OrganisationMapping looked up via CAS OrganisationId from the cache.  Called when we're changing state in a way that would affect the cache
+     */
+    @CacheEvict(value = "tendersCache", key = "'findOrganisationMappingByCasOrganisationId-' + #orgId")
+    public void removeMappingByCasOrgIdFromCache(String orgId) {
+        // Take no action here - the method annotation deals with the action
+    }
 }

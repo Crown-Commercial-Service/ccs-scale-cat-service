@@ -276,15 +276,27 @@ public class SupplierService {
         }
 
         // We should now have all the data we need, so verify this
-        if (jaeggerData != null && supplierLinkData != null && orgMappingData.isPresent()) {
-            // Yep, we have all our data.  So now process it
-            // TODO: work
+        if (jaeggerData != null && supplierLinkData != null && orgMappingData.isPresent() && jaeggerData.getReturnCompanyData() != null && !jaeggerData.getReturnCompanyData().isEmpty()) {
+            ReturnCompanyData companyData = jaeggerData.getReturnCompanyData().stream().findFirst().orElse(null);
 
-            // Supplier Link Data is mapped to a different model - do I instead need to have it give me the entity, then it's easy to just amend and add a save method?
+            if (companyData.getReturnCompanyInfo() != null && companyData.getReturnCompanyInfo().getBravoId() != null && !companyData.getReturnCompanyInfo().getBravoId().isEmpty()) {
+                // Yep, we have all our data.  So now process it.  Start with Supplier Link data
+                // TODO: work
 
-            // Org Mapping returns the entity directly, so that should be easier to use directly for update
+                // Supplier Link Data is mapped to a different model - do I instead need to have it give me the entity, then it's easy to just amend and add a save method?
 
-            // Find Org Mapping is cached - will need to flush that cache when I update
+                // Next update the Org Mapping entity and save that
+                OrganisationMapping orgMappingModel = orgMappingData.get();
+                orgMappingModel.setOrganisationId(dunsInfo.getFormattedReplacementDunsNumber());
+                orgMappingModel.setCasOrganisationId(dunsInfo.getFormattedReplacementDunsNumber());
+                orgMappingModel.setExternalOrganisationId(Integer.parseInt(companyData.getReturnCompanyInfo().getBravoId()));
+
+                retryableTendersDBDelegate.save(orgMappingModel);
+
+                // For org mapping data, this is also cached, so we also want to flush that post update so that it's fetched fresh next time
+                retryableTendersDBDelegate.removeMappingByOrgIdFromCache(dunsInfo.getFormattedCurrentDunsNumber());
+                retryableTendersDBDelegate.removeMappingByCasOrgIdFromCache(dunsInfo.getFormattedCurrentDunsNumber());
+            }
         } else {
             // Looks like we couldn't find one or more of the records we need.  Throw an exception
             throw new SupplierNotMatchException(Constants.ERR_MSG_SUPPLIER_MAPPINGS_NOT_FOUND);

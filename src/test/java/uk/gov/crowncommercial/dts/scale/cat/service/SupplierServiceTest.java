@@ -168,7 +168,11 @@ class SupplierServiceTest {
 
         OrganisationMapping mappingMock = new OrganisationMapping();
 
-        when(jaggaerService.getCompanyByExtUniqueCode(anyString())).thenReturn(new GetCompanyDataResponse());
+        GetCompanyDataResponse companyDataMock = new GetCompanyDataResponse();
+        ReturnCompanyData companyData = ReturnCompanyData.builder().returnCompanyInfo(CompanyInfo.builder().bravoId("12334").build()).build();
+        companyDataMock.setReturnCompanyData(Set.of(companyData));
+
+        when(jaggaerService.getCompanyByExtUniqueCode(anyString())).thenReturn(companyDataMock);
         when(supplierLinkService.getByDuns(anyString())).thenReturn(new SupplierLink());
         when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(anyString())).thenReturn(Optional.empty());
         when(retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(anyString())).thenReturn(Optional.of(mappingMock));
