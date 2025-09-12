@@ -23,6 +23,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.SupplierLink;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotSupplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.SupplierLinkEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.BuyerUserDetailsRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -173,7 +174,7 @@ class SupplierServiceTest {
         companyDataMock.setReturnCompanyData(Set.of(companyData));
 
         when(jaggaerService.getCompanyByExtUniqueCode(anyString())).thenReturn(companyDataMock);
-        when(supplierLinkService.getByDuns(anyString())).thenReturn(new SupplierLink());
+        when(supplierLinkService.getEntityByDuns(anyString())).thenReturn(new SupplierLinkEntity());
         when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(anyString())).thenReturn(Optional.empty());
         when(retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(anyString())).thenReturn(Optional.of(mappingMock));
 
@@ -187,7 +188,7 @@ class SupplierServiceTest {
         mockData.setReplacementDunsNumber("6789");
 
         when(jaggaerService.getCompanyByExtUniqueCode(anyString())).thenReturn(null);
-        when(supplierLinkService.getByDuns(anyString())).thenReturn(new SupplierLink());
+        when(supplierLinkService.getEntityByDuns(anyString())).thenReturn(new SupplierLinkEntity());
         when(retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(anyString())).thenReturn(Optional.empty());
         when(retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(anyString())).thenReturn(Optional.empty());
 
