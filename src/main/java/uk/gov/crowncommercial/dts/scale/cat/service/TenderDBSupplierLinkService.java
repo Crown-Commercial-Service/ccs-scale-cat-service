@@ -32,6 +32,20 @@ public class TenderDBSupplierLinkService implements SupplierLinkService {
         return getModel(supplierLinkRepo.findByDunsNumber(duns));
     }
 
+    /**
+     * Returns the matching record from a DUNs Number search directly as the DB entity, so that we can easily update it
+     */
+    public SupplierLinkEntity getEntityByDuns(String duns) {
+        return supplierLinkRepo.findByDunsNumber(duns);
+    }
+
+    /**
+     * Saves updates to a given SupplierLinkEntity
+     */
+    public SupplierLinkEntity save(final SupplierLinkEntity supplierLink) {
+        return supplierLinkRepo.saveAndFlush(supplierLink);
+    }
+
     @Override
     public SupplierLink getByCoh(String coh) {
         return getModel(supplierLinkRepo.findByCohNumber(coh));

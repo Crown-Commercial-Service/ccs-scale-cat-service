@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.springframework.util.CollectionUtils.isEmpty;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -18,14 +17,17 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerRPAException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.SupplierNotMatchException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
+import uk.gov.crowncommercial.dts.scale.cat.model.SupplierDunsUpdate;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.SupplierLinkEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ScoreAndCommentNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -37,20 +39,18 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 @RequiredArgsConstructor
 @Slf4j
 public class SupplierService {
+    private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+    private final AgreementsService agreementsService;
+    private final ValidationService validationService;
+    private final UserProfileService userService;
+    private final JaggaerService jaggaerService;
+    private final TenderDBSupplierLinkService supplierLinkService;
 
-  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private final AgreementsService agreementsService;
-  private final ValidationService validationService;
-  private final UserProfileService userService;
-  private final JaggaerService jaggaerService;
-  private static final String RPA_DELIMITER = "~|";
-  private static final String RPA_OPEN_ENVELOPE_ERROR_DESC = "Technical button not found";
-  private static final String RPA_EVALUATE_ERROR_DESC = "Evaluate Tab button not found";
-  public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
-  public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
-  public static final String SECTION_NAME = "Tender";
-  public static final String SECTION_POS = "1";
-  public static final String PARAM_POS = "1";
+    public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
+    public static final String ORG_MAPPING_NOT_FOUND = "Organisation mapping not found";
+    public static final String SECTION_NAME = "Tender";
+    public static final String SECTION_POS = "1";
+    public static final String PARAM_POS = "1";
 
 
   /**
@@ -260,4 +260,50 @@ public class SupplierService {
                     .toList(),
             supplierOrgMappings);
   }
+
+    /**
+     * Updates supplier mappings entries to replace a DUNS number for a given supplier
+     */
+    public void updateSupplierDuns(SupplierDunsUpdate dunsInfo) {
+        // First, we need to start by fetching the records we need to work with.  There should be two mapping records, and a Jaegger supplier profile
+        GetCompanyDataResponse jaeggerData = jaggaerService.getCompanyByExtUniqueCode(dunsInfo.getCleanedCurrentDunsNumber());
+        SupplierLinkEntity supplierLinkData = supplierLinkService.getEntityByDuns(dunsInfo.getCleanedCurrentDunsNumber());
+        Optional<OrganisationMapping> orgMappingData = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(dunsInfo.getFormattedCurrentDunsNumber());
+
+        // In the case of the org mapping record, this could have the DUNs populated in two fields - so if we didn't find it with the first lookup, try looking via the second field
+        if (orgMappingData.isEmpty()) {
+            orgMappingData = retryableTendersDBDelegate.findOrganisationMappingByCasOrganisationId(dunsInfo.getFormattedCurrentDunsNumber());
+        }
+
+        // We should now have all the data we need, so verify this
+        if (jaeggerData != null && supplierLinkData != null && orgMappingData.isPresent() && jaeggerData.getReturnCompanyData() != null && !jaeggerData.getReturnCompanyData().isEmpty()) {
+            ReturnCompanyData companyData = jaeggerData.getReturnCompanyData().stream().findFirst().orElse(null);
+
+            if (companyData.getReturnCompanyInfo() != null && companyData.getReturnCompanyInfo().getBravoId() != null && !companyData.getReturnCompanyInfo().getBravoId().isEmpty()) {
+                // Yep, we have all our data.  So now process it.  Start by grabbing the BravoID from our Jaegger record as we need it for both updates
+                Integer bravoId = Integer.parseInt(companyData.getReturnCompanyInfo().getBravoId());
+
+                // Now we want to update the Supplier Link entity and save it
+                supplierLinkData.setDunsNumber(dunsInfo.getCleanedReplacementDunsNumber());
+                supplierLinkData.setBravoId(bravoId);
+
+                supplierLinkService.save(supplierLinkData);
+
+                // Next update the Org Mapping entity and save that
+                OrganisationMapping orgMappingModel = orgMappingData.get();
+                orgMappingModel.setOrganisationId(dunsInfo.getFormattedReplacementDunsNumber());
+                orgMappingModel.setCasOrganisationId(dunsInfo.getFormattedReplacementDunsNumber());
+                orgMappingModel.setExternalOrganisationId(bravoId);
+
+                retryableTendersDBDelegate.save(orgMappingModel);
+
+                // For org mapping data, this is also cached, so we also want to flush that post update so that it's fetched fresh next time
+                retryableTendersDBDelegate.removeMappingByOrgIdFromCache(dunsInfo.getFormattedCurrentDunsNumber());
+                retryableTendersDBDelegate.removeMappingByCasOrgIdFromCache(dunsInfo.getFormattedCurrentDunsNumber());
+            }
+        } else {
+            // Looks like we couldn't find one or more of the records we need.  Throw an exception
+            throw new SupplierNotMatchException(Constants.ERR_MSG_SUPPLIER_MAPPINGS_NOT_FOUND);
+        }
+    }
 }
