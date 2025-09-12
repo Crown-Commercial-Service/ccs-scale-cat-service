@@ -10,11 +10,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.Builder;
-import org.hibernate.type.descriptor.jdbc.NVarcharJdbcType;
-
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "audit_log")
 @Table(name = "audit_log")
 @Data
 @AllArgsConstructor
@@ -35,11 +33,11 @@ public class AuditLogEntity {
     @Column(name = "reason")
     String reason;
 
-    @Column(name = "before_update")
-    NVarcharJdbcType before_update;
+    @Column(name = "before_update", columnDefinition = "varchar2")
+    String before_update;
 
-    @Column(name = "after_update")
-    NVarcharJdbcType after_update;
+    @Column(name = "after_update", columnDefinition = "varchar2")
+    String after_update;
 
     @Column(name = "timestamp")
     LocalDateTime timestamp;

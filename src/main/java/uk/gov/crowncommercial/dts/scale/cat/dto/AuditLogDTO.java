@@ -1,10 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.dto;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Id;
 import org.hibernate.type.descriptor.jdbc.NVarcharJdbcType;
-
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 public class AuditLogDTO {
