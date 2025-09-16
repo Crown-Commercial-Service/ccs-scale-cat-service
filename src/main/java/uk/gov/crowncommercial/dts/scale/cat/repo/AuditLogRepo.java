@@ -11,7 +11,7 @@ public interface AuditLogRepo extends JpaRepository<AuditLogEntity, Long>,
             JpaSpecificationExecutor<AuditLogEntity> {
 
     String auditLogQuery = "select before_update, after_update, form_url, reason, updated_by from audit_log";
-            //" where audit_log.timestamp >= :start and audit_log.timestamp < :end";
+           // " where audit_log.timestamp >= :start and audit_log.timestamp < :end";
 
     @Query(auditLogQuery)
     List<AuditLogEntity> findAuditLogEntitiesBy(LocalDateTime start, LocalDateTime end);

@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.dto.AuditLogDTO;
 import uk.gov.crowncommercial.dts.scale.cat.model.audit.AuditLogModel;
-
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.AuditLogEntity;
 
 @Mapper(componentModel = "spring")
 @Component
@@ -16,13 +16,14 @@ public class AuditLogMapper {
     @Autowired
     ModelMapper auditLogMapper;
 
-    public AuditLogDTO convertAuditLogModelToAuditLogDto(AuditLogModel auditLogModel) {
-        if (auditLogModel == null) return null;
+    public AuditLogDTO convertAuditLogEntityToAuditLogDto(AuditLogEntity auditLogEntity, AuditLogDTO auditLogDTO) {
+        if (auditLogEntity == null) return null;
         auditLogMapper.getConfiguration()
                       .setMatchingStrategy(MatchingStrategies.LOOSE);
-        AuditLogDTO auditLogDTO = new AuditLogDTO();
-        auditLogDTO.setTimestamp(auditLogModel.getFromDate());
-        auditLogMapper.map(auditLogModel, AuditLogDTO.class);
+        auditLogDTO = new AuditLogDTO();
+        auditLogDTO.setTimestamp(auditLogEntity.getTimestamp());
+        auditLogMapper.map(auditLogEntity, AuditLogDTO.class);
         return auditLogDTO;
     }
+
 }

@@ -22,22 +22,15 @@ public class AuditLogService {
         this.auditLogEntity = auditLogEntity;
     }
 
-
-    public AuditLogDTO getAuditLogDTO(LocalDateTime fromDate, LocalDateTime toDate) {
-        AuditLogDTO auditLogDto = new AuditLogDTO();
+    public AuditLogDTO getAuditLogDTO(LocalDateTime fromDate, LocalDateTime toDate, AuditLogDTO auditLogDTO) {
         AuditLogModel auditLogModel = new AuditLogModel();
         auditLogModel.setFromDate(fromDate);
         auditLogModel.setToDate(toDate);
-        auditLogDto = auditLogMapper.convertAuditLogModelToAuditLogDto(auditLogModel);
-        return auditLogDto;
+        auditLogEntity =  auditLogRepo.findAuditLogEntitiesBy(auditLogModel.getFromDate(), auditLogModel.getToDate());
+        for(AuditLogEntity auditLog : auditLogEntity) {
+            auditLogDTO = auditLogMapper.convertAuditLogEntityToAuditLogDto(auditLog, auditLogDTO);
+        }
+        return auditLogDTO;
        }
-
-    public List <AuditLogEntity> getAuditLogEntity(LocalDateTime fromDate, LocalDateTime toDate) {
-        auditLogEntity = auditLogRepo.findAuditLogEntitiesBy(fromDate, toDate);
-        if (auditLogEntity != null)
-            return auditLogEntity;
-        return null;
-    }
-
 }
 

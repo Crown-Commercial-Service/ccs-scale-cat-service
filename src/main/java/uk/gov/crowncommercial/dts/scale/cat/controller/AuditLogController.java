@@ -1,8 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.dto.AuditLogDTO;
+import uk.gov.crowncommercial.dts.scale.cat.repo.AuditLogRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AuditLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -11,18 +14,17 @@ import java.time.LocalDateTime;
 public class AuditLogController {
 
     private AuditLogService auditLogService;
+    private AuditLogRepo auditLogRepo;
 
-    @GetMapping("/audit")
-    public String getAuditLogs(HttpServletRequest request) {
-        AuditLogDTO auditLogDTO = null;
-        String fromDateStr = request.getParameter("fromDate");
-        String toDateStr = request.getParameter("toDate");
-        if (fromDateStr != null && toDateStr != null) {
-            LocalDateTime fromDate = LocalDateTime.parse(fromDateStr);
-            LocalDateTime toDate = LocalDateTime.parse(toDateStr);
-            auditLogDTO = auditLogService.getAuditLogDTO(fromDate, toDate);
+    @GetMapping("/audit/view-entry")
+    public ResponseEntity getAuditLogs(@PathVariable("fromDate") final String fromDate, @PathVariable("toDate") final String toDate) {
+        AuditLogDTO auditLogDTO = new AuditLogDTO();
+        if (fromDate != null && toDate != null) {
+            LocalDateTime localDateTimeFromDate = LocalDateTime.parse(fromDate);
+            LocalDateTime localDateTimeToDate = LocalDateTime.parse(toDate);
+            auditLogDTO = auditLogService.getAuditLogDTO(localDateTimeFromDate, localDateTimeToDate, auditLogDTO);
          }
-        return auditLogDTO.toString();
+        return ResponseEntity.ok(auditLogDTO);
     }
 }
 
