@@ -42,11 +42,13 @@ public class AuditLogService {
         // TODO not sure what value to map with db field and response
         // TODO Following code need to revisit and populate correct field based on business requirement
         // TODO just populating random data for now
-
         AuditLogDto dto = new AuditLogDto();
-        dto.fromDate = formatter.format(auditLog.getTimestamp().toLocalDateTime());
-        dto.toDate = formatter.format(auditLog.getTimestamp().toLocalDateTime());
-        dto.auditLogDetails = auditLog.getReason();
+        dto.updatedBy = auditLog.getUpdatedBy();
+        dto.formUrl = auditLog.getFormUrl();
+        dto.reason = auditLog.getReason();
+        dto.beforeUpdate = auditLog.getBeforeUpdate();
+        dto.afterUpdate = auditLog.getAfterUpdate();
+        dto.timestamp = auditLog.getTimestamp().toLocalDateTime().format(formatter);
         return dto;
     }
 

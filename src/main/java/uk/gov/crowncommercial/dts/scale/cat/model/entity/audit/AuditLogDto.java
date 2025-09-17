@@ -5,14 +5,23 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.sql.Timestamp;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AuditLogDto {
-    public String fromDate;
 
-    public String toDate;
+    public String updatedBy;
 
-    public String auditLogDetails;
+    public String formUrl;
+
+    public String reason;
+
+    public String beforeUpdate;
+
+    public String afterUpdate;
+
+    public String timestamp;
 }
