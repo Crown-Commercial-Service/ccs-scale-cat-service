@@ -96,7 +96,7 @@ public class MessageService {
         throw new JaggaerRPAException("Suppliers are mandatory if broadcast is 'No'");
       }
       var suppliers = supplierService.getValidSuppliers(procurementEvent, nonOCDS.getReceiverList()
-          .stream().map(OrganizationReference1::getId).toList());
+          .stream().map(CaTMessageNonOCDSReceiverListInner::getId).toList());
 
       messageRequest.supplierList(SuppliersList.builder().supplier(suppliers.getFirst()).build());
     }
@@ -293,7 +293,7 @@ public class MessageService {
                     : message.getCategory().getCategoryName()))
                     .isBroadcast((null==message.getIsBroadcast() || message.getIsBroadcast()<=0)?false:true )
                     .receiverList(message.getReceiverList().getReceiver().stream().map(
-                                    receiver -> new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
+                                    receiver -> new CaTMessageNonOCDSReceiverListInner().id(receiver.getId()).name(receiver.getName()))
                             .collect(Collectors.toList()))
             );
   }
@@ -359,7 +359,7 @@ public class MessageService {
             .map(reading -> new ContactPoint1().name(reading.getReaderName()))
             .collect(Collectors.toList()))
         .receiverList(message.getReceiverList().getReceiver().stream().map(
-            receiver -> new OrganizationReference1().id(receiver.getId()).name(receiver.getName()))
+            receiver -> new CaTMessageNonOCDSReceiverListInner().id(receiver.getId()).name(receiver.getName()))
             .collect(Collectors.toList()));
   }
 }

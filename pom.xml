@@ -21,7 +21,7 @@
         <maven.compiler.target>23</maven.compiler.target>
         <swagger-parser.version>2.1.34</swagger-parser.version>
         <guava.version>33.4.8-jre</guava.version>
-        <openapi-generator.version>5.3.0</openapi-generator.version>
+        <openapi-generator.version>7.14.0</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
         <modelmapper.version>3.2.4</modelmapper.version>
         <simple-odf.version>0.9.0</simple-odf.version>
@@ -439,10 +439,10 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.generated</modelPackage>
-                            <skipValidateSpec>false</skipValidateSpec>
-                            <strictSpec>true</strictSpec>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <strictSpec>false</strictSpec>
                             <languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1,OneOfdateintegerboolean</languageSpecificPrimitives>
-                            <typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus,OneOfdateintegerboolean=String,PartyRole=String,PartyRole1=String,PartyRole_1=String</typeMappings>
+                            <typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus,OneOfdateintegerboolean=String,PartyRole=String,PartyRole1=String,PartyRole_1=String,CriterionAllOfValue=String,AwardID1=String,QuestionDependancyDependencyValue=String</typeMappings>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
@@ -473,8 +473,8 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.conclave-wrapper.generated</modelPackage>
-                            <skipValidateSpec>false</skipValidateSpec>
-                            <strictSpec>true</strictSpec>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <strictSpec>false</strictSpec>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
@@ -504,8 +504,8 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.conclave-wrapper.generated</modelPackage>
-                            <skipValidateSpec>false</skipValidateSpec>
-                            <strictSpec>true</strictSpec>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <strictSpec>false</strictSpec>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
@@ -535,8 +535,8 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.conclave-wrapper.generated</modelPackage>
-                            <skipValidateSpec>false</skipValidateSpec>
-                            <strictSpec>true</strictSpec>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <strictSpec>false</strictSpec>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
@@ -566,8 +566,8 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.journey-service.generated</modelPackage>
-                            <skipValidateSpec>false</skipValidateSpec>
-                            <strictSpec>true</strictSpec>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <strictSpec>false</strictSpec>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
@@ -597,10 +597,10 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.capability.generated</modelPackage>
-                            <skipValidateSpec>false</skipValidateSpec>
-                            <strictSpec>true</strictSpec>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <strictSpec>false</strictSpec>
                             <languageSpecificPrimitives>OneOfintegerstring,OneOfstringinteger</languageSpecificPrimitives>
-                            <typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String,OneOfstringinteger=String</typeMappings>
+                            <typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfintegerstring=String,OneOfstringinteger=String,CriterionAllOfValue=String</typeMappings>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
