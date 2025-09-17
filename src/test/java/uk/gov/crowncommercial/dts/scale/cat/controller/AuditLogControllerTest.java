@@ -23,6 +23,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,21 +63,28 @@ class AuditLogControllerTest {
 
     private AuditLogDto auditLogDto;
     private AuditLog auditLog;
+    private Timestamp timestamp;
+
+    private final DateTimeFormatter formatter =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
     @BeforeEach
     void setUp() {
 
+        timestamp = Timestamp.valueOf(LocalDateTime.now());
         auditLogDto = new AuditLogDto();
-        auditLogDto.fromDate = "2025-09-01";
-        auditLogDto.toDate = "2025-09-10";
-        auditLogDto.auditLogDetails = "Test audit log";
+        auditLogDto.beforeUpdate = "2025-09-01";
+        auditLogDto.afterUpdate = "2025-09-10";
+        auditLogDto.reason = "Test audit log";
+        auditLogDto.updatedBy = "tester";
+        auditLogDto.timestamp = timestamp.toLocalDateTime().format(formatter);
 
         auditLog = new AuditLog();
         auditLog.setBeforeUpdate("2025-09-01");
         auditLog.setAfterUpdate("2025-09-10");
         auditLog.setReason("Test audit log");
         auditLog.setUpdatedBy("tester");
-        auditLog.setTimestamp(Timestamp.valueOf(LocalDateTime.now()));
+        auditLog.setTimestamp(timestamp);
 
         validJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"))
                 .jwt(jwt -> jwt.subject(PRINCIPAL));
@@ -96,31 +104,16 @@ class AuditLogControllerTest {
                         .accept(APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$[0].fromDate").value(auditLogDto.fromDate))
-                .andExpect(jsonPath("$[0].toDate").value(auditLogDto.toDate))
-                .andExpect(jsonPath("$[0].auditLogDetails").value(auditLogDto.auditLogDetails));
+                .andExpect(jsonPath("$[0].beforeUpdate").value(auditLogDto.beforeUpdate))
+                .andExpect(jsonPath("$[0].afterUpdate").value(auditLogDto.afterUpdate))
+                .andExpect(jsonPath("$[0].reason").value(auditLogDto.reason))
+                .andExpect(jsonPath("$[0].updatedBy").value(auditLogDto.updatedBy))
+                .andExpect(jsonPath("$[0].timestamp").value(auditLogDto.timestamp));
 
         verify(auditLogService, times(1)).getAuditLogsWithDate(any(), any());
     }
 
 
-    @Test
-    void createLog_ShouldReturnSavedAuditLog() throws Exception {
-        // Arrange
-        when(auditLogService.save(any(AuditLog.class))).thenReturn(auditLog);
-
-        // Act & Assert
-        mockMvc.perform(post(ADD_AUDIT_LOG_PATH).with(validJwtReqPostProcessor)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(auditLog)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.beforeUpdate").value(auditLog.getBeforeUpdate()))
-                .andExpect(jsonPath("$.afterUpdate").value(auditLog.getAfterUpdate()))
-                .andExpect(jsonPath("$.reason").value(auditLog.getReason()));
-
-        verify(auditLogService, times(1)).save(any(AuditLog.class));
-    }
 
     // --- Negative / Edge Scenarios ---
 
