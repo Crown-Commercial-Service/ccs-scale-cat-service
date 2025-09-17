@@ -19,7 +19,7 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.33</swagger-parser.version>
+        <swagger-parser.version>2.1.34</swagger-parser.version>
         <guava.version>33.4.8-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
@@ -27,14 +27,14 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.5.0</jena-core.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.33.9</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.33.11</aws-java-sdk-s3.version>
         <tika-core.version>3.2.2</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.4.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.5</snakeyaml.version>
-        <spring-security.version>6.5.3</spring-security.version>
+        <spring-security.version>6.5.4</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.21.2</jsoup.version>
