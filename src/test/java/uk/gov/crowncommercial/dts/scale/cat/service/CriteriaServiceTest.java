@@ -89,11 +89,11 @@ class CriteriaServiceTest {
     Requirement1 questionOCDS = new Requirement1();
     questionOCDS.setDataType(DataType.STRING);
     questionOCDS.setTitle("Where will the work be done");
-    QuestionNonOCDSOptions option = new QuestionNonOCDSOptions();
+    QuestionNonOCDSOptionsInner option = new QuestionNonOCDSOptionsInner();
     option.setValue("Wales");
     option.setSelected(true);
     QuestionNonOCDS questionNonOCDS = new QuestionNonOCDS();
-    questionNonOCDS.setQuestionType(QuestionType.MULTISELECT);
+    questionNonOCDS.setQuestionType(QuestionType.MULTI_SELECT);
     questionNonOCDS.setMultiAnswer(true);
     questionNonOCDS.setOptions(Arrays.asList(option));
     Question question = new Question();
@@ -134,7 +134,7 @@ class CriteriaServiceTest {
 
     assertEquals(CRITERION_ID, criterion.getId());
     assertEquals(CRITERION_TITLE, criterion.getTitle());
-    assertNull(criterion.getRequirementGroups());
+    assertTrue(criterion.getRequirementGroups().isEmpty());
   }
 
   @Test
@@ -182,9 +182,9 @@ class CriteriaServiceTest {
     RequirementGroup group = RequirementGroup.builder().ocds(ocds).build();
 
     criteriaService.validateQuestionsValues(group, minRe,
-        Arrays.asList(new QuestionNonOCDSOptions().value("107")));
+        Arrays.asList(new QuestionNonOCDSOptionsInner().value("107")));
     criteriaService.validateQuestionsValues(group, maxRe,
-        Arrays.asList(new QuestionNonOCDSOptions().value("100")));
+        Arrays.asList(new QuestionNonOCDSOptionsInner().value("100")));
     // Verify
     verify(validationService, times(2)).validateMinMaxValue(BigDecimal.valueOf(100),
         BigDecimal.valueOf(107));

@@ -155,12 +155,12 @@ class ProjectsControllerTest {
   }
 
   @Test
-  void createProcurementProject_400_BadRequest_LotId_Missing() throws Exception {
+  void createProcurementProject_200_OK_LotId_Valid() throws Exception {
     List<String> inputValues = new ArrayList(Arrays.asList("_Lot 1", " Lot a", " ", "!"));
 
     inputValues.forEach(input -> {
         try {
-            testCreateFromAgreement400BadRequestHelper(new AgreementDetails().agreementId(CA_NUMBER).lotId(input));
+            testCreateFromAgreement200OKHelper(new AgreementDetails().agreementId(CA_NUMBER).lotId(input));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -405,6 +405,14 @@ class ProjectsControllerTest {
         .andExpect(jsonPath("$.errors", hasSize(1)))
         .andExpect(jsonPath("$.errors[0].status", is("400 BAD_REQUEST")))
         .andExpect(jsonPath("$.errors[0].title", is("Validation error processing the request")));
+  }
+
+  private void testCreateFromAgreement200OKHelper(final AgreementDetails validPayload)
+      throws Exception {
+    mockMvc
+        .perform(post(TENDERS_PROJECTS_AGREEMENTS).with(validJwtReqPostProcessor)
+            .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(validPayload)))
+        .andDo(print()).andExpect(status().isOk());
   }
 
 }

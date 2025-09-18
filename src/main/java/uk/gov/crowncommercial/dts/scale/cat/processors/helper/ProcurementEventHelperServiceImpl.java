@@ -29,7 +29,7 @@ public class ProcurementEventHelperServiceImpl implements ProcurementEventHelper
             return ;
 
         DataTemplateInheritanceType inheritanceType = requirement.getNonOCDS().getInheritance();
-        if(inheritanceType == DataTemplateInheritanceType.ASIS){
+        if(inheritanceType == DataTemplateInheritanceType.AS_IS){
             throw new IllegalArgumentException("AsIs requirement should not be modified");
         }
     }

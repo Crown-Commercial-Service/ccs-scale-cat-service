@@ -26,7 +26,7 @@ public class TemplateProcessor implements DataTemplateProcessor {
             DataTemplateInheritanceType inheritance = criteria.getInheritanceNonOCDS();
             if (null != inheritance) {
                 switch (inheritance) {
-                    case ASIS -> asisProcessor.accept(criteria, getQuestions(oldData));
+                    case AS_IS -> asisProcessor.accept(criteria, getQuestions(oldData));
                     case PART -> partProcessor.accept(criteria, getQuestions(oldData));
                     case EDIT -> editProcessor.accept(criteria, getQuestions(oldData));
                     case NONE -> noneProcessor.accept(criteria, Collections.emptyMap());

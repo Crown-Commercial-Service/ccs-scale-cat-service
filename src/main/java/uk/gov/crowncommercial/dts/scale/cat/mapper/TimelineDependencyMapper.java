@@ -16,7 +16,7 @@ public class TimelineDependencyMapper {
         final var timeline = requirement.getNonOCDS().getTimelineDependency();
 
         timelineDependency.nonOCDS(new TimelineDependencyNonOCDS().answered(timeline.getNonOCDS().getAnswered())
-                .options(timeline.getNonOCDS().getOptions().stream().map(option -> new QuestionNonOCDSOptions().value(option.getValue()).text(option.getText()).selected(option.getSelect())).collect(Collectors.toList())));
+                .options(timeline.getNonOCDS().getOptions().stream().map(option -> new QuestionNonOCDSOptionsInner().value(option.getValue()).text(option.getText()).selected(option.getSelect())).collect(Collectors.toList())));
         timelineDependency.OCDS( new Requirement1().title(timeline.getOcds().getTitle()).description(timeline.getOcds().getDescription()));
         return timelineDependency;
     }
