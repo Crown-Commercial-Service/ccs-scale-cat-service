@@ -12,17 +12,27 @@ import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSV
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_PREFIX;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
-import java.io.InputStream;
+
+import java.io.*;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
+import org.odftoolkit.simple.SpreadsheetDocument;
+import org.odftoolkit.simple.table.Table;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.*;
@@ -129,6 +139,8 @@ public class ProcurementProjectService {
 
   private final Map<String, List<ProcurementEventSearch>> projectCache = new ConcurrentHashMap<>();
   private static final String ALL_RESULTS_CACHE_KEY = "ALL_RESULTS";
+  // Simple CSV split that respects quoted commas (not a full CSV parser, but handles typical quoted fields)
+  private static final Pattern CSV_SPLIT_REGEX = Pattern.compile(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
 
   /**
@@ -1120,7 +1132,7 @@ public class ProcurementProjectService {
    * Download all oppertunities data from s3
    * 
    */
-  public InputStream downloadProjectsData() {
+  public InputStream downloadProjectsData(String fileType) {
     try {
       var getObjectRequest = GetObjectRequest.builder()
           .bucket(tendersS3Service.getCredentials().getBucketName())
@@ -1128,10 +1140,82 @@ public class ProcurementProjectService {
           .build();
       
       var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
+      // TODO convert csv file to other file type e.g. xlsx/ods and return as InputStream
+      if(fileType != null && fileType.equals("xlsx"))
+        return convertCsvToXlsx(tendersS3Object);
+
+      if(fileType != null && fileType.equals("ods"))
+        return convertCsvToOds(tendersS3Object);
+
       return tendersS3Object;
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
       throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");
+    }
+  }
+
+  protected InputStream convertCsvToXlsx(InputStream csvInputStream) throws IOException {
+
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8));
+         Workbook workbook = new XSSFWorkbook()) {
+
+      Sheet sheet = workbook.createSheet("CSV Data");
+
+      String line;
+      int rowNum = 0;
+
+      while ((line = reader.readLine()) != null) {
+        Row row = sheet.createRow(rowNum++);
+        String[] values = line.split(","); // simple CSV split
+
+        for (int i = 0; i < values.length; i++) {
+          Cell cell = row.createCell(i);
+          cell.setCellValue(values[i].trim());
+        }
+      }
+
+      // Write to memory instead of file
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      workbook.write(baos);
+
+      return new ByteArrayInputStream(baos.toByteArray());
+    }
+  }
+
+  public InputStream convertCsvToOds(InputStream csvInputStream) throws Exception {
+    // Read CSV
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8))) {
+
+      // Create new ODS document (Simple API)
+      SpreadsheetDocument odsDoc = SpreadsheetDocument.newSpreadsheetDocument();
+      Table sheet = odsDoc.getSheetByIndex(0);
+      sheet.setTableName("CSV Data");
+
+      String line;
+      int rowIndex = 0;
+
+      while ((line = reader.readLine()) != null) {
+        // split on commas but ignore commas inside quotes
+        String[] values = CSV_SPLIT_REGEX.split(line, -1);
+        for (int colIndex = 0; colIndex < values.length; colIndex++) {
+          String cellValue = values[colIndex].trim();
+          // remove surrounding quotes if present
+          if (cellValue.length() >= 2 && cellValue.startsWith("\"") && cellValue.endsWith("\"")) {
+            cellValue = cellValue.substring(1, cellValue.length() - 1).replace("\"\"", "\"");
+          }
+
+          // set cell value via Simple API
+          sheet.getCellByPosition(colIndex, rowIndex).setStringValue(cellValue);
+        }
+        rowIndex++;
+      }
+
+      // Write to in-memory byte array and return InputStream
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      odsDoc.save(baos);
+      odsDoc.close();
+
+      return new ByteArrayInputStream(baos.toByteArray());
     }
   }
 }
