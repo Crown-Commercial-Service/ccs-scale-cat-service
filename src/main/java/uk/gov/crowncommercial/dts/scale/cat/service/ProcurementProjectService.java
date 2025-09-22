@@ -1140,7 +1140,7 @@ public class ProcurementProjectService {
           .build();
       
       var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
-      // TODO convert csv file to other file type e.g. xlsx/ods and return as InputStream
+
       if(fileType != null && fileType.equals("xlsx"))
         return convertCsvToXlsx(tendersS3Object);
 
