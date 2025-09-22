@@ -1,7 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_NAME;
+import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.*;
+
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Collection;
@@ -80,7 +81,7 @@ public class ProjectsController extends AbstractRestController {
     // Grab the principal from the JWT passed to us, then use it and the requested Project ID to fetch the relevant project summary
     String principal = getPrincipalFromJwt(authentication);
     boolean hasAdminAccess = doesTokenAllowAdminAccess(authentication);
-    
+
     return procurementProjectService.getProjectSummary(principal, projectId, hasAdminAccess);
   }
 
@@ -192,13 +193,12 @@ public class ProjectsController extends AbstractRestController {
     procurementProjectService.deleteTeamMember(procId, userId, principal);
     return Constants.OK_MSG;
   }
-  
+
   @GetMapping(value = "/download")
-  public void downloadFile(HttpServletResponse response) throws IOException {
-    var downloadProjectsData = procurementProjectService.downloadProjectsData();
-    response.setContentType(MediaType.TEXT_PLAIN.toString());
-    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-        "attachment; filename=\"" + CSV_FILE_NAME + "\"");
+  public void downloadFile(HttpServletResponse response,
+                           @RequestParam("fileType") String fileType) throws IOException {
+    var downloadProjectsData = procurementProjectService.downloadProjectsData(fileType);
+    setHeaderAndContentTypeBasedOnFileType(fileType, response);
     IOUtils.copy(downloadProjectsData, response.getOutputStream());
     response.flushBuffer();
   }
@@ -222,5 +222,43 @@ public class ProjectsController extends AbstractRestController {
     }
 
     return procurementProjectService.getProjectSummery(keyword,lotId, pageNo, size, projectFilters);
+  }
+
+  private void setHeaderAndContentTypeBasedOnFileType(String fileType, HttpServletResponse response) {
+
+      if(fileType == null) {
+        log.error("File type was null, default to csv file type");
+        setCsvHeaderAndContentType(response);
+        return;
+      }
+
+      if(fileType.equals("xlsx")) {
+        setXlsxHeaderAndContentType(response);
+      }else if(fileType.equals("ods")) {
+        setOdsHeaderAndContentType(response);
+      }else {
+        setCsvHeaderAndContentType(response);
+      }
+  }
+
+  private void setCsvHeaderAndContentType(HttpServletResponse response) {
+    response.setContentType(MediaType.TEXT_PLAIN.toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + CSV_FILE_NAME + "\"");
+  }
+
+  private void setXlsxHeaderAndContentType(HttpServletResponse response) {
+    response.setContentType(MediaType
+            .parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            .toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + XLSX_FILE_NAME + "\"");
+  }
+
+  private void setOdsHeaderAndContentType(HttpServletResponse response) {
+    response.setContentType(MediaType.parseMediaType("application/vnd.oasis.opendocument.spreadsheet")
+            .toString());
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + ODS_FILE_NAME + "\"");
   }
 }
