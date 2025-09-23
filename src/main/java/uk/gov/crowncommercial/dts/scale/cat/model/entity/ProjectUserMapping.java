@@ -34,4 +34,13 @@ public class ProjectUserMapping {
 
   boolean deleted;
 
+  @Column(name = "collaborator")
+  boolean collaborator;
+
+  @Column(name = "assessor")
+  boolean assessor;
+
+  @Column(name = "moderator")
+  boolean moderator;
+
 }
