@@ -428,6 +428,7 @@
                 <executions>
                     <execution>
                         <id>tenders-api</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
