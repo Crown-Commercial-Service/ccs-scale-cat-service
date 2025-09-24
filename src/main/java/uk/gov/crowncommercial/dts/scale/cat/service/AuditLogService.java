@@ -11,11 +11,22 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+
 /**
  * Audit log service to handle CRUD operations
  */
 @Service
 public class AuditLogService {
+
+    /**
+     * Following three columns can not be null as database expect values.
+     * Therefore, if caller passed null or empty, service should insert following default values.
+     */
+    private static final String DEFAULT_AUDIT_REASON = "No audit reason specified";
+    private static final String DEFAULT_AUDIT_FROM_URL = "No audit from url specified";
+    private static final String DEFAULT_AUDIT_UPDATED_BY = "No audit reason specified";
 
     private final DateTimeFormatter formatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
@@ -26,9 +37,6 @@ public class AuditLogService {
 
     public List<AuditLogDto> getAuditLogsWithDate(String fromDate,
                                                   String toDate) {
-        //TODO next part of the implementation we need to retrieve data
-        // TODO based on the date passed, e.g. 'fromDate' and 'toDate'
-        // TODO Also implement pagination
 
         return repository
                 .findAll()
@@ -39,9 +47,6 @@ public class AuditLogService {
 
     private AuditLogDto mapModelToDto(AuditLog auditLog) {
 
-        // TODO not sure what value to map with db field and response
-        // TODO Following code need to revisit and populate correct field based on business requirement
-        // TODO just populating random data for now
         AuditLogDto dto = new AuditLogDto();
         dto.updatedBy = auditLog.getUpdatedBy();
         dto.formUrl = auditLog.getFormUrl();
@@ -54,6 +59,15 @@ public class AuditLogService {
 
     public AuditLog save(AuditLog auditLog) {
         auditLog.setTimestamp(Timestamp.valueOf(LocalDateTime.now()));
+
+        auditLog.setUpdatedBy(defaultIfBlank(auditLog.getUpdatedBy(), DEFAULT_AUDIT_UPDATED_BY));
+        auditLog.setFormUrl(defaultIfBlank(auditLog.getFormUrl(), DEFAULT_AUDIT_FROM_URL));
+        auditLog.setReason(defaultIfBlank(auditLog.getReason(), DEFAULT_AUDIT_REASON));
+
         return repository.saveAndFlush(auditLog);
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        return (value == null || value.isBlank()) ? defaultValue : value;
     }
 }
