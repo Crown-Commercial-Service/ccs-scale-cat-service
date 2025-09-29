@@ -54,7 +54,7 @@
         <lombok.version>1.18.42</lombok.version>
         <spring.version>6.5.5</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
-        <compiler.version>3.14.0</compiler.version>
+        <compiler.version>3.14.1</compiler.version>
         <cucumber.version>7.28.2</cucumber.version>
         <h2.version>2.4.240</h2.version>
     </properties>
