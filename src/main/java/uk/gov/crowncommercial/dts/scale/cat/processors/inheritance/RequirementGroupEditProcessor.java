@@ -5,7 +5,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 
 import java.util.Map;
 
-import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType.ASIS;
+import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType.AS_IS;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType.EDIT;
 
 public class RequirementGroupEditProcessor implements InheritanceProcessor<RequirementGroup> {

@@ -194,7 +194,7 @@ public class CriteriaService {
 
 
   public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
-      List<QuestionNonOCDSOptions> options) {
+      List<QuestionNonOCDSOptionsInner> options) {
     if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
       String maxValue = null;
       String minValue = null;
@@ -361,7 +361,7 @@ public class CriteriaService {
             .inheritance(r.getNonOCDS().getInheritance())
         .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
         .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream()
-            .map(this::getQuestionNonOCDSOptions
+            .map(this::getQuestionNonOCDSOptionsInner
         ).collect(Collectors.toList()));
     if (Objects.nonNull(r.getNonOCDS().getDependency())) {
       questionNonOCDS.dependency(dependencyMapper.convertToQuestionNonOCDSDependency(r));
@@ -396,8 +396,8 @@ public class CriteriaService {
 
   }
 
-  private QuestionNonOCDSOptions getQuestionNonOCDSOptions(Requirement.Option o) {
-    QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions().value(o.getValue())
+  private QuestionNonOCDSOptionsInner getQuestionNonOCDSOptionsInner(Requirement.Option o) {
+    QuestionNonOCDSOptionsInner questionNonOCDSOptions = new QuestionNonOCDSOptionsInner().value(o.getValue())
         .selected(o.getSelect() == null ? Boolean.FALSE : o.getSelect()).text(o.getText());
 
     if (o.getTableDefinition() != null) {
@@ -409,7 +409,7 @@ public class CriteriaService {
     return questionNonOCDSOptions;
   }
 
-  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
+  private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptionsInner> options) {
     return options.stream()
             .map(questionNonOCDSOptions -> Option.builder()
                     .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
