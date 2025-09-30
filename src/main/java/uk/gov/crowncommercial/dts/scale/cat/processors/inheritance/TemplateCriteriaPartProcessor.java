@@ -25,7 +25,7 @@ public class TemplateCriteriaPartProcessor implements InheritanceProcessor<Templ
 
             switch (inheritanceType) {
                 case PART -> partProcessor.accept(grp, questions);
-                case ASIS -> asisProcessor.accept(grp, questions);
+                case AS_IS -> asisProcessor.accept(grp, questions);
                 case EDIT -> editProcessor.accept(grp, questions);
                 case NONE -> noneProcessor.accept(grp, questions);
             }

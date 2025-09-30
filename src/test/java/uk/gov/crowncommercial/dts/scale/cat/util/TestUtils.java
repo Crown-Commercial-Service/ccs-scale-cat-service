@@ -57,7 +57,7 @@ public class TestUtils {
 
   public static TeamMember getTeamMember() {
     var teamMember = new TeamMember();
-    var contact = new ContactPoint1();
+    var contact = new TeamMemberOCDSContact();
     contact.setEmail(USERID);
     contact.setName(USER_NAME);
 
