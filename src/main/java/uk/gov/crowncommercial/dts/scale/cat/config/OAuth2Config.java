@@ -48,9 +48,11 @@ public class OAuth2Config {
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*/events/*/documents/export").permitAll()
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/supplier/**").permitAll()
+        .requestMatchers("/audit/**").permitAll()
         .requestMatchers("/tenders/event-types").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
+        .requestMatchers("/suppliers/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/error/**").hasAnyAuthority(

@@ -9,7 +9,8 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.Map;
+
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.Request;
 import org.eclipse.jetty.client.transport.HttpClientTransportDynamic;
@@ -22,7 +23,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
-import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
@@ -30,11 +30,17 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider
 import org.springframework.security.oauth2.client.endpoint.DefaultClientCredentialsTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2ClientCredentialsGrantRequest;
-import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
-import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
@@ -57,19 +63,49 @@ public class JaggaerClientConfig {
 
   @Bean
   public OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> accessTokenResponseClient() {
+    return new CustomRestClientCredentialsTokenResponseClient(jaggaerTokenResponseConverter);
+  }
 
-    var accessTokenResponseClient = new DefaultClientCredentialsTokenResponseClient();
+  /**
+   * Custom OAuth2 Access Token Response Client using RestClient to handle Jaggaer's non-standard response format
+   */
+  @RequiredArgsConstructor
+  private static class CustomRestClientCredentialsTokenResponseClient 
+          implements OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> {
 
-    var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
-    tokenResponseHttpMessageConverter
-        .setAccessTokenResponseConverter(jaggaerTokenResponseConverter);
+    private final JaggaerTokenResponseConverter jaggaerTokenResponseConverter;
+    private final RestClient restClient = RestClient.builder().build();
 
-    var restTemplate = new RestTemplate(
-        Arrays.asList(new FormHttpMessageConverter(), tokenResponseHttpMessageConverter));
-    restTemplate.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
+    @Override
+    public OAuth2AccessTokenResponse getTokenResponse(OAuth2ClientCredentialsGrantRequest clientCredentialsGrantRequest) {
+      try {
+        var clientRegistration = clientCredentialsGrantRequest.getClientRegistration();
+        
+        // Prepare form data for client credentials grant
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", AuthorizationGrantType.CLIENT_CREDENTIALS.getValue());
+        formData.add("client_id", clientRegistration.getClientId());
+        formData.add("client_secret", clientRegistration.getClientSecret());
 
-    accessTokenResponseClient.setRestOperations(restTemplate);
-    return accessTokenResponseClient;
+        // Make the token request using RestClient
+        var response = restClient.post()
+                .uri(clientRegistration.getProviderDetails().getTokenUri())
+                .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                .body(formData)
+                .retrieve()
+                .body(Map.class);
+
+        if (response == null) {
+          throw new OAuth2AuthorizationException(new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR, "Token response is null", null));
+        }
+
+        // Use the custom converter to handle Jaggaer's non-standard response
+        return jaggaerTokenResponseConverter.convert(response);
+
+      } catch (Exception ex) {
+        throw new OAuth2AuthorizationException(new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR, "Error getting token response: " + ex.getMessage(), null), ex);
+      }
+    }
   }
 
   @Bean

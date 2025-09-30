@@ -1564,6 +1564,14 @@ public class ProcurementEventService implements EventService {
         userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
         var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+        // Check if event has completed status
+        var eventStatus = event.getTenderStatus();
+        if (!eventStatus.equals(COMPLETE_STATUS)) {
+            return null;
+        }
+
+        // Check for contract exists before proceeding
         var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
         return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
