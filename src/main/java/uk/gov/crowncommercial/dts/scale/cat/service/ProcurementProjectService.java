@@ -389,14 +389,39 @@ public class ProcurementProjectService {
     // update user
     // TODO Add only valid users
     var existingList = updateProjectUserMapping(dbProject, teamIds, principal);
+
+    // Build a quick lookup of active (not deleted) mappings
+    var activeRoleByUserId = existingList.stream()
+      .filter(pum -> !pum.isDeleted())
+      .collect(Collectors.toMap(ProjectUserMapping::getUserId, pum -> pum, (a,b) -> a));
+
     var finalTeamIds =
         teamIds.stream().filter(e -> existingList.stream().filter(ProjectUserMapping::isDeleted)
             .noneMatch(k -> e.equals(k.getUserId()))).collect(Collectors.toSet());
     combinedIds.addAll(finalTeamIds);
+
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
-        .map(i -> getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId()))
-        .filter(Objects::nonNull).collect(Collectors.toSet());
+      .map(i -> {
+        var teamMember = getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId());
+        if (teamMember != null) {
+          var nonOcds = teamMember.getNonOCDS();
+          var role = activeRoleByUserId.get(i);
+          if (role != null && nonOcds != null) {
+            nonOcds.setCollaborator(role.isCollaborator());
+            nonOcds.setAssessor(role.isAssessor());
+            nonOcds.setModerator(role.isModerator());
+          } else if (nonOcds != null) {
+            // Legacy users with no stored role: all three remain false (default)
+            nonOcds.setCollaborator(false);
+            nonOcds.setAssessor(false);
+            nonOcds.setModerator(false);
+          }
+        }
+        return teamMember;
+      })
+      .filter(Objects::nonNull)
+      .collect(Collectors.toSet());
   }
   
   /**
@@ -443,6 +468,16 @@ public class ProcurementProjectService {
             Project.builder().tender(tender).projectTeam(projectTeam).build());
         jaggaerService.createUpdateProject(updateProject);
         break;
+      case COLLABORATOR:
+      case ASSESSOR:
+      case MODERATOR:
+        log.debug("{} update", updateTeamMember.getUserType());
+        projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
+        tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
+        updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+            Project.builder().tender(tender).projectTeam(projectTeam).build());
+        jaggaerService.createUpdateProject(updateProject);
+        break;
       case EMAIL_RECIPIENT:
         log.debug("EMail Recipient update");
         var event = getCurrentEvent(dbProject);
@@ -460,8 +495,65 @@ public class ProcurementProjectService {
     }
 
     addProjectUserMapping(jaggaerUserId, dbProject, principal);
+
+    // In the database, enable exactly one of our roles
+    updateDbRoleFlags(dbProject, jaggaerUserId, updateTeamMember, principal);
+
     return getProjectTeamMembers(projectId, principal).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
+  }
+
+  private void updateDbRoleFlags(final ProcurementProject project, final String jaggaerUserId, final UpdateTeamMember updateTeamMember, final String principal) {
+    var maybeMapping = retryableTendersDBDelegate
+        .findProjectUserMappingByProjectIdAndUserId(project.getId(), jaggaerUserId);
+
+    var mapping = maybeMapping.orElseGet(() ->
+        ProjectUserMapping.builder()
+            .project(project)
+            .userId(jaggaerUserId)
+            .timestamps(createTimestamps(principal))
+            .build());
+
+    // Always undelete when setting a role
+    mapping.setDeleted(false);
+
+    switch (updateTeamMember.getUserType()) {
+      case COLLABORATOR:
+        mapping.setCollaborator(true);
+        mapping.setAssessor(false);
+        mapping.setModerator(false);
+        break;
+      case ASSESSOR:
+        mapping.setCollaborator(false);
+        mapping.setAssessor(true);
+        mapping.setModerator(false);
+        break;
+      case MODERATOR:
+        mapping.setCollaborator(false);
+        mapping.setAssessor(false);
+        mapping.setModerator(true);
+        break;
+      case TEAM_MEMBER:
+      case PROJECT_OWNER:
+        // Clear API-local flags: primary role is plain team-member or owner
+        mapping.setCollaborator(false);
+        mapping.setAssessor(false);
+        mapping.setModerator(false);
+        break;
+      case EMAIL_RECIPIENT:
+        // Orthogonal; don't touch local role flags
+        break;
+      default:
+        // no-op
+    }
+
+    // Touch timestamps when updating an existing mapping
+    mapping.setTimestamps(
+        mapping.getTimestamps() == null
+            ? createTimestamps(principal)
+            : Timestamps.updateTimestamps(mapping.getTimestamps(), principal));
+
+    retryableTendersDBDelegate.save(mapping);
   }
 
   public void deleteTeamMember(final Integer projectId, final String userId,
