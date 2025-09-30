@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.5.0</jena-core.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.34.4</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.34.5</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -54,9 +54,9 @@
         <lombok.version>1.18.42</lombok.version>
         <spring.version>6.5.5</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
-        <compiler.version>3.14.0</compiler.version>
-        <cucumber.version>7.28.2</cucumber.version>
-        <h2.version>2.3.232</h2.version>
+        <compiler.version>3.14.1</compiler.version>
+        <cucumber.version>7.29.0</cucumber.version>
+        <h2.version>2.4.240</h2.version>
     </properties>
 
     <dependencies>
