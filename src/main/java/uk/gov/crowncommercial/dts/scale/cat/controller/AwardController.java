@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentSummary;
@@ -46,7 +46,7 @@ public class AwardController extends AbstractRestController {
   public ResponseEntity<String> createAward(@PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       final @RequestParam(required = true, name = "award-state") AwardState awardState,
-      @Valid @RequestBody final Award2AllOf awardRequest,
+      @Valid @RequestBody final Award2 awardRequest,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);
@@ -61,7 +61,7 @@ public class AwardController extends AbstractRestController {
       @PathVariable("event-id") final String eventId,
       final @RequestParam(required = true, name = "award-state") AwardState awardState,
       @PathVariable("award-id") final Integer awardId,
-      @Valid @RequestBody final Award2AllOf awardRequest,
+      @Valid @RequestBody final Award2 awardRequest,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     var conclaveOrgId = getCiiOrgIdFromJwt(authentication);

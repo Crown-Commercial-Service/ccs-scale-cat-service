@@ -66,7 +66,7 @@ public class Requirement {
     TimelineDependency timelineDependency;
 
     @NonFinal
-    List<Option> options; // Maps to QuestionNonOCDSOptions
+    List<Option> options; // Maps to QuestionNonOCDSOptionsInner
 
     public void setInheritance(DataTemplateInheritanceType inheritance){
       this.inheritance = inheritance;

@@ -80,6 +80,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ReleaseTag;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMember;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TeamMemberOCDSContact;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.TerminationType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateTeamMember;
@@ -719,7 +720,7 @@ public class ProcurementProjectService {
       var teamMember = new TeamMember();
 
       var tmOCDS = new TeamMemberOCDS();
-      var contact = new ContactPoint1();
+      var contact = new TeamMemberOCDSContact();
       tmOCDS.setId(conclaveUser.getUserName());
       contact.setName(conclaveUser.getFirstName() + " " + conclaveUser.getLastName());
       contact.setEmail(conclaveUser.getUserName());

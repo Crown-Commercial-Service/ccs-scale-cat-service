@@ -108,7 +108,7 @@ class AssessmentsControllerTest {
     weightingRange.setMin(0);
     dimension.setWeightingRange(weightingRange);
 
-    var group = new DimensionOptionGroups();
+    var group = new DimensionOptionGroupsInner();
     group.setLevel(GROUP_LEVEL);
     group.setName(GROUP_NAME);
 
