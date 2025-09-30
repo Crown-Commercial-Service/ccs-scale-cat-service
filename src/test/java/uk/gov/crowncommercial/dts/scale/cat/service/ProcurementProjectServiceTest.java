@@ -5,10 +5,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.mock;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -224,5 +228,72 @@ class ProcurementProjectServiceTest {
     var ex = assertThrows(ResourceNotFoundException.class,
             () -> procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID));
     assertEquals("Project '1' not found", ex.getMessage());
+  }
+
+  @Test
+  void convertCsvToOds_ShouldThrowOnNullInput() {
+    // Expect NullPointerException if input is null
+    assertThrows(NullPointerException.class, () -> procurementProjectService.convertCsvToOds(null));
+  }
+
+  @Test
+  void convertCsvToOds_ShouldReturnValidOdsStream() throws Exception {
+    // Given: a simple CSV content
+    String csvContent = "Name,Email,Age\nJohn,john@example.com,30\nJane,jane@example.com,25";
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+
+    // When: converting CSV to ODS
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+
+    // Then: result should not be null
+    assertNotNull(odsStream, "ODS output stream should not be null");
+
+    // Optionally: check that the stream has content
+    assertTrue(odsStream.available() > 0, "ODS stream should contain data");
+
+    // Optionally: check that it starts with the ODS signature (ODS files are ZIPs)
+    byte[] signature = new byte[4];
+    odsStream.read(signature);
+    String zipSignature = new String(signature, "UTF-8");
+    assertEquals("PK\u0003\u0004", zipSignature, "ODS file should start with ZIP signature");
+
+    odsStream.close();
+  }
+
+  @Test
+  void convertCsvToXlsx_ShouldThrowOnNullInput() {
+    // Expect NullPointerException if input is null
+    assertThrows(NullPointerException.class, () -> procurementProjectService.convertCsvToXlsx(null));
+  }
+
+  @Test
+  void convertCsvToXlsx_ShouldReturnValidXlsxStream() throws Exception {
+    // Given: a simple CSV content
+    String csvContent = "Name,Email,Age\nJohn,john@example.com,30\nJane,jane@example.com,25";
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+
+    // When: converting CSV to XLSX
+    InputStream xlsxStream = procurementProjectService.convertCsvToXlsx(csvInputStream);
+
+    // Then: the output stream should not be null
+    assertNotNull(xlsxStream, "XLSX output stream should not be null");
+
+    // Check that it can be read as a valid Excel workbook
+    Workbook workbook = WorkbookFactory.create(xlsxStream);
+    assertEquals(1, workbook.getNumberOfSheets(), "Workbook should contain one sheet");
+
+    // Check first row content
+    var sheet = workbook.getSheetAt(0);
+    assertEquals("Name", sheet.getRow(0).getCell(0).getStringCellValue());
+    assertEquals("Email", sheet.getRow(0).getCell(1).getStringCellValue());
+    assertEquals("Age", sheet.getRow(0).getCell(2).getStringCellValue());
+
+    // Check second row content
+    assertEquals("John", sheet.getRow(1).getCell(0).getStringCellValue());
+    assertEquals("john@example.com", sheet.getRow(1).getCell(1).getStringCellValue());
+    assertEquals("30", sheet.getRow(1).getCell(2).getStringCellValue());
+
+    workbook.close();
+    xlsxStream.close();
   }
 }
