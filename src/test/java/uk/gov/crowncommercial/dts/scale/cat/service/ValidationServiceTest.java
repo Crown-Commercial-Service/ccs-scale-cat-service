@@ -11,7 +11,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.PublishDates;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDSOptionsInner;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDSOptions;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.UpdateEvent;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
@@ -198,7 +198,7 @@ class ValidationServiceTest {
  @Test
   void shouldThrowValidationExceptionWhenTheProjectDurationIsInvalidISO8601Format(){
 
-    QuestionNonOCDSOptionsInner questionNonOCDSOptions= new QuestionNonOCDSOptionsInner();
+    QuestionNonOCDSOptions questionNonOCDSOptions= new QuestionNonOCDSOptions();
     questionNonOCDSOptions.setValue("4BAC");
 
     ValidationException validationException= assertThrows(ValidationException.class,
@@ -209,7 +209,7 @@ class ValidationServiceTest {
   @Test
   void shouldThrowValidationExceptionWhenTheProjectDurationIsGreaterThan4years(){
 
-    QuestionNonOCDSOptionsInner questionNonOCDSOptions= new QuestionNonOCDSOptionsInner();
+    QuestionNonOCDSOptions questionNonOCDSOptions= new QuestionNonOCDSOptions();
     questionNonOCDSOptions.setValue("P4Y0M1D");
 
     ValidationException validationException= assertThrows(ValidationException.class,
@@ -220,7 +220,7 @@ class ValidationServiceTest {
 
   @Test
   void shouldNotThrowValidationExceptionWhenTheProjectDurationIsGivenExactlySameDays() {
-    QuestionNonOCDSOptionsInner questionNonOCDSOptions = new QuestionNonOCDSOptionsInner();
+    QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions();
     questionNonOCDSOptions.setValue("P3Y11M31D");
     try {
       validationService.validateProjectDuration(List.of(questionNonOCDSOptions));
@@ -231,7 +231,7 @@ class ValidationServiceTest {
 
   @Test
   void shouldNotThrowValidationExceptionWhenTheProjectDurationIsGivenNull() {
-    QuestionNonOCDSOptionsInner questionNonOCDSOptions = new QuestionNonOCDSOptionsInner();
+    QuestionNonOCDSOptions questionNonOCDSOptions = new QuestionNonOCDSOptions();
     questionNonOCDSOptions.setValue(null);
     try {
       validationService.validateProjectDuration(List.of(questionNonOCDSOptions));

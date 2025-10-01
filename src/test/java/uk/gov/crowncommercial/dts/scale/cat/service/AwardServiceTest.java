@@ -25,7 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Organization;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.OrganizationReference1;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
@@ -142,7 +142,7 @@ class AwardServiceTest {
     List<OrganizationReference1> suppliersList = new ArrayList<>();
     suppliersList.add(new OrganizationReference1().id("GB-COH-1234567"));
     var rfxResponse = prepareSupplierDetails();
-    var award = new Award2().suppliers(suppliersList);
+    var award = new Award2AllOf().suppliers(suppliersList);
     var procurementEvent = ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
     .externalEventId(RFX_ID).build();
     // Mock behaviours

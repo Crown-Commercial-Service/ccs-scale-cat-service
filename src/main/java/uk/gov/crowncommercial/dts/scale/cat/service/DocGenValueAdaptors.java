@@ -91,21 +91,21 @@ public class DocGenValueAdaptors {
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLead() {
     return (event, requestCache) -> List
-        .of(String.valueOf(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getName()));
+        .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getName());
   }
 
   @Bean("DocumentValueAdaptorProcLeadTel")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLeadTel() {
     return (event, requestCache) -> List
-        .of(String.valueOf(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getTelephone()));
+        .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getTelephone());
   }
 
   @Bean("DocumentValueAdaptorProcLeadEmail")
   @RequestScope
   public DocGenValueAdaptor documentValueAdaptorProcLeadEmail() {
     return (event, requestCache) -> List
-        .of(String.valueOf(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getEmail()));
+        .of(getProcurementProjectLead(event, requestCache).getOCDS().getContact().getEmail());
   }
 
   @Bean("DocumentValueAdaptorProcLeadOrgWebsite")

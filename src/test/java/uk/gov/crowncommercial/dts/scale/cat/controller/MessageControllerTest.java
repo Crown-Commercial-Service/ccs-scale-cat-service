@@ -101,7 +101,7 @@ class MessageControllerTest {
                         .accept(APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON))
-                .andExpect(jsonPath("$.messages[0].OCDS.author.name", is("Test Author")))
+                .andExpect(jsonPath("$.messages[0].ocds.author.name", is("Test Author")))
                 .andExpect(jsonPath("$.links.next", is("/next/")));
 
         verify(messageService, times(1)).getMessagesSummary(messageRequestInfo);

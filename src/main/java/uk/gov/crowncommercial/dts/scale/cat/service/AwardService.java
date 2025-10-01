@@ -20,7 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentsKey;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Award2AllOf;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardState;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AwardSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType;
@@ -69,7 +69,7 @@ public class AwardService {
    * @return status
    */
   public String createOrUpdateAwardRfx(final String principal, final Integer projectId,
-      final String eventId, final AwardState awardState, final Award2 award, final Integer awardId) {
+      final String eventId, final AwardState awardState, final Award2AllOf award, final Integer awardId) {
     var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
     var buyerUser = userService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));

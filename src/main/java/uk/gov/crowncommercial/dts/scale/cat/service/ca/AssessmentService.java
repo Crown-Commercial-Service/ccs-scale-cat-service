@@ -869,18 +869,18 @@ public class AssessmentService {
 
     /**
      * Given an {@link AssessmentTaxon}, will recurse up the parents to build a hierarchy of
-     * {@link DimensionOptionGroupsInner} objects. The highest group in the hierarchy will be level 1, the
+     * {@link DimensionOptionGroups} objects. The highest group in the hierarchy will be level 1, the
      * second level 2, and so on..
      *
      * @param assessmentTaxon
      * @param optionGroups
      * @return
      */
-    List<DimensionOptionGroupsInner> recurseUpTree(final AssessmentTaxon assessmentTaxon,
-                                              final List<DimensionOptionGroupsInner> optionGroups) {
+    List<DimensionOptionGroups> recurseUpTree(final AssessmentTaxon assessmentTaxon,
+                                              final List<DimensionOptionGroups> optionGroups) {
 
         log.trace("  - traverse up taxon tree :" + assessmentTaxon.getName());
-        var rtOptionGroup = new DimensionOptionGroupsInner();
+        var rtOptionGroup = new DimensionOptionGroups();
         rtOptionGroup.setName(assessmentTaxon.getName());
         rtOptionGroup.setDescription(assessmentTaxon.getDescription());
         optionGroups.add(rtOptionGroup);
@@ -895,7 +895,7 @@ public class AssessmentService {
         Collections.reverse(optionGroups);
         optionGroups.remove(0);
         var level = 1;
-        for (DimensionOptionGroupsInner og : optionGroups) {
+        for (DimensionOptionGroups og : optionGroups) {
             og.setLevel(level++);
         }
 
