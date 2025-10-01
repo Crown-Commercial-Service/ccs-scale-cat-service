@@ -125,7 +125,7 @@ public class TendersAPIModelUtils {
       // TODO: TBC - mappings required
 
     }
-    eventDetailOCDS.setAwardCriteria(AwardCriteria.RATED_CRITERIA);
+    eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     eventDetail.setOCDS(eventDetailOCDS);
 
     return eventDetail;

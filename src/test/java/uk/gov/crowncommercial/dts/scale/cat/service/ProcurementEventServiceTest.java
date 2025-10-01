@@ -1003,7 +1003,7 @@ class ProcurementEventServiceTest {
     assertEquals(ORIGINAL_EVENT_NAME, eventDetail.getOCDS().getTitle());
     assertEquals(DESCRIPTION, eventDetail.getOCDS().getDescription());
     assertEquals(TenderStatus.PLANNED, eventDetail.getOCDS().getStatus());
-    assertEquals(AwardCriteria.RATED_CRITERIA, eventDetail.getOCDS().getAwardCriteria());
+    assertEquals(AwardCriteria.RATEDCRITERIA, eventDetail.getOCDS().getAwardCriteria());
 
     return eventDetail;
   }

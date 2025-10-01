@@ -15,7 +15,7 @@ public class TemplateCriteriaAsIsProcessor implements InheritanceProcessor<Templ
     public void accept(TemplateCriteria templateCriteria, Map<String, Requirement> questions) {
         for (RequirementGroup grp : templateCriteria.getRequirementGroups()) {
             if (null != grp.getNonOCDS()) {
-                grp.getNonOCDS().setInheritance(DataTemplateInheritanceType.AS_IS);
+                grp.getNonOCDS().setInheritance(DataTemplateInheritanceType.ASIS);
                 asisProcessor.accept(grp, questions);
             }
         }

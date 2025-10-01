@@ -61,7 +61,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
 
                 tender.setValue(getMaxValue(pp));
                 tender.setMinValue(getMinValue(pp));
-                tender.setSubmissionMethod(List.of(SubmissionMethod.ELECTRONIC_SUBMISSION));
+                tender.setSubmissionMethod(List.of(SubmissionMethod.ELECTRONICSUBMISSION));
 
                 cf = CompletableFuture.runAsync(() -> {
                     populateStatusAndPeriod(tender, pp, pq);

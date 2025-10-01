@@ -7,12 +7,12 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInherita
 
 import java.util.Map;
 
-import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType.AS_IS;
+import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DataTemplateInheritanceType.ASIS;
 
 public class RequirementGroupAsIsProcessor implements InheritanceProcessor<RequirementGroup> {
     @Override
     public void accept(RequirementGroup requirementGroup, Map<String, Requirement> questions) {
-        processRequirments(requirementGroup, questions,AS_IS);
+        processRequirments(requirementGroup, questions,ASIS);
     }
 
 }
