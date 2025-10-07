@@ -17,6 +17,8 @@ public interface ProjectUserMappingRepo extends JpaRepository<ProjectUserMapping
 
   Set<ProjectUserMapping> findByProjectId(Integer projectId);
 
+  long deleteByProjectId(Integer projectId);
+
   Set<ProjectUserMapping> findByUserId(String userId);
 
   List<ProjectUserMapping> findByUserId(String userId, Pageable pageable);

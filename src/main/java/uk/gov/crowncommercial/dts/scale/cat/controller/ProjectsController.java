@@ -224,6 +224,18 @@ public class ProjectsController extends AbstractRestController {
     return procurementProjectService.getProjectSummery(keyword,lotId, pageNo, size, projectFilters);
   }
 
+  @DeleteMapping("/{proc-id}")
+  @TrackExecutionTime
+  public String deleteProject(@PathVariable("proc-id") final Integer procId, @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+
+    log.info("deleteProject invoked on behalf of principal: {}", principal);
+
+    procurementProjectService.deleteProject(procId, principal);
+
+    return Constants.OK_MSG;
+  }
+
   private void setHeaderAndContentTypeBasedOnFileType(String fileType, HttpServletResponse response) {
 
       if(fileType == null) {

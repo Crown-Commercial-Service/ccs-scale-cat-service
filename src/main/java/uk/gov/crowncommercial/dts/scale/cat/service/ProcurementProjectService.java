@@ -793,6 +793,32 @@ public class ProcurementProjectService {
     return Optional.of(projectPackageSummary);
   }
 
+  public void deleteProject(final Integer projectId, final String principal) {
+    log.debug("delete Project with Project ID: {}", projectId);
+
+    // First find given project, to check if it has any active events
+    // This is an admin user - we need to lookup by the project ID without worrying about the owning user
+    Set<ProjectUserMapping> foundProjects = retryableTendersDBDelegate.findProjectUserMappingByProjectId(projectId);
+    List<ProjectUserMapping> projects = foundProjects.stream().toList();
+
+    // Now we need to filter down to only include the project we're checking for in our potential list of projects
+    ProjectUserMapping projectMapping = projects.stream().filter(p -> p.getProject().getId().equals(projectId)).findFirst().orElse(null);
+
+    // If project has successfully been found, we can continue with the delete request
+    if (projectMapping != null) {
+        // Get a list of any events for the found project
+        Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+        // If no events have been found, we can continue with the delete request
+        if (externalEventIds.isEmpty()) {
+            retryableTendersDBDelegate.deleteProjectUserMappingByProjectId(projectId); // Delete Table Data 1 (ProjectUserMapping)
+            retryableTendersDBDelegate.deleteProcurementProjectById(projectId); // Delete Table Data 2 (ProcurementProject)
+        } else {
+            throw new IllegalArgumentException("Cannot Deletes: This project has active events against it. Please delete these events in Jaggaer first, and then the CaS API, to proceed.");
+        }
+    }
+  }
+
 
 
 
