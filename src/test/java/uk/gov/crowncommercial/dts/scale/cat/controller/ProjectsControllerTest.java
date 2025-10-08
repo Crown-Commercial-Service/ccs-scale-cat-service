@@ -13,6 +13,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -246,6 +247,21 @@ class ProjectsControllerTest {
 
     verify(procurementProjectService, times(1)).updateProcurementProjectName(PROC_PROJECT_ID,
         projectName.getName(), PRINCIPAL);
+  }
+
+  @Test
+  void deleteProject_200_OK() throws Exception {
+    mockMvc
+            .perform(delete(TENDERS_PROJECTS + PROC_PROJECT_ID)
+                    .with(validJwtReqPostProcessor)
+                    .contentType(APPLICATION_JSON))
+            .andDo(print())
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(APPLICATION_JSON))
+            .andExpect(content().string(Constants.OK_MSG));
+
+    verify(procurementProjectService, times(1))
+            .deleteProject(PROC_PROJECT_ID, PRINCIPAL);
   }
 
   /*

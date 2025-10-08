@@ -992,9 +992,9 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
-     * Delete an event by ID for a given project. Returns long for the number of rows updated (either 0 or 1).
+     * Delete an event by ID for a given project in the CaS Database. Returns long for the number of rows updated (either 0 or 1).
      * <p>
-     * Jaggaer event first needs to be deleted, and then call this function to delete it in CaS DB too.
+     * Jaggaer event must not exist, or needs to be deleted first, and then call this function to delete it in CaS DB too.
      *
      * @param procId
      * @param eventId

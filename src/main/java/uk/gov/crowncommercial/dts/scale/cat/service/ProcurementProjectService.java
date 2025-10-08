@@ -811,11 +811,18 @@ public class ProcurementProjectService {
 
         // If no events have been found, we can continue with the delete request
         if (externalEventIds.isEmpty()) {
-            retryableTendersDBDelegate.deleteProjectUserMappingByProjectId(projectId); // Delete Table Data 1 (ProjectUserMapping)
-            retryableTendersDBDelegate.deleteProcurementProjectById(projectId); // Delete Table Data 2 (ProcurementProject)
+            // Soft delete (set deleted true) Table Data 1 (ProjectUserMapping)
+            projectMapping.setDeleted(true); // If hard delete needed instead, use: 'retryableTendersDBDelegate.deleteProjectUserMappingByProjectId(projectId);'
+            projectMapping.setTimestamps(Timestamps.updateTimestamps(projectMapping.getTimestamps(), principal));
+            retryableTendersDBDelegate.save(projectMapping);
+
+            // Soft Delete (cancel project) Table Data 2 (ProcurementProject)
+            closeProcurementProject(projectId, TerminationType.CANCELLED, principal); // If hard delete needed instead, use: 'retryableTendersDBDelegate.deleteProcurementProjectById(projectId);'
         } else {
-            throw new IllegalArgumentException("Cannot Deletes: This project has active events against it. Please delete these events in Jaggaer first, and then the CaS API, to proceed.");
+            throw new IllegalArgumentException("Cannot Delete: This project has active events against it. Please delete these events in Jaggaer and  the CaS API, to proceed.");
         }
+    } else {
+        throw new ResourceNotFoundException("Cannot Delete: Project could not be found.");
     }
   }
 
