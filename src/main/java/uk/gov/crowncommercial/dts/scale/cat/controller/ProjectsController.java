@@ -226,7 +226,7 @@ public class ProjectsController extends AbstractRestController {
 
   @DeleteMapping("/{proc-id}")
   @TrackExecutionTime
-  public String deleteProject(@PathVariable("proc-id") final Integer procId, @PathVariable("user-id") final String userId, final JwtAuthenticationToken authentication) {
+  public String deleteProject(@PathVariable("proc-id") final Integer procId, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
 
     log.info("deleteProject invoked on behalf of principal: {}", principal);
