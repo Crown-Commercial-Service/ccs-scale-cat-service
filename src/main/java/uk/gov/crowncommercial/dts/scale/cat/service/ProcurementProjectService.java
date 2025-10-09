@@ -790,7 +790,7 @@ public class ProcurementProjectService {
       projectPackageSummary.activeEvent(eventSummary);
     }
 
-    // Set user role based on ProjectUserMapping flags
+    // Set user role based on ProjectUserMapping flags matched
     ProjectPackageSummary.UserRoleEnum userRole = getUserRoleFromMapping(mapping);
     projectPackageSummary.setUserRole(userRole);
 
