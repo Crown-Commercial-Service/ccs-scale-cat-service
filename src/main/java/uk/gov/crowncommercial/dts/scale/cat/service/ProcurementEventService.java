@@ -992,6 +992,30 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
+     * Delete an event by ID for a given project in the CaS Database.
+     * <p>
+     * Jaggaer event must not exist, or needs to be deleted first, and then call this function to delete it in CaS DB too.
+     *
+     * @param procId
+     * @param eventId
+     */
+    public void deleteEvent(final Integer procId, final String eventId, final String principal) {
+        log.debug("Delete event '{}' from project '{}'", eventId, procId);
+
+        // Use validation service to confirm the given Project and Event exists, otherwise error thrown to the calling client
+        // Then convert Event ID into usable ocid format
+        ProcurementEvent event = validationService.validateProjectAndEventIds(procId, eventId);
+        OCID eventOCID = validationService.validateEventId(eventId);
+
+        if (event != null && eventOCID != null) {
+            // Delete the event in the database. Returns long (integer) for number of rows updated, which will be 1 or 0 depending on if a successful deletion or not respectively
+            retryableTendersDBDelegate.deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
+        } else {
+            throw new ResourceNotFoundException("Event cannot be found.");
+        }
+    }
+
+    /**
      * Validates and, if necessary, refreshes supplier details across Agreement Service and Jaegger to bring them into line
      */
     public void jaggaerSupplierRefresh(Integer procId, String eventId, String principal, ProcurementEvent procurementEvent, ExportRfxResponse exportRfxResponse) {

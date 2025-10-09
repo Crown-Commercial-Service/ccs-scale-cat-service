@@ -491,6 +491,17 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  @DeleteMapping("/{eventID}")
+  @TrackExecutionTime
+  public StringValueResponse deleteEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteSupplier invoked on behalf of principal: {}", principal);
+
+    procurementEventService.deleteEvent(procId, eventId, principal);
+
+    return new StringValueResponse("OK");
+  }
+
   private ZipEntry getZipEntryForSupplierResponse(SupplierAttachmentResponse supplierAttachmentResponse, ZipOutputStream zipOutputStream, ZipEntry zipEntry) throws IOException {
     List<ParameterInfo> parameterInfoList =
             supplierAttachmentResponse.getParameterInfoList();

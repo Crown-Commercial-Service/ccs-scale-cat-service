@@ -797,6 +797,39 @@ public class ProcurementProjectService {
     return Optional.of(projectPackageSummary);
   }
 
+  public void deleteProject(final Integer projectId, final String principal) {
+    log.debug("delete Project with Project ID: {}", projectId);
+
+    // First find given project, to check if it has any active events
+    // This is an admin user - we need to lookup by the project ID without worrying about the owning user
+    Set<ProjectUserMapping> foundProjects = retryableTendersDBDelegate.findProjectUserMappingByProjectId(projectId);
+    List<ProjectUserMapping> projects = foundProjects.stream().toList();
+
+    // Now we need to filter down to only include the project we're checking for in our potential list of projects
+    ProjectUserMapping projectMapping = projects.stream().filter(p -> p.getProject().getId().equals(projectId)).findFirst().orElse(null);
+
+    // If project has successfully been found, we can continue with the delete request
+    if (projectMapping != null) {
+        // Get a list of any events for the found project
+        Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+        // If no events have been found, we can continue with the delete request
+        if (externalEventIds.isEmpty()) {
+            // Soft delete (set deleted true) Table Data 1 (ProjectUserMapping)
+            projectMapping.setDeleted(true); // If hard delete needed instead, use: 'retryableTendersDBDelegate.deleteProjectUserMappingByProjectId(projectId);'
+            projectMapping.setTimestamps(Timestamps.updateTimestamps(projectMapping.getTimestamps(), principal));
+            retryableTendersDBDelegate.save(projectMapping);
+
+            // Soft Delete (cancel project) Table Data 2 (ProcurementProject)
+            closeProcurementProject(projectId, TerminationType.CANCELLED, principal); // If hard delete needed instead, use: 'retryableTendersDBDelegate.deleteProcurementProjectById(projectId);'
+        } else {
+            throw new IllegalArgumentException("Cannot Delete: This project has active events against it. Please delete these events in Jaggaer and  the CaS API, to proceed.");
+        }
+    } else {
+        throw new ResourceNotFoundException("Cannot Delete: Project could not be found.");
+    }
+  }
+
 
 
 
