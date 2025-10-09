@@ -790,6 +790,10 @@ public class ProcurementProjectService {
       projectPackageSummary.activeEvent(eventSummary);
     }
 
+    // Set user role based on ProjectUserMapping flags matched
+    ProjectPackageSummary.UserRoleEnum userRole = getUserRoleFromMapping(mapping);
+    projectPackageSummary.setUserRole(userRole);
+
     return Optional.of(projectPackageSummary);
   }
 
@@ -1308,6 +1312,25 @@ public class ProcurementProjectService {
       odsDoc.close();
 
       return new ByteArrayInputStream(baos.toByteArray());
+    }
+  }
+
+  /**
+   * Determines the user's role based on ProjectUserMapping flags.
+   * Role priority: Moderator > Assessor > Collaborator > Owner (default)
+   *
+   * @param projectUserMapping the project user mapping containing role flags
+   * @return UserRoleEnum the determined user role
+   */
+  private ProjectPackageSummary.UserRoleEnum getUserRoleFromMapping(final ProjectUserMapping projectUserMapping) {
+    if (projectUserMapping.isModerator()) {
+      return ProjectPackageSummary.UserRoleEnum.MODERATOR;
+    } else if (projectUserMapping.isAssessor()) {
+      return ProjectPackageSummary.UserRoleEnum.ASSESSOR;
+    } else if (projectUserMapping.isCollaborator()) {
+      return ProjectPackageSummary.UserRoleEnum.COLLABORATOR;
+    } else {
+      return ProjectPackageSummary.UserRoleEnum.OWNER;
     }
   }
 }
