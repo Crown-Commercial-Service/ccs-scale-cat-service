@@ -25,6 +25,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -1286,27 +1289,25 @@ public class ProcurementProjectService {
   protected InputStream convertCsvToXlsx(InputStream csvInputStream) throws IOException {
 
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8));
+         CSVParser csvParser = CSVFormat.DEFAULT
+                 .withQuote('"')
+                 .withIgnoreSurroundingSpaces()
+                 .parse(reader);
          Workbook workbook = new XSSFWorkbook()) {
 
       Sheet sheet = workbook.createSheet("CSV Data");
+      int rowIdx = 0;
 
-      String line;
-      int rowNum = 0;
-
-      while ((line = reader.readLine()) != null) {
-        Row row = sheet.createRow(rowNum++);
-        String[] values = line.split(","); // simple CSV split
-
-        for (int i = 0; i < values.length; i++) {
+      for (CSVRecord record : csvParser) {
+        Row row = sheet.createRow(rowIdx++);
+        for (int i = 0; i < record.size(); i++) {
           Cell cell = row.createCell(i);
-          cell.setCellValue(values[i].trim());
+          cell.setCellValue(record.get(i));
         }
       }
 
-      // Write to memory instead of file
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       workbook.write(baos);
-
       return new ByteArrayInputStream(baos.toByteArray());
     }
   }

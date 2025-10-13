@@ -1,32 +1,22 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.mock;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.*;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.Answers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import software.amazon.awssdk.services.s3.S3Client;
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -34,21 +24,31 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ProcurementProjectServiceTest {
@@ -295,5 +295,43 @@ class ProcurementProjectServiceTest {
 
     workbook.close();
     xlsxStream.close();
+  }
+
+  @Test
+  void convertCsvToXlsx_ShouldHandleCommasInsideQuotes() throws Exception {
+    // Arrange: CSV input with commas inside quotes
+    String csvData = """
+                Name,Email,Notes
+                "John Doe","john@example.com","Hello, world, this has commas"
+                "Jane Smith","jane@example.com","Another, value, with, commas"
+                """;
+
+    InputStream csvInputStream = new ByteArrayInputStream(csvData.getBytes(StandardCharsets.UTF_8));
+
+    // Act
+    InputStream xlsxInputStream = procurementProjectService.convertCsvToXlsx(csvInputStream);
+
+    // Read back with Apache POI
+    try (Workbook workbook = WorkbookFactory.create(xlsxInputStream)) {
+      Sheet sheet = workbook.getSheetAt(0);
+
+      // Header row
+      Row headerRow = sheet.getRow(0);
+      assertEquals("Name", headerRow.getCell(0).getStringCellValue());
+      assertEquals("Email", headerRow.getCell(1).getStringCellValue());
+      assertEquals("Notes", headerRow.getCell(2).getStringCellValue());
+
+      // First record
+      Row row1 = sheet.getRow(1);
+      assertEquals("John Doe", row1.getCell(0).getStringCellValue());
+      assertEquals("john@example.com", row1.getCell(1).getStringCellValue());
+      assertEquals("Hello, world, this has commas", row1.getCell(2).getStringCellValue());
+
+      // Second record
+      Row row2 = sheet.getRow(2);
+      assertEquals("Jane Smith", row2.getCell(0).getStringCellValue());
+      assertEquals("jane@example.com", row2.getCell(1).getStringCellValue());
+      assertEquals("Another, value, with, commas", row2.getCell(2).getStringCellValue());
+    }
   }
 }
