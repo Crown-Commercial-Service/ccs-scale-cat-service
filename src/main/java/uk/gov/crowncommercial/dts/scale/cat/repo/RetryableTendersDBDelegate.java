@@ -111,8 +111,8 @@ public class RetryableTendersDBDelegate {
 
   @TendersRetryable
   @Transactional
-  public long deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
-    return procurementEventRepo.deleteByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
+  public void deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
+    procurementEventRepo.deleteByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
   }
 
   @TendersRetryable
@@ -386,8 +386,8 @@ public class RetryableTendersDBDelegate {
 
   @TendersRetryable
   @Transactional
-  public long deleteProjectUserMappingByProjectId(final Integer projectId) {
-    return projectUserMappingRepo.deleteByProjectId(projectId);
+  public void deleteProjectUserMappingByProjectId(final Integer projectId) {
+    projectUserMappingRepo.deleteByProjectId(projectId);
   }
 
   @TendersRetryable
