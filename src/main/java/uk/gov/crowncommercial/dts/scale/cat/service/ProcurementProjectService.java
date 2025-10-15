@@ -823,8 +823,8 @@ public class ProcurementProjectService {
             projectMapping.setTimestamps(Timestamps.updateTimestamps(projectMapping.getTimestamps(), principal));
             retryableTendersDBDelegate.save(projectMapping);
 
-            // Soft Delete (cancel project) Table Data 2 (ProcurementProject)
-            closeProcurementProject(projectId, TerminationType.CANCELLED, principal); // If hard delete needed instead, use: 'retryableTendersDBDelegate.deleteProcurementProjectById(projectId);'
+            // Delete Table Data 2 (ProcurementProject)
+            retryableTendersDBDelegate.deleteProcurementProjectById(projectId);
         } else {
             throw new IllegalArgumentException("Cannot Delete: This project has active events against it. Please delete these events in Jaggaer and  the CaS API, to proceed.");
         }
