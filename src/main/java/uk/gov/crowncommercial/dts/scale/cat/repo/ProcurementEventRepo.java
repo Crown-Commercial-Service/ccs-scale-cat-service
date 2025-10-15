@@ -16,7 +16,7 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
   Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
 
-  long deleteByIdAndOcdsAuthorityNameAndOcidPrefix(
+  void deleteByIdAndOcdsAuthorityNameAndOcidPrefix(
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
 
   Set<ProcurementEvent> findByProjectId(Integer projectId);
