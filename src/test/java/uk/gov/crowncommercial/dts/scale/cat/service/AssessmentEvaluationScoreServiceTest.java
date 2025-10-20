@@ -42,8 +42,10 @@ class AssessmentEvaluationScoreServiceTest {
         testRequest.setProjectId(12345);
         testRequest.setEventId(483883);
         testRequest.setFrameworkAgreement("RM12345");
-        testRequest.setQuestionId(1);
-        testRequest.setAssessorEmailId("zahid@yopmail.com");
+        testRequest.setLot("Lot1");
+        testRequest.setQuestionId("Q-1");
+        testRequest.setQuestionText("Question text");
+        testRequest.setAssessorEmail("zahid@yopmail.com");
         testRequest.setAssessorScore(25);
         testRequest.setAssessorComment("String comment Text");
 
@@ -54,19 +56,21 @@ class AssessmentEvaluationScoreServiceTest {
                 .projectId(12345)
                 .eventId(483883)
                 .frameworkAgreement("RM12345")
-                .questionId(1)
-                .assessorEmailId("zahid@yopmail.com")
+                .lot("Lot1")
+                .questionId("Q-1")
+                .questionText("Question text")
+                .assessorEmail("zahid@yopmail.com")
                 .assessorScore(25)
                 .assessorComment("String comment Text")
-                .timestamps(timestamps)
+                .createdAt(timestamps.getCreatedAt())
                 .build();
     }
 
     @Test
     void createOrUpdateEvaluationScore_WhenScoreDoesNotExist_ShouldCreateNewScore() {
         // Given
-        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
-                anyInt(), anyInt(), anyInt(), anyString())).thenReturn(Optional.empty());
+        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
+                anyInt(), anyInt(), anyString(), anyString())).thenReturn(Optional.empty());
         when(assessmentEvaluationScoreRepo.save(any(AssessmentEvaluationScore.class))).thenReturn(testEntity);
 
         // When
@@ -80,7 +84,7 @@ class AssessmentEvaluationScoreServiceTest {
         assertEquals(testEntity.getEventId(), response.getEventId());
         assertEquals(testEntity.getFrameworkAgreement(), response.getFrameworkAgreement());
         assertEquals(testEntity.getQuestionId(), response.getQuestionId());
-        assertEquals(testEntity.getAssessorEmailId(), response.getAssessorEmailId());
+        assertEquals(testEntity.getAssessorEmail(), response.getAssessorEmail());
         assertEquals(testEntity.getAssessorScore(), response.getAssessorScore());
         assertEquals(testEntity.getAssessorComment(), response.getAssessorComment());
 
@@ -90,8 +94,8 @@ class AssessmentEvaluationScoreServiceTest {
     @Test
     void createOrUpdateEvaluationScore_WhenScoreExists_ShouldUpdateExistingScore() {
         // Given
-        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
-                anyInt(), anyInt(), anyInt(), anyString())).thenReturn(Optional.of(testEntity));
+        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
+                anyInt(), anyInt(), anyString(), anyString())).thenReturn(Optional.of(testEntity));
         when(assessmentEvaluationScoreRepo.save(any(AssessmentEvaluationScore.class))).thenReturn(testEntity);
 
         // When
@@ -123,12 +127,12 @@ class AssessmentEvaluationScoreServiceTest {
     @Test
     void getEvaluationScore_WhenScoreExists_ShouldReturnScore() {
         // Given
-        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
-                anyInt(), anyInt(), anyInt(), anyString())).thenReturn(Optional.of(testEntity));
+        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
+                anyInt(), anyInt(), anyString(), anyString())).thenReturn(Optional.of(testEntity));
 
         // When
         AssessmentEvaluationScoreResponse response = assessmentEvaluationScoreService
-                .getEvaluationScore(12345, 483883, 1, "zahid@yopmail.com");
+                .getEvaluationScore(12345, 483883, "Q-1", "zahid@yopmail.com");
 
         // Then
         assertNotNull(response);
@@ -138,12 +142,12 @@ class AssessmentEvaluationScoreServiceTest {
     @Test
     void getEvaluationScore_WhenScoreDoesNotExist_ShouldThrowException() {
         // Given
-        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
-                anyInt(), anyInt(), anyInt(), anyString())).thenReturn(Optional.empty());
+        when(assessmentEvaluationScoreRepo.findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
+                anyInt(), anyInt(), anyString(), anyString())).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(ResourceNotFoundException.class, () ->
-                assessmentEvaluationScoreService.getEvaluationScore(12345, 483883, 1, "zahid@yopmail.com"));
+                assessmentEvaluationScoreService.getEvaluationScore(12345, 483883, "Q-1", "zahid@yopmail.com"));
     }
 }
 

@@ -95,7 +95,7 @@ public class AssessmentEvaluationScoreController extends AbstractRestController 
   public ResponseEntity<List<AssessmentEvaluationScoreResponse>> getEvaluationScoresByQuestion(
       @PathVariable("project-id") final Integer projectId,
       @PathVariable("event-id") final Integer eventId,
-      @PathVariable("question-id") final Integer questionId,
+      @PathVariable("question-id") final String questionId,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
@@ -116,7 +116,7 @@ public class AssessmentEvaluationScoreController extends AbstractRestController 
   public ResponseEntity<AssessmentEvaluationScoreResponse> getEvaluationScore(
       @PathVariable("project-id") final Integer projectId,
       @PathVariable("event-id") final Integer eventId,
-      @PathVariable("question-id") final Integer questionId,
+      @PathVariable("question-id") final String questionId,
       @PathVariable("assessor-email") final String assessorEmail,
       final JwtAuthenticationToken authentication) {
 

@@ -8,7 +8,7 @@ import lombok.experimental.FieldDefaults;
  * Entity representing assessment evaluation scores
  */
 @Entity
-@Table(name = "assessment_evaluation_scores")
+@Table(name = "assessment_evaluation_score")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -30,11 +30,17 @@ public class AssessmentEvaluationScore {
   @Column(name = "framework_agreement")
   String frameworkAgreement;
 
-  @Column(name = "question_id", nullable = false)
-  Integer questionId;
+  @Column(name = "lot")
+  String lot;
 
-  @Column(name = "assessor_email_id", nullable = false)
-  String assessorEmailId;
+  @Column(name = "question_id", nullable = false)
+  String questionId;
+
+  @Column(name = "question_text")
+  String questionText;
+
+  @Column(name = "assessor_email", nullable = false)
+  String assessorEmail;
 
   @Column(name = "assessor_score")
   Integer assessorScore;
@@ -42,6 +48,9 @@ public class AssessmentEvaluationScore {
   @Column(name = "assessor_comment", columnDefinition = "TEXT")
   String assessorComment;
 
-  @Embedded
-  private Timestamps timestamps;
+  @Column(name = "created_at")
+  java.time.Instant createdAt;
+
+  @Column(name = "updated_at")
+  java.time.Instant updatedAt;
 }

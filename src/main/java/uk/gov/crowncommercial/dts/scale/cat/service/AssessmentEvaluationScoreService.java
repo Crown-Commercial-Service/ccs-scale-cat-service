@@ -31,7 +31,7 @@ public class AssessmentEvaluationScoreService {
   private final AssessmentEvaluationScoreRepo assessmentEvaluationScoreRepo;
 
   private static final String ERR_MSG_FMT_EVALUATION_SCORE_NOT_FOUND = 
-      "Assessment evaluation score not found for project [%d], event [%d], question [%d], assessor [%s]";
+      "Assessment evaluation score not found for project [%d], event [%d], question [%s], assessor [%s]";
 
   /**
    * Create or update an assessment evaluation score
@@ -41,14 +41,14 @@ public class AssessmentEvaluationScoreService {
       AssessmentEvaluationScoreRequest request, String principal) {
     
     log.info("Creating or updating evaluation score for project [{}], event [{}], question [{}], assessor [{}]", 
-        request.getProjectId(), request.getEventId(), request.getQuestionId(), request.getAssessorEmailId());
+        request.getProjectId(), request.getEventId(), request.getQuestionId(), request.getAssessorEmail());
 
     Optional<AssessmentEvaluationScore> existingScore = assessmentEvaluationScoreRepo
-        .findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
+        .findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
             request.getProjectId(), 
             request.getEventId(), 
             request.getQuestionId(), 
-            request.getAssessorEmailId());
+            request.getAssessorEmail());
 
     AssessmentEvaluationScore score;
     
@@ -57,7 +57,7 @@ public class AssessmentEvaluationScoreService {
       AssessmentEvaluationScore existing = existingScore.get();
       existing.setAssessorScore(request.getAssessorScore());
       existing.setAssessorComment(request.getAssessorComment());
-      existing.setTimestamps(updateTimestamps(existing.getTimestamps(), principal));
+      existing.setUpdatedAt(Instant.now());
       score = existing;
       log.info("Updating existing evaluation score with ID [{}]", existing.getId());
     } else {
@@ -66,11 +66,13 @@ public class AssessmentEvaluationScoreService {
           .projectId(request.getProjectId())
           .eventId(request.getEventId())
           .frameworkAgreement(request.getFrameworkAgreement())
+          .lot(request.getLot())
           .questionId(request.getQuestionId())
-          .assessorEmailId(request.getAssessorEmailId())
+          .questionText(request.getQuestionText())
+          .assessorEmail(request.getAssessorEmail())
           .assessorScore(request.getAssessorScore())
           .assessorComment(request.getAssessorComment())
-          .timestamps(createTimestamps(principal))
+          .createdAt(Instant.now())
           .build();
       log.info("Creating new evaluation score");
     }
@@ -108,7 +110,7 @@ public class AssessmentEvaluationScoreService {
     log.info("Retrieving evaluation scores for assessor [{}]", assessorEmailId);
     
     List<AssessmentEvaluationScore> scores = assessmentEvaluationScoreRepo
-        .findByAssessorEmailId(assessorEmailId);
+        .findByAssessorEmail(assessorEmailId);
     
     log.info("Found [{}] evaluation scores for assessor [{}]", scores.size(), assessorEmailId);
     
@@ -127,7 +129,7 @@ public class AssessmentEvaluationScoreService {
         projectId, eventId, assessorEmailId);
     
     List<AssessmentEvaluationScore> scores = assessmentEvaluationScoreRepo
-        .findByProjectIdAndEventIdAndAssessorEmailId(projectId, eventId, assessorEmailId);
+        .findByProjectIdAndEventIdAndAssessorEmail(projectId, eventId, assessorEmailId);
     
     log.info("Found [{}] evaluation scores for project [{}], event [{}], assessor [{}]", 
         scores.size(), projectId, eventId, assessorEmailId);
@@ -141,7 +143,7 @@ public class AssessmentEvaluationScoreService {
    * Get evaluation scores for a specific question
    */
   public List<AssessmentEvaluationScoreResponse> getEvaluationScoresByQuestion(
-      Integer projectId, Integer eventId, Integer questionId) {
+      Integer projectId, Integer eventId, String questionId) {
     
     log.info("Retrieving evaluation scores for project [{}], event [{}], question [{}]", 
         projectId, eventId, questionId);
@@ -161,13 +163,13 @@ public class AssessmentEvaluationScoreService {
    * Get a specific evaluation score
    */
   public AssessmentEvaluationScoreResponse getEvaluationScore(
-      Integer projectId, Integer eventId, Integer questionId, String assessorEmailId) {
+      Integer projectId, Integer eventId, String questionId, String assessorEmailId) {
     
     log.info("Retrieving evaluation score for project [{}], event [{}], question [{}], assessor [{}]", 
         projectId, eventId, questionId, assessorEmailId);
     
     Optional<AssessmentEvaluationScore> score = assessmentEvaluationScoreRepo
-        .findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
+        .findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
             projectId, eventId, questionId, assessorEmailId);
     
     if (score.isEmpty()) {
@@ -188,19 +190,19 @@ public class AssessmentEvaluationScoreService {
     response.setProjectId(score.getProjectId());
     response.setEventId(score.getEventId());
     response.setFrameworkAgreement(score.getFrameworkAgreement());
+    response.setLot(score.getLot());
     response.setQuestionId(score.getQuestionId());
-    response.setAssessorEmailId(score.getAssessorEmailId());
+    response.setQuestionText(score.getQuestionText());
+    response.setAssessorEmail(score.getAssessorEmail());
     response.setAssessorScore(score.getAssessorScore());
     response.setAssessorComment(score.getAssessorComment());
     
     // Convert Instant to OffsetDateTime
-    if (score.getTimestamps() != null) {
-      if (score.getTimestamps().getCreatedAt() != null) {
-        response.setCreatedAt(score.getTimestamps().getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
-      }
-      if (score.getTimestamps().getUpdatedAt() != null) {
-        response.setUpdatedAt(score.getTimestamps().getUpdatedAt().atOffset(java.time.ZoneOffset.UTC));
-      }
+    if (score.getCreatedAt() != null) {
+      response.setCreatedAt(score.getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
+    }
+    if (score.getUpdatedAt() != null) {
+      response.setUpdatedAt(score.getUpdatedAt().atOffset(java.time.ZoneOffset.UTC));
     }
     
     return response;

@@ -23,19 +23,19 @@ public interface AssessmentEvaluationScoreRepo extends JpaRepository<AssessmentE
   /**
    * Find evaluation scores for a specific assessor
    */
-  List<AssessmentEvaluationScore> findByAssessorEmailId(String assessorEmailId);
+  List<AssessmentEvaluationScore> findByAssessorEmail(String assessorEmail);
 
   /**
    * Find evaluation scores for a specific project, event, and assessor
    */
-  List<AssessmentEvaluationScore> findByProjectIdAndEventIdAndAssessorEmailId(
-      Integer projectId, Integer eventId, String assessorEmailId);
+  List<AssessmentEvaluationScore> findByProjectIdAndEventIdAndAssessorEmail(
+      Integer projectId, Integer eventId, String assessorEmail);
 
   /**
    * Find evaluation score for a specific project, event, question, and assessor
    */
-  Optional<AssessmentEvaluationScore> findByProjectIdAndEventIdAndQuestionIdAndAssessorEmailId(
-      Integer projectId, Integer eventId, Integer questionId, String assessorEmailId);
+  Optional<AssessmentEvaluationScore> findByProjectIdAndEventIdAndQuestionIdAndAssessorEmail(
+      Integer projectId, Integer eventId, String questionId, String assessorEmail);
 
   /**
    * Find evaluation scores for a specific question across all assessors
@@ -45,7 +45,7 @@ public interface AssessmentEvaluationScoreRepo extends JpaRepository<AssessmentE
   List<AssessmentEvaluationScore> findByProjectIdAndEventIdAndQuestionId(
       @Param("projectId") Integer projectId, 
       @Param("eventId") Integer eventId, 
-      @Param("questionId") Integer questionId);
+      @Param("questionId") String questionId);
 }
 
 
