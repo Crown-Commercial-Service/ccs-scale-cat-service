@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.35.5</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.35.10</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
