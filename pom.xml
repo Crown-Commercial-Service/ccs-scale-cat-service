@@ -651,6 +651,10 @@
                             <token>javax.annotation</token>
                             <value>jakarta.annotation</value>
                         </replacement>
+                        <replacement>
+                            <token>javax.validation.constraints</token>
+                            <value>jakarta.validation.constraints</value>
+                        </replacement>
                     </replacements>
                 </configuration>
             </plugin>
