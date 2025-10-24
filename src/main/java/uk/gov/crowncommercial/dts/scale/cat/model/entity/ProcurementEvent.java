@@ -95,6 +95,12 @@ public class ProcurementEvent {
   @Column(name = "updated_at")
   Instant updatedAt;
 
+  @Column(name = "cancellation_reason")
+  String cancellationReason;
+
+  @Column(name = "cancellation_reason_detail")
+  String cancellationReasonDetail;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "procurement_template_payload")
   String procurementTemplatePayload;

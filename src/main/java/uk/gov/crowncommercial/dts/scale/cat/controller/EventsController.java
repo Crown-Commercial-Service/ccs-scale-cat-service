@@ -397,7 +397,8 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
 
-    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal);
+    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, 
+                                        type.getCancellationReason(), type.getCancellationReasonDetail());
 
     return new StringValueResponse("OK");
   }

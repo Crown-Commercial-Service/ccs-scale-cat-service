@@ -85,6 +85,15 @@ public class EventTransitionService {
    */
   @Transactional
   public void terminateEvent(final Integer procId, final String eventId, final TerminationType type, final String principal) {
+    terminateEvent(procId, eventId, type, principal, null, null);
+  }
+
+  /**
+   * Terminate Event in Jaggaer with cancellation reasons
+   */
+  @Transactional
+  public void terminateEvent(final Integer procId, final String eventId, final TerminationType type, final String principal, 
+                           final String cancellationReason, final String cancellationReasonDetail) {
     var user = userProfileService
             .resolveBuyerUserProfile(principal)
             .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
@@ -92,7 +101,7 @@ public class EventTransitionService {
     var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId);
 
     if (terminatingEvent.isTendersDBOnly()) {
-      updateDbEvent(terminatingEvent, principal, type.name());
+      updateDbEvent(terminatingEvent, principal, type.name(), cancellationReason, cancellationReasonDetail);
     } else {
       final var invalidateEventRequest =
           InvalidateEventRequest.builder()
@@ -104,7 +113,7 @@ public class EventTransitionService {
       log.info("Invalidate event request: {}", invalidateEventRequest);
       jaggaerService.invalidateEvent(invalidateEventRequest);
       // update status
-      updateStatusAndDates(principal, terminatingEvent, type);
+      updateStatusAndDates(principal, terminatingEvent, type, cancellationReason, cancellationReasonDetail);
     }
   }
 
@@ -141,6 +150,12 @@ public class EventTransitionService {
 
   public void updateStatusAndDates(
       final String principal, final ProcurementEvent procurementEvent, TerminationType type) {
+    updateStatusAndDates(principal, procurementEvent, type, null, null);
+  }
+
+  public void updateStatusAndDates(
+      final String principal, final ProcurementEvent procurementEvent, TerminationType type,
+      final String cancellationReason, final String cancellationReasonDetail) {
 
     var exportRfxResponse = getSingleRfx(procurementEvent.getExternalEventId());
 
@@ -154,6 +169,14 @@ public class EventTransitionService {
     // fixed for SCAT-6566 - Db event close date takes precedence
     procurementEvent.setCloseDate(Instant.now());
     procurementEvent.setTenderStatus(type.getValue());
+
+    // Set cancellation reasons if provided
+    if (cancellationReason != null) {
+      procurementEvent.setCancellationReason(cancellationReason);
+    }
+    if (cancellationReasonDetail != null) {
+      procurementEvent.setCancellationReasonDetail(cancellationReasonDetail);
+    }
 
     retryableTendersDBDelegate.save(procurementEvent);
   }
@@ -182,10 +205,24 @@ public class EventTransitionService {
   }
 
   private void updateDbEvent(ProcurementEvent existingEvent, String principal, String status) {
+    updateDbEvent(existingEvent, principal, status, null, null);
+  }
+
+  private void updateDbEvent(ProcurementEvent existingEvent, String principal, String status,
+                           String cancellationReason, String cancellationReasonDetail) {
     existingEvent.setTenderStatus(status);
     existingEvent.setUpdatedAt(Instant.now());
     existingEvent.setUpdatedBy(principal);
     existingEvent.setCloseDate(Instant.now());
+    
+    // Set cancellation reasons if provided
+    if (cancellationReason != null) {
+      existingEvent.setCancellationReason(cancellationReason);
+    }
+    if (cancellationReasonDetail != null) {
+      existingEvent.setCancellationReasonDetail(cancellationReasonDetail);
+    }
+    
     retryableTendersDBDelegate.save(existingEvent);
   }
 
