@@ -753,6 +753,14 @@ public class ProcurementProjectService {
           Optional.ofNullable(dbEvent.getAssessmentId()));
 
           eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
+          
+          // Set cancellation reasons if they exist
+          if (dbEvent.getCancellationReason() != null) {
+            eventSummary.setCancellationReason(dbEvent.getCancellationReason());
+          }
+          if (dbEvent.getCancellationReasonDetail() != null) {
+            eventSummary.setCancellationReasonDetail(dbEvent.getCancellationReasonDetail());
+          }
 
 
     } else {
@@ -767,6 +775,14 @@ public class ProcurementProjectService {
                 ? TenderStatus.fromValue(dbEvent.getTenderStatus())
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
+            
+        // Set cancellation reasons if they exist
+        if (dbEvent.getCancellationReason() != null) {
+          eventSummary.setCancellationReason(dbEvent.getCancellationReason());
+        }
+        if (dbEvent.getCancellationReasonDetail() != null) {
+          eventSummary.setCancellationReasonDetail(dbEvent.getCancellationReasonDetail());
+        }
 
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
