@@ -108,6 +108,17 @@ public class TendersAPIModelUtils {
       eventDetailNonOCDS.setBuyerQuestions(List.copyOf(buyerQuestions));
     }
     eventDetailNonOCDS.setDashboardStatus(getDashboardStatus(rfxSetting,procurementEvent));
+    
+    // Set cancellation reasons if they exist
+    if (procurementEvent.getCancellationReason() != null) {
+      eventDetailNonOCDS.setCancellationReason(procurementEvent.getCancellationReason());
+      log.debug("Set cancellationReason: {}", procurementEvent.getCancellationReason());
+    }
+    if (procurementEvent.getCancellationReasonDetail() != null) {
+      eventDetailNonOCDS.setCancellationReasonDetail(procurementEvent.getCancellationReasonDetail());
+      log.debug("Set cancellationReasonDetail: {}", procurementEvent.getCancellationReasonDetail());
+    }
+    
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
     if(null != procurementEvent.getTemplateId())

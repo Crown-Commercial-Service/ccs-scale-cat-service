@@ -472,9 +472,22 @@ public class ProcurementEventService implements EventService {
      */
     public EventDetail getEvent(final Integer projectId, final String eventId) {
         var event = validationService.validateProjectAndEventIds(projectId, eventId);
-        var exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
+        
+        // Try to get RFX data, but handle cases where it might not be available (e.g., closed events)
+        ExportRfxResponse exportRfxResponse = null;
+        RfxSetting rfxSetting = null;
+        
+        try {
+            if (event.getExternalEventId() != null) {
+                exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
+                rfxSetting = exportRfxResponse != null ? exportRfxResponse.getRfxSetting() : null;
+            }
+        } catch (Exception e) {
+            log.warn("Could not retrieve RFX data for event {}: {}", event.getExternalEventId(), e.getMessage());
+            // Continue with null rfxSetting - buildEventDetail can handle this
+        }
 
-        return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event,
+        return tendersAPIModelUtils.buildEventDetail(rfxSetting, event,
                 event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
                         : Collections.emptySet());
     }
