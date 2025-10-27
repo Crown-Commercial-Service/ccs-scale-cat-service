@@ -14,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
+import org.odftoolkit.simple.SpreadsheetDocument;
+import org.odftoolkit.simple.table.Table;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.reactive.function.client.WebClient;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -258,6 +260,91 @@ class ProcurementProjectServiceTest {
     assertEquals("PK\u0003\u0004", zipSignature, "ODS file should start with ZIP signature");
 
     odsStream.close();
+  }
+
+  @Test
+  void convertCsvToOds_ShouldReturnValidData() throws Exception {
+    // Given: a simple CSV content
+    String csvContent = "Name,Email,Age\nJohn,john@example.com,30\nJane,jane@example.com,25";
+
+    // When: converting CSV to ODS
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+    csvInputStream.close();
+
+    // Then: the output stream should not be null
+    assertNotNull(odsStream, "ODS input stream should not be null");
+    SpreadsheetDocument odsDoc = SpreadsheetDocument.loadDocument(odsStream);
+    odsStream.close();
+
+    Table table = odsDoc.getSheetByIndex(0);
+    assertEquals("CSV Data", table.getTableName());
+
+    // Check first row content
+    int rowIndex = 0;
+
+    assertEquals("Name", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("Email", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Age", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check second row content
+    rowIndex++;
+
+    assertEquals("John", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("john@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("30", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check third row content
+    rowIndex++;
+
+    assertEquals("Jane", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("jane@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("25", table.getCellByPosition(2, rowIndex).getStringValue());
+  }
+
+  @Test
+  void convertCsvToOds_ShouldHandleCommasInsideQuotes() throws Exception {
+    // Arrange: CSV input with commas inside quotes
+    String csvContent = """
+                Name,Email,Notes
+                "John Doe","john@example.com","Hello, world, this has commas"
+                "Jane Smith","jane@example.com","Another, value, with, commas"
+                """;
+
+    // When: converting CSV to ODS
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+    csvInputStream.close();
+
+    // Then: the output stream should not be null
+    assertNotNull(odsStream, "ODS input stream should not be null");
+
+    SpreadsheetDocument odsDoc = SpreadsheetDocument.loadDocument(odsStream);
+    odsStream.close();
+
+    Table table = odsDoc.getSheetByIndex(0);
+    assertEquals("CSV Data", table.getTableName());
+
+    // Check first row content
+    int rowIndex = 0;
+
+    assertEquals("Name", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("Email", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Notes", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check second row content
+    rowIndex++;
+
+    assertEquals("John Doe", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("john@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Hello, world, this has commas", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check third row content
+    rowIndex++;
+
+    assertEquals("Jane Smith", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("jane@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Another, value, with, commas", table.getCellByPosition(2, rowIndex).getStringValue());
   }
 
   @Test
