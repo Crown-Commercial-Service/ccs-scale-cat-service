@@ -1259,7 +1259,7 @@ public class ProcurementProjectService {
   }
   
   /**
-   * Download all oppertunities data from s3
+   * Download all opportunities data from s3
    * 
    */
   public InputStream downloadProjectsData(String fileType) {
@@ -1311,37 +1311,29 @@ public class ProcurementProjectService {
   }
 
   public InputStream convertCsvToOds(InputStream csvInputStream) throws Exception {
-    // Read CSV
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8))) {
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8));
+         CSVParser csvParser = CSVFormat.DEFAULT
+                 .withQuote('"')
+                 .withIgnoreSurroundingSpaces()
+                 .parse(reader);
+         SpreadsheetDocument odsDoc = SpreadsheetDocument.newSpreadsheetDocument()) {
 
-      // Create new ODS document (Simple API)
-      SpreadsheetDocument odsDoc = SpreadsheetDocument.newSpreadsheetDocument();
       Table sheet = odsDoc.getSheetByIndex(0);
       sheet.setTableName("CSV Data");
 
-      String line;
       int rowIndex = 0;
 
-      while ((line = reader.readLine()) != null) {
-        // split on commas but ignore commas inside quotes
-        String[] values = CSV_SPLIT_REGEX.split(line, -1);
-        for (int colIndex = 0; colIndex < values.length; colIndex++) {
-          String cellValue = values[colIndex].trim();
-          // remove surrounding quotes if present
-          if (cellValue.length() >= 2 && cellValue.startsWith("\"") && cellValue.endsWith("\"")) {
-            cellValue = cellValue.substring(1, cellValue.length() - 1).replace("\"\"", "\"");
+      for (CSVRecord record : csvParser) {
+          for (int colIndex = 0; colIndex < record.size(); colIndex++) {
+              // set cell value via Simple API
+              sheet.getCellByPosition(colIndex, rowIndex).setStringValue(record.get(colIndex));
           }
 
-          // set cell value via Simple API
-          sheet.getCellByPosition(colIndex, rowIndex).setStringValue(cellValue);
-        }
-        rowIndex++;
+          rowIndex++;
       }
 
-      // Write to in-memory byte array and return InputStream
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       odsDoc.save(baos);
-      odsDoc.close();
 
       return new ByteArrayInputStream(baos.toByteArray());
     }
