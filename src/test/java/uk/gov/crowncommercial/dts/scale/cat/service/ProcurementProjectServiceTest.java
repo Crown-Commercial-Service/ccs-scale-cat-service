@@ -332,7 +332,7 @@ class ProcurementProjectServiceTest {
     assertEquals("Email", table.getCellByPosition(1, rowIndex).getStringValue());
     assertEquals("Notes", table.getCellByPosition(2, rowIndex).getStringValue());
 
-    // Check first row content
+    // Check second row content
     rowIndex++;
 
     assertEquals("John Doe", table.getCellByPosition(0, rowIndex).getStringValue());
