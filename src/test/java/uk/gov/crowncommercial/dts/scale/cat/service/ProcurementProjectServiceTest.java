@@ -348,6 +348,64 @@ class ProcurementProjectServiceTest {
   }
 
   @Test
+  void convertCsvToOds_ShouldHandleQuotedMultiLineStrings() throws Exception {
+    // Arrange: CSV input with quoted multi-line strings
+    String csvContent = """
+Field1,Field2,Field3
+123,"some text
+",testing
+456,\"\"\"triple quoted text\"\"\",testing
+789,"line1
+
+line2
+
+line3",testing
+    """;
+
+    // When: converting CSV to ODS
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+    csvInputStream.close();
+
+    // Then: the output stream should not be null
+    assertNotNull(odsStream, "ODS output stream should not be null");
+
+    SpreadsheetDocument odsDoc = SpreadsheetDocument.loadDocument(odsStream);
+    odsStream.close();
+
+    Table table = odsDoc.getSheetByIndex(0);
+    assertEquals("CSV Data", table.getTableName());
+
+    // Check first row content
+    int rowIndex = 0;
+
+    assertEquals("Field1", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("Field2", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Field3", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check second row content
+    rowIndex++;
+
+    assertEquals("123", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("some text", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("testing", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check third row content
+    rowIndex++;
+
+    assertEquals("456", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("\"triple quoted text\"", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("testing", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check forth row content
+    rowIndex++;
+
+    assertEquals("789", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("line1\n\nline2\n\nline3", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("testing", table.getCellByPosition(2, rowIndex).getStringValue());
+  }
+
+  @Test
   void convertCsvToXlsx_ShouldThrowOnNullInput() {
     // Expect NullPointerException if input is null
     assertThrows(NullPointerException.class, () -> procurementProjectService.convertCsvToXlsx(null));

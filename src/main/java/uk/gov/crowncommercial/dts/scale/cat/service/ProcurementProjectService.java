@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.csv.QuoteMode;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -1330,7 +1331,9 @@ public class ProcurementProjectService {
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8));
          CSVParser csvParser = CSVFormat.DEFAULT
                  .withQuote('"')
+                 .withTrim()
                  .withIgnoreSurroundingSpaces()
+                 .withQuoteMode(QuoteMode.MINIMAL)
                  .parse(reader);
          SpreadsheetDocument odsDoc = SpreadsheetDocument.newSpreadsheetDocument()) {
 
