@@ -44,7 +44,7 @@
         <shedlock.version>6.10.0</shedlock.version>
         <spring-boot.version>3.5.7</spring-boot.version>
         <jose.version>0.9.6</jose.version>
-        <jsonpath.version>2.10.0</jsonpath.version>
+        <jsonpath.version>2.9.0</jsonpath.version>
         <logback.version>1.5.20</logback.version>
         <feignclient.version>4.3.0</feignclient.version>
         <ehcache.version>3.11.1</ehcache.version>
