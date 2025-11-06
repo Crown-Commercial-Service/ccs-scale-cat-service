@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.36.2</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.37.3</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -38,8 +38,8 @@
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.21.2</jsoup.version>
-        <hibernate.version>6.6.31.Final</hibernate.version>
-        <junitapi.version>6.0.0</junitapi.version>
+        <hibernate.version>6.6.32.Final</hibernate.version>
+        <junitapi.version>6.0.1</junitapi.version>
         <opensearch.version>2.0.2</opensearch.version>
         <shedlock.version>6.10.0</shedlock.version>
         <spring-boot.version>3.5.7</spring-boot.version>
@@ -55,7 +55,7 @@
         <spring.version>6.5.6</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.1</compiler.version>
-        <cucumber.version>7.30.0</cucumber.version>
+        <cucumber.version>7.31.0</cucumber.version>
         <h2.version>2.4.240</h2.version>
     </properties>
 
@@ -650,10 +650,6 @@
                         <replacement>
                             <token>javax.annotation</token>
                             <value>jakarta.annotation</value>
-                        </replacement>
-                        <replacement>
-                            <token>javax.validation.constraints</token>
-                            <value>jakarta.validation.constraints</value>
                         </replacement>
                     </replacements>
                 </configuration>
