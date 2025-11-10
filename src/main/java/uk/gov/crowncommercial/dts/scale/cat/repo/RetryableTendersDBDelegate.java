@@ -87,6 +87,12 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  @Transactional
+  public void deleteProcurementProjectById(final Integer id) {
+      procurementProjectRepo.deleteById(id);
+  }
+
+  @TendersRetryable
   public List<ProcurementProject> findByExternalProjectIdIn(final Set<String> externalProjectIds) {
     return procurementProjectRepo.findByExternalProjectIdIn(externalProjectIds);
   }
@@ -101,6 +107,12 @@ public class RetryableTendersDBDelegate {
       final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
     return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
         eventIdKey, ocdsAuthorityName, ocidPrefix);
+  }
+
+  @TendersRetryable
+  @Transactional
+  public void deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
+    procurementEventRepo.deleteByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
   }
 
   @TendersRetryable
@@ -370,6 +382,12 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public Set<ProjectUserMapping> findProjectUserMappingByProjectId(final Integer projectId) {
     return projectUserMappingRepo.findByProjectId(projectId);
+  }
+
+  @TendersRetryable
+  @Transactional
+  public void deleteProjectUserMappingByProjectId(final Integer projectId) {
+    projectUserMappingRepo.deleteByProjectId(projectId);
   }
 
   @TendersRetryable

@@ -22,8 +22,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuditLogServiceTest {
 
-    private static final String FROM_DATE = "2025-09-13 10:00:17.656";
-    private static final String TO_DATE = "2025-09-16 16:12:17.656";
+    private static final String FROM_DATE = "2025-09-13T10:00";
+    private static final String TO_DATE = "2025-09-16T16:12";
+
+    private final DateTimeFormatter formatterForParamsDate =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
 
     @Mock
     private AuditLogRepo repository;
@@ -49,8 +52,12 @@ class AuditLogServiceTest {
 
     @Test
     void getAuditLogsWithDate_ShouldReturnMappedDtos() {
+
         // Arrange
-        when(repository.findAll()).thenReturn(List.of(auditLog));
+        when(repository.findByTimestampBetweenOrderByTimestampDesc(
+                Timestamp.valueOf(LocalDateTime.parse(FROM_DATE, formatterForParamsDate)),
+                Timestamp.valueOf(LocalDateTime.parse(TO_DATE, formatterForParamsDate))))
+                .thenReturn(List.of(auditLog));
 
         // Act
         List<AuditLogDto> result = service.getAuditLogsWithDate(FROM_DATE, TO_DATE);
@@ -64,7 +71,10 @@ class AuditLogServiceTest {
         assertEquals("{\"email\":\"new@example.com\"}", dto.afterUpdate);
         assertEquals("Updated email", dto.reason);
 
-        verify(repository, times(1)).findAll();
+        verify(repository, times(1))
+                .findByTimestampBetweenOrderByTimestampDesc(
+                        Timestamp.valueOf(LocalDateTime.parse(FROM_DATE, formatterForParamsDate)),
+                        Timestamp.valueOf(LocalDateTime.parse(TO_DATE, formatterForParamsDate)));
     }
 
     @Test

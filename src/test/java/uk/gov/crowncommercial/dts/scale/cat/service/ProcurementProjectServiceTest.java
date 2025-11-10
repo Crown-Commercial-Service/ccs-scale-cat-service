@@ -1,28 +1,24 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.mock;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.util.*;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.Answers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.PageRequest;
+import org.odftoolkit.simple.SpreadsheetDocument;
+import org.odftoolkit.simple.table.Table;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import software.amazon.awssdk.services.s3.S3Client;
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
@@ -30,21 +26,31 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
-import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.AgreementDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.CreateEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DashboardStatus;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.util.TestUtils;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ProcurementProjectServiceTest {
@@ -224,5 +230,253 @@ class ProcurementProjectServiceTest {
     var ex = assertThrows(ResourceNotFoundException.class,
             () -> procurementProjectService.getProjectEventTypes(PROC_PROJECT_ID));
     assertEquals("Project '1' not found", ex.getMessage());
+  }
+
+  @Test
+  void convertCsvToOds_ShouldThrowOnNullInput() {
+    // Expect NullPointerException if input is null
+    assertThrows(NullPointerException.class, () -> procurementProjectService.convertCsvToOds(null));
+  }
+
+  @Test
+  void convertCsvToOds_ShouldReturnValidOdsStream() throws Exception {
+    // Given: a simple CSV content
+    String csvContent = "Name,Email,Age\nJohn,john@example.com,30\nJane,jane@example.com,25";
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+
+    // When: converting CSV to ODS
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+
+    // Then: result should not be null
+    assertNotNull(odsStream, "ODS output stream should not be null");
+
+    // Optionally: check that the stream has content
+    assertTrue(odsStream.available() > 0, "ODS stream should contain data");
+
+    // Optionally: check that it starts with the ODS signature (ODS files are ZIPs)
+    byte[] signature = new byte[4];
+    odsStream.read(signature);
+    String zipSignature = new String(signature, "UTF-8");
+    assertEquals("PK\u0003\u0004", zipSignature, "ODS file should start with ZIP signature");
+
+    odsStream.close();
+  }
+
+  @Test
+  void convertCsvToOds_ShouldReturnValidData() throws Exception {
+    // Given: a simple CSV content
+    String csvContent = "Name,Email,Age\nJohn,john@example.com,30\nJane,jane@example.com,25";
+
+    // When: converting CSV to ODS
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+    csvInputStream.close();
+
+    // Then: the output stream should not be null
+    assertNotNull(odsStream, "ODS input stream should not be null");
+    SpreadsheetDocument odsDoc = SpreadsheetDocument.loadDocument(odsStream);
+    odsStream.close();
+
+    Table table = odsDoc.getSheetByIndex(0);
+    assertEquals("CSV Data", table.getTableName());
+
+    // Check first row content
+    int rowIndex = 0;
+
+    assertEquals("Name", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("Email", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Age", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check second row content
+    rowIndex++;
+
+    assertEquals("John", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("john@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("30", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check third row content
+    rowIndex++;
+
+    assertEquals("Jane", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("jane@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("25", table.getCellByPosition(2, rowIndex).getStringValue());
+  }
+
+  @Test
+  void convertCsvToOds_ShouldHandleCommasInsideQuotes() throws Exception {
+    // Arrange: CSV input with commas inside quotes
+    String csvContent = """
+                Name,Email,Notes
+                "John Doe","john@example.com","Hello, world, this has commas"
+                "Jane Smith","jane@example.com","Another, value, with, commas"
+                """;
+
+    // When: converting CSV to ODS
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+    csvInputStream.close();
+
+    // Then: the output stream should not be null
+    assertNotNull(odsStream, "ODS input stream should not be null");
+
+    SpreadsheetDocument odsDoc = SpreadsheetDocument.loadDocument(odsStream);
+    odsStream.close();
+
+    Table table = odsDoc.getSheetByIndex(0);
+    assertEquals("CSV Data", table.getTableName());
+
+    // Check first row content
+    int rowIndex = 0;
+
+    assertEquals("Name", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("Email", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Notes", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check second row content
+    rowIndex++;
+
+    assertEquals("John Doe", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("john@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Hello, world, this has commas", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check third row content
+    rowIndex++;
+
+    assertEquals("Jane Smith", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("jane@example.com", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Another, value, with, commas", table.getCellByPosition(2, rowIndex).getStringValue());
+  }
+
+  @Test
+  void convertCsvToOds_ShouldHandleQuotedMultiLineStrings() throws Exception {
+    // Arrange: CSV input with quoted multi-line strings
+    String csvContent = """
+Field1,Field2,Field3
+123,"some text
+",testing
+456,\"\"\"triple quoted text\"\"\",testing
+789,"line1
+
+line2
+
+line3",testing
+    """;
+
+    // When: converting CSV to ODS
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+    InputStream odsStream = procurementProjectService.convertCsvToOds(csvInputStream);
+    csvInputStream.close();
+
+    // Then: the output stream should not be null
+    assertNotNull(odsStream, "ODS output stream should not be null");
+
+    SpreadsheetDocument odsDoc = SpreadsheetDocument.loadDocument(odsStream);
+    odsStream.close();
+
+    Table table = odsDoc.getSheetByIndex(0);
+    assertEquals("CSV Data", table.getTableName());
+
+    // Check first row content
+    int rowIndex = 0;
+
+    assertEquals("Field1", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("Field2", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("Field3", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check second row content
+    rowIndex++;
+
+    assertEquals("123", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("some text", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("testing", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check third row content
+    rowIndex++;
+
+    assertEquals("456", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("\"triple quoted text\"", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("testing", table.getCellByPosition(2, rowIndex).getStringValue());
+
+    // Check forth row content
+    rowIndex++;
+
+    assertEquals("789", table.getCellByPosition(0, rowIndex).getStringValue());
+    assertEquals("line1\n\nline2\n\nline3", table.getCellByPosition(1, rowIndex).getStringValue());
+    assertEquals("testing", table.getCellByPosition(2, rowIndex).getStringValue());
+  }
+
+  @Test
+  void convertCsvToXlsx_ShouldThrowOnNullInput() {
+    // Expect NullPointerException if input is null
+    assertThrows(NullPointerException.class, () -> procurementProjectService.convertCsvToXlsx(null));
+  }
+
+  @Test
+  void convertCsvToXlsx_ShouldReturnValidXlsxStream() throws Exception {
+    // Given: a simple CSV content
+    String csvContent = "Name,Email,Age\nJohn,john@example.com,30\nJane,jane@example.com,25";
+    InputStream csvInputStream = new ByteArrayInputStream(csvContent.getBytes());
+
+    // When: converting CSV to XLSX
+    InputStream xlsxStream = procurementProjectService.convertCsvToXlsx(csvInputStream);
+
+    // Then: the output stream should not be null
+    assertNotNull(xlsxStream, "XLSX output stream should not be null");
+
+    // Check that it can be read as a valid Excel workbook
+    Workbook workbook = WorkbookFactory.create(xlsxStream);
+    assertEquals(1, workbook.getNumberOfSheets(), "Workbook should contain one sheet");
+
+    // Check first row content
+    var sheet = workbook.getSheetAt(0);
+    assertEquals("Name", sheet.getRow(0).getCell(0).getStringCellValue());
+    assertEquals("Email", sheet.getRow(0).getCell(1).getStringCellValue());
+    assertEquals("Age", sheet.getRow(0).getCell(2).getStringCellValue());
+
+    // Check second row content
+    assertEquals("John", sheet.getRow(1).getCell(0).getStringCellValue());
+    assertEquals("john@example.com", sheet.getRow(1).getCell(1).getStringCellValue());
+    assertEquals("30", sheet.getRow(1).getCell(2).getStringCellValue());
+
+    workbook.close();
+    xlsxStream.close();
+  }
+
+  @Test
+  void convertCsvToXlsx_ShouldHandleCommasInsideQuotes() throws Exception {
+    // Arrange: CSV input with commas inside quotes
+    String csvData = """
+                Name,Email,Notes
+                "John Doe","john@example.com","Hello, world, this has commas"
+                "Jane Smith","jane@example.com","Another, value, with, commas"
+                """;
+
+    InputStream csvInputStream = new ByteArrayInputStream(csvData.getBytes(StandardCharsets.UTF_8));
+
+    // Act
+    InputStream xlsxInputStream = procurementProjectService.convertCsvToXlsx(csvInputStream);
+
+    // Read back with Apache POI
+    try (Workbook workbook = WorkbookFactory.create(xlsxInputStream)) {
+      Sheet sheet = workbook.getSheetAt(0);
+
+      // Header row
+      Row headerRow = sheet.getRow(0);
+      assertEquals("Name", headerRow.getCell(0).getStringCellValue());
+      assertEquals("Email", headerRow.getCell(1).getStringCellValue());
+      assertEquals("Notes", headerRow.getCell(2).getStringCellValue());
+
+      // First record
+      Row row1 = sheet.getRow(1);
+      assertEquals("John Doe", row1.getCell(0).getStringCellValue());
+      assertEquals("john@example.com", row1.getCell(1).getStringCellValue());
+      assertEquals("Hello, world, this has commas", row1.getCell(2).getStringCellValue());
+
+      // Second record
+      Row row2 = sheet.getRow(2);
+      assertEquals("Jane Smith", row2.getCell(0).getStringCellValue());
+      assertEquals("jane@example.com", row2.getCell(1).getStringCellValue());
+      assertEquals("Another, value, with, commas", row2.getCell(2).getStringCellValue());
+    }
   }
 }

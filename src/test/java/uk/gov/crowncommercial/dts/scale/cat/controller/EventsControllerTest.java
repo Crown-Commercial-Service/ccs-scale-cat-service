@@ -359,6 +359,19 @@ class EventsControllerTest {
   }
 
   @Test
+  void deleteEvent_200_OK() throws Exception {
+    mockMvc.perform(delete(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
+                    .with(validJwtReqPostProcessor)
+                    .contentType(APPLICATION_JSON))
+            .andDo(print())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").value("OK"));
+
+    verify(procurementEventService, times(1))
+            .deleteEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
   void getEvents_200_OK() throws Exception {
 
     mockMvc

@@ -44,14 +44,14 @@ public class Constants {
     public static final MediaType MEDIA_TYPE_DOCX = MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
     // Event types definition
-    public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES = Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DA,DefineEventType.DAA,DefineEventType.PA);
+    public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES = Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DA, DefineEventType.DAA, DefineEventType.PA, DefineEventType.SAS);
     public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES = Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC);
-    public static final Set<ViewEventType> TENDER_DB_ONLY_EVENT_TYPES = Set.of(ViewEventType.FCA, ViewEventType.DAA,ViewEventType.PA);
+    public static final Set<ViewEventType> TENDER_DB_ONLY_EVENT_TYPES = Set.of(ViewEventType.FCA, ViewEventType.DAA, ViewEventType.PA, ViewEventType.SAS);
     public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD = Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI);
     public static final Set<ViewEventType> TENDER_NON_DB_EVENT_TYPES = Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC, ViewEventType.DA);
-    public static final Set<ViewEventType> ASSESMENT_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.PA,ViewEventType.FCA, ViewEventType.DAA);
-    public static final Set<ViewEventType> COMPLETE_EVENT_TYPES = Set.of(ViewEventType.RFI,ViewEventType.EOI);
-    public static final Set<ViewEventType> FC_DA_NON_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.FC,ViewEventType.DA);
+    public static final Set<ViewEventType> ASSESMENT_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.PA, ViewEventType.FCA, ViewEventType.DAA, ViewEventType.SAS);
+    public static final Set<ViewEventType> COMPLETE_EVENT_TYPES = Set.of(ViewEventType.RFI, ViewEventType.EOI);
+    public static final Set<ViewEventType> FC_DA_NON_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.FC, ViewEventType.DA);
 
     public static final String UNLIMITED_VALUE = "1000000";
 

@@ -3,6 +3,8 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -38,11 +40,19 @@ public class AuditLogController extends AbstractRestController {
     }
 
     @PostMapping
-    public AuditLog createLog(@RequestBody AuditLog auditLog,
+    public ResponseEntity<?> createLog(@RequestBody AuditLog auditLog,
                               final JwtAuthenticationToken authentication) {
 
         var principal = getPrincipalFromJwt(authentication);
         log.info("createLog invoked on behalf of principal: {}", principal);
-        return auditLogService.save(auditLog);
+
+        try {
+            AuditLog savedLog = auditLogService.save(auditLog);
+            return ResponseEntity.ok(savedLog);
+        } catch (Exception ex) {
+            log.error("Failed to save AuditLog. Principal: {} AuditLog: {}", principal, auditLog, ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while saving the audit log.");
+        }
     }
 }

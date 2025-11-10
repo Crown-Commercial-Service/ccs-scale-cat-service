@@ -397,7 +397,8 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("terminateEvent invoked on behalf of principal: {}", principal);
 
-    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal);
+    eventTransitionService.terminateEvent(procId, eventId, type.getTerminationType(), principal, 
+                                        type.getCancellationReason(), type.getCancellationReasonDetail());
 
     return new StringValueResponse("OK");
   }
@@ -487,6 +488,17 @@ public class EventsController extends AbstractRestController {
     log.info(
         "startEvaluation : Total time taken to Start Evaluation for procID {} : eventId :{} : Timetaken : {}  ",
         procId, eventId, watch.getLastTaskTimeMillis());
+
+    return new StringValueResponse("OK");
+  }
+
+  @DeleteMapping("/{eventID}")
+  @TrackExecutionTime
+  public StringValueResponse deleteEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("deleteSupplier invoked on behalf of principal: {}", principal);
+
+    procurementEventService.deleteEvent(procId, eventId, principal);
 
     return new StringValueResponse("OK");
   }

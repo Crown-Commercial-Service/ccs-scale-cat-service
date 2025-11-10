@@ -12,17 +12,31 @@ import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSV
 import static uk.gov.crowncommercial.dts.scale.cat.service.scheduler.ProjectsCSVGenerationScheduledTask.CSV_FILE_PREFIX;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getInstantFromDate;
 import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.getTenderPeriod;
-import java.io.InputStream;
+
+import java.io.*;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.csv.QuoteMode;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
+import org.odftoolkit.simple.SpreadsheetDocument;
+import org.odftoolkit.simple.table.Table;
 import org.opensearch.data.client.orhlc.NativeSearchQuery;
 import org.opensearch.data.client.orhlc.NativeSearchQueryBuilder;
 import org.opensearch.index.query.*;
@@ -129,6 +143,8 @@ public class ProcurementProjectService {
 
   private final Map<String, List<ProcurementEventSearch>> projectCache = new ConcurrentHashMap<>();
   private static final String ALL_RESULTS_CACHE_KEY = "ALL_RESULTS";
+  // Simple CSV split that respects quoted commas (not a full CSV parser, but handles typical quoted fields)
+  private static final Pattern CSV_SPLIT_REGEX = Pattern.compile(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
 
   /**
@@ -376,14 +392,39 @@ public class ProcurementProjectService {
     // update user
     // TODO Add only valid users
     var existingList = updateProjectUserMapping(dbProject, teamIds, principal);
+
+    // Build a quick lookup of active (not deleted) mappings
+    var activeRoleByUserId = existingList.stream()
+      .filter(pum -> !pum.isDeleted())
+      .collect(Collectors.toMap(ProjectUserMapping::getUserId, pum -> pum, (a,b) -> a));
+
     var finalTeamIds =
         teamIds.stream().filter(e -> existingList.stream().filter(ProjectUserMapping::isDeleted)
             .noneMatch(k -> e.equals(k.getUserId()))).collect(Collectors.toSet());
     combinedIds.addAll(finalTeamIds);
+
     // Retrieve additional info on each user from Jaggaer and Conclave
     return combinedIds.stream()
-        .map(i -> getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId()))
-        .filter(Objects::nonNull).collect(Collectors.toSet());
+      .map(i -> {
+        var teamMember = getTeamMember(i, finalTeamIds, emailRecipientIds, projectOwner.getId());
+        if (teamMember != null) {
+          var nonOcds = teamMember.getNonOCDS();
+          var role = activeRoleByUserId.get(i);
+          if (role != null && nonOcds != null) {
+            nonOcds.setCollaborator(role.isCollaborator());
+            nonOcds.setAssessor(role.isAssessor());
+            nonOcds.setModerator(role.isModerator());
+          } else if (nonOcds != null) {
+            // Legacy users with no stored role: all three remain false (default)
+            nonOcds.setCollaborator(false);
+            nonOcds.setAssessor(false);
+            nonOcds.setModerator(false);
+          }
+        }
+        return teamMember;
+      })
+      .filter(Objects::nonNull)
+      .collect(Collectors.toSet());
   }
   
   /**
@@ -430,6 +471,16 @@ public class ProcurementProjectService {
             Project.builder().tender(tender).projectTeam(projectTeam).build());
         jaggaerService.createUpdateProject(updateProject);
         break;
+      case COLLABORATOR:
+      case ASSESSOR:
+      case MODERATOR:
+        log.debug("{} update", updateTeamMember.getUserType());
+        projectTeam = ProjectTeam.builder().user(Collections.singleton(user)).build();
+        tender = Tender.builder().tenderReferenceCode(dbProject.getExternalReferenceId()).build();
+        updateProject = new CreateUpdateProject(OperationCode.CREATEUPDATE,
+            Project.builder().tender(tender).projectTeam(projectTeam).build());
+        jaggaerService.createUpdateProject(updateProject);
+        break;
       case EMAIL_RECIPIENT:
         log.debug("EMail Recipient update");
         var event = getCurrentEvent(dbProject);
@@ -447,8 +498,65 @@ public class ProcurementProjectService {
     }
 
     addProjectUserMapping(jaggaerUserId, dbProject, principal);
+
+    // In the database, enable exactly one of our roles
+    updateDbRoleFlags(dbProject, jaggaerUserId, updateTeamMember, principal);
+
     return getProjectTeamMembers(projectId, principal).stream()
         .filter(tm -> tm.getOCDS().getId().equalsIgnoreCase(userId)).findFirst().orElseThrow();
+  }
+
+  private void updateDbRoleFlags(final ProcurementProject project, final String jaggaerUserId, final UpdateTeamMember updateTeamMember, final String principal) {
+    var maybeMapping = retryableTendersDBDelegate
+        .findProjectUserMappingByProjectIdAndUserId(project.getId(), jaggaerUserId);
+
+    var mapping = maybeMapping.orElseGet(() ->
+        ProjectUserMapping.builder()
+            .project(project)
+            .userId(jaggaerUserId)
+            .timestamps(createTimestamps(principal))
+            .build());
+
+    // Always undelete when setting a role
+    mapping.setDeleted(false);
+
+    switch (updateTeamMember.getUserType()) {
+      case COLLABORATOR:
+        mapping.setCollaborator(true);
+        mapping.setAssessor(false);
+        mapping.setModerator(false);
+        break;
+      case ASSESSOR:
+        mapping.setCollaborator(false);
+        mapping.setAssessor(true);
+        mapping.setModerator(false);
+        break;
+      case MODERATOR:
+        mapping.setCollaborator(false);
+        mapping.setAssessor(false);
+        mapping.setModerator(true);
+        break;
+      case TEAM_MEMBER:
+      case PROJECT_OWNER:
+        // Clear API-local flags: primary role is plain team-member or owner
+        mapping.setCollaborator(false);
+        mapping.setAssessor(false);
+        mapping.setModerator(false);
+        break;
+      case EMAIL_RECIPIENT:
+        // Orthogonal; don't touch local role flags
+        break;
+      default:
+        // no-op
+    }
+
+    // Touch timestamps when updating an existing mapping
+    mapping.setTimestamps(
+        mapping.getTimestamps() == null
+            ? createTimestamps(principal)
+            : Timestamps.updateTimestamps(mapping.getTimestamps(), principal));
+
+    retryableTendersDBDelegate.save(mapping);
   }
 
   public void deleteTeamMember(final Integer projectId, final String userId,
@@ -646,6 +754,14 @@ public class ProcurementProjectService {
           Optional.ofNullable(dbEvent.getAssessmentId()));
 
           eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
+          
+          // Set cancellation reasons if they exist
+          if (dbEvent.getCancellationReason() != null) {
+            eventSummary.setCancellationReason(dbEvent.getCancellationReason());
+          }
+          if (dbEvent.getCancellationReasonDetail() != null) {
+            eventSummary.setCancellationReasonDetail(dbEvent.getCancellationReasonDetail());
+          }
 
 
     } else {
@@ -660,6 +776,14 @@ public class ProcurementProjectService {
                 ? TenderStatus.fromValue(dbEvent.getTenderStatus())
                 : null,
             ReleaseTag.TENDER, Optional.ofNullable(dbEvent.getAssessmentId()));
+            
+        // Set cancellation reasons if they exist
+        if (dbEvent.getCancellationReason() != null) {
+          eventSummary.setCancellationReason(dbEvent.getCancellationReason());
+        }
+        if (dbEvent.getCancellationReasonDetail() != null) {
+          eventSummary.setCancellationReasonDetail(dbEvent.getCancellationReasonDetail());
+        }
 
         // We need to build event summary before irrespective of jaggaer response
         var exportRfxResponse = projectUserRfxs.stream()
@@ -687,6 +811,37 @@ public class ProcurementProjectService {
     }
 
     return Optional.of(projectPackageSummary);
+  }
+
+  public void deleteProject(final Integer projectId, final String principal) {
+    log.debug("delete Project with Project ID: {}", projectId);
+
+    // First find given project, to check if it has any active events
+    // This is an admin user - we need to lookup by the project ID without worrying about the owning user
+    Set<ProjectUserMapping> foundProjects = retryableTendersDBDelegate.findProjectUserMappingByProjectId(projectId);
+    List<ProjectUserMapping> projects = foundProjects.stream().toList();
+
+    // Now we need to filter down to only include the project we're checking for in our potential list of projects
+    ProjectUserMapping projectMapping = projects.stream().filter(p -> p.getProject().getId().equals(projectId)).findFirst().orElse(null);
+
+    // If project has successfully been found, we can continue with the delete request
+    if (projectMapping != null) {
+        // Get a list of any events for the found project
+        Set<String> externalEventIds = projectMapping.getProject().getProcurementEvents().stream().map(ProcurementEvent::getExternalEventId).collect(Collectors.toSet());
+
+        // If no events have been found, we can continue with the delete request
+        if (externalEventIds.isEmpty()) {
+            // Delete Table Data 1 (ProjectUserMapping)
+            retryableTendersDBDelegate.deleteProjectUserMappingByProjectId(projectId);
+
+            // Delete Table Data 2 (ProcurementProject)
+            retryableTendersDBDelegate.deleteProcurementProjectById(projectId);
+        } else {
+            throw new IllegalArgumentException("Cannot Delete: This project has active events against it. Please delete these events in Jaggaer and  the CaS API, to proceed.");
+        }
+    } else {
+        throw new ResourceNotFoundException("Cannot Delete: Project could not be found.");
+    }
   }
 
 
@@ -1117,10 +1272,10 @@ public class ProcurementProjectService {
   }
   
   /**
-   * Download all oppertunities data from s3
+   * Download all opportunities data from s3
    * 
    */
-  public InputStream downloadProjectsData() {
+  public InputStream downloadProjectsData(String fileType) {
     try {
       var getObjectRequest = GetObjectRequest.builder()
           .bucket(tendersS3Service.getCredentials().getBucketName())
@@ -1128,10 +1283,74 @@ public class ProcurementProjectService {
           .build();
       
       var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
+
+      if(fileType != null && fileType.equals("xlsx"))
+        return convertCsvToXlsx(tendersS3Object);
+
+      if(fileType != null && fileType.equals("ods"))
+        return convertCsvToOds(tendersS3Object);
+
       return tendersS3Object;
     } catch (Exception exception) {
       log.error("Exception while downloading the projects data from S3: " + exception.getMessage());
       throw new ResourceNotFoundException("Failed to download oppertunity data. File not found");
+    }
+  }
+
+  protected InputStream convertCsvToXlsx(InputStream csvInputStream) throws IOException {
+
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8));
+         CSVParser csvParser = CSVFormat.DEFAULT
+                 .withQuote('"')
+                 .withIgnoreSurroundingSpaces()
+                 .parse(reader);
+         Workbook workbook = new XSSFWorkbook()) {
+
+      Sheet sheet = workbook.createSheet("CSV Data");
+      int rowIdx = 0;
+
+      for (CSVRecord record : csvParser) {
+        Row row = sheet.createRow(rowIdx++);
+        for (int i = 0; i < record.size(); i++) {
+          Cell cell = row.createCell(i);
+          cell.setCellValue(record.get(i));
+        }
+      }
+
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      workbook.write(baos);
+      return new ByteArrayInputStream(baos.toByteArray());
+    }
+  }
+
+  public InputStream convertCsvToOds(InputStream csvInputStream) throws Exception {
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8));
+         CSVParser csvParser = CSVFormat.DEFAULT
+                 .withQuote('"')
+                 .withTrim()
+                 .withIgnoreSurroundingSpaces()
+                 .withQuoteMode(QuoteMode.MINIMAL)
+                 .parse(reader);
+         SpreadsheetDocument odsDoc = SpreadsheetDocument.newSpreadsheetDocument()) {
+
+      Table sheet = odsDoc.getSheetByIndex(0);
+      sheet.setTableName("CSV Data");
+
+      int rowIndex = 0;
+
+      for (CSVRecord record : csvParser) {
+          for (int colIndex = 0; colIndex < record.size(); colIndex++) {
+              // set cell value via Simple API
+              sheet.getCellByPosition(colIndex, rowIndex).setStringValue(record.get(colIndex));
+          }
+
+          rowIndex++;
+      }
+
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      odsDoc.save(baos);
+
+      return new ByteArrayInputStream(baos.toByteArray());
     }
   }
 }

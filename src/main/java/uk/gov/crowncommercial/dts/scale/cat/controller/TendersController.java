@@ -92,8 +92,8 @@ public class TendersController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
 
     log.info("registerUser invoked on behalf of principal: {} for user-id: {}", principal, userId);
-
-    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId))) {
+    //Added fix to allow admin access to create user
+    if (!StringUtils.equalsIgnoreCase(trim(principal), trim(userId)) && !doesTokenAllowAdminAccess(authentication)) {
       // CON-1682-AC11
       throw new AuthorisationFailureException(
           "Authenticated user does not match requested user-id");
