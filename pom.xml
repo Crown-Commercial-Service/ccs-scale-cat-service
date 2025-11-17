@@ -23,11 +23,11 @@
         <guava.version>33.5.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
-        <modelmapper.version>3.2.5</modelmapper.version>
+        <modelmapper.version>3.2.6</modelmapper.version>
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.21.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.38.2</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.38.7</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -45,7 +45,7 @@
         <spring-boot.version>3.5.7</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.10.0</jsonpath.version>
-        <logback.version>1.5.20</logback.version>
+        <logback.version>1.5.21</logback.version>
         <feignclient.version>4.3.0</feignclient.version>
         <ehcache.version>3.11.1</ehcache.version>
         <retry.version>2.0.12</retry.version>
