@@ -111,7 +111,7 @@ config:
       opensearch:
         batch:
           size: 80    
-    
+
   external:
     agreementsService:
       timeoutDuration: 10

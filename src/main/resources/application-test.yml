@@ -32,5 +32,10 @@ config:
     questionAndAnswerService:
       baseUrl: https://dummy.example.com
 
+# Feature Flags
+api:
+  dos7:
+    enable: false
+
 # VCap config
 VCAP_SERVICES: '{}'
