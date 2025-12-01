@@ -315,11 +315,7 @@ public class ProcurementEventService implements EventService {
         }
 
         // NCAS-795
-        String viewEventTypeString = Optional.of(ViewEventType.fromValue(eventTypeValue))
-                .map(ViewEventType::toString)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid event type value: " + eventTypeValue));
-
-        if(questionAndAnswerService.createQuestion(viewEventTypeString,
+        if(questionAndAnswerService.createQuestion(eventTypeValue,
                 procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
             log.debug("Question has been created successfully into the QuestionAndAnswer service");
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
