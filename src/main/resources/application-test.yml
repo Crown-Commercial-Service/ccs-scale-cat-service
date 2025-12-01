@@ -29,6 +29,8 @@ config:
   external:
     agreementsService:
       baseUrl: https://dummy.example.com
+    questionAndAnswerService:
+      baseUrl: https://dummy.example.com
 
 # VCap config
 VCAP_SERVICES: '{}'

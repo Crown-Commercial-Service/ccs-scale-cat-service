@@ -126,6 +126,9 @@ config:
       getEventTypesForAgreement:
         uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
 
+    questionAndAnswerService:
+      insertOrUpdateQuestions: /questions
+
     conclaveWrapper:
       timeoutDuration: 10
       buyerRoleKey: JAEGGER_BUYER

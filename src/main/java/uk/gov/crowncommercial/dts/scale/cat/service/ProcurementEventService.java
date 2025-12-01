@@ -112,6 +112,7 @@ public class ProcurementEventService implements EventService {
     private final AsyncExecutor asyncExecutor;
     private final SupplierStoreFactory supplierStoreFactory;
     private final EventTransitionService eventTransitionService;
+    private final QuestionAndAnswerService questionAndAnswerService;
 
     private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
     private final ExecutorService executorService = Executors.newFixedThreadPool(50);
@@ -313,9 +314,20 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-                Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
-                TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+        // NCAS-795
+        String viewEventTypeString = Optional.of(ViewEventType.fromValue(eventTypeValue))
+                .map(ViewEventType::toString)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid event type value: " + eventTypeValue));
+
+        if(questionAndAnswerService.createQuestion(viewEventTypeString,
+                procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
+            log.debug("Question has been created successfully into the QuestionAndAnswer service");
+            return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+                    Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+                    TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+        }
+
+        return null;
     }
 
     private void setRefreshSuppliersForEvent(ProcurementEvent.ProcurementEventBuilder eventBuilder, Set<ProcurementEvent> procurementEvents) {
@@ -994,6 +1006,8 @@ public class ProcurementEventService implements EventService {
         }
 
         if(procurementEvent.getRefreshSuppliers()){
+            // TODO - We need to call new Q&A service and populate questions from GET endpoint
+            // TODO - Instead of Agreement service
             jaggaerSupplierRefresh(procId, eventId, principal, procurementEvent, exportRfxResponse);
         }
 

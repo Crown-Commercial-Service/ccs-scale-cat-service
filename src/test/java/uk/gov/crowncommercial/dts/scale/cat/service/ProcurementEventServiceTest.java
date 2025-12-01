@@ -1,25 +1,13 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
@@ -32,10 +20,9 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent.Procur
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Value;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
-import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.queueExecutor.QueuedAsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DOS6SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierStore;
@@ -45,6 +32,15 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Service layer tests
@@ -218,6 +214,9 @@ class ProcurementEventServiceTest {
   @MockitoBean
   private QuestionAndAnswerRepo questionAndAnswerRepo;
 
+  @MockitoBean
+  private QuestionAndAnswerService questionAndAnswerService;
+
   private final CreateEvent createEvent = new CreateEvent();
 
   @Test
@@ -279,6 +278,8 @@ class ProcurementEventServiceTest {
             0, Boolean.FALSE, Optional.empty())).thenReturn(assessment);
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+
+    when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.DA);
@@ -381,6 +382,8 @@ class ProcurementEventServiceTest {
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
+    when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
+
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.FCA);
     createEvent.setNonOCDS(createEventNonOCDS);
@@ -462,6 +465,8 @@ class ProcurementEventServiceTest {
     });
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
+
+    when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
