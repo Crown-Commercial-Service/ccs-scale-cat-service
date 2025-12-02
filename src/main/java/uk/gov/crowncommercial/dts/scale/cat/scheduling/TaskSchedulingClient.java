@@ -10,6 +10,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,6 +24,9 @@ import java.util.List;
 public class TaskSchedulingClient {
     @Autowired
     AgreementsService agreementsService;
+
+    @Autowired
+    QuestionAndAnswerService questionAndAnswerService;
 
     @Value("${caching.agreements}")
     private String activeAgreements;
@@ -53,7 +57,8 @@ public class TaskSchedulingClient {
                                 if (eventTypes != null && !eventTypes.isEmpty()) {
                                     // Now for each event type trigger a cache spool up of its data templates
                                     eventTypes.forEach(eventType -> {
-                                        agreementsService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
+                                        // NCAS- 795, should retrieve Questions and answers from new Question and answer service
+                                        questionAndAnswerService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
                                     });
                                 }
 

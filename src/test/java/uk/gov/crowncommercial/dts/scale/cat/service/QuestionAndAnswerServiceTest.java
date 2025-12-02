@@ -9,10 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,8 +18,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.crowncommercial.dts.scale.cat.clients.QuestionAndAnswerClient;
+import uk.gov.crowncommercial.dts.scale.cat.exception.QuestionAndAnswerServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWrite;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWriteResponse;
@@ -34,6 +33,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.SubUsers.SubUser;
 import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -88,11 +88,15 @@ class QuestionAndAnswerServiceTest {
   @Mock
   private QuestionAndAnswerClient questionAndAnswerClient;
   private QuestionWriteResponse mockValidResponse;
-  private static final String VALID_EVENT_TYPE = "RFX";
+  private static final String VALID_EVENT_TYPE = "FC";
   private static final String VALID_EVENT_ID = "EVT-123";
   private static final String VALID_AGREEMENT_ID = "AGR-987";
   private static final String VALID_LOT_ID = "LOT-001";
   private final String SERVICE_API_KEY = "test-api-key";
+  private static final String FORMATTED_LOT_ID = "001";
+  private static final String INPUT_LOT_ID = "Lot 001";
+  private List<DataTemplate> mockValidDataTemplateResponse;
+  private static final ViewEventType VIEW_EVENT_TYPE = ViewEventType.FC;
 
   @BeforeEach
   void setUp() {
@@ -101,6 +105,15 @@ class QuestionAndAnswerServiceTest {
     mockValidResponse.setEventId(VALID_EVENT_ID);
     mockValidResponse.setAgreementId(VALID_AGREEMENT_ID);
     mockValidResponse.setLotId(VALID_LOT_ID);
+
+    mockValidDataTemplateResponse = List.of(DataTemplate.builder().id(1)
+            .templateName("Template One")
+            .mandatory(true)
+            .build(), DataTemplate.builder()
+            .id(2)
+            .templateName("Template Two")
+            .mandatory(false)
+            .build());
   }
 
   @Test
@@ -228,11 +241,11 @@ class QuestionAndAnswerServiceTest {
   @Test
   void createQuestionShouldThrowResourceNotFoundExceptionWhenInputIsMissing() {
     // Test case 1: Null eventType
-    assertThrows(ResourceNotFoundException.class, () -> {
+    assertThrows(QuestionAndAnswerServiceApplicationException.class, () -> {
       questionAndAnswerService.createQuestion(null, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
     }, "Should throw for null eventType.");
     // Test case 2: Empty eventId
-    assertThrows(ResourceNotFoundException.class, () -> {
+    assertThrows(QuestionAndAnswerServiceApplicationException.class, () -> {
       questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, "", VALID_AGREEMENT_ID, VALID_LOT_ID);
     }, "Should throw for empty eventId.");
     // Ensure client method was never called due to early validation exit
@@ -245,11 +258,11 @@ class QuestionAndAnswerServiceTest {
     RuntimeException clientException = new RuntimeException("Client timed out");
     when(questionAndAnswerClient.createQuestions(any(QuestionWrite.class), anyString(), anyString())).thenThrow(clientException);
     // Act & Assert
-    ResourceNotFoundException thrown = assertThrows(ResourceNotFoundException.class, () -> {
+    QuestionAndAnswerServiceApplicationException thrown = assertThrows(QuestionAndAnswerServiceApplicationException.class, () -> {
       questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
     }, "Should throw ResourceNotFoundException on client failure.");
     // Assert the error description contains the original exception details and QuestionWrite info
-    assertTrue(thrown.getMessage().contains("Failed to create question in Question and answer service"));
+    assertTrue(thrown.getMessage().contains("Unexpected error on event creation "));
     assertTrue(thrown.getMessage().contains("eventId: EVT-123"));
   }
 
@@ -266,6 +279,80 @@ class QuestionAndAnswerServiceTest {
     // Assert
     assertFalse(result, "Should return false if required fields (e.g., AgreementId) are missing in the response.");
     verify(questionAndAnswerClient, times(1)).createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull());
+  }
+
+  @Test
+  void getLotEventTypeDataTemplatesShouldReturnDataOnSuccessfulClientCall() {
+    // Arrange
+    when(questionAndAnswerClient.getEventDataTemplates(eq(VALID_AGREEMENT_ID), eq(FORMATTED_LOT_ID),
+            eq(VALID_EVENT_TYPE),
+            isNull()))
+            .thenReturn(mockValidDataTemplateResponse);
+    // Act
+    List<DataTemplate> result = questionAndAnswerService.getLotEventTypeDataTemplates(VALID_AGREEMENT_ID, INPUT_LOT_ID, VIEW_EVENT_TYPE);
+    // Assert
+    assertNotNull(result, "Result should not be null.");
+    assertEquals(2, result.size(), "Should return the expected number of data templates.");
+    // Verify the client was called once with the correctly formatted lot ID
+    verify(questionAndAnswerClient, times(1)).getEventDataTemplates(eq(VALID_AGREEMENT_ID),
+            eq(FORMATTED_LOT_ID),
+            eq(VIEW_EVENT_TYPE.getValue()),
+            isNull());
+  }
+
+  @Test
+  void getLotEventTypeDataTemplatesShouldThrowExceptionOnNullResponse() {
+    // Arrange
+    when(questionAndAnswerClient.getEventDataTemplates(any(), any(), any(), any()))
+            .thenReturn(null);
+    // Act & Assert
+    QuestionAndAnswerServiceApplicationException thrown = assertThrows(QuestionAndAnswerServiceApplicationException.class, () -> {
+      questionAndAnswerService.getLotEventTypeDataTemplates(VALID_AGREEMENT_ID, INPUT_LOT_ID, VIEW_EVENT_TYPE);
+    });
+    // Assert the error message contains descriptive details
+    assertTrue(thrown.getMessage().contains(VIEW_EVENT_TYPE.name()));
+    assertTrue(thrown.getMessage().contains(INPUT_LOT_ID));
+    // Verify client call and ensure no further interactions
+    verify(questionAndAnswerClient, times(1)).getEventDataTemplates(any(), any(), any(), any());
+  }
+
+  @Test
+  void getLotEventTypeDataTemplatesShouldReturnEmptyListOnEmptyListResponse() {
+    // Arrange
+    List<DataTemplate> emptyList = Collections.emptyList();
+    when(questionAndAnswerClient.getEventDataTemplates(any(), any(), any(), any()))
+            .thenReturn(emptyList);
+    // Act
+    List<DataTemplate> result = questionAndAnswerService.getLotEventTypeDataTemplates(
+            VALID_AGREEMENT_ID, INPUT_LOT_ID, VIEW_EVENT_TYPE
+    );
+    // Assert
+    assertNotNull(result, "Result should not be null (should return empty list).");
+    assertTrue(result.isEmpty(), "Result should be an empty list.");
+    // Verify client call
+    verify(questionAndAnswerClient, times(1)).getEventDataTemplates(any(), any(), any(), any());
+  }
+
+  @Test
+  void getLotEventTypeDataTemplatesShouldWrapClientExceptionInApplicationException() {
+    // Arrange
+    RuntimeException clientException = new RuntimeException("Client connection refused");
+    when(questionAndAnswerClient.getEventDataTemplates(any(), any(), any(), isNull()))
+            .thenThrow(clientException);
+    // Act & Assert
+    QuestionAndAnswerServiceApplicationException thrown = assertThrows(QuestionAndAnswerServiceApplicationException.class, () -> {
+      questionAndAnswerService.getLotEventTypeDataTemplates(
+              VALID_AGREEMENT_ID, INPUT_LOT_ID, VIEW_EVENT_TYPE
+      );
+    });
+    // Assert the exception contains the expected error format and the original cause
+    assertTrue(thrown.getMessage().contains(VIEW_EVENT_TYPE.name()));
+    assertTrue(thrown.getMessage().contains(INPUT_LOT_ID));
+    verify(questionAndAnswerClient, times(1)).getEventDataTemplates(
+            eq(VALID_AGREEMENT_ID),
+            eq(FORMATTED_LOT_ID),
+            eq(VIEW_EVENT_TYPE.getValue()),
+            isNull());
   }
 
 }
