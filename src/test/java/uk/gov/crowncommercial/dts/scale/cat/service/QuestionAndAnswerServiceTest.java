@@ -263,7 +263,7 @@ class QuestionAndAnswerServiceTest {
     }, "Should throw ResourceNotFoundException on client failure.");
     // Assert the error description contains the original exception details and QuestionWrite info
     assertTrue(thrown.getMessage().contains("Unexpected error on event creation "));
-    assertTrue(thrown.getMessage().contains("eventId: EVT-123"));
+    assertTrue(thrown.getMessage().contains("eventId EVT-123"));
   }
 
   @Test

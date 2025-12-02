@@ -174,7 +174,7 @@ public class QuestionAndAnswerService {
   public boolean createQuestion(String eventType, String eventId, String agreementId, String lotId) {
 
     String exceptionFormat = "Unexpected error on event creation " + eventType + " template from QAS for Lot " + lotId + " and Agreement " + agreementId
-            + " and eventId" + eventId;
+            + " and eventId " + eventId;
 
     if(StringUtils.isEmpty(eventType)
       || StringUtils.isEmpty(eventId)
@@ -195,9 +195,8 @@ public class QuestionAndAnswerService {
             return true;
         }
       } catch(Exception e) {
-        var errorDesc = String.format(exceptionFormat + ", error: %s",
-                questionWrite, e);
-        throw new QuestionAndAnswerServiceApplicationException(errorDesc);
+        log.error("error: ", e);
+        throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
       }
 
       return false;
