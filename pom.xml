@@ -27,7 +27,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.21.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.39.2</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.39.6</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
@@ -41,7 +41,7 @@
         <hibernate.version>6.6.34.Final</hibernate.version>
         <junitapi.version>6.0.1</junitapi.version>
         <opensearch.version>2.0.3</opensearch.version>
-        <shedlock.version>6.10.0</shedlock.version>
+        <shedlock.version>7.2.1</shedlock.version>
         <spring-boot.version>3.5.7</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.10.0</jsonpath.version>
