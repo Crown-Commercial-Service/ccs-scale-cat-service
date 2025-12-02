@@ -461,6 +461,38 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <id>questions-and-answers-service-api</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/questions-and-answers-service/questions-and-answers-service.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <generateModels>true</generateModels>
+                            <generateSupportingFiles>false</generateSupportingFiles>
+                            <generateApis>false</generateApis>
+                            <generateModelTests>false</generateModelTests>
+                            <!-- qas package is Question & Answer Service -->
+                            <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.cas.generated</modelPackage>
+                            <skipValidateSpec>false</skipValidateSpec>
+                            <strictSpec>true</strictSpec>
+                            <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
+                            <verbose>false</verbose>
+                            <configOptions>
+                                <sourceFolder>src/gen/java/main</sourceFolder>
+                                <useBeanValidation>true</useBeanValidation>
+                                <performBeanValidation>true</performBeanValidation>
+                                <dateLibrary>java8</dateLibrary>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                                <openApiNullable>false</openApiNullable>
+                                <useOptional>true</useOptional>
+                                <useJakartaEe>true</useJakartaEe>
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>conclave-wrapper-user-profile-api</id>
                         <goals>
                             <goal>generate</goal>

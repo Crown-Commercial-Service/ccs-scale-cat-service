@@ -6,11 +6,17 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.clients.QuestionAndAnswerClient;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWrite;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWriteResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
@@ -26,6 +32,9 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 @Slf4j
 public class QuestionAndAnswerService {
 
+  @Value("${config.external.questionAndAnswerService.apiKey}")
+  private String serviceApiKey;
+
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final QuestionAndAnswerRepo questionAndAnswerRepo;
@@ -33,6 +42,7 @@ public class QuestionAndAnswerService {
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AgreementsService agreementsService;
+  private final QuestionAndAnswerClient questionAndAnswerClient;
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String Q_AND_A_NOT_FOUND = "QuestionAndAnswer not found by this id %s";
 
@@ -157,4 +167,32 @@ public class QuestionAndAnswerService {
     return questionAndAnswerList.stream().map(this::convertQandA).collect(Collectors.toList());
   }
 
+  public boolean createQuestion(String eventType, String eventId, String agreementId, String lotId) {
+
+    if(StringUtils.isEmpty(eventType)
+      || StringUtils.isEmpty(eventId)
+      || StringUtils.isEmpty(agreementId)
+      || StringUtils.isEmpty(lotId)) {
+        throw new ResourceNotFoundException("Unable to create question");
+    }
+
+    QuestionWrite questionWrite = new QuestionWrite()
+            .eventId(eventId)
+            .agreementId(agreementId)
+            .lotId(lotId);
+      try {
+        QuestionWriteResponse questionWriteResponse =  questionAndAnswerClient.createQuestions(questionWrite, eventType, serviceApiKey);
+        if(StringUtils.isNotEmpty(questionWriteResponse.getEventId())
+          && StringUtils.isNotEmpty(questionWriteResponse.getAgreementId())
+          && StringUtils.isNotEmpty(questionWriteResponse.getLotId())) {
+            return true;
+        }
+      } catch(Exception e) {
+        var errorDesc = String.format("Failed to create question in Question and answer service. Question: %s, error: %s",
+                questionWrite, e);
+          throw new ResourceNotFoundException(errorDesc);
+      }
+
+      return false;
+  }
 }

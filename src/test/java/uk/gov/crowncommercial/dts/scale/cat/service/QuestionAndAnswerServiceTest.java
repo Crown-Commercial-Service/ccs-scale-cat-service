@@ -1,10 +1,10 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -13,13 +13,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.crowncommercial.dts.scale.cat.clients.QuestionAndAnswerClient;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWrite;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWriteResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.RolePermissionInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.UserResponseDetail;
@@ -78,6 +84,24 @@ class QuestionAndAnswerServiceTest {
   
   @Mock
   private AgreementsService agreementsService;
+
+  @Mock
+  private QuestionAndAnswerClient questionAndAnswerClient;
+  private QuestionWriteResponse mockValidResponse;
+  private static final String VALID_EVENT_TYPE = "RFX";
+  private static final String VALID_EVENT_ID = "EVT-123";
+  private static final String VALID_AGREEMENT_ID = "AGR-987";
+  private static final String VALID_LOT_ID = "LOT-001";
+  private final String SERVICE_API_KEY = "test-api-key";
+
+  @BeforeEach
+  void setUp() {
+    // Setup a valid, complete response object once
+    mockValidResponse = new QuestionWriteResponse();
+    mockValidResponse.setEventId(VALID_EVENT_ID);
+    mockValidResponse.setAgreementId(VALID_AGREEMENT_ID);
+    mockValidResponse.setLotId(VALID_LOT_ID);
+  }
 
   @Test
   void testCreateQuestionAndAnswer() throws Exception {
@@ -187,6 +211,61 @@ class QuestionAndAnswerServiceTest {
 
     // Assert
     assertAll(() -> assertNotNull(response));
+  }
+
+  @Test
+  void createQuestionShouldReturnTrueOnSuccessfulClientCall() {
+    // Arrange
+    when(questionAndAnswerClient.createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull())).thenReturn(mockValidResponse);
+    // Act
+    boolean result = questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
+    // Assert
+    assertTrue(result, "Should return true when client call is successful and response is valid.");
+    // Verify the client was called exactly once with the correct type argument
+    verify(questionAndAnswerClient, times(1)).createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull());
+  }
+
+  @Test
+  void createQuestionShouldThrowResourceNotFoundExceptionWhenInputIsMissing() {
+    // Test case 1: Null eventType
+    assertThrows(ResourceNotFoundException.class, () -> {
+      questionAndAnswerService.createQuestion(null, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
+    }, "Should throw for null eventType.");
+    // Test case 2: Empty eventId
+    assertThrows(ResourceNotFoundException.class, () -> {
+      questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, "", VALID_AGREEMENT_ID, VALID_LOT_ID);
+    }, "Should throw for empty eventId.");
+    // Ensure client method was never called due to early validation exit
+    verify(questionAndAnswerClient, never()).createQuestions(any(), any(), any());
+  }
+
+  @Test
+  void createQuestionShouldWrapClientExceptionInResourceNotFoundException() {
+    // Arrange
+    RuntimeException clientException = new RuntimeException("Client timed out");
+    when(questionAndAnswerClient.createQuestions(any(QuestionWrite.class), anyString(), anyString())).thenThrow(clientException);
+    // Act & Assert
+    ResourceNotFoundException thrown = assertThrows(ResourceNotFoundException.class, () -> {
+      questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
+    }, "Should throw ResourceNotFoundException on client failure.");
+    // Assert the error description contains the original exception details and QuestionWrite info
+    assertTrue(thrown.getMessage().contains("Failed to create question in Question and answer service"));
+    assertTrue(thrown.getMessage().contains("eventId: EVT-123"));
+  }
+
+  @Test
+  void createQuestionShouldReturnFalseOnMalformedClientResponse() {
+    // Arrange
+    QuestionWriteResponse malformedResponse = new QuestionWriteResponse();
+    malformedResponse.setEventId(VALID_EVENT_ID);
+    malformedResponse.setAgreementId(null);
+    malformedResponse.setLotId(VALID_LOT_ID);
+    when(questionAndAnswerClient.createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull())).thenReturn(malformedResponse);
+    // Act
+    boolean result = questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
+    // Assert
+    assertFalse(result, "Should return false if required fields (e.g., AgreementId) are missing in the response.");
+    verify(questionAndAnswerClient, times(1)).createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull());
   }
 
 }
