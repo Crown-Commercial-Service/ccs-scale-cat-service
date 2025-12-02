@@ -46,6 +46,7 @@ public class CacheConfig {
         cacheManager.createCache("gcloudConfigCache", primaryCacheConfig);
         cacheManager.createCache("tendersCache", primaryCacheConfig);
         cacheManager.createCache("conclaveCache", primaryCacheConfig);
+        cacheManager.createCache("qAndACache", primaryCacheConfig);
 
         return cacheManager;
     }
