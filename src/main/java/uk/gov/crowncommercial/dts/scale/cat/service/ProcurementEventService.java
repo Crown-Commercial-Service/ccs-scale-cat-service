@@ -1002,8 +1002,6 @@ public class ProcurementEventService implements EventService {
         }
 
         if(procurementEvent.getRefreshSuppliers()){
-            // TODO - We need to call new Q&A service and populate questions from GET endpoint
-            // TODO - Instead of Agreement service
             jaggaerSupplierRefresh(procId, eventId, principal, procurementEvent, exportRfxResponse);
         }
 

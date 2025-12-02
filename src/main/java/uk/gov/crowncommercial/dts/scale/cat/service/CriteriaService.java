@@ -67,6 +67,7 @@ public class CriteriaService {
 
   private final DataTemplateProcessor templateProcessor;
   private final ProcurementEventHelperService eventHelperService;
+  private final QuestionAndAnswerService questionAndAnswerService;
 
   @Transactional
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
@@ -257,8 +258,9 @@ public class CriteriaService {
     if (event.getProcurementTemplatePayload() != null) {
       dataTemplate = event.getProcurementTemplatePayload();
     } else {
+      // NCAS- 795, should retrieve Questions and answers from new Question and answer service
       var lotEventTypeDataTemplates =
-          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+              questionAndAnswerService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
               event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         if(null == event.getTemplateId())
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
