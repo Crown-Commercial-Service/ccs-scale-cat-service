@@ -48,18 +48,22 @@ public class AgreementsService {
     String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
 
     try {
-      List<DataTemplate> questionAndAnswerResponse = questionAndAnswerClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), questionAndAnswerServiceApiKey);
+      var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
 
-      if (questionAndAnswerResponse != null) {
-          return questionAndAnswerResponse;
+      if (legacyFlow) {
+        List<DataTemplate> questionAndAnswerResponse = questionAndAnswerClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), questionAndAnswerServiceApiKey);
+
+        if (questionAndAnswerResponse != null) {
+            return questionAndAnswerResponse;
+        }
+  
+        if (dos7Enabled) {
+            // for DOS7, if we don't find anything, then return an empty list
+            return Collections.emptyList();
+        }
+  
+        // this is for a legacy (< dos7) project, so check the agreements service
       }
-
-      if (dos7Enabled) {
-          // for DOS7, if we don't find anything, then return an empty list
-          return Collections.emptyList();
-      }
-
-      // this is for a legacy (< dos7) project, so check the agreements service
 
       List<DataTemplate> model = agreementsClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), serviceApiKey);
 
