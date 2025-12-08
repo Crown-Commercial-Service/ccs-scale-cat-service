@@ -2,6 +2,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.util.List;
 
+import org.hibernate.annotations.Type;
+
+import com.vladmihalcea.hibernate.type.array.ListArrayType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -39,6 +43,7 @@ public class StageDataEntity {
   @Column(name = "number_of_stages")
   private Integer numberOfStages;
 
-  @Column(name = "stage_ids")
+  @Type(ListArrayType.class)
+  @Column(name = "stage_ids", columnDefinition = "integer[]")
   private List<Long> stageIds;
 }
