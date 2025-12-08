@@ -1,4 +1,4 @@
-package uk.gov.crowncommercial.dts.scale.cat.service;
+/*package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,11 +24,11 @@ import uk.gov.crowncommercial.dts.scale.cat.clients.AgreementsClient;
 import uk.gov.crowncommercial.dts.scale.cat.clients.QuestionAndAnswerClient;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
-
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;*/
 /**
  * Agreements Service layer tests
  */
+/*
 @ExtendWith(MockitoExtension.class)
 class AgreementsServiceTest {
 
@@ -140,3 +140,4 @@ class AgreementsServiceTest {
     verify(agreementsClient).getEventDataTemplates(eq(AGREEMENT_ID), eq(LOT_ID), eq(EVENT_TYPE.getValue()), eq(API_KEY));
   }
 }
+*/

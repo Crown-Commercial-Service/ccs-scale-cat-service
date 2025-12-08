@@ -314,16 +314,24 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        // NCAS-795
-        if(questionAndAnswerService.createQuestion(eventTypeValue,
-                procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
-            log.debug("Question has been created successfully into the QuestionAndAnswer service");
-            return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-                    Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
-                    TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
-        }
+        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
 
-        return null;
+        if (legacyFlow) {
+            return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+            Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+            TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+        } else {
+            // NCAS-795
+            if(questionAndAnswerService.createQuestion(eventTypeValue,
+                    procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
+                log.debug("Question has been created successfully into the QuestionAndAnswer service");
+                return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+                        Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+                        TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+            }
+
+            return null;
+        }
     }
 
     private void setRefreshSuppliersForEvent(ProcurementEvent.ProcurementEventBuilder eventBuilder, Set<ProcurementEvent> procurementEvents) {
