@@ -4,6 +4,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -18,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.StageException;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.Stages;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesWrite;
@@ -125,17 +125,18 @@ class StageServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionForNoMatchOnEventId() throws Exception {
+  void shouldReturnEmptyStructForNoMatchOnEventId() throws Exception {
     // Mock behaviours
     when(stageDataRepo.findById(NO_MATCH_EVENT_ID))
         .thenReturn(Optional.empty());
 
     // Invoke
-    final var ex = assertThrows(ResourceNotFoundException.class,
-        () -> stageService.getStagesForEventId(NO_MATCH_EVENT_ID));
+    final var response = stageService.getStagesForEventId(NO_MATCH_EVENT_ID);
 
     // Assert
-    assertEquals("No stage data found for eventId: " + NO_MATCH_EVENT_ID, ex.getMessage());
+    assertAll(() -> assertNotNull(response),
+              () -> assertEquals(0, response.getNumberOfStages()),
+              () -> assertNull(response.getStages()));
 
     // Verify
     verify(stageDataRepo).findById(NO_MATCH_EVENT_ID);

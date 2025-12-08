@@ -30,7 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.StageException;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageType;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageTypesRead;
@@ -150,16 +149,22 @@ public class StageControllerTest {
 
     @Test
     public void shouldHandleNoMatchOnEventId() throws Exception {
-      when(stageService.getStagesForEventId("NoMatchEventId"))
-          .thenThrow(new ResourceNotFoundException("No stage data found for eventId: NoMatchEventId"));
+      final var stagesRead = new StagesRead()
+              .eventId("NoMatchEventId")
+              .numberOfStages(0)
+              .stages(null);
+
+      when(stageService.getStagesForEventId("NoMatchEventId")).thenReturn(stagesRead);
+
+      final String expectedJson = new ObjectMapper().writeValueAsString(stagesRead);
 
       mockMvc
           .perform(get("/stages/event/NoMatchEventId")
               .with(validCATJwtReqPostProcessor))
           .andDo(print())
-          .andExpect(status().isNotFound())
+          .andExpect(status().isOk())
           .andExpect(content().contentType(APPLICATION_JSON))
-          .andExpect(jsonPath("$.errors[0].detail", containsString("No stage data found for eventId: NoMatchEventId")));
+          .andExpect(content().string(expectedJson));
     }
 
     @Test

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.StageException;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageType;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageTypesRead;
@@ -53,16 +52,22 @@ public class StageService {
         throw new StageException("Cannot retrieve stage data, invalid eventId");
     }
 
-    final var response = stageDataRepo.findById(eventId)
-        .orElseThrow(() -> new ResourceNotFoundException("No stage data found for eventId: " + eventId));
+    final var response = stageDataRepo.findById(eventId);
+
+    if (!response.isPresent()) {
+        return new StagesRead()
+                .eventId(eventId)
+                .numberOfStages(0)
+                .stages(null);
+    }
 
     final var stagesRead = new StagesRead()
         .eventId(eventId)
-        .numberOfStages(response.getStageIds().size());
+        .numberOfStages(response.get().getStageIds().size());
 
     final List<Stages> listOfStages = new ArrayList<>();
 
-    for (final Long thisStageId : response.getStageIds()) {
+    for (final Long thisStageId : response.get().getStageIds()) {
         listOfStages.add(new Stages().id(thisStageId));
     }
 
