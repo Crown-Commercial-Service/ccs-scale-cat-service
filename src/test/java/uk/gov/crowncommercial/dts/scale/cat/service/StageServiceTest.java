@@ -91,7 +91,7 @@ class StageServiceTest {
   @Test
   void shouldReturnCorrectStageTypesForValidEventId() throws Exception {
     // Mock behaviours
-    when(stageDataRepo.findById(EVENT_ID))
+    when(stageDataRepo.findByEventId(EVENT_ID))
         .thenReturn(Optional.of(StageDataEntity.builder()
                 .id(1L)
                 .eventId(EVENT_ID)
@@ -109,7 +109,7 @@ class StageServiceTest {
               () -> assertEquals(2L, response.getStages().get(1).getId()));
 
     // Verify
-    verify(stageDataRepo).findById(EVENT_ID);
+    verify(stageDataRepo).findByEventId(EVENT_ID);
   }
 
   @Test
@@ -127,7 +127,7 @@ class StageServiceTest {
   @Test
   void shouldReturnEmptyStructForNoMatchOnEventId() throws Exception {
     // Mock behaviours
-    when(stageDataRepo.findById(NO_MATCH_EVENT_ID))
+    when(stageDataRepo.findByEventId(NO_MATCH_EVENT_ID))
         .thenReturn(Optional.empty());
 
     // Invoke
@@ -139,7 +139,7 @@ class StageServiceTest {
               () -> assertNull(response.getStages()));
 
     // Verify
-    verify(stageDataRepo).findById(NO_MATCH_EVENT_ID);
+    verify(stageDataRepo).findByEventId(NO_MATCH_EVENT_ID);
   }
 
   @Test

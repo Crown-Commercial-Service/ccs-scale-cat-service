@@ -32,11 +32,11 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StageDataEntity {
+  @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id")
   Long id;
 
-  @Id
   @Column(name = "event_id")
   private String eventId;
 

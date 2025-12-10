@@ -52,7 +52,7 @@ public class StageService {
         throw new StageException("Cannot retrieve stage data, invalid eventId");
     }
 
-    final var response = stageDataRepo.findById(eventId);
+    final var response = stageDataRepo.findByEventId(eventId);
 
     if (!response.isPresent()) {
         return new StagesRead()
