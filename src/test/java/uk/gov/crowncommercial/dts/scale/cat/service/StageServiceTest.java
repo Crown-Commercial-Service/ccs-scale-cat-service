@@ -59,14 +59,14 @@ class StageServiceTest {
     // Mock behaviours
     when(stageTypesRepo.findAll())
         .thenReturn(List.of(
-            StageTypesEntity.builder().id(1L).stageType(MODULE_1).build(),
-            StageTypesEntity.builder().id(2L).stageType(MODULE_2).build(),
-            StageTypesEntity.builder().id(3L).stageType(MODULE_3).build(),
-            StageTypesEntity.builder().id(4L).stageType(MODULE_4).build(),
-            StageTypesEntity.builder().id(5L).stageType(MODULE_5).build(),
-            StageTypesEntity.builder().id(6L).stageType(MODULE_6).build(),
-            StageTypesEntity.builder().id(7L).stageType(MODULE_7).build(),
-            StageTypesEntity.builder().id(8L).stageType(MODULE_8).build()));
+            StageTypesEntity.builder().id(1).stageType(MODULE_1).build(),
+            StageTypesEntity.builder().id(2).stageType(MODULE_2).build(),
+            StageTypesEntity.builder().id(3).stageType(MODULE_3).build(),
+            StageTypesEntity.builder().id(4).stageType(MODULE_4).build(),
+            StageTypesEntity.builder().id(5).stageType(MODULE_5).build(),
+            StageTypesEntity.builder().id(6).stageType(MODULE_6).build(),
+            StageTypesEntity.builder().id(7).stageType(MODULE_7).build(),
+            StageTypesEntity.builder().id(8).stageType(MODULE_8).build()));
 
     // Invoke
     final var response = stageService.getStageTypes();
@@ -93,10 +93,10 @@ class StageServiceTest {
     // Mock behaviours
     when(stageDataRepo.findByEventId(EVENT_ID))
         .thenReturn(Optional.of(StageDataEntity.builder()
-                .id(1L)
+                .id(1)
                 .eventId(EVENT_ID)
                 .numberOfStages(2)
-                .stageIds(List.of(1L, 2L))
+                .stageIds(List.of(1, 2))
             .build()));
 
     // Invoke
@@ -105,8 +105,8 @@ class StageServiceTest {
     // Assert
     assertAll(() -> assertNotNull(response),
               () -> assertEquals(2, response.getNumberOfStages()),
-              () -> assertEquals(1L, response.getStages().get(0).getId()),
-              () -> assertEquals(2L, response.getStages().get(1).getId()));
+              () -> assertEquals(1, response.getStages().get(0).getId()),
+              () -> assertEquals(2, response.getStages().get(1).getId()));
 
     // Verify
     verify(stageDataRepo).findByEventId(EVENT_ID);
@@ -147,17 +147,17 @@ class StageServiceTest {
     // Mock behaviours
     when(stageDataRepo.save(any(StageDataEntity.class)))
         .thenReturn(StageDataEntity.builder()
-                .id(1L)
+                .id(1)
                 .eventId(EVENT_ID)
                 .numberOfStages(3)
-                .stageIds(List.of(2L, 4L, 6L))
+                .stageIds(List.of(2, 4, 6))
             .build());
 
     // Invoke
     final var stagesWrite = new StagesWrite();
-    stagesWrite.addStagesItem(new Stages().id(2L));
-    stagesWrite.addStagesItem(new Stages().id(4L));
-    stagesWrite.addStagesItem(new Stages().id(6L));
+    stagesWrite.addStagesItem(new Stages().id(2));
+    stagesWrite.addStagesItem(new Stages().id(4));
+    stagesWrite.addStagesItem(new Stages().id(6));
 
     final var response = stageService.createOrUpdateStagesForEventId(EVENT_ID, stagesWrite);
 
@@ -171,9 +171,9 @@ class StageServiceTest {
   @Test
   void shouldThrowExceptionForCreateStagesForInvalidEventId() throws Exception {
     final var stagesWrite = new StagesWrite();
-    stagesWrite.addStagesItem(new Stages().id(2L));
-    stagesWrite.addStagesItem(new Stages().id(4L));
-    stagesWrite.addStagesItem(new Stages().id(6L));
+    stagesWrite.addStagesItem(new Stages().id(2));
+    stagesWrite.addStagesItem(new Stages().id(4));
+    stagesWrite.addStagesItem(new Stages().id(6));
 
     // Invoke
     final var ex = assertThrows(StageException.class,

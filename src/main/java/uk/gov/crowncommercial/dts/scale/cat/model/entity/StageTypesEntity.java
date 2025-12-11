@@ -29,7 +29,7 @@ public class StageTypesEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "stage_id")
-  Long id;
+  Integer id;
 
   @Column(name = "stage_type")
   private String stageType;

@@ -73,23 +73,23 @@ public class StageControllerTest {
         validCATJwtReqPostProcessor = jwt().authorities(new SimpleGrantedAuthority("CAT_USER"));
 
         stagesWrite = new StagesWrite();
-        stagesWrite.addStagesItem(new Stages().id(2L));
-        stagesWrite.addStagesItem(new Stages().id(4L));
-        stagesWrite.addStagesItem(new Stages().id(6L));
+        stagesWrite.addStagesItem(new Stages().id(2));
+        stagesWrite.addStagesItem(new Stages().id(4));
+        stagesWrite.addStagesItem(new Stages().id(6));
 
         stageRequestJson = new ObjectMapper().writeValueAsString(stagesWrite);
     }
 
     @Test
     public void shouldReturnAllStageTypes() throws Exception {
-      final var stageType1 = new StageType().id(1L).stageType(MODULE_1);
-      final var stageType2 = new StageType().id(2L).stageType(MODULE_2);
-      final var stageType3 = new StageType().id(3L).stageType(MODULE_3);
-      final var stageType4 = new StageType().id(4L).stageType(MODULE_4);
-      final var stageType5 = new StageType().id(5L).stageType(MODULE_5);
-      final var stageType6 = new StageType().id(6L).stageType(MODULE_6);
-      final var stageType7 = new StageType().id(7L).stageType(MODULE_7);
-      final var stageType8 = new StageType().id(8L).stageType(MODULE_8);
+      final var stageType1 = new StageType().id(1).stageType(MODULE_1);
+      final var stageType2 = new StageType().id(2).stageType(MODULE_2);
+      final var stageType3 = new StageType().id(3).stageType(MODULE_3);
+      final var stageType4 = new StageType().id(4).stageType(MODULE_4);
+      final var stageType5 = new StageType().id(5).stageType(MODULE_5);
+      final var stageType6 = new StageType().id(6).stageType(MODULE_6);
+      final var stageType7 = new StageType().id(7).stageType(MODULE_7);
+      final var stageType8 = new StageType().id(8).stageType(MODULE_8);
 
       final List<StageType> listOfStageTypes = List.of(
           stageType1, stageType2, stageType3, stageType4,
@@ -123,8 +123,8 @@ public class StageControllerTest {
         final var stagesRead = new StagesRead()
                 .eventId(EVENT_ID)
                 .numberOfStages(2)
-                .stages(List.of(new Stages().id(1L),
-                                new Stages().id(2L)));
+                .stages(List.of(new Stages().id(1),
+                                new Stages().id(2)));
 
         when(stageService.getStagesForEventId(EVENT_ID)).thenReturn(stagesRead);
 

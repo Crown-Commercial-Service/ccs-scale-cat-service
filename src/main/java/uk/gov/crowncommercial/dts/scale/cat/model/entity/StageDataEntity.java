@@ -35,7 +35,7 @@ public class StageDataEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id")
-  Long id;
+  Integer id;
 
   @Column(name = "event_id")
   private String eventId;
@@ -44,6 +44,6 @@ public class StageDataEntity {
   private Integer numberOfStages;
 
   @Type(ListArrayType.class)
-  @Column(name = "stage_ids", columnDefinition = "long[]")
-  private List<Long> stageIds;
+  @Column(name = "stage_ids", columnDefinition = "integer[]")
+  private List<Integer> stageIds;
 }

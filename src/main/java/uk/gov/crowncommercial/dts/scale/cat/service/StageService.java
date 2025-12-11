@@ -67,7 +67,7 @@ public class StageService {
 
     final List<Stages> listOfStages = new ArrayList<>();
 
-    for (final Long thisStageId : response.get().getStageIds()) {
+    for (final Integer thisStageId : response.get().getStageIds()) {
         listOfStages.add(new Stages().id(thisStageId));
     }
 
@@ -86,7 +86,7 @@ public class StageService {
         throw new StageException("Cannot save stage data, invalid data for eventId: " + eventId);
     }
 
-    final List<Long> listOfStageIds = new ArrayList<>();
+    final List<Integer> listOfStageIds = new ArrayList<>();
 
     for (final Stages thisStage : stagesWrite.getStages()) {
         listOfStageIds.add(thisStage.getId());
