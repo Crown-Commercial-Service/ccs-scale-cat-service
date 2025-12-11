@@ -93,7 +93,7 @@ class StageServiceTest {
     // Mock behaviours
     when(stageDataRepo.findByEventId(EVENT_ID))
         .thenReturn(Optional.of(StageDataEntity.builder()
-                .id(1L)
+                .id(1)
                 .eventId(EVENT_ID)
                 .numberOfStages(2)
                 .stageIds(List.of(1L, 2L))
@@ -147,7 +147,7 @@ class StageServiceTest {
     // Mock behaviours
     when(stageDataRepo.save(any(StageDataEntity.class)))
         .thenReturn(StageDataEntity.builder()
-                .id(1L)
+                .id(1)
                 .eventId(EVENT_ID)
                 .numberOfStages(3)
                 .stageIds(List.of(2L, 4L, 6L))

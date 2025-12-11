@@ -35,7 +35,7 @@ public class StageDataEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id")
-  Long id;
+  Integer id;
 
   @Column(name = "event_id")
   private String eventId;
