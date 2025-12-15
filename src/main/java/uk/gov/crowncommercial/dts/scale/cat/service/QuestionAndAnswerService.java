@@ -1,22 +1,32 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import uk.gov.crowncommercial.dts.scale.cat.clients.QuestionAndAnswerClient;
+import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.QuestionAndAnswerServiceApplicationException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWrite;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.QuestionWriteResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureException;
-import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.QuestionAndAnswer;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
-import uk.gov.crowncommercial.dts.scale.cat.repo.QuestionAndAnswerRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 /**
  *
@@ -26,6 +36,9 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 @Slf4j
 public class QuestionAndAnswerService {
 
+  @Value("${config.external.questionAndAnswerService.apiKey}")
+  private String serviceApiKey;
+
   private final ValidationService validationService;
   private final UserProfileService userService;
   private final QuestionAndAnswerRepo questionAndAnswerRepo;
@@ -33,6 +46,7 @@ public class QuestionAndAnswerService {
   private final JaggaerService jaggaerService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AgreementsService agreementsService;
+  private final QuestionAndAnswerClient questionAndAnswerClient;
   public static final String JAGGAER_USER_NOT_FOUND = "Jaggaer user not found";
   public static final String Q_AND_A_NOT_FOUND = "QuestionAndAnswer not found by this id %s";
 
@@ -157,4 +171,61 @@ public class QuestionAndAnswerService {
     return questionAndAnswerList.stream().map(this::convertQandA).collect(Collectors.toList());
   }
 
+  public boolean createQuestion(String eventType, String eventId, String agreementId, String lotId) {
+
+    String exceptionFormat = "Unexpected error on event creation " + eventType + " template from QAS for Lot " + lotId + " and Agreement " + agreementId
+            + " and eventId " + eventId;
+
+    if(StringUtils.isEmpty(eventType)
+      || StringUtils.isEmpty(eventId)
+      || StringUtils.isEmpty(agreementId)
+      || StringUtils.isEmpty(lotId)) {
+      throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+    }
+
+    QuestionWrite questionWrite = new QuestionWrite()
+            .eventId(eventId)
+            .agreementId(agreementId)
+            .lotId(lotId);
+      try {
+        QuestionWriteResponse questionWriteResponse =  questionAndAnswerClient.createQuestions(questionWrite, eventType, serviceApiKey);
+        if(StringUtils.isNotEmpty(questionWriteResponse.getEventId())
+          && StringUtils.isNotEmpty(questionWriteResponse.getAgreementId())
+          && StringUtils.isNotEmpty(questionWriteResponse.getLotId())) {
+            return true;
+        }
+      } catch(Exception e) {
+        log.error("error: ", e);
+        throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+      }
+
+      return false;
+  }
+
+  /**
+   * Get the Event Type Data Templates for a given Lot for a given Agreement
+   */
+  @Cacheable(value = "qAndACache", key = "#root.methodName + '-' + #agreementId + '-' + #lotId + '-' + #eventType.value")
+  public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
+
+
+    // Call the Question and answer Service to request the data templates for the given agreement, lot and event type, first formatting the lot ID
+    String formattedLotId = lotId.replace("Lot ", "");
+    String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
+
+    try {
+      List<DataTemplate> model = questionAndAnswerClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), serviceApiKey);
+
+      // Return the model if possible, otherwise throw an error
+      if (model != null) {
+        return model;
+      } else {
+        log.warn("Empty response for Data Templates from Question and answer Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name());
+        throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+      }
+    } catch (Exception ex) {
+      log.error("Error getting Data Templates from Question and answer Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name(), ex);
+      throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+    }
+  }
 }

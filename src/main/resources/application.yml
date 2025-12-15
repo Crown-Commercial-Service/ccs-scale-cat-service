@@ -111,7 +111,7 @@ config:
       opensearch:
         batch:
           size: 80    
-    
+
   external:
     agreementsService:
       timeoutDuration: 10
@@ -125,6 +125,10 @@ config:
         uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
       getEventTypesForAgreement:
         uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
+
+    questionAndAnswerService:
+      insertOrUpdateQuestions: /questions
+      getLotEventTypeDataTemplates: /questions/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
 
     conclaveWrapper:
       timeoutDuration: 10
@@ -328,3 +332,7 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+
+api:
+  dos7:
+    enable: false

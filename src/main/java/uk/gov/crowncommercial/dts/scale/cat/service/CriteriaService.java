@@ -33,7 +33,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
@@ -67,6 +66,7 @@ public class CriteriaService {
 
   private final DataTemplateProcessor templateProcessor;
   private final ProcurementEventHelperService eventHelperService;
+  private final QuestionAndAnswerService questionAndAnswerService;
 
   @Transactional
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
@@ -257,9 +257,20 @@ public class CriteriaService {
     if (event.getProcurementTemplatePayload() != null) {
       dataTemplate = event.getProcurementTemplatePayload();
     } else {
-      var lotEventTypeDataTemplates =
-          agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
-              event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
+        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        List<DataTemplate> lotEventTypeDataTemplates;
+
+        if (legacyFlow) {
+          lotEventTypeDataTemplates =
+            agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+            event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
+        } else {
+          // NCAS- 795, should retrieve Questions and answers from new Question and answer service
+          lotEventTypeDataTemplates =
+            questionAndAnswerService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
+            event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
+        }
+
         if(null == event.getTemplateId())
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
               () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));

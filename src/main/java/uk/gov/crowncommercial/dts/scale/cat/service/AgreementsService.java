@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import uk.gov.crowncommercial.dts.scale.cat.clients.AgreementsClient;
+import uk.gov.crowncommercial.dts.scale.cat.clients.QuestionAndAnswerClient;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
@@ -24,8 +26,17 @@ public class AgreementsService {
   @Value("${config.external.agreementsService.apiKey}")
   public String serviceApiKey;
 
+  @Value("${config.external.questionAndAnswerService.apiKey}")
+  public String questionAndAnswerServiceApiKey;
+
+  @Value("${api.dos7.enable:false}")
+  protected boolean dos7Enabled;
+
   @Autowired
   AgreementsClient agreementsClient;
+
+  @Autowired
+  QuestionAndAnswerClient questionAndAnswerClient;
 
   /**
    * Get the Event Type Data Templates for a given Lot for a given Agreement
@@ -37,6 +48,23 @@ public class AgreementsService {
     String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
 
     try {
+      var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+
+      if (!legacyFlow) {
+        List<DataTemplate> questionAndAnswerResponse = questionAndAnswerClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), questionAndAnswerServiceApiKey);
+
+        if (questionAndAnswerResponse != null) {
+            return questionAndAnswerResponse;
+        }
+  
+        if (dos7Enabled) {
+            // for DOS7, if we don't find anything, then return an empty list
+            return Collections.emptyList();
+        }
+  
+        // this is for a legacy (< dos7) project, so check the agreements service
+      }
+
       List<DataTemplate> model = agreementsClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), serviceApiKey);
 
       // Return the model if possible, otherwise throw an error

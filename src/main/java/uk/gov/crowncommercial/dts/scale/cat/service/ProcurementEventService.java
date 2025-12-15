@@ -112,6 +112,7 @@ public class ProcurementEventService implements EventService {
     private final AsyncExecutor asyncExecutor;
     private final SupplierStoreFactory supplierStoreFactory;
     private final EventTransitionService eventTransitionService;
+    private final QuestionAndAnswerService questionAndAnswerService;
 
     private final ExecutorService jaggerUploadExecutorService = Executors.newFixedThreadPool(10);
     private final ExecutorService executorService = Executors.newFixedThreadPool(50);
@@ -313,9 +314,24 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-                Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
-                TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+
+        if (legacyFlow) {
+            return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+            Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+            TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+        } else {
+            // NCAS-795
+            if(questionAndAnswerService.createQuestion(eventTypeValue,
+                    procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
+                log.debug("Question has been created successfully into the QuestionAndAnswer service");
+                return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+                        Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+                        TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+            }
+
+            return null;
+        }
     }
 
     private void setRefreshSuppliersForEvent(ProcurementEvent.ProcurementEventBuilder eventBuilder, Set<ProcurementEvent> procurementEvents) {

@@ -19,43 +19,43 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.35</swagger-parser.version>
+        <swagger-parser.version>2.1.36</swagger-parser.version>
         <guava.version>33.5.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
-        <modelmapper.version>3.2.5</modelmapper.version>
+        <modelmapper.version>3.2.6</modelmapper.version>
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
-        <commons-io.version>2.20.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.37.3</aws-java-sdk-s3.version>
+        <commons-io.version>2.21.0</commons-io.version>
+        <aws-java-sdk-s3.version>2.40.3</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
         <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
-        <poi-ooxml.version>5.4.1</poi-ooxml.version>
+        <poi-ooxml.version>5.5.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.5</snakeyaml.version>
         <spring-security.version>6.5.6</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.21.2</jsoup.version>
-        <hibernate.version>6.6.32.Final</hibernate.version>
+        <hibernate.version>6.6.35.Final</hibernate.version>
         <junitapi.version>6.0.1</junitapi.version>
-        <opensearch.version>2.0.2</opensearch.version>
-        <shedlock.version>6.10.0</shedlock.version>
+        <opensearch.version>2.0.3</opensearch.version>
+        <shedlock.version>7.2.1</shedlock.version>
         <spring-boot.version>3.5.7</spring-boot.version>
         <jose.version>0.9.6</jose.version>
-        <jsonpath.version>2.9.0</jsonpath.version>
-        <logback.version>1.5.20</logback.version>
+        <jsonpath.version>2.10.0</jsonpath.version>
+        <logback.version>1.5.21</logback.version>
         <feignclient.version>4.3.0</feignclient.version>
         <ehcache.version>3.11.1</ehcache.version>
         <retry.version>2.0.12</retry.version>
-        <jetty-reactive.version>4.1.0</jetty-reactive.version>
+        <jetty-reactive.version>4.1.4</jetty-reactive.version>
         <postgres.version>42.7.8</postgres.version>
         <lombok.version>1.18.42</lombok.version>
         <spring.version>6.5.6</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.1</compiler.version>
-        <cucumber.version>7.31.0</cucumber.version>
+        <cucumber.version>7.32.0</cucumber.version>
         <h2.version>2.4.240</h2.version>
     </properties>
 
@@ -444,6 +444,38 @@
                             <strictSpec>true</strictSpec>
                             <languageSpecificPrimitives>OneOfstringinteger,OneOfstringnumberintegerobject,OneOfLinkedReleaseEmbeddedRelease,OneOfstringnumber,OneOfstringintegernumberboolean,OneOfnumberarray,OneOfLinkedRelease1,OneOfdateintegerboolean</languageSpecificPrimitives>
                             <typeMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError,OneOfstringinteger=String,FileFormat=Object,OneOfstringnumberintegerobject=String,OneOfLinkedReleaseEmbeddedRelease=Object,OneOfstringnumber=String,OneOfstringintegernumberboolean=String,OneOfnumberarray=Object,OneOfLinkedRelease1=LinkedRelease1,TenderStatus1=TenderStatus,OneOfdateintegerboolean=String</typeMappings>
+                            <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
+                            <verbose>false</verbose>
+                            <configOptions>
+                                <sourceFolder>src/gen/java/main</sourceFolder>
+                                <useBeanValidation>true</useBeanValidation>
+                                <performBeanValidation>true</performBeanValidation>
+                                <dateLibrary>java8</dateLibrary>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                                <openApiNullable>false</openApiNullable>
+                                <useOptional>true</useOptional>
+                                <useJakartaEe>true</useJakartaEe>
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>questions-and-answers-service-api</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/questions-and-answers-service/questions-and-answers-service.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <generateModels>true</generateModels>
+                            <generateSupportingFiles>false</generateSupportingFiles>
+                            <generateApis>false</generateApis>
+                            <generateModelTests>false</generateModelTests>
+                            <!-- qas package is Question & Answer Service -->
+                            <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.cas.generated</modelPackage>
+                            <skipValidateSpec>false</skipValidateSpec>
+                            <strictSpec>true</strictSpec>
                             <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
                             <verbose>false</verbose>
                             <configOptions>
