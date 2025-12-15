@@ -93,8 +93,13 @@ public class StageService {
     }
 
     try {
+      final var existing = stageDataRepo.findByEventId(eventId);
+
+      final Integer id = existing.isPresent() ? existing.get().getId() : null;
+
       stageDataRepo.save(
           StageDataEntity.builder()
+              .id(id)
               .eventId(eventId)
               .numberOfStages(listOfStageIds.size())
               .stageIds(listOfStageIds)
