@@ -127,6 +127,8 @@ config:
         uriTemplate: /agreements-service/agreements/{agreement-id}/lots/{lot-id}/event-types
 
     questionAndAnswerService:
+      baseUrl: https://cas-qa.crowncommercial.gov.uk
+      apiKey: abcdef123456ghijk
       insertOrUpdateQuestions: /questions
       getLotEventTypeDataTemplates: /questions/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
 
