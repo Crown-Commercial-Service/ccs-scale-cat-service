@@ -47,6 +47,7 @@ public class CacheConfig {
         cacheManager.createCache("tendersCache", primaryCacheConfig);
         cacheManager.createCache("conclaveCache", primaryCacheConfig);
         cacheManager.createCache("qAndACache", primaryCacheConfig);
+        cacheManager.createCache("stageCache", primaryCacheConfig);
 
         return cacheManager;
     }

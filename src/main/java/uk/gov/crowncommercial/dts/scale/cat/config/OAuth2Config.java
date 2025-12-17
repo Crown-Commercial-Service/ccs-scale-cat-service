@@ -13,9 +13,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.SecurityFilterChain;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * OAuth2 / JWT web security configuration
@@ -30,9 +31,9 @@ public class OAuth2Config {
   private final UnauthorizedResponseDecorator unauthorizedResponseDecorator;
   private final AccessDeniedResponseDecorator accessDeniedResponseDecorator;
   private static final String[] CAT_ROLES =
-      new String[] {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
+      {"CAT_USER", "CAT_ADMINISTRATOR", "ACCESS_CAT"};
 
-  private static final String[] LD_ROLES = new String[] {"JAEGGER_BUYER", "JAEGGER_SUPPLIER"};
+  private static final String[] LD_ROLES = {"JAEGGER_BUYER", "JAEGGER_SUPPLIER"};
 
   private static final String[] LD_AND_CAT_ROLES = ArrayUtils.addAll(CAT_ROLES, LD_ROLES);
 
@@ -53,6 +54,7 @@ public class OAuth2Config {
         .requestMatchers("/journeys/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/suppliers/**").hasAnyAuthority(CAT_ROLES)
+        .requestMatchers("/stages/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/error/**").hasAnyAuthority(
@@ -73,11 +75,11 @@ public class OAuth2Config {
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     log.info("Configuring custom JwtAuthenticationConverter to read CAT roles..");
 
-    var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    final var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
     grantedAuthoritiesConverter.setAuthorityPrefix("");
 
-    var jwtAuthenticationConverter = new JwtAuthenticationConverter();
+    final var jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 
