@@ -27,25 +27,25 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.21.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.40.3</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.40.8</aws-java-sdk-s3.version>
         <tika-core.version>3.2.3</tika-core.version>
         <java-cfenv-boot.version>3.5.0</java-cfenv-boot.version>
-        <notifications-java-client.version>5.2.1-RELEASE</notifications-java-client.version>
+        <notifications-java-client.version>6.0.0-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.5.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.5</snakeyaml.version>
-        <spring-security.version>6.5.6</spring-security.version>
+        <spring-security.version>6.5.7</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.0.0</rollbar.version>
         <jsoup.version>1.21.2</jsoup.version>
-        <hibernate.version>6.6.35.Final</hibernate.version>
+        <hibernate.version>6.6.37.Final</hibernate.version>
         <junitapi.version>6.0.1</junitapi.version>
         <opensearch.version>2.0.3</opensearch.version>
-        <shedlock.version>7.2.1</shedlock.version>
-        <spring-boot.version>3.5.7</spring-boot.version>
+        <shedlock.version>7.2.2</shedlock.version>
+        <spring-boot.version>3.5.8</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.10.0</jsonpath.version>
-        <logback.version>1.5.21</logback.version>
+        <logback.version>1.5.22</logback.version>
         <feignclient.version>4.3.0</feignclient.version>
         <ehcache.version>3.11.1</ehcache.version>
         <retry.version>2.0.12</retry.version>
@@ -55,7 +55,7 @@
         <spring.version>6.5.6</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.1</compiler.version>
-        <cucumber.version>7.32.0</cucumber.version>
+        <cucumber.version>7.33.0</cucumber.version>
         <h2.version>2.4.240</h2.version>
     </properties>
 
