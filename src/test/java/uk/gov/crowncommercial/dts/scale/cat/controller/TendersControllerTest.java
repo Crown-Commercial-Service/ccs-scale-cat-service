@@ -77,7 +77,7 @@ class TendersControllerTest {
         .perform(
             get("/tenders/event-types").with(validCATJwtReqPostProcessor).accept(APPLICATION_JSON))
         .andDo(print()).andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(11));
+        .andExpect(content().contentType(APPLICATION_JSON)).andExpect(jsonPath("$.size()").value(12));
   }
 
   @Test
