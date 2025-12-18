@@ -314,7 +314,7 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
 
         if (legacyFlow) {
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
