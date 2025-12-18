@@ -257,7 +257,7 @@ public class CriteriaService {
     if (event.getProcurementTemplatePayload() != null) {
       dataTemplate = event.getProcurementTemplatePayload();
     } else {
-        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
         List<DataTemplate> lotEventTypeDataTemplates;
 
         if (legacyFlow) {
