@@ -58,7 +58,7 @@ public class TaskSchedulingClient {
                                 if (eventTypes != null && !eventTypes.isEmpty()) {
                                     // Now for each event type trigger a cache spool up of its data templates
                                     eventTypes.forEach(eventType -> {
-                                        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+                                        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
 
                                         if (legacyFlow) {
                                             agreementsService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
