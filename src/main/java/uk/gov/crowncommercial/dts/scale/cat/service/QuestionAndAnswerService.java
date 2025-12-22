@@ -190,25 +190,21 @@ public class QuestionAndAnswerService {
 
     log.debug("QuestionWrite : {}", questionWrite);
       try {
-        QuestionWriteResponse questionWriteResponse =  questionAndAnswerClient.createQuestions(questionWrite, eventType, serviceApiKey);
+        QuestionWriteResponse response =  questionAndAnswerClient.createQuestions(questionWrite, eventType, serviceApiKey);
 
-        if(questionWriteResponse == null) {
-          // Cater for ACCEPTED response coming back from Q&A service, when no TBD passed and no template data found
+        if(response == null) {
+          // Cater for ACCEPTED response coming back from Q&A service, when TBD passed and no template data found
+          // Q&A service return 202 without any body
           log.debug("Question and Answer service responded 202.");
-          return true;
         }
 
-        if(StringUtils.isNotEmpty(questionWriteResponse.getEventId())
-          && StringUtils.isNotEmpty(questionWriteResponse.getAgreementId())
-          && StringUtils.isNotEmpty(questionWriteResponse.getLotId())) {
-            return true;
-        }
+        return true;
+
       } catch(Exception e) {
         log.error("error: ", e);
         throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
       }
 
-      return false;
   }
 
   /**

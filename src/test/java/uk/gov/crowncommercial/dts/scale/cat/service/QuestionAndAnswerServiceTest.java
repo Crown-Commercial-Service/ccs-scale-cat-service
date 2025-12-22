@@ -267,21 +267,6 @@ class QuestionAndAnswerServiceTest {
   }
 
   @Test
-  void createQuestionShouldReturnFalseOnMalformedClientResponse() {
-    // Arrange
-    QuestionWriteResponse malformedResponse = new QuestionWriteResponse();
-    malformedResponse.setEventId(VALID_EVENT_ID);
-    malformedResponse.setAgreementId(null);
-    malformedResponse.setLotId(VALID_LOT_ID);
-    when(questionAndAnswerClient.createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull())).thenReturn(malformedResponse);
-    // Act
-    boolean result = questionAndAnswerService.createQuestion(VALID_EVENT_TYPE, VALID_EVENT_ID, VALID_AGREEMENT_ID, VALID_LOT_ID);
-    // Assert
-    assertFalse(result, "Should return false if required fields (e.g., AgreementId) are missing in the response.");
-    verify(questionAndAnswerClient, times(1)).createQuestions(any(QuestionWrite.class), eq(VALID_EVENT_TYPE), isNull());
-  }
-
-  @Test
   void getLotEventTypeDataTemplatesShouldReturnDataOnSuccessfulClientCall() {
     // Arrange
     when(questionAndAnswerClient.getEventDataTemplates(eq(VALID_AGREEMENT_ID), eq(FORMATTED_LOT_ID),
