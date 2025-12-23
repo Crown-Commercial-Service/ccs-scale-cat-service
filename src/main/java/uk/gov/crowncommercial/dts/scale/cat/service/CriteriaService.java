@@ -284,9 +284,15 @@ public class CriteriaService {
           log.debug("Single data template: {}", dataTemplate);
         }  else {
           log.debug("Find template with matching templateId");
-          dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
-                  t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
-                    () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " + Find template with matching templateId error +"));
+          String errorLog = ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " event.getTemplateId(): " + event.getTemplateId();
+          dataTemplate = lotEventTypeDataTemplates.stream()
+                  .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
+                  .findFirst()
+                  .map(t -> {
+                    log.debug("templateId from lotEventTypeDataTemplates: " + t.getId());
+                    return t;
+                  })
+                  .orElseThrow(() -> new AgreementsServiceApplicationException(errorLog));
 
           log.debug("Template with matching templateId, {}", dataTemplate);
 
