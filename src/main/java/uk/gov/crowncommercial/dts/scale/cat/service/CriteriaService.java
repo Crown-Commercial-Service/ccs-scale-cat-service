@@ -254,21 +254,26 @@ public class CriteriaService {
   }
 
   private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
+    System.out.println("23121747-I");
     DataTemplate dataTemplate;
 
     // If the template has been persisted, get it from the local database
     if (event.getProcurementTemplatePayload() != null) {
+      System.out.println("23121747-II.I");
       dataTemplate = event.getProcurementTemplatePayload();
     } else {
+        System.out.println("23121747-II.II");
         var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
         List<DataTemplate> lotEventTypeDataTemplates;
 
         if (legacyFlow) {
+          System.out.println("23121747-III.I");
           log.debug("Getting template data from agreement service as legacyFlow is true.");
           lotEventTypeDataTemplates =
             agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         } else {
+          System.out.println("23121747-III.II");
           log.debug("Getting template data from Q&A service.");
           // NCAS- 795, should retrieve Questions and answers from new Question and answer service
           lotEventTypeDataTemplates =
@@ -277,12 +282,14 @@ public class CriteriaService {
         }
 
         if(null == event.getTemplateId()) {
+          System.out.println("23121747-IV.I");
           log.debug("Getting single data template object from Data template collection");
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
                   () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " + Single data template error +"));
 
           log.debug("Single data template: {}", dataTemplate);
         }  else {
+          System.out.println("23121747-IV.II");
           log.debug("Find template with matching templateId");
           dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
                   t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
@@ -306,12 +313,15 @@ public class CriteriaService {
           }
         }
 
+        System.out.println("23121747-V");
+
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
         log.debug("Saved event details into the renders DB.");
     }
 
+    System.out.println("23121747-VI");
     log.debug("Returning from retrieveDataTemplate method.");
     return dataTemplate;
   }
