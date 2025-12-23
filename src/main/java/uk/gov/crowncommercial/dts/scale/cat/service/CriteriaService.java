@@ -284,12 +284,12 @@ public class CriteriaService {
         System.out.println("23121747-IV.0 event.templateId = [" + event.getTemplateId() + "]");
 
         if (lotEventTypeDataTemplates == null) {
-            System.out.println("lotEventTypeDataTemplates is NULL");
+            System.out.println("23121747-IV.1 lotEventTypeDataTemplates is NULL");
         } else {
-            System.out.println("lotEventTypeDataTemplates size = " + lotEventTypeDataTemplates.size());
+            System.out.println("23121747-IV.2 lotEventTypeDataTemplates size = " + lotEventTypeDataTemplates.size());
         
             lotEventTypeDataTemplates.forEach(t ->
-                System.out.println("template.id = [" + t.getId() + "]")
+                System.out.println("23121747-IV.3 template.id = [" + t.getId() + "]")
             );
         }
 
