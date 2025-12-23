@@ -281,6 +281,18 @@ public class CriteriaService {
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         }
 
+        System.out.println("23121747-IV.0 event.templateId = [" + event.getTemplateId() + "]");
+
+        if (lotEventTypeDataTemplates == null) {
+            System.out.println("lotEventTypeDataTemplates is NULL");
+        } else {
+            System.out.println("lotEventTypeDataTemplates size = " + lotEventTypeDataTemplates.size());
+        
+            lotEventTypeDataTemplates.forEach(t ->
+                System.out.println("template.id = [" + t.getId() + "]")
+            );
+        }
+
         if(null == event.getTemplateId()) {
           System.out.println("23121747-IV.I");
           log.debug("Getting single data template object from Data template collection");
