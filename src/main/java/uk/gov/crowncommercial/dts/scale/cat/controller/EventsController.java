@@ -109,10 +109,17 @@ public class EventsController extends AbstractRestController {
   public EventDetail getEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
-    var principal = getPrincipalFromJwt(authentication);
-    log.info("getEvent invoked on behalf of principal: {}", principal);
+    try {
+      var principal = getPrincipalFromJwt(authentication);
+      log.info("getEvent invoked on behalf of principal: {}", principal);
 
-    return procurementEventService.getEvent(procId, eventId);
+      return procurementEventService.getEvent(procId, eventId);
+    } catch(Exception ex) {
+      log.error("Failed to get event details. error: {}", ex.getMessage());
+    }
+
+    return null;
+
   }
 
   @GetMapping("/{eventID}/review")
