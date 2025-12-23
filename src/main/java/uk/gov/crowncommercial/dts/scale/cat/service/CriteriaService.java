@@ -72,18 +72,21 @@ public class CriteriaService {
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
       final boolean populateGroups) {
 
+    log.debug("Get project from tenders DB to obtain Jaggaer project id");
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
-
+    log.debug("retrieveDataTemplate successfully");
     // Convert to EvalCriteria and return
     if (populateGroups) {
+      log.debug("Populate group is true, let's convert data template to EvalCriteria");
       return dataTemplate.getCriteria().stream()
           .map(tc -> new EvalCriteria().id(tc.getId()).description(tc.getDescription())
               .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
                   new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
           .collect(Collectors.toSet());
     }
+    log.debug("Returning transformed DTO.");
     return dataTemplate
         .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
             .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
@@ -261,32 +264,43 @@ public class CriteriaService {
         List<DataTemplate> lotEventTypeDataTemplates;
 
         if (legacyFlow) {
+          log.debug("Getting template data from agreement service as legacyFlow is true.");
           lotEventTypeDataTemplates =
             agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         } else {
+          log.debug("Getting template data from Q&A service.");
           // NCAS- 795, should retrieve Questions and answers from new Question and answer service
           lotEventTypeDataTemplates =
             questionAndAnswerService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         }
 
-        if(null == event.getTemplateId())
+        if(null == event.getTemplateId()) {
+          log.debug("Getting single data template object from Data template collection");
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-              () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
-        else{
+                  () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+
+          log.debug("Single data template: {}", dataTemplate);
+        }  else {
+          log.debug("Find template with matching templateId");
           dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
                   t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
                     () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
 
+          log.debug("Template with matching templateId, {}", dataTemplate);
+
           if(null != dataTemplate.getParent()) {
+            log.debug("Data template parent is not null.");
             Optional<ProcurementEvent> optionalProcurementEvent =  eventHelperService.getParentEvent(event, dataTemplate.getParent());
             if(optionalProcurementEvent.isPresent()){
+              log.debug("optionalProcurementEvent.isPresent().");
               DataTemplate oldTemplate = optionalProcurementEvent.get().getProcurementTemplatePayload();
               dataTemplate = templateProcessor.process(dataTemplate, oldTemplate);
+              log.debug("Successfully processed data template.");
             }else{
               //TODO   throw exception or leave as it is ??
-              log.info("Parent data template is empty");
+              log.error("Parent data template is empty");
               throw new RuntimeException("Parent event with templateId " + dataTemplate.getParent() + " is not found");
             }
           }
@@ -295,7 +309,10 @@ public class CriteriaService {
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
+        log.debug("Saved event details into the renders DB.");
     }
+
+    log.debug("Returning from retrieveDataTemplate method.");
     return dataTemplate;
   }
 
@@ -315,16 +332,16 @@ public class CriteriaService {
   }
 
   /**
-   * Rough first cut of code that adds Technical Envelope questions into Jaggaer. This will build an
-   * Rfx object containing the Technical Envelope that can be sent to update an existing Rfx in
-   * Jaggaer.
-   *
-   * Current behaviour - it will add questions it does not already have, but will not add
-   * duplicates. Questions are not deleted - needs investigation.
-   *
-   * 'Mandatory' and 'description' fields are not supplied so cannot be completed. Id's are not
-   * supplied so cannot update existing.
-   */
+     * Rough first cut of code that adds Technical Envelope questions into Jaggaer. This will build an
+     * Rfx object containing the Technical Envelope that can be sent to update an existing Rfx in
+     * Jaggaer.
+     * <p>
+     * Current behaviour - it will add questions it does not already have, but will not add
+     * duplicates. Questions are not deleted - needs investigation.
+     * <p>
+     * 'Mandatory' and 'description' fields are not supplied so cannot be completed. Id's are not
+     * supplied so cannot update existing.
+     */
   private Rfx createTechnicalEnvelopeUpdateRfx(final Question question,
       final ProcurementEvent event, final Requirement requirement) {
 

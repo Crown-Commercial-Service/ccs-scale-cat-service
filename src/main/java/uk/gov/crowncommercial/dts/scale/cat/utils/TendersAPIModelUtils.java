@@ -90,6 +90,8 @@ public class TendersAPIModelUtils {
 
   public EventDetail buildEventDetail(final RfxSetting rfxSetting,
       final ProcurementEvent procurementEvent, final Collection<EvalCriteria> buyerQuestions) {
+
+    log.debug("Building buildEventDetail, rfxSetting: {}, procurementEvent : {}, buyer questions: {}", rfxSetting, procurementEvent, buyerQuestions);
     var eventDetail = new EventDetail();
 
     var agreementDetails = new AgreementDetails();
@@ -138,7 +140,7 @@ public class TendersAPIModelUtils {
     }
     eventDetailOCDS.setAwardCriteria(AwardCriteria.RATEDCRITERIA);
     eventDetail.setOCDS(eventDetailOCDS);
-
+    log.debug("Successfully build EventDetail, eventDetails: {}", eventDetail);
     return eventDetail;
   }
 
