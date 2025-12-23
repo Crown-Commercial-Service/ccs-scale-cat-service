@@ -48,7 +48,7 @@ import jakarta.transaction.Transactional;
 @Slf4j
 public class CriteriaService {
 
-  static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found-TEST";
+  static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
   private static final String KEYVAL_PAIR_QUESTION_TYPE = "KeyValuePair";
@@ -279,14 +279,14 @@ public class CriteriaService {
         if(null == event.getTemplateId()) {
           log.debug("Getting single data template object from Data template collection");
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
-                  () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+                  () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " + Single data template error +"));
 
           log.debug("Single data template: {}", dataTemplate);
         }  else {
           log.debug("Find template with matching templateId");
           dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
                   t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
-                    () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+                    () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " + Find template with matching templateId error +"));
 
           log.debug("Template with matching templateId, {}", dataTemplate);
 
