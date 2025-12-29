@@ -112,6 +112,7 @@ public class CriteriaService {
 
       log.debug(LOG_TAG + "NonOCDS: {}", questionGroupNonOCDS);
       // OCDS
+      log.debug(LOG_TAG + "populateRequirements set as {}", populateRequirements);
       var requirements =
           populateRequirements
               ? convertRequirementsToQuestions(rg.getOcds().getRequirements(),
@@ -424,6 +425,7 @@ public class CriteriaService {
 
   public Question convertRequirementToQuestion(final Requirement r, final String agreementNumber) {
 
+    log.debug(LOG_TAG + "convertRequirementToQuestion method, agreementNumber: {}, requirement: {}", agreementNumber, r);
     // TODO: Move to object mapper or similar
     // @formatter:off
     var questionNonOCDS = new QuestionNonOCDS()
@@ -433,7 +435,8 @@ public class CriteriaService {
         .length(r.getNonOCDS().getLength())
             .inheritance(r.getNonOCDS().getInheritance())
         .answered(r.getNonOCDS().getAnswered()).order(r.getNonOCDS().getOrder())
-        .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream()
+        .options(ofNullable(r.getNonOCDS().getOptions())
+                .orElseGet(List::of).stream() //Checks if the options list in the source is null.
             .map(this::getQuestionNonOCDSOptions
         ).collect(Collectors.toList()));
     log.debug(LOG_TAG + "questionNonOCDS: {}", questionNonOCDS);
@@ -450,7 +453,7 @@ public class CriteriaService {
       description = description.replaceAll(END_DATE,
               DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(agreementDetails.getEndDate()));
 
-      log.debug(LOG_TAG + "aggrementDetails: {}", agreementDetails);
+      log.debug(LOG_TAG + "Getting aggrementDetails from agreement service. aggrementDetails: {}", agreementDetails);
     }
     var questionOCDS = new Requirement1()
         .id(r.getOcds().getId())
