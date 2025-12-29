@@ -1,22 +1,11 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static java.time.Duration.ofSeconds;
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.SerializationUtils;
-import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
@@ -24,21 +13,29 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationExceptio
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
-import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.time.Duration.ofSeconds;
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 
 /**
  *
@@ -48,7 +45,8 @@ import jakarta.transaction.Transactional;
 @Slf4j
 public class CriteriaService {
 
-  static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found-TEST";
+  static final String LOG_TAG = "12322912 - ";
+  static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
   private static final String KEYVAL_PAIR_QUESTION_TYPE = "KeyValuePair";
@@ -72,21 +70,21 @@ public class CriteriaService {
   public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
       final boolean populateGroups) {
 
-    log.debug("Get project from tenders DB to obtain Jaggaer project id");
+    log.debug(LOG_TAG + "Get project from tenders DB to obtain Jaggaer project id");
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
-    log.debug("retrieveDataTemplate successfully");
+    log.debug(LOG_TAG + "retrieveDataTemplate successfully");
     // Convert to EvalCriteria and return
     if (populateGroups) {
-      log.debug("Populate group is true, let's convert data template to EvalCriteria");
+      log.debug(LOG_TAG + "Populate group is true, let's convert data template to EvalCriteria");
       return dataTemplate.getCriteria().stream()
           .map(tc -> new EvalCriteria().id(tc.getId()).description(tc.getDescription())
               .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
                   new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
           .collect(Collectors.toSet());
     }
-    log.debug("Returning transformed DTO.");
+    log.debug(LOG_TAG + "Returning transformed DTO.");
     return dataTemplate
         .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
             .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
@@ -149,7 +147,7 @@ public class CriteriaService {
 
     var options = question.getNonOCDS().getOptions();
     if (options == null) {
-      log.error("'options' property not included in request for event {}", eventId);
+      log.error(LOG_TAG +  "'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
     }
 
@@ -168,7 +166,7 @@ public class CriteriaService {
     if (Party.TENDERER == criteria.getRelatesTo()) {
       var rfx = createTechnicalEnvelopeUpdateRfx(question, event, requirement);
 
-      log.info("Start calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+      log.info(LOG_TAG + "Start calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
       var createRfxResponse =
           ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateRfx().get(ENDPOINT))
               .bodyValue(new CreateUpdateRfx(OperationCode.UPDATE, rfx)).retrieve()
@@ -176,15 +174,15 @@ public class CriteriaService {
               .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
                   .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                       "Unexpected error updating Rfx"));
-      log.info("Finish calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
+      log.info(LOG_TAG + "Finish calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
 
       if (createRfxResponse.getReturnCode() != 0
           || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
-        log.error(createRfxResponse.toString());
+        log.error(LOG_TAG + createRfxResponse.toString());
         throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
             createRfxResponse.getReturnMessage());
       }
-      log.info("Updated event: {}", createRfxResponse);
+      log.info(LOG_TAG + "Updated event: {}", createRfxResponse);
     }
 
     // Update Tenders DB
@@ -239,6 +237,7 @@ public class CriteriaService {
       }
     } else if (Objects.equals(requirement.getNonOCDS().getQuestionType().toUpperCase(), KEYVAL_PAIR_QUESTION_TYPE.toUpperCase()) && Objects.equals(requirement.getOcds().getId().toUpperCase(), TERMS_ACRONYMS_QUESTION_ID.toUpperCase())) {
       if (options.size() > 20) {
+        log.error(LOG_TAG + "Too many values. Maximum allowed is 20.");
         throw new IllegalArgumentException("Too many values. Maximum allowed is 20.");
       }
     }
@@ -264,12 +263,12 @@ public class CriteriaService {
         List<DataTemplate> lotEventTypeDataTemplates;
 
         if (legacyFlow) {
-          log.debug("Getting template data from agreement service as legacyFlow is true.");
+          log.debug(LOG_TAG + "Getting template data from agreement service as legacyFlow is true.");
           lotEventTypeDataTemplates =
             agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         } else {
-          log.debug("Getting template data from Q&A service.");
+          log.debug(LOG_TAG + "Getting template data from Q&A service.");
           // NCAS- 795, should retrieve Questions and answers from new Question and answer service
           lotEventTypeDataTemplates =
             questionAndAnswerService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
@@ -277,36 +276,36 @@ public class CriteriaService {
         }
 
         if(null == event.getTemplateId()) {
-          log.debug("Getting single data template object from Data template collection");
+          log.debug(LOG_TAG + "Getting single data template object from Data template collection");
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
                   () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " + Single data template error +"));
 
-          log.debug("Single data template: {}", dataTemplate);
+          log.debug(LOG_TAG + "Single data template: {}", dataTemplate);
         }  else {
-          log.debug("Find template with matching templateId");
+          log.debug(LOG_TAG + "Find template with matching templateId");
           String errorLog = ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " event.getTemplateId(): " + event.getTemplateId();
           dataTemplate = lotEventTypeDataTemplates.stream()
                   .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
                   .findFirst()
                   .map(t -> {
-                    log.debug("templateId from lotEventTypeDataTemplates: " + t.getId());
+                    log.debug(LOG_TAG + "templateId from lotEventTypeDataTemplates: " + t.getId());
                     return t;
                   })
                   .orElseThrow(() -> new AgreementsServiceApplicationException(errorLog));
 
-          log.debug("Template with matching templateId, {}", dataTemplate);
+          log.debug(LOG_TAG + "Template with matching templateId, {}", dataTemplate);
 
           if(null != dataTemplate.getParent()) {
-            log.debug("Data template parent is not null.");
+            log.debug(LOG_TAG + "Data template parent is not null.");
             Optional<ProcurementEvent> optionalProcurementEvent =  eventHelperService.getParentEvent(event, dataTemplate.getParent());
             if(optionalProcurementEvent.isPresent()){
-              log.debug("optionalProcurementEvent.isPresent().");
+              log.debug(LOG_TAG + "optionalProcurementEvent.isPresent().");
               DataTemplate oldTemplate = optionalProcurementEvent.get().getProcurementTemplatePayload();
               dataTemplate = templateProcessor.process(dataTemplate, oldTemplate);
-              log.debug("Successfully processed data template.");
+              log.debug(LOG_TAG + "Successfully processed data template.");
             }else{
               //TODO   throw exception or leave as it is ??
-              log.error("Parent data template is empty");
+              log.error(LOG_TAG + "Parent data template is empty");
               throw new RuntimeException("Parent event with templateId " + dataTemplate.getParent() + " is not found");
             }
           }
@@ -315,10 +314,10 @@ public class CriteriaService {
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
-        log.debug("Saved event details into the renders DB.");
+        log.debug(LOG_TAG + "Saved event details into the renders DB.");
     }
 
-    log.debug("Returning from retrieveDataTemplate method.");
+    log.debug(LOG_TAG + "Returning from retrieveDataTemplate method.");
     return dataTemplate;
   }
 
