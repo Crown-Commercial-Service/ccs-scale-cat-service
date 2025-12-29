@@ -3,8 +3,10 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity.audit;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
 import com.vladmihalcea.hibernate.type.json.JsonType;
+import org.hibernate.type.SqlTypes;
 
 import java.sql.Timestamp;
 
@@ -31,11 +33,11 @@ public class AuditLog {
     @Column(name = "reason", length = 255)
     String reason;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "before_update", columnDefinition = "jsonb")
     String beforeUpdate;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "after_update", columnDefinition = "jsonb")
     String afterUpdate;
 
