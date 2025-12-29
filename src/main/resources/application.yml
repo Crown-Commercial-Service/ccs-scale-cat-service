@@ -340,5 +340,6 @@ api:
 
 logging:
   level:
-    root: INFO
-    uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService: DEBUG
+#    root: INFO
+#    uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService: DEBUG
+    root: DEBUG
