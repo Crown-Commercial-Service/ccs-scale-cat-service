@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import jakarta.validation.ValidationException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
@@ -27,10 +28,13 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 /**
  * Captures Project and Event input validation functionality
  */
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ValidationService {
 
+  static final String LOG_TAG = "12322912 - ";
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AssessmentService assessmentService;
   private final Clock clock;
@@ -57,8 +61,10 @@ public class ValidationService {
             eventOCID.getPublisherPrefix())
         .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
 
+    log.debug(LOG_TAG + "Saved event to tender db. event: {}", event);
     // Validate projectId is correct
     if (!event.getProject().getId().equals(projectId)) {
+      log.error("Project '" + projectId + "' is not valid for event '" + eventId + "'");
       throw new ResourceNotFoundException(
           "Project '" + projectId + "' is not valid for event '" + eventId + "'");
     }

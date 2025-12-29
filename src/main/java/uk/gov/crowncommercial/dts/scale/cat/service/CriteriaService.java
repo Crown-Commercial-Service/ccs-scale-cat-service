@@ -74,21 +74,28 @@ public class CriteriaService {
     // Get project from tenders DB to obtain Jaggaer project id
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
     var dataTemplate = retrieveDataTemplate(event);
-    log.debug(LOG_TAG + "retrieveDataTemplate successfully");
+    log.debug(LOG_TAG + "retrieveDataTemplate successfully. dataTemplate: {}", dataTemplate);
     // Convert to EvalCriteria and return
     if (populateGroups) {
       log.debug(LOG_TAG + "Populate group is true, let's convert data template to EvalCriteria");
-      return dataTemplate.getCriteria().stream()
+      var eventCriteria = dataTemplate.getCriteria().stream()
           .map(tc -> new EvalCriteria().id(tc.getId()).description(tc.getDescription())
               .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
                   new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
           .collect(Collectors.toSet());
+
+      log.debug(LOG_TAG + "Event criteria: {}", eventCriteria);
+      return eventCriteria;
     }
-    log.debug(LOG_TAG + "Returning transformed DTO.");
-    return dataTemplate
+
+    var transformToDto =  dataTemplate
         .getCriteria().stream().map(tc -> new EvalCriteria().id(tc.getId())
             .description(tc.getDescription()).description(tc.getDescription()).title(tc.getTitle()))
         .collect(Collectors.toSet());
+
+    log.debug(LOG_TAG + "Transformed DTO: {}", transformToDto);
+
+    return transformToDto;
   }
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
@@ -97,22 +104,34 @@ public class CriteriaService {
     var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
 
-    return criteria.getRequirementGroups().stream().map(rg -> {
+    var questionGroup =  criteria.getRequirementGroups().stream().map(rg -> {
       // NonOCDS
       var questionGroupNonOCDS = new QuestionGroupNonOCDS().task(rg.getNonOCDS().getTask())
           .order(rg.getNonOCDS().getOrder()).prompt(rg.getNonOCDS().getPrompt())
           .mandatory(rg.getNonOCDS().getMandatory());
+
+      log.debug(LOG_TAG + "NonOCDS: {}", questionGroupNonOCDS);
       // OCDS
       var requirements =
           populateRequirements
               ? convertRequirementsToQuestions(rg.getOcds().getRequirements(),
                   event.getProject().getCaNumber())
               : null;
+
+      log.debug(LOG_TAG + "requirements: {}", requirements);
+
       var questionGroupOCDS = new QuestionGroupOCDS().id(rg.getOcds().getId())
           .description(rg.getOcds().getDescription()).requirements(requirements);
 
-      return new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
+      log.debug(LOG_TAG + "questionGroupOCDS: {}", questionGroupOCDS);
+
+      var qg =  new QuestionGroup().nonOCDS(questionGroupNonOCDS).OCDS(questionGroupOCDS);
+      log.debug(LOG_TAG + "questionGroup: {}", qg);
+      return qg;
     }).collect(Collectors.toSet());
+
+    log.debug(LOG_TAG + "questionGroup: {}", questionGroup);
+    return questionGroup;
   }
 
   public Set<Question> getEvalCriterionGroupQuestions(final Integer projectId, final String eventId,
@@ -121,9 +140,12 @@ public class CriteriaService {
     var dataTemplate = retrieveDataTemplate(event);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
-    return group.getOcds().getRequirements().stream().map(
+    var question =  group.getOcds().getRequirements().stream().map(
         (final Requirement r) -> convertRequirementToQuestion(r, event.getProject().getCaNumber()))
         .collect(Collectors.toSet());
+
+    log.debug(LOG_TAG + "question: {}", question);
+    return question;
 
   }
 
@@ -135,17 +157,24 @@ public class CriteriaService {
 
     // Get the project/event and check if there is a pre-existing event.procurement_template_payload
     var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    log.debug(LOG_TAG + "event: {}", event);
     var dataTemplate = retrieveDataTemplate(event);
+    log.debug(LOG_TAG + "dataTemplate: {}", dataTemplate);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
+    log.debug(LOG_TAG + "criteria: {}", criteria);
     var group = extractRequirementGroup(criteria, groupId);
+    log.debug(LOG_TAG + "group: {}", group);
 
     var requirement = group.getOcds().getRequirements().stream()
         .filter(r -> Objects.equals(r.getOcds().getId(), questionId)).findFirst().orElseThrow(
             () -> new ResourceNotFoundException("Question '" + questionId + "' not found"));
 
+    log.debug(LOG_TAG + "requirement: {}", requirement);
+
     eventHelperService.checkValidforUpdate(requirement);
 
     var options = question.getNonOCDS().getOptions();
+    log.debug(LOG_TAG + "options: {}", options);
     if (options == null) {
       log.error(LOG_TAG +  "'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
@@ -176,9 +205,10 @@ public class CriteriaService {
                       "Unexpected error updating Rfx"));
       log.info(LOG_TAG + "Finish calling Jaggaer API to update rfx, Rfx Id: {}", rfx.getRfxSetting().getRfxId());
 
+      log.debug(LOG_TAG + "createRfxResponse: {}", createRfxResponse);
       if (createRfxResponse.getReturnCode() != 0
           || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
-        log.error(LOG_TAG + createRfxResponse.toString());
+        log.error(LOG_TAG + "Jaggaer response was not OK" + createRfxResponse);
         throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
             createRfxResponse.getReturnMessage());
       }
@@ -189,8 +219,10 @@ public class CriteriaService {
     event.setProcurementTemplatePayload(dataTemplate);
     event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
-
-    return convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
+    log.debug(LOG_TAG + "Event saved into the tender DB. event: {}", event);
+    var transformRequirementToQuestion =  convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
+    log.debug(LOG_TAG + "Successfully transformed requirement to question. question: {}", transformRequirementToQuestion);
+    return transformRequirementToQuestion;
   }
 
 
@@ -258,6 +290,7 @@ public class CriteriaService {
     // If the template has been persisted, get it from the local database
     if (event.getProcurementTemplatePayload() != null) {
       dataTemplate = event.getProcurementTemplatePayload();
+      log.debug(LOG_TAG + "Template has been persisted, getting from the local database. dataTemplate: {}", dataTemplate);
     } else {
         var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
         List<DataTemplate> lotEventTypeDataTemplates;
@@ -288,7 +321,7 @@ public class CriteriaService {
                   .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
                   .findFirst()
                   .map(t -> {
-                    log.debug(LOG_TAG + "templateId from lotEventTypeDataTemplates: " + t.getId());
+                    log.debug(LOG_TAG + "templateId from lotEventTypeDataTemplates matched, templatedId: " + t.getId());
                     return t;
                   })
                   .orElseThrow(() -> new AgreementsServiceApplicationException(errorLog));
@@ -302,7 +335,7 @@ public class CriteriaService {
               log.debug(LOG_TAG + "optionalProcurementEvent.isPresent().");
               DataTemplate oldTemplate = optionalProcurementEvent.get().getProcurementTemplatePayload();
               dataTemplate = templateProcessor.process(dataTemplate, oldTemplate);
-              log.debug(LOG_TAG + "Successfully processed data template.");
+              log.debug(LOG_TAG + "Successfully processed data template. dataTemplate: {}", dataTemplate);
             }else{
               //TODO   throw exception or leave as it is ??
               log.error(LOG_TAG + "Parent data template is empty");
@@ -314,10 +347,10 @@ public class CriteriaService {
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
-        log.debug(LOG_TAG + "Saved event details into the renders DB.");
+        log.debug(LOG_TAG + "Saved event details into the tenders DB. event: {}", event);
     }
 
-    log.debug(LOG_TAG + "Returning from retrieveDataTemplate method.");
+    log.debug(LOG_TAG + "Returning from retrieveDataTemplate method. dataTemplate: {}", dataTemplate);
     return dataTemplate;
   }
 
@@ -358,14 +391,18 @@ public class CriteriaService {
     // only Value question types are supported at present
     if ("Value".equals(requirement.getNonOCDS().getQuestionType())) {
       var rfxSetting = RfxSetting.builder().rfxId(event.getExternalEventId()).build();
+      log.debug(LOG_TAG + "rfxSetting: {}", rfxSetting);
       var parameterList = TechEnvelopeParameterList.builder()
           .parameters(question.getNonOCDS().getOptions().stream().map(
               q -> TechEnvelopeParameter.builder().name(q.getValue()).type(questionType).build())
               .collect(Collectors.toList()))
           .build();
+      log.debug(LOG_TAG + "parameterList: {}", parameterList);
       var section = TechEnvelopeSection.builder().name(sectionName).type(sectionType)
           .questionType(sectionQuestionType).parameterList(parameterList).build();
+      log.debug(LOG_TAG + "section: {}", section);
       var techEnvelope = TechEnvelope.builder().sections(Arrays.asList(section)).build();
+      log.debug(LOG_TAG + "techEnvelope: {}", techEnvelope);
 
       return Rfx.builder().rfxSetting(rfxSetting).techEnvelope(techEnvelope).build();
 
@@ -376,10 +413,13 @@ public class CriteriaService {
 
   public List<Question> convertRequirementsToQuestions(final Set<Requirement> requirements,
       final String agreementNumber) {
-    return requirements.stream()
+    var requirementToQuestion = requirements.stream()
         .map((final Requirement requirement) -> convertRequirementToQuestion(requirement,
             agreementNumber))
         .collect(Collectors.toList());
+
+    log.debug(LOG_TAG + "requirementToQuestion: {}", requirementToQuestion);
+    return requirementToQuestion;
   }
 
   public Question convertRequirementToQuestion(final Requirement r, final String agreementNumber) {
@@ -396,6 +436,7 @@ public class CriteriaService {
         .options(ofNullable(r.getNonOCDS().getOptions()).orElseGet(List::of).stream()
             .map(this::getQuestionNonOCDSOptions
         ).collect(Collectors.toList()));
+    log.debug(LOG_TAG + "questionNonOCDS: {}", questionNonOCDS);
     if (Objects.nonNull(r.getNonOCDS().getDependency())) {
       questionNonOCDS.dependency(dependencyMapper.convertToQuestionNonOCDSDependency(r));
     }
@@ -408,6 +449,8 @@ public class CriteriaService {
       var agreementDetails = agreementsService.getAgreementDetails(agreementNumber);
       description = description.replaceAll(END_DATE,
               DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(agreementDetails.getEndDate()));
+
+      log.debug(LOG_TAG + "aggrementDetails: {}", agreementDetails);
     }
     var questionOCDS = new Requirement1()
         .id(r.getOcds().getId())
@@ -424,8 +467,10 @@ public class CriteriaService {
             .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
             .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
     // @formatter:on
-
-    return new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
+    log.debug(LOG_TAG + "questionOCDS: {}", questionOCDS);
+    var questionAfterConversion = new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
+    log.debug(LOG_TAG + "questionAfterConversion: {}", questionAfterConversion);
+    return questionAfterConversion;
 
   }
 
@@ -439,16 +484,19 @@ public class CriteriaService {
               .editableCols(o.getTableDefinition().getEditableCols())
               .titles(o.getTableDefinition().getTitles()).data(o.getTableDefinition().getData()));
     }
+    log.debug(LOG_TAG + "questionNonOCDSOptions: {}", questionNonOCDSOptions);
     return questionNonOCDSOptions;
   }
 
   private static List<Option> getUpdatedOptions(List<QuestionNonOCDSOptions> options) {
-    return options.stream()
+    var updatedOption =  options.stream()
             .map(questionNonOCDSOptions -> Option.builder()
                     .select(questionNonOCDSOptions.getSelected() == null ? Boolean.FALSE
                             : questionNonOCDSOptions.getSelected())
                     .value(questionNonOCDSOptions.getValue()).text(questionNonOCDSOptions.getText())
                     .tableDefinition(questionNonOCDSOptions.getTableDefinition()).build())
             .collect(Collectors.toList());
+    log.debug(LOG_TAG + "updatedOption: {}", updatedOption);
+    return updatedOption;
   }
 }
