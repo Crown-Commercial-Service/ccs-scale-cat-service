@@ -187,8 +187,17 @@ public class QuestionAndAnswerService {
             .eventId(eventId)
             .agreementId(agreementId)
             .lotId(lotId);
+
+    log.debug("QuestionWrite : {}", questionWrite);
       try {
         QuestionWriteResponse questionWriteResponse =  questionAndAnswerClient.createQuestions(questionWrite, eventType, serviceApiKey);
+
+        if(questionWriteResponse == null) {
+          // Cater for ACCEPTED response coming back from Q&A service, when no TBD passed and no template data found
+          log.debug("Question and Answer service responded 202.");
+          return true;
+        }
+
         if(StringUtils.isNotEmpty(questionWriteResponse.getEventId())
           && StringUtils.isNotEmpty(questionWriteResponse.getAgreementId())
           && StringUtils.isNotEmpty(questionWriteResponse.getLotId())) {
