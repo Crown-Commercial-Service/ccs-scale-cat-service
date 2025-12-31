@@ -318,6 +318,7 @@ public class CriteriaService {
           log.debug(LOG_TAG + "Single data template: {}", dataTemplate);
         }  else {
           log.debug(LOG_TAG + "Find template with matching templateId");
+          System.out.println("31121209.II.0- " + lotEventTypeDataTemplates);
           String errorLog = ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " event.getTemplateId(): " + event.getTemplateId();
           dataTemplate = lotEventTypeDataTemplates.stream()
                   .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
