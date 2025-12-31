@@ -217,6 +217,7 @@ public class CriteriaService {
     }
 
     // Update Tenders DB
+    System.out.println("31121209.I- " + dataTemplate);
     event.setProcurementTemplatePayload(dataTemplate);
     event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
@@ -345,6 +346,7 @@ public class CriteriaService {
           }
         }
 
+        System.out.println("31121209.II- " + dataTemplate);
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
