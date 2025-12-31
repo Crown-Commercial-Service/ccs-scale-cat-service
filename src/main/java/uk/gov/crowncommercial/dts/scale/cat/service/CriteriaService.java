@@ -320,14 +320,30 @@ public class CriteriaService {
           log.debug(LOG_TAG + "Find template with matching templateId");
           System.out.println("31121209.II.0- " + lotEventTypeDataTemplates);
           String errorLog = ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " event.getTemplateId(): " + event.getTemplateId();
-          dataTemplate = lotEventTypeDataTemplates.stream()
-                  .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
-                  .findFirst()
-                  .map(t -> {
-                    log.debug(LOG_TAG + "templateId from lotEventTypeDataTemplates matched, templatedId: " + t.getId());
-                    return t;
-                  })
-                  .orElseThrow(() -> new AgreementsServiceApplicationException(errorLog));
+
+          if (legacyFlow) {
+            dataTemplate = lotEventTypeDataTemplates.stream()
+                    .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
+                    .findFirst()
+                    .map(t -> {
+                      log.debug(LOG_TAG + "templateId from lotEventTypeDataTemplates matched, templatedId: " + t.getId());
+                      return t;
+                    })
+                    .orElseThrow(() -> new AgreementsServiceApplicationException(errorLog));
+          } else {
+              dataTemplate =
+                  lotEventTypeDataTemplates.stream()
+                      .filter(t -> event.getTemplateId().equals(t.getId()))
+                      .reduce((existing, incoming) -> {
+                          if (incoming.getCriteria() != null) {
+                              existing.getCriteria().addAll(incoming.getCriteria());
+                          }
+                          return existing;
+                      })
+                      .orElseThrow(() ->
+                          new AgreementsServiceApplicationException(errorLog)
+                      );
+          }
 
           log.debug(LOG_TAG + "Template with matching templateId, {}", dataTemplate);
 
