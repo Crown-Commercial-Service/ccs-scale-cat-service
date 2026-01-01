@@ -48,6 +48,9 @@ import jakarta.transaction.Transactional;
 @Slf4j
 public class CriteriaService {
 
+  @Value("${api.legacyDataTemplatesFlow.enable}")
+  protected boolean legacyFlow;
+
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
@@ -257,9 +260,9 @@ public class CriteriaService {
     if (event.getProcurementTemplatePayload() != null) {
       dataTemplate = event.getProcurementTemplatePayload();
     } else {
-        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
         List<DataTemplate> lotEventTypeDataTemplates;
 
+        // If QA flow is broken and being fixed (NCAS-795), revert and use the AS legacy flow, otherwise use QA.
         if (legacyFlow) {
           lotEventTypeDataTemplates =
             agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
