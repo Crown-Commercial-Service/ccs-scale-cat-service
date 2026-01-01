@@ -32,6 +32,9 @@ public class TaskSchedulingClient {
     @Value("${caching.agreements}")
     private String activeAgreements;
 
+    @Value("${api.legacyDataTemplatesFlow.enable}")
+    protected boolean legacyFlow;
+
     /**
      * Hourly, generate a fresh cache of Agreement data from the Agreements Service
      */
@@ -58,8 +61,7 @@ public class TaskSchedulingClient {
                                 if (eventTypes != null && !eventTypes.isEmpty()) {
                                     // Now for each event type trigger a cache spool up of its data templates
                                     eventTypes.forEach(eventType -> {
-                                        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
-
+                                        // If QA flow is broken and being fixed (NCAS-795), revert and use the AS legacy flow, otherwise use QA.
                                         if (legacyFlow) {
                                             agreementsService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
                                         } else {
