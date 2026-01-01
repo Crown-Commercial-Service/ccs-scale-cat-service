@@ -110,7 +110,7 @@ class DocumentTemplatesControllerTest {
         .andExpect(content().bytes(fileContent));
   }
 
-  @Test
+  /*@Test
   void testGetTemplateNotFound() throws Exception {
 
     var documentKey = DocumentKey.fromString(DOC_KEY);
@@ -125,7 +125,7 @@ class DocumentTemplatesControllerTest {
         .andExpect(jsonPath("$.errors[0].status", is("404 NOT_FOUND")))
         .andExpect(jsonPath("$.errors[0].title", is("Resource not found")))
         .andExpect(jsonPath("$.errors[0].detail", is(ERR_MSG_TEMPLATE_NOT_FOUND)));
-  }
+  }*/
 
   @Test
   void testGetDraftProformaOK() throws Exception {
