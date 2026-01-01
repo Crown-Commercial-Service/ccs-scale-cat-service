@@ -336,7 +336,5 @@ spring:
 api:
   legacyDataTemplatesFlow:
     enable: false
-
-api:
   dos7:
     enable: true
