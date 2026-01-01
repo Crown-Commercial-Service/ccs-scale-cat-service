@@ -32,6 +32,9 @@ public class AgreementsService {
   @Value("${api.dos7.enable:false}")
   protected boolean dos7Enabled;
 
+  @Value("${api.legacyDataTemplatesFlow.enable}")
+  protected boolean legacyFlow;
+
   @Autowired
   AgreementsClient agreementsClient;
 
@@ -48,8 +51,7 @@ public class AgreementsService {
     String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
 
     try {
-      var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
-
+      // If QA flow is broken and being fixed (NCAS-795), revert and use the AS legacy flow, otherwise use QA.
       if (!legacyFlow) {
         List<DataTemplate> questionAndAnswerResponse = questionAndAnswerClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), questionAndAnswerServiceApiKey);
 
