@@ -339,4 +339,4 @@ api:
 
 api:
   dos7:
-    enable: false
+    enable: true
