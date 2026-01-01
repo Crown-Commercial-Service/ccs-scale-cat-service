@@ -334,5 +334,9 @@ spring:
       ddl-auto: validate
 
 api:
+  legacyDataTemplatesFlow:
+    enable: false
+
+api:
   dos7:
     enable: false
