@@ -337,9 +337,3 @@ api:
   dos7:
     enable: true
 
-
-logging:
-  level:
-    root: INFO
-    uk.gov.crowncommercial.dts.scale.cat.service.CriteriaService: DEBUG
-#    root: DEBUG
