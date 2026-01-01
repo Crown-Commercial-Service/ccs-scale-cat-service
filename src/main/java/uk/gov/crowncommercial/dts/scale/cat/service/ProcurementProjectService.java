@@ -113,6 +113,7 @@ import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 @EnableScheduling
 public class ProcurementProjectService {
 
+  static final String LOG_TAG = "12322912 - ";
   // TODO: Migrate these to use the JaggaerService wrapper as time allows
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
@@ -217,7 +218,17 @@ public class ProcurementProjectService {
       var createUpdateProject =
               new CreateUpdateProject(OperationCode.CREATE_FROM_TEMPLATE, projectBuilder.build());
 
-      log.info("Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
+      if(createUpdateProject.getProject() != null
+              && createUpdateProject.getProject().getTender() != null
+              && createUpdateProject.getProject().getTender().getTenderCode() != null
+              && createUpdateProject.getProject().getTender().getTenderReferenceCode() != null) {
+
+        String tenderCode = createUpdateProject.getProject().getTender().getTenderCode();
+        String tenderReferenceCode = createUpdateProject.getProject().getTender().getTenderReferenceCode();
+        log.debug(LOG_TAG + "tenderCode: {}, tenderReferenceCode: {}", tenderCode, tenderReferenceCode);
+      }
+
+      log.info(LOG_TAG + "Start calling Jaggaer API to Create or Update project. Request: {}", createUpdateProject);
       var createProjectResponse =
               ofNullable(jaggaerWebClient.post().uri(jaggaerAPIConfig.getCreateProject().get(ENDPOINT))
                       .bodyValue(createUpdateProject).retrieve().bodyToMono(CreateUpdateProjectResponse.class)

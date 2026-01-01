@@ -2,9 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.util.List;
 
-import org.hibernate.annotations.Type;
-
-import com.vladmihalcea.hibernate.type.array.ListArrayType;
+import org.hibernate.annotations.JdbcTypeCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.type.SqlTypes;
 
 /**
 *
@@ -43,7 +42,7 @@ public class StageDataEntity {
   @Column(name = "number_of_stages")
   private Integer numberOfStages;
 
-  @Type(ListArrayType.class)
+  @JdbcTypeCode(SqlTypes.ARRAY)
   @Column(name = "stage_ids", columnDefinition = "integer[]")
   private List<Integer> stageIds;
 }

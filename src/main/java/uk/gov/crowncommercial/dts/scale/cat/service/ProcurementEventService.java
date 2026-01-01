@@ -314,7 +314,7 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
 
         if (legacyFlow) {
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
@@ -487,14 +487,16 @@ public class ProcurementEventService implements EventService {
      * @return the converted Tender object
      */
     public EventDetail getEvent(final Integer projectId, final String eventId) {
+        log.debug("About to validate project and eventId");
         var event = validationService.validateProjectAndEventIds(projectId, eventId);
-        
+        log.debug("Validated project and eventId successfully");
         // Try to get RFX data, but handle cases where it might not be available (e.g., closed events)
         ExportRfxResponse exportRfxResponse = null;
         RfxSetting rfxSetting = null;
         
         try {
             if (event.getExternalEventId() != null) {
+                log.debug("Let's call Jaggaer and get single rfx");
                 exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
                 rfxSetting = exportRfxResponse != null ? exportRfxResponse.getRfxSetting() : null;
             }
@@ -502,6 +504,8 @@ public class ProcurementEventService implements EventService {
             log.warn("Could not retrieve RFX data for event {}: {}", event.getExternalEventId(), e.getMessage());
             // Continue with null rfxSetting - buildEventDetail can handle this
         }
+
+        log.debug("Successfully called Jaggaer and get single rfx");
 
         return tendersAPIModelUtils.buildEventDetail(rfxSetting, event,
                 event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)

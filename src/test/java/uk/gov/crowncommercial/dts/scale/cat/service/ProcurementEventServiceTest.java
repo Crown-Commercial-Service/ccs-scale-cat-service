@@ -279,7 +279,7 @@ class ProcurementEventServiceTest {
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
-    // when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
+    when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.DA);
@@ -382,7 +382,7 @@ class ProcurementEventServiceTest {
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
-    // when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
+    when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
 
     var createEventNonOCDS = new CreateEventNonOCDS();
     createEventNonOCDS.setEventType(DefineEventType.FCA);
@@ -466,7 +466,7 @@ class ProcurementEventServiceTest {
 
     when(jaggaerService.searchRFx(Set.of(RFX_ID))).thenReturn(Set.of(rfxResponse));
 
-    // when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
+    when(questionAndAnswerService.createQuestion(any(), any(), any(), any())).thenReturn(Boolean.TRUE);
 
     // Invoke
     ArgumentCaptor<ProcurementEvent> captor = ArgumentCaptor.forClass(ProcurementEvent.class);
