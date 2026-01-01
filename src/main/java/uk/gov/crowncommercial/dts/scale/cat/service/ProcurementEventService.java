@@ -66,6 +66,9 @@ import static uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils.*;
 @Slf4j
 public class ProcurementEventService implements EventService {
 
+    @Value("${api.legacyDataTemplatesFlow.enable}")
+    protected boolean legacyFlow;
+
     private static final Integer RFI_FLAG = 0;
     private static final String RFX_TYPE = "STANDARD_ITT";
     private static final String ADDITIONAL_INFO_FRAMEWORK_NAME = "Framework Name";
@@ -314,8 +317,7 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        var legacyFlow = true; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
-
+        // If QA flow is broken and being fixed (NCAS-795), revert and use the AS legacy flow, otherwise use QA.
         if (legacyFlow) {
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
             Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
