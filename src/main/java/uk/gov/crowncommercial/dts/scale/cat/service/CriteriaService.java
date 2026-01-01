@@ -274,13 +274,34 @@ public class CriteriaService {
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         }
 
-        if(null == event.getTemplateId())
+        if(null == event.getTemplateId()) {
           dataTemplate = lotEventTypeDataTemplates.stream().findFirst().orElseThrow(
               () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
-        else{
-          dataTemplate = lotEventTypeDataTemplates.stream().filter(t -> (null != t.getId() &&
-                  t.getId().equals(event.getTemplateId()))).findFirst().orElseThrow(
-                    () -> new AgreementsServiceApplicationException(ERR_MSG_DATA_TEMPLATE_NOT_FOUND));
+        } else {
+          String errorLog = ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " event.getTemplateId(): " + event.getTemplateId();
+
+          if (legacyFlow) {
+            dataTemplate = lotEventTypeDataTemplates.stream()
+                    .filter(t -> null != t.getId() && t.getId().equals(event.getTemplateId()))
+                    .findFirst()
+                    .map(t -> {
+                      return t;
+                    })
+                    .orElseThrow(() -> new AgreementsServiceApplicationException(errorLog));
+          } else {
+              dataTemplate =
+                  lotEventTypeDataTemplates.stream()
+                      .filter(t -> event.getTemplateId().equals(t.getId()))
+                      .reduce((existing, incoming) -> {
+                          if (incoming.getCriteria() != null) {
+                              existing.getCriteria().addAll(incoming.getCriteria());
+                          }
+                          return existing;
+                      })
+                      .orElseThrow(() ->
+                          new AgreementsServiceApplicationException(errorLog)
+                      );
+          }
 
           if(null != dataTemplate.getParent()) {
             Optional<ProcurementEvent> optionalProcurementEvent =  eventHelperService.getParentEvent(event, dataTemplate.getParent());
