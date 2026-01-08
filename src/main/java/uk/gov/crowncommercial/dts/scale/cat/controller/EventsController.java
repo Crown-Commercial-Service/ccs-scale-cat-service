@@ -500,6 +500,9 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  /**
+   * Exit award event
+   */
   @PostMapping("/{eventID}/exit-award")
   @TrackExecutionTime
   public EventSummary saveExitAwardData(
