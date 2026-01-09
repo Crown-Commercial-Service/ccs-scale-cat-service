@@ -114,6 +114,21 @@ public class ProcurementEvent {
   @Column(name = "supplier_selection_justification")
   String supplierSelectionJustification;
 
+  @Column(name = "buyer_exited")
+  Boolean buyerExited;
+
+  @Column(name = "supplier_awarded")
+  String supplierAwarded;
+
+  @Column(name = "contract_start_date")
+  Instant contractStartDate;
+
+  @Column(name = "contract_value")
+  String contractValue;
+
+  @Column(name = "award_url")
+  String awardUrl;
+
   @ToString.Exclude
   @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
       orphanRemoval = true)

@@ -16,6 +16,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
+import uk.gov.crowncommercial.dts.scale.cat.model.events.ExitAwardRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
@@ -497,6 +498,23 @@ public class EventsController extends AbstractRestController {
         procId, eventId, watch.getLastTaskTimeMillis());
 
     return new StringValueResponse("OK");
+  }
+
+  /**
+   * Exit award event
+   */
+  @PostMapping("/{eventID}/exit-award")
+  @TrackExecutionTime
+  public EventSummary saveExitAwardData(
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @Valid @RequestBody final ExitAwardRequest exitAwardRequest,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("saveExitAwardData invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.saveExitAwardData(procId, eventId, exitAwardRequest, principal);
   }
 
   @DeleteMapping("/{eventID}")

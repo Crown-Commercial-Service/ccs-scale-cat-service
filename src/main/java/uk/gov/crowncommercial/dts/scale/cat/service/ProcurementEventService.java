@@ -20,6 +20,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.TendersDBDataException;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.events.ExitAwardRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentStatusEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
@@ -1195,10 +1196,93 @@ public class ProcurementEventService implements EventService {
                 if (event.getCancellationReasonDetail() != null) {
                     eventSummary.setCancellationReasonDetail(event.getCancellationReasonDetail());
                 }
+                
+                // Set buyerExited flag and award data if they exist (for UI to show award entry link)
+                if (event.getBuyerExited() != null) {
+                    eventSummary.setBuyerExited(event.getBuyerExited());
+                }
+                if (event.getSupplierAwarded() != null) {
+                    eventSummary.setSupplierAwarded(event.getSupplierAwarded());
+                }
+                if (event.getContractStartDate() != null) {
+                    eventSummary.setContractStartDate(TendersAPIModelUtils.getOffsetDateTimeFromInstant(event.getContractStartDate()));
+                }
+                if (event.getContractValue() != null) {
+                    eventSummary.setContractValue(event.getContractValue());
+                }
+                if (event.getAwardUrl() != null) {
+                    eventSummary.setAwardUrl(event.getAwardUrl());
+                }
             }
             updateTenderPeriod(event, rfxSetting, eventSummary);
             return eventSummary;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * Save exit award data for an exited event
+     *
+     * @param procId Project ID
+     * @param eventId Event ID
+     * @param exitAwardRequest Exit award request data
+     * @param principal User principal
+     * @return EventSummary with updated data
+     */
+    @Transactional
+    public EventSummary saveExitAwardData(final Integer procId, final String eventId,
+                                         final ExitAwardRequest exitAwardRequest,
+                                         final String principal) {
+
+        log.info("saveExitAwardData invoked for event {} on behalf of principal: {}", eventId, principal);
+
+        // Validate event exists and user has access
+        var event = validationService.validateProjectAndEventIds(procId, eventId);
+
+        // Update event with exit award data
+        event.setBuyerExited(true);
+        event.setSupplierAwarded(exitAwardRequest.getSupplierAwarded());
+        event.setContractStartDate(exitAwardRequest.getContractStartDate().toInstant());
+        event.setContractValue(exitAwardRequest.getContractValue());
+        event.setAwardUrl(exitAwardRequest.getAwardUrl());
+        event.setUpdatedAt(Instant.now());
+        event.setUpdatedBy(principal);
+
+        // Update tender status to COMPLETE (awarded)
+        event.setTenderStatus(TenderStatus.COMPLETE.getValue());
+
+        // Save to database
+        retryableTendersDBDelegate.save(event);
+
+        // Get RfxSetting for building response
+        RfxSetting rfxSetting = null;
+        if (event.getExternalEventId() != null) {
+            var exportRfxResponse = getSingleRfx(event.getExternalEventId());
+            if (exportRfxResponse != null && exportRfxResponse.getRfxSetting() != null) {
+                rfxSetting = exportRfxResponse.getRfxSetting();
+            }
+        }
+
+        // Build and return updated event summary
+        var eventSummary = tendersAPIModelUtils.buildEventSummary(
+            event.getEventID(),
+            event.getEventName(),
+            Optional.ofNullable(event.getExternalReferenceId()),
+            ViewEventType.fromValue(event.getEventType()),
+            TenderStatus.COMPLETE,
+            EVENT_STAGE,
+            Optional.ofNullable(event.getAssessmentId())
+        );
+
+        // Set dashboard status (will be EXITED due to buyer_exited = true)
+        eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
+
+        if (null != event.getTemplateId()) {
+            eventSummary.setTemplateGroupId(BigDecimal.valueOf(event.getTemplateId()));
+        }
+
+        eventSummary.setLastUpdated(TendersAPIModelUtils.getOffsetDateTimeFromInstant(event.getUpdatedAt()));
+
+        return eventSummary;
     }
 
     /**
