@@ -48,6 +48,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -98,6 +99,9 @@ class EventsControllerTest {
 
   @MockitoBean
   private AssessmentScoreExportService exportService;
+
+  @MockitoBean
+  private QuestionAndAnswerService questionAndAnswerService;
 
   @MockitoBean
   private Principal principal;

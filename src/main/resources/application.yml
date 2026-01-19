@@ -129,6 +129,7 @@ config:
     questionAndAnswerService:
       insertOrUpdateQuestions: /questions
       getLotEventTypeDataTemplates: /questions/{agreement-id}/lots/{lot-id}/event-types/{event-type}/data-templates
+      deleteQuestion: /questions/{event-id}/{question-id}
 
     conclaveWrapper:
       timeoutDuration: 10
