@@ -26,6 +26,8 @@ import jakarta.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -48,10 +50,12 @@ public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
   private final AssessmentScoreExportService scoreExportService;
+  private final QuestionAndAnswerService questionAndAnswerService;
 
   private final EventTransitionService eventTransitionService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
+  private static final String QUESTION_GROUP_PREFIX = "question-group-";
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
@@ -524,6 +528,66 @@ public class EventsController extends AbstractRestController {
     log.info("deleteSupplier invoked on behalf of principal: {}", principal);
 
     procurementEventService.deleteEvent(procId, eventId, principal);
+
+    return new StringValueResponse("OK");
+  }
+
+  @GetMapping("/{eventID}/question-groups")
+  @TrackExecutionTime
+  public QuestionGroupNamesRead getQuestionGroups(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getQuestionGroups invoked on behalf of principal: {}", principal);
+
+    QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
+    if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+        return null;
+    }
+
+    QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+
+    for (QandA responseData: response.getQandA()) {
+        questionGroups.addQaIdsItem(Integer.toString(responseData.getId().intValue()));
+        questionGroups.addQuestionGroupsItem(responseData.getAnswer());
+    }
+
+    return questionGroups;
+  }
+
+  @PostMapping("/{eventID}/question-groups")
+  @TrackExecutionTime
+  public StringValueResponse saveQuestionGroups(
+      @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("saveQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == requestModel) {
+        return new StringValueResponse("OK");
+    }
+
+    // firstly delete any existing answers
+    if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty()) {
+        for (Integer qaId : requestModel.getQaIds()) {
+            questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, qaId);
+        }
+    }
+
+    if (null == requestModel.getQuestionGroups() || requestModel.getQuestionGroups().isEmpty()) {
+        return new StringValueResponse("OK");
+    }
+
+    int i = 0;
+
+    // then create the new ones
+    for (String questionGroupName : requestModel.getQuestionGroups()) {
+        QandA newEntry = new QandA();
+        newEntry.setQuestion(QUESTION_GROUP_PREFIX + i++);
+        newEntry.setAnswer(questionGroupName);
+
+        questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
+    }
 
     return new StringValueResponse("OK");
   }

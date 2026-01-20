@@ -217,7 +217,6 @@ public class QuestionAndAnswerService {
   @Cacheable(value = "qAndACache", key = "#root.methodName + '-' + #agreementId + '-' + #lotId + '-' + #eventType.value")
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
 
-
     // Call the Question and answer Service to request the data templates for the given agreement, lot and event type, first formatting the lot ID
     String formattedLotId = lotId.replace("Lot ", "");
     String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
@@ -236,5 +235,23 @@ public class QuestionAndAnswerService {
       log.error("Error getting Data Templates from Question and answer Service for " + agreementId + ", lot " + formattedLotId + ", event type " + eventType.name(), ex);
       throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
     }
+  }
+
+  /**
+   * Delete the specified question
+   * @param eventId
+   * @param qaId
+   */
+  public void deleteQuestionAndAnswerByQaId(final String eventId, final Integer qaId) {
+      String exceptionFormat = "Unexpected error on question deletion " + qaId + " and eventId " + eventId;
+
+      try {
+          if (null != eventId && null != qaId) {
+              questionAndAnswerClient.deleteQuestion(eventId, qaId.toString(), serviceApiKey);
+          }
+      } catch(Exception e) {
+          log.error("error: ", e);
+          throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+      }
   }
 }

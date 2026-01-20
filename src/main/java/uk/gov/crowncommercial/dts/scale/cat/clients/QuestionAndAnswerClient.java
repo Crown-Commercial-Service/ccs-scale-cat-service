@@ -20,4 +20,7 @@ public interface QuestionAndAnswerClient {
 
     @GetMapping("${config.external.questionAndAnswerService.getLotEventTypeDataTemplates}")
     List<DataTemplate> getEventDataTemplates(@PathVariable("agreement-id") String agreementId, @PathVariable("lot-id") String lotId, @PathVariable("event-type") String eventType, @RequestHeader("x-api-key") String apiKey);
+
+    @DeleteMapping("${config.external.questionAndAnswerService.deleteQuestion}")
+    String deleteQuestion(@PathVariable("event-id") String eventId, @PathVariable("question-id") String questionId, @RequestHeader("x-api-key") String apiKey);
 }
