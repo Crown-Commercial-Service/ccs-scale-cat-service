@@ -214,7 +214,7 @@ public class QuestionAndAnswerService {
   /**
    * Get the Event Type Data Templates for a given Lot for a given Agreement
    */
-  @Cacheable(value = "qAndACache", key = "#root.methodName + '-' + #agreementId + '-' + #lotId + '-' + #eventType.value")
+  //@Cacheable(value = "qAndACache", key = "#root.methodName + '-' + #agreementId + '-' + #lotId + '-' + #eventType.value")
   public List<DataTemplate> getLotEventTypeDataTemplates(final String agreementId, final String lotId, final ViewEventType eventType) {
 
     // Call the Question and answer Service to request the data templates for the given agreement, lot and event type, first formatting the lot ID
