@@ -635,14 +635,14 @@ public class EventsController extends AbstractRestController {
     return questionGroups;
   }
 
-  @PostMapping("/{eventID}/{groupType}/question-groups?{deleteExisting}")
+  @PostMapping("/{eventID}/{groupType}/question-groups")
   @TrackExecutionTime
   public StringValueResponse saveQuestionGroups(
       @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
       @PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("groupType") final String groupType,
-      @RequestParam("deleteExisting") final Boolean deleteExisting,
+      @RequestParam("deleteExisting") final Optional<Boolean> deleteExisting,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("saveQuestionGroups invoked on behalf of principal: {}", principal);
@@ -657,7 +657,7 @@ public class EventsController extends AbstractRestController {
         return new StringValueResponse("ERROR");
     }
 
-    if (null != deleteExisting && deleteExisting.booleanValue()) {
+    if (null != deleteExisting && deleteExisting.isPresent() && deleteExisting.get().booleanValue()) {
         if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty()) {
             for (Integer qaId : requestModel.getQaIds()) {
                 questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, qaId);

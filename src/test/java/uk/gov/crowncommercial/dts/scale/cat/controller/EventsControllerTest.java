@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -530,6 +531,180 @@ class EventsControllerTest {
     .andDo(print())
     .andExpect(status().isOk())
     .andExpect(content().string(containsString("ERROR")));
+
+    verifyNoInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldGetQuestionGroups() throws Exception {
+    QandA questionGroup1 = new QandA();
+    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setAnswer("group1");
+    questionGroup1.id(BigDecimal.valueOf(123));
+
+    QandA questionGroup2 = new QandA();
+    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup2.setAnswer("group2");
+    questionGroup2.id(BigDecimal.valueOf(456));
+
+    QandAWithProjectDetails expected = new QandAWithProjectDetails();
+    expected.setQandA(List.of(questionGroup1, questionGroup2));
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().isOk())
+      .andExpect(content().string(containsString("\"questionGroups\":[\"group1\",\"group2\"]")))
+      .andExpect(content().string(containsString("\"qaIds\":[\"123\",\"456\"]")));
+
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
+  void shouldGetQuestionGroups_NoData_OnNoMatch() throws Exception {
+    QandA qanda = new QandA();
+    qanda.setQuestion(GROUP_TYPE + "-something");
+    qanda.setAnswer("something");
+    qanda.id(BigDecimal.valueOf(123));
+
+    QandAWithProjectDetails expected = new QandAWithProjectDetails();
+    expected.setQandA(List.of(qanda));
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().isOk())
+      .andExpect(content().string(containsString("\"questionGroups\":null")))
+      .andExpect(content().string(containsString("\"qaIds\":null")));
+
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
+  void shouldGetQuestionGroups_NoData() throws Exception {
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().isOk())
+      .andExpect(content().string(not(containsString("questionGroups"))))
+      .andExpect(content().string(not(containsString("qaIds"))));
+
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
+  void shouldGetQuestionGroup_Answer_Null_ForNullGroupType() throws Exception {
+    final String nullGroupType = null;
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, nullGroupType)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().is4xxClientError())
+      .andExpect(content().string(not(containsString("questionGroups"))))
+      .andExpect(content().string(not(containsString("qaIds"))));
+
+    verifyNoInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldSaveQuestionGroup() throws Exception {
+    QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
+    request.setQuestionGroups(List.of("group1", "group2"));
+    request.setQaIds(List.of(123, 456));
+
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/question-groups?deleteExisting=true", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(request)))
+    .andDo(print())
+    .andExpect(status().isOk())
+    .andExpect(content().string(containsString("OK")));
+
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 123);
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 456);
+
+    QandA questionGroup1 = new QandA();
+    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setAnswer("group1");
+    questionGroup1.id(BigDecimal.valueOf(123));
+
+    QandA questionGroup2 = new QandA();
+    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    questionGroup2.setAnswer("group2");
+    questionGroup2.id(BigDecimal.valueOf(456));
+
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup2, null);
+  }
+
+  @Test
+  void shouldSaveQuestionGroup_dontDelete() throws Exception {
+    QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
+    request.setQuestionGroups(List.of("group1", "group2"));
+    request.setQaIds(List.of(123, 456));
+
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(request)))
+    .andDo(print())
+    .andExpect(status().isOk())
+    .andExpect(content().string(containsString("OK")));
+
+    QandA questionGroup1 = new QandA();
+    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setAnswer("group1");
+    questionGroup1.id(BigDecimal.valueOf(123));
+
+    QandA questionGroup2 = new QandA();
+    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    questionGroup2.setAnswer("group2");
+    questionGroup2.id(BigDecimal.valueOf(456));
+
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup2, null);
+    verifyNoMoreInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldNotSaveQuestionGroup_NoData() throws Exception {
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(new QuestionGroupNamesWrite())))
+    .andDo(print())
+    .andExpect(status().isOk())
+    .andExpect(content().string(containsString("ERROR")));
+
+    verifyNoInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldNotSaveQuestionGroup_NoQuestionGroup() throws Exception {
+    final String nullGroupType = null;
+
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/question-groups", PROC_PROJECT_ID, EVENT_ID, nullGroupType)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(new QuestionGroupNamesWrite())))
+    .andDo(print())
+    .andExpect(status().is4xxClientError());
 
     verifyNoInteractions(questionAndAnswerService);
   }
