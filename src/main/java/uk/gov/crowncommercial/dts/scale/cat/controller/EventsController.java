@@ -27,7 +27,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -55,6 +54,7 @@ public class EventsController extends AbstractRestController {
   private final EventTransitionService eventTransitionService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
+  private static final String USE_QUESTION_GROUPS = "use-question-groups";
   private static final String QUESTION_GROUP_PREFIX = "question-group-";
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
@@ -532,11 +532,89 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  @GetMapping("/{eventID}/question-groups")
+  @GetMapping("/{eventID}/{groupType}/use-question-groups")
   @TrackExecutionTime
-  public QuestionGroupNamesRead getQuestionGroups(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+  public QuestionGroupNamesRead getUseQuestionGroups(
+      @Valid @PathVariable("procID") final Integer procId,
+      @Valid @PathVariable("eventID") final String eventId,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getUseQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == groupType || groupType.isBlank()) {
+        log.error("getUseQuestionGroups - no groupType provided: {}", principal);
+        return null;
+    }
+
+    QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
+    if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+        return null;
+    }
+
+    final String fullPrefix = groupType + "-" + USE_QUESTION_GROUPS;
+
+    for (QandA responseData: response.getQandA()) {
+        if (responseData.getQuestion().equals(fullPrefix)) {
+            if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+                questionGroups.useQuestionGroups(Boolean.valueOf(responseData.getAnswer()));
+                questionGroups.useQuestionGroupsQaId(responseData.getId().intValue());
+                return questionGroups;
+            }
+        }
+    }
+
+    return null;
+  }
+
+  @PostMapping("/{eventID}/{groupType}/use-question-groups")
+  @TrackExecutionTime
+  public StringValueResponse saveUseQuestionGroups(
+      @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("saveUseQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == requestModel || null == groupType || groupType.isBlank()) {
+        log.error("saveUseQuestionGroups - invalid data provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    if (null == requestModel.getUseQuestionGroups()) {
+        log.error("saveUseQuestionGroups - no value provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    // create the new question groups
+    QandA newEntry = new QandA();
+    newEntry.setQuestion(groupType + "-" + USE_QUESTION_GROUPS);
+    newEntry.setAnswer(requestModel.getUseQuestionGroups().toString());
+
+    Integer qaId = null != requestModel.getUseQuestionGroupsQaId() ? requestModel.getUseQuestionGroupsQaId() : null;
+
+    questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, qaId);
+
+    return new StringValueResponse("OK");
+  }
+
+  @GetMapping("/{eventID}/{groupType}/question-groups")
+  @TrackExecutionTime
+  public QuestionGroupNamesRead getQuestionGroups(
+      @Valid @PathVariable("procID") final Integer procId,
+      @Valid @PathVariable("eventID") final String eventId,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
     String principal = getPrincipalFromJwt(authentication);
     log.info("getQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == groupType || groupType.isBlank()) {
+        log.error("getQuestionGroups - no groupType provided: {}", principal);
+        return null;
+    }
 
     QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
     if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
@@ -545,45 +623,59 @@ public class EventsController extends AbstractRestController {
 
     QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
 
+    final String fullPrefix = groupType + "-" + QUESTION_GROUP_PREFIX;
+
     for (QandA responseData: response.getQandA()) {
-        questionGroups.addQaIdsItem(Integer.toString(responseData.getId().intValue()));
-        questionGroups.addQuestionGroupsItem(responseData.getAnswer());
+        if (responseData.getQuestion().startsWith(fullPrefix)) {
+            questionGroups.addQaIdsItem(Integer.toString(responseData.getId().intValue()));
+            questionGroups.addQuestionGroupsItem(responseData.getAnswer());
+        }
     }
 
     return questionGroups;
   }
 
-  @PostMapping("/{eventID}/question-groups")
+  @PostMapping("/{eventID}/{groupType}/question-groups?{deleteExisting}")
   @TrackExecutionTime
   public StringValueResponse saveQuestionGroups(
       @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
       @PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
+      @PathVariable("groupType") final String groupType,
+      @RequestParam("deleteExisting") final Boolean deleteExisting,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("saveQuestionGroups invoked on behalf of principal: {}", principal);
 
-    if (null == requestModel) {
-        return new StringValueResponse("OK");
-    }
-
-    // firstly delete any existing answers
-    if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty()) {
-        for (Integer qaId : requestModel.getQaIds()) {
-            questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, qaId);
-        }
+    if (null == requestModel || null == groupType || groupType.isBlank()) {
+        log.error("saveQuestionGroups - invalid data provided: {}", principal);
+        return new StringValueResponse("ERROR");
     }
 
     if (null == requestModel.getQuestionGroups() || requestModel.getQuestionGroups().isEmpty()) {
-        return new StringValueResponse("OK");
+        log.error("saveQuestionGroups - no question groups provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    if (null != deleteExisting && deleteExisting.booleanValue()) {
+        if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty()) {
+            for (Integer qaId : requestModel.getQaIds()) {
+                questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, qaId);
+            }
+        }
     }
 
     int i = 0;
 
-    // then create the new ones
+    // create the new question groups
     for (String questionGroupName : requestModel.getQuestionGroups()) {
         QandA newEntry = new QandA();
-        newEntry.setQuestion(QUESTION_GROUP_PREFIX + i++);
+
+        if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty() && i < requestModel.getQaIds().size()) {
+            newEntry.id(BigDecimal.valueOf(requestModel.getQaIds().get(i)));
+        }
+
+        newEntry.setQuestion(groupType + "-" + QUESTION_GROUP_PREFIX + i++);
         newEntry.setAnswer(questionGroupName);
 
         questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);

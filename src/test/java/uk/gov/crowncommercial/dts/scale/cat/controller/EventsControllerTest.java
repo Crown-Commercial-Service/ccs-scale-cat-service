@@ -1,5 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
@@ -9,6 +11,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -21,6 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -29,7 +34,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -65,6 +69,7 @@ class EventsControllerTest {
   private static final Integer PROC_PROJECT_ID = 1;
   private static final String EVENT_ID = "ocds-pfhb7i-1";
   private static final String EVENT_NAME = "NAME";
+  private static final String GROUP_TYPE = "MyGroupType";
   private static final String JAGGAER_ID = "1";
   private static final ViewEventType EVENT_TYPE = ViewEventType.TBD;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
@@ -377,7 +382,6 @@ class EventsControllerTest {
 
   @Test
   void getEvents_200_OK() throws Exception {
-
     mockMvc
         .perform(get(EVENTS_PATH, PROC_PROJECT_ID).with(validJwtReqPostProcessor)
             .accept(APPLICATION_JSON))
@@ -387,14 +391,146 @@ class EventsControllerTest {
     verify(procurementEventService, times(1)).getEventsForProject(PROC_PROJECT_ID, PRINCIPAL);
   }
 
-  @Test void getSupplierResponses_200_OK() throws Exception {
-
+  @Test
+  void getSupplierResponses_200_OK() throws Exception {
     mockMvc.perform(get(EVENTS_PATH + "/{eventID}/responses", PROC_PROJECT_ID, EVENT_ID).with(
             validJwtReqPostProcessor).contentType(APPLICATION_JSON)).andDo(print())
         .andExpect(status().isOk());
 //        .andExpect(content().contentType(APPLICATION_JSON));
 
     verify(procurementEventService, times(1)).getSupplierResponses(PROC_PROJECT_ID, EVENT_ID);
+  }
 
+  @Test
+  void shouldGetUseQuestionGroup_Answer_True() throws Exception {
+    QandA useQuestionGroups = new QandA();
+    useQuestionGroups.setQuestion(GROUP_TYPE + "-use-question-groups");
+    useQuestionGroups.setAnswer("TRUE");
+    useQuestionGroups.id(BigDecimal.valueOf(123));
+
+    QandAWithProjectDetails expected = new QandAWithProjectDetails();
+    expected.setQandA(List.of(useQuestionGroups));
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().isOk())
+      .andExpect(content().string(containsString("\"useQuestionGroups\":true")))
+      .andExpect(content().string(containsString("\"useQuestionGroupsQaId\":123")));
+
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
+  void shouldGetUseQuestionGroup_Answer_False() throws Exception {
+    QandA useQuestionGroups = new QandA();
+    useQuestionGroups.setQuestion(GROUP_TYPE + "-use-question-groups");
+    useQuestionGroups.setAnswer("FALSE");
+    useQuestionGroups.id(BigDecimal.valueOf(234));
+
+    QandAWithProjectDetails expected = new QandAWithProjectDetails();
+    expected.setQandA(List.of(useQuestionGroups));
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().isOk())
+      .andExpect(content().string(containsString("\"useQuestionGroups\":false")))
+      .andExpect(content().string(containsString("\"useQuestionGroupsQaId\":234")));
+
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
+  void shouldGetUseQuestionGroup_Answer_Null() throws Exception {
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().isOk())
+      .andExpect(content().string(not(containsString("useQuestionGroups"))))
+      .andExpect(content().string(not(containsString("useQuestionGroupsQaId"))));
+
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+  }
+
+  @Test
+  void shouldGetUseQuestionGroup_Answer_Null_ForNullGroupType() throws Exception {
+    final String nullGroupType = null;
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+
+    mockMvc
+      .perform(get(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, nullGroupType)
+        .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
+      .andDo(print())
+      .andExpect(status().is4xxClientError())
+      .andExpect(content().string(not(containsString("useQuestionGroups"))))
+      .andExpect(content().string(not(containsString("useQuestionGroupsQaId"))));
+
+    verifyNoInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldSaveUseQuestionGroup_AnswerTrue() throws Exception {
+    QandA useQuestionGroupsQandA = new QandA();
+    useQuestionGroupsQandA.setQuestion(GROUP_TYPE + "-use-question-groups");
+    useQuestionGroupsQandA.setAnswer("true");
+
+    when(questionAndAnswerService.createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, useQuestionGroupsQandA, 123)).thenReturn(null);
+
+    QuestionGroupNamesWrite useQuestionGroups = new QuestionGroupNamesWrite();
+    useQuestionGroups.setUseQuestionGroups(true);
+    useQuestionGroups.setUseQuestionGroupsQaId(123);
+
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(useQuestionGroups)))
+    .andDo(print())
+    .andExpect(status().isOk())
+    .andExpect(content().string(containsString("OK")));
+
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, useQuestionGroupsQandA, 123);
+  }
+
+  @Test
+  void shouldFailToSaveUseQuestionGroup_NoGroupType() throws Exception {
+    QuestionGroupNamesWrite useQuestionGroups = new QuestionGroupNamesWrite();
+    useQuestionGroups.setUseQuestionGroups(true);
+    useQuestionGroups.setUseQuestionGroupsQaId(123);
+
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, "")
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(useQuestionGroups)))
+    .andDo(print())
+    .andExpect(status().is4xxClientError());
+
+    verifyNoInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldFailToSaveUseQuestionGroup_NoData() throws Exception {
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/{groupType}/use-question-groups", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(new QuestionGroupNamesWrite())))
+    .andDo(print())
+    .andExpect(status().isOk())
+    .andExpect(content().string(containsString("ERROR")));
+
+    verifyNoInteractions(questionAndAnswerService);
   }
 }
