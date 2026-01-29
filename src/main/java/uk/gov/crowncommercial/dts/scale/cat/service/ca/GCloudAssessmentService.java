@@ -41,6 +41,7 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
     private static final String ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID = "External Tool Id [%s] is not valid for Gcloud Assessment operations";
     private static final String TOOL_NAME_GCLOUD = "GCloud 13 Search";
+    private static final String ERR_MSG_FMT_E_PROCUREMENT_DETAILS_MISSING = "No e-procurement details found for [%s]";
 
     private static final String TIMEZONE_NAME = "Europe/London";
 
@@ -312,15 +313,6 @@ public class GCloudAssessmentService {
         var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
                 () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
 
-        // estimated duration passed as String with - separated years-months-days
-        int days = 0, months = 0, years = 0;
-        if(gCloudEProcurement.getEstimatedContractDuration() != null
-        && !gCloudEProcurement.getEstimatedContractDuration().isEmpty()) {
-            String[] split = gCloudEProcurement.getEstimatedContractDuration().split("-");
-            years = Integer.parseInt(split[0]);
-            months = Integer.parseInt(split[1]);
-            days = Integer.parseInt(split[2]);
-        }
 
         GCloudEProcurementEntity gCloudEProcurementEntity = new GCloudEProcurementEntity();
 
@@ -331,9 +323,9 @@ public class GCloudAssessmentService {
         gCloudEProcurementEntity.setSummaryOfWork(gCloudEProcurement.getSummaryOfWork());
         gCloudEProcurementEntity.setContractStartDate(gCloudEProcurement.getContractStartDate());
         gCloudEProcurementEntity.setEstimatedContractValue(gCloudEProcurement.getEstimatedContractValue());
-        gCloudEProcurementEntity.setContractDurationDays(days);
-        gCloudEProcurementEntity.setContractDurationMonths(months);
-        gCloudEProcurementEntity.setContractDurationYears(years);
+        gCloudEProcurementEntity.setContractDurationDays(gCloudEProcurement.contractDurationDays);
+        gCloudEProcurementEntity.setContractDurationMonths(gCloudEProcurement.contractDurationMonths);
+        gCloudEProcurementEntity.setContractDurationYears(gCloudEProcurement.contractDurationYears);
         gCloudEProcurementEntity.setIncumbentSupplier(gCloudEProcurement.getIncumbentSupplier());
         gCloudEProcurementEntity.setContractScope(gCloudEProcurement.getContractScope());
         gCloudEProcurementEntity.setAdditionalSupplierDetails(gCloudEProcurement.getAdditionalSupplierDetails());
@@ -351,10 +343,14 @@ public class GCloudAssessmentService {
     }
 
     @Transactional
-    public GCloudEProcurement getGcloudEProcurement(Integer assessmentId, final String principal) {
+    public GCloudEProcurement getGcloudEProcurement(final String principal) {
 
         GCloudEProcurementEntity gCloudEProcurementEntity =
-                retryableTendersDBDelegate.findByAssessmentIdAndCreatedBy(assessmentId, principal);
+                retryableTendersDBDelegate.findByAssessmentIdAndCreatedBy(principal);
+
+        if(gCloudEProcurementEntity == null) {
+            throw new ResourceNotFoundException(format(ERR_MSG_FMT_E_PROCUREMENT_DETAILS_MISSING, principal));
+        }
 
         return GCloudEProcurement.builder()
                 .assessmentId(gCloudEProcurementEntity.getAssessmentId())
@@ -364,9 +360,9 @@ public class GCloudAssessmentService {
                 .summaryOfWork(gCloudEProcurementEntity.getSummaryOfWork())
                 .contractStartDate(gCloudEProcurementEntity.getContractStartDate())
                 .estimatedContractValue(gCloudEProcurementEntity.getEstimatedContractValue())
-                .estimatedContractDuration(gCloudEProcurementEntity.getContractDurationYears() + "-" +
-                gCloudEProcurementEntity.getContractDurationMonths() + "-" +
-                gCloudEProcurementEntity.getContractDurationDays())
+                .contractDurationYears(gCloudEProcurementEntity.getContractDurationYears())
+                .contractDurationMonths(gCloudEProcurementEntity.getContractDurationMonths())
+                .contractDurationDays(gCloudEProcurementEntity.getContractDurationDays())
                 .incumbentSupplier(gCloudEProcurementEntity.getIncumbentSupplier())
                 .contractScope(gCloudEProcurementEntity.getContractScope())
                 .additionalSupplierDetails(gCloudEProcurementEntity.getAdditionalSupplierDetails())

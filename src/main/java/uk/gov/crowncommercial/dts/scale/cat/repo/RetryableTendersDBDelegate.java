@@ -342,8 +342,8 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public GCloudEProcurementEntity findByAssessmentIdAndCreatedBy(Integer assessmentId, String createdBy) {
-      return gCloudEProcurementRepo.findByAssessmentIdAndCreatedBy(assessmentId, createdBy);
+  public GCloudEProcurementEntity findByAssessmentIdAndCreatedBy(String createdBy) {
+      return gCloudEProcurementRepo.findByCreatedBy(createdBy);
   }
 
   @TendersRetryable

@@ -23,11 +23,11 @@ public class GCloudEProcurementEntity {
     @Column(name = "id")
     Integer id;
 
-    @Column(name = "assessment_id")
+    @Column(name = "assessment_id", nullable = false, unique = true)
     private Integer assessmentId;
 
     @Column(name = "project_id")
-    private Integer projectId;
+    private String projectId;
 
     @Column(name = "event_id")
     private String eventId;

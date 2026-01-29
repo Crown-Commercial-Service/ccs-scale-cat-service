@@ -19,13 +19,15 @@ import java.time.LocalDate;
 public class GCloudEProcurement {
 
     public Integer assessmentId;
-    public Integer projectId;
+    public String projectId;
     public String eventId;
     public String projectName;
     public String summaryOfWork;
     public LocalDate contractStartDate;
     public BigDecimal estimatedContractValue;
-    public String estimatedContractDuration;
+    public Integer contractDurationDays;
+    public Integer contractDurationMonths;
+    public Integer contractDurationYears;
     public String incumbentSupplier;
     public String contractScope;
     public String additionalSupplierDetails;

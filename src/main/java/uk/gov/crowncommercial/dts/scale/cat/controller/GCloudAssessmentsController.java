@@ -40,6 +40,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private static final String CSV_STATIC_NAME = "G-Cloud 13";
     private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL\n";
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
+    private static final String GCLOUD_E_PROCUREMENT_PATH = "/gcloud/eprocurement";
 
     private final GCloudAssessmentService assessmentService;
 
@@ -190,7 +191,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
     /**
      * Add Gcloud e-procurement details.
      */
-    @PostMapping("/gcloud/eprocurement")
+    @PostMapping(GCLOUD_E_PROCUREMENT_PATH)
     @TrackExecutionTime
     public Integer addGcloudEProcurementDetails(
             @RequestBody final GCloudEProcurement gCloudEProcurement,
@@ -199,21 +200,26 @@ public class GCloudAssessmentsController extends AbstractRestController {
         var principal = getPrincipalFromJwt(authentication);
         log.info("addGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
 
-        return assessmentService.createGcloudEProcurement(gCloudEProcurement, principal);
+        Integer results = 0;
+        try {
+            results = assessmentService.createGcloudEProcurement(gCloudEProcurement, principal);
+        } catch (Exception ex) {
+          log.error("Failed to e-procurement details into the cas db.", ex);
+        }
+
+        return results;
     }
 
     /**
      * Retrieve Gcloud e-procurement details.
      */
-    @GetMapping("/{assessment-id}/gcloud/eprocurement")
+    @GetMapping(GCLOUD_E_PROCUREMENT_PATH)
     @TrackExecutionTime
-    public GCloudEProcurement getGcloudEProcurementDetails(
-            final @PathVariable("assessment-id") Integer assessmentId,
-            final JwtAuthenticationToken authentication) {
+    public GCloudEProcurement getGcloudEProcurementDetails(final JwtAuthenticationToken authentication) {
 
         var principal = getPrincipalFromJwt(authentication);
         log.info("getGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
 
-        return assessmentService.getGcloudEProcurement(assessmentId, principal);
+        return assessmentService.getGcloudEProcurement(principal);
     }
 }
