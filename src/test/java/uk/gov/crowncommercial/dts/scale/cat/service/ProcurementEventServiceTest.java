@@ -97,6 +97,9 @@ class ProcurementEventServiceTest {
   private GCloudAssessmentRepo gCloudAssessmentRepo;
 
   @MockitoBean
+  private GCloudEProcurementRepo gCloudEProcurementRepo;
+
+  @MockitoBean
   private GCloudAssessmentResultRepo gCloudAssessmentResultRepo;
 
   @MockitoBean

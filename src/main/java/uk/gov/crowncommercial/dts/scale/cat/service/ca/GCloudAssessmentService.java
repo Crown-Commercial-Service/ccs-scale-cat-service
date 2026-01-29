@@ -10,15 +10,13 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudEProcurement;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentStatusEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 
@@ -304,5 +302,74 @@ public class GCloudAssessmentService {
         }
 
         return isValid;
+    }
+
+    @Transactional
+    public Integer createGcloudEProcurement(final GCloudEProcurement gCloudEProcurement, final String principal) {
+
+        log.debug("Creating GCloud e procurement");
+
+        var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
+                () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
+
+        // estimated duration passed as String with - separated years-months-days
+        int days = 0, months = 0, years = 0;
+        if(gCloudEProcurement.getEstimatedContractDuration() != null
+        && !gCloudEProcurement.getEstimatedContractDuration().isEmpty()) {
+            String[] split = gCloudEProcurement.getEstimatedContractDuration().split("-");
+            years = Integer.parseInt(split[0]);
+            months = Integer.parseInt(split[1]);
+            days = Integer.parseInt(split[2]);
+        }
+
+        GCloudEProcurementEntity gCloudEProcurementEntity = new GCloudEProcurementEntity();
+
+        gCloudEProcurementEntity.setAssessmentId(gCloudEProcurement.getAssessmentId());
+        gCloudEProcurementEntity.setProjectId(gCloudEProcurement.getProjectId());
+        gCloudEProcurementEntity.setEventId(gCloudEProcurement.getEventId());
+        gCloudEProcurementEntity.setProjectName(gCloudEProcurement.getProjectName());
+        gCloudEProcurementEntity.setSummaryOfWork(gCloudEProcurement.getSummaryOfWork());
+        gCloudEProcurementEntity.setContractStartDate(gCloudEProcurement.getContractStartDate());
+        gCloudEProcurementEntity.setEstimatedContractValue(gCloudEProcurement.getEstimatedContractValue());
+        gCloudEProcurementEntity.setContractDurationDays(days);
+        gCloudEProcurementEntity.setContractDurationMonths(months);
+        gCloudEProcurementEntity.setContractDurationYears(years);
+        gCloudEProcurementEntity.setIncumbentSupplier(gCloudEProcurement.getIncumbentSupplier());
+        gCloudEProcurementEntity.setContractScope(gCloudEProcurement.getContractScope());
+        gCloudEProcurementEntity.setAdditionalSupplierDetails(gCloudEProcurement.getAdditionalSupplierDetails());
+        gCloudEProcurementEntity.setCreatedBy(principal);
+        gCloudEProcurementEntity.setUpdatedBy(principal);
+
+        // Save our assessment entity
+        Integer saveResult = retryableTendersDBDelegate.save(gCloudEProcurementEntity).getId();
+
+        if (saveResult > 0) {
+            log.debug("Successfully saved e-procurement details. assessmentId: {}", gCloudEProcurement.getAssessmentId());
+        }
+
+        return saveResult;
+    }
+
+    @Transactional
+    public GCloudEProcurement getGcloudEProcurement(Integer assessmentId, final String principal) {
+
+        GCloudEProcurementEntity gCloudEProcurementEntity =
+                retryableTendersDBDelegate.findByAssessmentIdAndCreatedBy(assessmentId, principal);
+
+        return GCloudEProcurement.builder()
+                .assessmentId(gCloudEProcurementEntity.getAssessmentId())
+                .projectId(gCloudEProcurementEntity.getProjectId())
+                .eventId(gCloudEProcurementEntity.getEventId())
+                .projectName(gCloudEProcurementEntity.getProjectName())
+                .summaryOfWork(gCloudEProcurementEntity.getSummaryOfWork())
+                .contractStartDate(gCloudEProcurementEntity.getContractStartDate())
+                .estimatedContractValue(gCloudEProcurementEntity.getEstimatedContractValue())
+                .estimatedContractDuration(gCloudEProcurementEntity.getContractDurationYears() + "-" +
+                gCloudEProcurementEntity.getContractDurationMonths() + "-" +
+                gCloudEProcurementEntity.getContractDurationDays())
+                .incumbentSupplier(gCloudEProcurementEntity.getIncumbentSupplier())
+                .contractScope(gCloudEProcurementEntity.getContractScope())
+                .additionalSupplierDetails(gCloudEProcurementEntity.getAdditionalSupplierDetails())
+                .build();
     }
 }

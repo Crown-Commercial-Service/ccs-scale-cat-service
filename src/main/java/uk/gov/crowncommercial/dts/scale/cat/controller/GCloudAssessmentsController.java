@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudEProcurement;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
@@ -184,5 +185,35 @@ public class GCloudAssessmentsController extends AbstractRestController {
         log.info("deleteGcloudAssessment invoked on behalf of principal: {}", principal);
 
         assessmentService.deleteGcloudAssessment(assessmentId);
+    }
+
+    /**
+     * Add Gcloud e-procurement details.
+     */
+    @PostMapping("/gcloud/eprocurement")
+    @TrackExecutionTime
+    public Integer addGcloudEProcurementDetails(
+            @RequestBody final GCloudEProcurement gCloudEProcurement,
+            final JwtAuthenticationToken authentication) {
+
+        var principal = getPrincipalFromJwt(authentication);
+        log.info("addGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
+
+        return assessmentService.createGcloudEProcurement(gCloudEProcurement, principal);
+    }
+
+    /**
+     * Retrieve Gcloud e-procurement details.
+     */
+    @GetMapping("/{assessment-id}/gcloud/eprocurement")
+    @TrackExecutionTime
+    public GCloudEProcurement getGcloudEProcurementDetails(
+            final @PathVariable("assessment-id") Integer assessmentId,
+            final JwtAuthenticationToken authentication) {
+
+        var principal = getPrincipalFromJwt(authentication);
+        log.info("getGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
+
+        return assessmentService.getGcloudEProcurement(assessmentId, principal);
     }
 }

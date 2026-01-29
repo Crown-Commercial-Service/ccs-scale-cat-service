@@ -25,17 +25,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentDimensionWeighting;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentResult;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentSelection;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTaxon;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.AssessmentTool;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.CalculationBase;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.DimensionEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.GCloudAssessmentResult;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.RequirementTaxon;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
@@ -69,6 +59,7 @@ public class RetryableTendersDBDelegate {
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
   private final QuestionAndAnswerRepo questionAndAnswerRepo;
+  private final GCloudEProcurementRepo gCloudEProcurementRepo;
 
 
   @TendersRetryable
@@ -343,6 +334,16 @@ public class RetryableTendersDBDelegate {
   @TendersRetryable
   public GCloudAssessmentResult save(final GCloudAssessmentResult assessmentResult) {
     return gCloudAssessmentResultRepo.save(assessmentResult);
+  }
+
+  @TendersRetryable
+  public GCloudEProcurementEntity save(final GCloudEProcurementEntity gCloudEProcurementEntity) {
+      return gCloudEProcurementRepo.save(gCloudEProcurementEntity);
+  }
+
+  @TendersRetryable
+  public GCloudEProcurementEntity findByAssessmentIdAndCreatedBy(Integer assessmentId, String createdBy) {
+      return gCloudEProcurementRepo.findByAssessmentIdAndCreatedBy(assessmentId, createdBy);
   }
 
   @TendersRetryable
