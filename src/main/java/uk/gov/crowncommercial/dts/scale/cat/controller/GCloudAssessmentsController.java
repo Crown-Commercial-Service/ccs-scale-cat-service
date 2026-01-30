@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
+import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudEProcurement;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
@@ -39,6 +40,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private static final String CSV_STATIC_NAME = "G-Cloud 13";
     private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL\n";
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
+    private static final String GCLOUD_E_PROCUREMENT_PATH = "/gcloud/eprocurement";
 
     private final GCloudAssessmentService assessmentService;
 
@@ -184,5 +186,40 @@ public class GCloudAssessmentsController extends AbstractRestController {
         log.info("deleteGcloudAssessment invoked on behalf of principal: {}", principal);
 
         assessmentService.deleteGcloudAssessment(assessmentId);
+    }
+
+    /**
+     * Add Gcloud e-procurement details.
+     */
+    @PostMapping(GCLOUD_E_PROCUREMENT_PATH)
+    @TrackExecutionTime
+    public Integer addGcloudEProcurementDetails(
+            @RequestBody final GCloudEProcurement gCloudEProcurement,
+            final JwtAuthenticationToken authentication) {
+
+        var principal = getPrincipalFromJwt(authentication);
+        log.info("addGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
+
+        Integer results = 0;
+        try {
+            results = assessmentService.createGcloudEProcurement(gCloudEProcurement, principal);
+        } catch (Exception ex) {
+          log.error("Failed to e-procurement details into the cas db.", ex);
+        }
+
+        return results;
+    }
+
+    /**
+     * Retrieve Gcloud e-procurement details.
+     */
+    @GetMapping(GCLOUD_E_PROCUREMENT_PATH)
+    @TrackExecutionTime
+    public GCloudEProcurement getGcloudEProcurementDetails(final JwtAuthenticationToken authentication) {
+
+        var principal = getPrincipalFromJwt(authentication);
+        log.info("getGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
+
+        return assessmentService.getGcloudEProcurement(principal);
     }
 }
