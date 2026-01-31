@@ -532,7 +532,7 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  @GetMapping("/{eventID}/{groupType}/use-question-groups")
+  @GetMapping("/{eventID}/group/{groupType}/use-question-groups")
   @TrackExecutionTime
   public QuestionGroupNamesRead getUseQuestionGroups(
       @Valid @PathVariable("procID") final Integer procId,
@@ -568,7 +568,7 @@ public class EventsController extends AbstractRestController {
     return null;
   }
 
-  @PostMapping("/{eventID}/{groupType}/use-question-groups")
+  @PostMapping("/{eventID}/group/{groupType}/use-question-groups")
   @TrackExecutionTime
   public StringValueResponse saveUseQuestionGroups(
       @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
@@ -601,7 +601,7 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  @GetMapping("/{eventID}/{groupType}/question-groups")
+  @GetMapping("/{eventID}/group/{groupType}/question-groups")
   @TrackExecutionTime
   public QuestionGroupNamesRead getQuestionGroups(
       @Valid @PathVariable("procID") final Integer procId,
@@ -635,7 +635,7 @@ public class EventsController extends AbstractRestController {
     return questionGroups;
   }
 
-  @PostMapping("/{eventID}/{groupType}/question-groups")
+  @PostMapping("/{eventID}/group/{groupType}/question-groups")
   @TrackExecutionTime
   public StringValueResponse saveQuestionGroups(
       @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
