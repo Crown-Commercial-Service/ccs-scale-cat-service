@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -486,7 +487,8 @@ class EventsControllerTest {
     useQuestionGroupsQandA.setQuestion(GROUP_TYPE + "-use-question-groups");
     useQuestionGroupsQandA.setAnswer("true");
 
-    when(questionAndAnswerService.createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, useQuestionGroupsQandA, 123)).thenReturn(null);
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+    when(questionAndAnswerService.createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, useQuestionGroupsQandA, null)).thenReturn(null);
 
     QuestionGroupNamesWrite useQuestionGroups = new QuestionGroupNamesWrite();
     useQuestionGroups.setUseQuestionGroups(true);
@@ -501,7 +503,8 @@ class EventsControllerTest {
     .andExpect(status().isOk())
     .andExpect(content().string(containsString("OK")));
 
-    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, useQuestionGroupsQandA, 123);
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, useQuestionGroupsQandA, null);
   }
 
   @Test
@@ -523,6 +526,8 @@ class EventsControllerTest {
 
   @Test
   void shouldFailToSaveUseQuestionGroup_NoData() throws Exception {
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+
     mockMvc
     .perform(post(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
@@ -532,7 +537,8 @@ class EventsControllerTest {
     .andExpect(status().isOk())
     .andExpect(content().string(containsString("ERROR")));
 
-    verifyNoInteractions(questionAndAnswerService);
+    verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+    verifyNoMoreInteractions(questionAndAnswerService);
   }
 
   @Test
@@ -543,7 +549,7 @@ class EventsControllerTest {
     questionGroup1.id(BigDecimal.valueOf(123));
 
     QandA questionGroup2 = new QandA();
-    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
     questionGroup2.setAnswer("group2");
     questionGroup2.id(BigDecimal.valueOf(456));
 
@@ -615,43 +621,34 @@ class EventsControllerTest {
       .andExpect(content().string(not(containsString("questionGroups"))))
       .andExpect(content().string(not(containsString("qaIds"))));
 
-    verifyNoInteractions(questionAndAnswerService);
+    verifyNoMoreInteractions(questionAndAnswerService);
   }
 
   @Test
   void shouldSaveQuestionGroup() throws Exception {
-    QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
-    request.setQuestionGroups(List.of("group1", "group2"));
-    request.setQaIds(List.of(123, 456));
+    QandA expectedQuestionGroup1 = new QandA();
+    expectedQuestionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    expectedQuestionGroup1.setAnswer("group1");
+    expectedQuestionGroup1.id(BigDecimal.valueOf(123));
 
-    mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}?deleteExisting=true", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
-      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
-      .contentType(MediaType.APPLICATION_JSON)
-      .content(objectMapper.writeValueAsString(request)))
-    .andDo(print())
-    .andExpect(status().isOk())
-    .andExpect(content().string(containsString("OK")));
+    QandA expectedQuestionGroup2 = new QandA();
+    expectedQuestionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    expectedQuestionGroup2.setAnswer("group2");
+    expectedQuestionGroup2.id(BigDecimal.valueOf(456));
 
-    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 123);
-    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 456);
+    QandAWithProjectDetails expected = new QandAWithProjectDetails();
+    expected.setQandA(List.of(expectedQuestionGroup1, expectedQuestionGroup2));
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
     QandA questionGroup1 = new QandA();
     questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
     questionGroup1.setAnswer("group1");
-    questionGroup1.id(BigDecimal.valueOf(123));
 
     QandA questionGroup2 = new QandA();
     questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
     questionGroup2.setAnswer("group2");
-    questionGroup2.id(BigDecimal.valueOf(456));
 
-    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
-    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup2, null);
-  }
-
-  @Test
-  void shouldSaveQuestionGroup_dontDelete() throws Exception {
     QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
     request.setQuestionGroups(List.of("group1", "group2"));
     request.setQaIds(List.of(123, 456));
@@ -665,23 +662,21 @@ class EventsControllerTest {
     .andExpect(status().isOk())
     .andExpect(content().string(containsString("OK")));
 
-    QandA questionGroup1 = new QandA();
-    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
-    questionGroup1.setAnswer("group1");
-    questionGroup1.id(BigDecimal.valueOf(123));
+    verify(questionAndAnswerService).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
 
-    QandA questionGroup2 = new QandA();
-    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
-    questionGroup2.setAnswer("group2");
-    questionGroup2.id(BigDecimal.valueOf(456));
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 123);
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 456);
 
     verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
     verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup2, null);
+
     verifyNoMoreInteractions(questionAndAnswerService);
   }
 
   @Test
   void shouldNotSaveQuestionGroup_NoData() throws Exception {
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
+
     mockMvc
     .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
@@ -691,7 +686,8 @@ class EventsControllerTest {
     .andExpect(status().isOk())
     .andExpect(content().string(containsString("ERROR")));
 
-    verifyNoInteractions(questionAndAnswerService);
+    verify(questionAndAnswerService).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+    verifyNoMoreInteractions(questionAndAnswerService);
   }
 
   @Test
