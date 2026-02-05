@@ -364,12 +364,12 @@ class QuestionAndAnswerServiceTest {
 
       Integer questionId = 123;
 
-      doNothing().when(questionAndAnswerRepo).deleteByIdAndEventId(questionId, EVENT_ID);
+      doNothing().when(questionAndAnswerRepo).deleteById(questionId);
 
       // Invoke
       questionAndAnswerService.deleteQuestionAndAnswerByQaIdFromRepo(PROC_PROJECT_ID, EVENT_OCID, questionId, PRINCIPAL);
 
       // Verify
-      verify(questionAndAnswerRepo).deleteByIdAndEventId(questionId, EVENT_ID);
+      verify(questionAndAnswerRepo).deleteById(questionId);
   }
 }

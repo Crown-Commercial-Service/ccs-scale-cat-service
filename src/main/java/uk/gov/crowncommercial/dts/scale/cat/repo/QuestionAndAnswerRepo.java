@@ -19,5 +19,5 @@ public interface QuestionAndAnswerRepo extends JpaRepository<QuestionAndAnswer, 
   
   long countByEventId(Integer eventId);
 
-  void deleteByIdAndEventId(Integer questionId, Integer eventId);
+  void deleteById(Integer eventId);
 }
