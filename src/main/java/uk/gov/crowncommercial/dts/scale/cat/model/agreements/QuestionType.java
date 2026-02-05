@@ -58,5 +58,8 @@ public enum QuestionType {
   README,
 
   @JsonProperty("Percentage")
-  PERCENTAGE;
+  PERCENTAGE,
+
+  @JsonProperty("DropDown")
+  DROPDOWN;
 }

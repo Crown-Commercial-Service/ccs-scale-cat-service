@@ -88,7 +88,7 @@ public class Requirement {
     public void updateOptions(final List<Option> updatedOptions) {
 
       var selectionQuestionTypes = Set.of("SingleSelect", "MultiSelect", "SingleSelectWithOptions",
-          "MultiSelectWithOptions");
+          "MultiSelectWithOptions", "DropDown");
 
       if (selectionQuestionTypes.contains(questionType)) {
 
