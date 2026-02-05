@@ -16,8 +16,8 @@ public interface QuestionAndAnswerRepo extends JpaRepository<QuestionAndAnswer, 
   Set<QuestionAndAnswer> findByEventId(Integer eventId);
 
   Optional<QuestionAndAnswer> findByIdAndEventId(Integer questionId, Integer eventId);
-  
+
   long countByEventId(Integer eventId);
 
-  void deleteByIdAndEventId(Integer questionId, Integer eventId);
+  void deleteById(Integer questionId);
 }

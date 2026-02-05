@@ -185,8 +185,8 @@ public class QuestionAndAnswerService {
       String exceptionFormat = "Unexpected error on question deletion from repo for " + qaId + " and eventId " + eventId;
 
       try {
-          if (null != eventId && null != qaId) {
-              questionAndAnswerRepo.deleteByIdAndEventId(qaId, procurementEvent.getId());
+          if (null != qaId) {
+              questionAndAnswerRepo.deleteById(qaId);
           }
       } catch(Exception e) {
           log.error("error: ", e);

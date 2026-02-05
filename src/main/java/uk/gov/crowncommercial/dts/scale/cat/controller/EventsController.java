@@ -570,7 +570,8 @@ public class EventsController extends AbstractRestController {
     QuestionGroupNamesRead existingUsequestionGroups = readUseQuestionGroups(procId, eventId, groupType, principal);
 
     if (null != existingUsequestionGroups && null != existingUsequestionGroups.getUseQuestionGroupsQaId()) {
-        questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, Integer.valueOf(existingUsequestionGroups.getUseQuestionGroupsQaId()));
+        Integer qaId = existingUsequestionGroups.getUseQuestionGroupsQaId();
+        questionAndAnswerService.deleteQuestionAndAnswerByQaIdFromRepo(procId, eventId, qaId, principal);
     }
 
     if (null == requestModel.getUseQuestionGroups()) {
