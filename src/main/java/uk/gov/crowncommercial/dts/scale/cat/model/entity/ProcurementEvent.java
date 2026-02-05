@@ -134,6 +134,10 @@ public class ProcurementEvent {
       orphanRemoval = true)
   Set<DocumentUpload> documentUploads;
 
+  public Integer getId() {
+      return id;
+  }
+
   public String getEventID() {
     return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
   }
