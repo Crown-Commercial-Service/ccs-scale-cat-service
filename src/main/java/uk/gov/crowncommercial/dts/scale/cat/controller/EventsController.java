@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -547,25 +548,7 @@ public class EventsController extends AbstractRestController {
         return null;
     }
 
-    QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
-    if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
-        return null;
-    }
-
-    final String fullPrefix = groupType + "-" + USE_QUESTION_GROUPS;
-
-    for (QandA responseData: response.getQandA()) {
-        if (responseData.getQuestion().equals(fullPrefix)) {
-            if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
-                QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
-                questionGroups.useQuestionGroups(Boolean.valueOf(responseData.getAnswer()));
-                questionGroups.useQuestionGroupsQaId(responseData.getId().intValue());
-                return questionGroups;
-            }
-        }
-    }
-
-    return null;
+    return readUseQuestionGroups(procId, eventId, groupType, principal);
   }
 
   @PostMapping("/{eventID}/use-question-groups/{groupType}")
@@ -584,6 +567,12 @@ public class EventsController extends AbstractRestController {
         return new StringValueResponse("ERROR");
     }
 
+    QuestionGroupNamesRead existingUsequestionGroups = readUseQuestionGroups(procId, eventId, groupType, principal);
+
+    if (null != existingUsequestionGroups && null != existingUsequestionGroups.getUseQuestionGroupsQaId()) {
+        questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, Integer.valueOf(existingUsequestionGroups.getUseQuestionGroupsQaId()));
+    }
+
     if (null == requestModel.getUseQuestionGroups()) {
         log.error("saveUseQuestionGroups - no value provided: {}", principal);
         return new StringValueResponse("ERROR");
@@ -594,9 +583,7 @@ public class EventsController extends AbstractRestController {
     newEntry.setQuestion(groupType + "-" + USE_QUESTION_GROUPS);
     newEntry.setAnswer(requestModel.getUseQuestionGroups().toString());
 
-    Integer qaId = null != requestModel.getUseQuestionGroupsQaId() ? requestModel.getUseQuestionGroupsQaId() : null;
-
-    questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, qaId);
+    questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
 
     return new StringValueResponse("OK");
   }
@@ -616,23 +603,7 @@ public class EventsController extends AbstractRestController {
         return null;
     }
 
-    QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
-    if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
-        return null;
-    }
-
-    QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
-
-    final String fullPrefix = groupType + "-" + QUESTION_GROUP_PREFIX;
-
-    for (QandA responseData: response.getQandA()) {
-        if (responseData.getQuestion().startsWith(fullPrefix)) {
-            questionGroups.addQaIdsItem(Integer.toString(responseData.getId().intValue()));
-            questionGroups.addQuestionGroupsItem(responseData.getAnswer());
-        }
-    }
-
-    return questionGroups;
+    return readQuestionGroups(procId, eventId, groupType, principal);
   }
 
   @PostMapping("/{eventID}/question-groups/{groupType}")
@@ -642,7 +613,6 @@ public class EventsController extends AbstractRestController {
       @PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("groupType") final String groupType,
-      @RequestParam("deleteExisting") final Optional<Boolean> deleteExisting,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("saveQuestionGroups invoked on behalf of principal: {}", principal);
@@ -652,17 +622,17 @@ public class EventsController extends AbstractRestController {
         return new StringValueResponse("ERROR");
     }
 
+    QuestionGroupNamesRead existingGroupNames = readQuestionGroups(procId, eventId, groupType, principal);
+
+    if (null != existingGroupNames && null != existingGroupNames.getQaIds() && !existingGroupNames.getQaIds().isEmpty()) {
+        for (String qaId : existingGroupNames.getQaIds()) {
+            questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, Integer.valueOf(qaId));
+        }
+    }
+
     if (null == requestModel.getQuestionGroups() || requestModel.getQuestionGroups().isEmpty()) {
         log.error("saveQuestionGroups - no question groups provided: {}", principal);
         return new StringValueResponse("ERROR");
-    }
-
-    if (null != deleteExisting && deleteExisting.isPresent() && deleteExisting.get().booleanValue()) {
-        if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty()) {
-            for (Integer qaId : requestModel.getQaIds()) {
-                questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, qaId);
-            }
-        }
     }
 
     int i = 0;
@@ -671,10 +641,6 @@ public class EventsController extends AbstractRestController {
     for (String questionGroupName : requestModel.getQuestionGroups()) {
         QandA newEntry = new QandA();
 
-        if (null != requestModel.getQaIds() && !requestModel.getQaIds().isEmpty() && i < requestModel.getQaIds().size()) {
-            newEntry.id(BigDecimal.valueOf(requestModel.getQaIds().get(i)));
-        }
-
         newEntry.setQuestion(groupType + "-" + QUESTION_GROUP_PREFIX + i++);
         newEntry.setAnswer(questionGroupName);
 
@@ -682,6 +648,54 @@ public class EventsController extends AbstractRestController {
     }
 
     return new StringValueResponse("OK");
+  }
+
+  private QuestionGroupNamesRead readUseQuestionGroups(final Integer procId, final String eventId, final String groupType, String principal) {
+      QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
+
+      if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+          return null;
+      }
+
+      final String fullPrefix = groupType + "-" + USE_QUESTION_GROUPS;
+
+      final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+
+      for (QandA responseData: response.getQandA()) {
+            if (responseData.getQuestion().equals(fullPrefix)) {
+                if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                    questionGroups.useQuestionGroups(Boolean.valueOf(responseData.getAnswer()));
+                    questionGroups.useQuestionGroupsQaId(responseData.getId().intValue());
+                    return questionGroups;
+                }
+            }
+      }
+
+      return null;
+  }
+
+  private QuestionGroupNamesRead readQuestionGroups(final Integer procId, final String eventId, final String groupType, String principal)
+  {
+      QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
+
+      if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+          return null;
+      }
+
+      final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+
+      final String fullPrefix = groupType + "-" + QUESTION_GROUP_PREFIX;
+
+      for (QandA responseData: response.getQandA()) {
+          if (responseData.getQuestion().startsWith(fullPrefix)) {
+              if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                  questionGroups.addQuestionGroupsItem(responseData.getAnswer());
+                  questionGroups.addQaIdsItem(responseData.getId().toPlainString());
+              }
+          }
+      }
+
+      return questionGroups;
   }
 
   private ZipEntry getZipEntryForSupplierResponse(SupplierAttachmentResponse supplierAttachmentResponse, ZipOutputStream zipOutputStream, ZipEntry zipEntry) throws IOException {
