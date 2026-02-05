@@ -110,7 +110,7 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.createEvent(procId, createEvent, null, principal);
   }
 
-  @GetMapping("/{eventID}")////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @GetMapping("/{eventID}")
   @TrackExecutionTime
   public EventDetail getEvent(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
