@@ -182,7 +182,7 @@ public class QuestionAndAnswerService {
       var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
       var user = userService.resolveBuyerUserProfile(profile)
           .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
-      String exceptionFormat = "Unexpected error on question deletion " + qaId + " and eventId " + eventId;
+      String exceptionFormat = "Unexpected error on question deletion from repo for " + qaId + " and eventId " + eventId;
 
       try {
           if (null != eventId && null != qaId) {
