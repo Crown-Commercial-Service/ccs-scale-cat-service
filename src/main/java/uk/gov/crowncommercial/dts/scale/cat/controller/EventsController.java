@@ -626,7 +626,7 @@ public class EventsController extends AbstractRestController {
 
     if (null != existingGroupNames && null != existingGroupNames.getQaIds() && !existingGroupNames.getQaIds().isEmpty()) {
         for (String qaId : existingGroupNames.getQaIds()) {
-            questionAndAnswerService.deleteQuestionAndAnswerByQaId(eventId, Integer.valueOf(qaId));
+            questionAndAnswerService.deleteQuestionAndAnswerByQaIdFromRepo(procId, eventId, Integer.valueOf(qaId), principal);
         }
     }
 
@@ -690,7 +690,8 @@ public class EventsController extends AbstractRestController {
           if (responseData.getQuestion().startsWith(fullPrefix)) {
               if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
                   questionGroups.addQuestionGroupsItem(responseData.getAnswer());
-                  questionGroups.addQaIdsItem(responseData.getId().toPlainString());
+                  Integer thisId = responseData.getId().intValue();
+                  questionGroups.addQaIdsItem(thisId.toString());
               }
           }
       }

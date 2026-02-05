@@ -171,6 +171,29 @@ public class QuestionAndAnswerService {
     return questionAndAnswerList.stream().map(this::convertQandA).collect(Collectors.toList());
   }
 
+  /**
+   * Delete the specified question from the local question repo.
+   * @param projectId
+   * @param eventId
+   * @param qaId
+   * @param profile
+   */
+  public void deleteQuestionAndAnswerByQaIdFromRepo(final Integer projectId, final String eventId, final Integer qaId, final String profile) {
+      var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+      var user = userService.resolveBuyerUserProfile(profile)
+          .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+      String exceptionFormat = "Unexpected error on question deletion " + qaId + " and eventId " + eventId;
+
+      try {
+          if (null != eventId && null != qaId) {
+              questionAndAnswerRepo.deleteByIdAndEventId(qaId, procurementEvent.getId());
+          }
+      } catch(Exception e) {
+          log.error("error: ", e);
+          throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+      }
+  }
+
   public boolean createQuestion(String eventType, String eventId, String agreementId, String lotId) {
 
     String exceptionFormat = "Unexpected error on event creation " + eventType + " template from QAS for Lot " + lotId + " and Agreement " + agreementId

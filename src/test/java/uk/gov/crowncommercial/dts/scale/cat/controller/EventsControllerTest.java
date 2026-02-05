@@ -664,8 +664,8 @@ class EventsControllerTest {
 
     verify(questionAndAnswerService).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
 
-    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 123);
-    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaId(EVENT_ID, 456);
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaIdFromRepo(PROC_PROJECT_ID, EVENT_ID, 123, PRINCIPAL);
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaIdFromRepo(PROC_PROJECT_ID, EVENT_ID, 456, PRINCIPAL);
 
     verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
     verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup2, null);
