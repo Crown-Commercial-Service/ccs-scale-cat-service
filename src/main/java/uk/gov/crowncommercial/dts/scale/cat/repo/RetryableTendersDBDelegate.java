@@ -16,15 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ContractDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
@@ -59,7 +51,7 @@ public class RetryableTendersDBDelegate {
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
   private final QuestionAndAnswerRepo questionAndAnswerRepo;
-  private final GCloudEProcurementRepo gCloudEProcurementRepo;
+  private final MiQuestionAnswerRepo miQuestionAnswerRepo;
 
 
   @TendersRetryable
@@ -337,13 +329,13 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public GCloudEProcurementEntity save(final GCloudEProcurementEntity gCloudEProcurementEntity) {
-      return gCloudEProcurementRepo.save(gCloudEProcurementEntity);
+  public List<MiQuestionAnswerEntity> saveAllQuestionsAndAnswers(final List<MiQuestionAnswerEntity> miQuestionAnswerEntity) {
+      return miQuestionAnswerRepo.saveAll(miQuestionAnswerEntity);
   }
 
   @TendersRetryable
-  public GCloudEProcurementEntity findByAssessmentIdAndCreatedBy(String createdBy) {
-      return gCloudEProcurementRepo.findByCreatedBy(createdBy);
+  public List<MiQuestionAnswerEntity> findByCreatedBy(String createdBy) {
+      return miQuestionAnswerRepo.findByCreatedBy(createdBy);
   }
 
   @TendersRetryable
