@@ -552,8 +552,14 @@ class EventsControllerTest {
     questionGroup2.setAnswer("group2");
     questionGroup2.id(BigDecimal.valueOf(456));
 
+    QandA questionGroup3 = new QandA();
+    questionGroup3.setQuestion(GROUP_TYPE + "-question-group-2");
+    questionGroup3.setAnswer("group3");
+    questionGroup3.id(BigDecimal.valueOf(789));
+
     QandAWithProjectDetails expected = new QandAWithProjectDetails();
-    expected.setQandA(List.of(questionGroup1, questionGroup2));
+    // note we explicitly return the entries out-of-order
+    expected.setQandA(List.of(questionGroup3, questionGroup2, questionGroup1));
 
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
@@ -562,8 +568,8 @@ class EventsControllerTest {
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
-      .andExpect(content().string(containsString("\"questionGroups\":[\"group1\",\"group2\"]")))
-      .andExpect(content().string(containsString("\"qaIds\":[\"123\",\"456\"]")));
+      .andExpect(content().string(containsString("\"questionGroups\":[\"group1\",\"group2\",\"group3\"]")))
+      .andExpect(content().string(containsString("\"qaIds\":[\"123\",\"456\",\"789\"]")));
 
     verify(questionAndAnswerService, times(1)).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
   }

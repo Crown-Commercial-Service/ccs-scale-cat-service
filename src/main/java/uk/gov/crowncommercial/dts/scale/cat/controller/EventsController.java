@@ -29,7 +29,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.zip.ZipEntry;
@@ -683,18 +685,30 @@ public class EventsController extends AbstractRestController {
           return null;
       }
 
-      final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
-
       final String fullPrefix = groupType + "-" + QUESTION_GROUP_PREFIX;
 
-      for (QandA responseData: response.getQandA()) {
-          if (responseData.getQuestion().startsWith(fullPrefix)) {
-              if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
-                  questionGroups.addQuestionGroupsItem(responseData.getAnswer());
-                  Integer thisId = responseData.getId().intValue();
-                  questionGroups.addQaIdsItem(thisId.toString());
+      // note we use a map to ensure we can ultimately return the list in numeric order;
+      // just reading directly from the DB does not always give the order we need
+      Map<Integer, QandA> questionMap = new HashMap<>();
+
+      for (QandA question: response.getQandA()) {
+          if (question.getQuestion().startsWith(fullPrefix)) {
+              if (null != question.getAnswer() && !question.getAnswer().isBlank()) {
+                  // extract the numeric index from the question name, such as: award-criteria-question-group-3
+                  String index = question.getQuestion().substring(question.getQuestion().lastIndexOf("-") + 1);
+                  // then add this question into the map based on this index
+                  questionMap.put(Integer.valueOf(index), question);
               }
           }
+      }
+
+      final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+
+      for (int i=0; i < questionMap.size(); i++) {
+          QandA question = questionMap.get(i);
+          questionGroups.addQuestionGroupsItem(question.getAnswer());
+          Integer thisId = question.getId().intValue();
+          questionGroups.addQaIdsItem(thisId.toString());
       }
 
       return questionGroups;
