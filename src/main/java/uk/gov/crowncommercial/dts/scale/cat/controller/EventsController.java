@@ -132,7 +132,7 @@ public class EventsController extends AbstractRestController {
 
   @GetMapping("/{eventID}/lite")
   @TrackExecutionTime
-  public EventDetail getEventNoJaggaer(@PathVariable("procID") final Integer procId,
+  public ProcurementEvent getEventNoJaggaer(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
 
     try {
