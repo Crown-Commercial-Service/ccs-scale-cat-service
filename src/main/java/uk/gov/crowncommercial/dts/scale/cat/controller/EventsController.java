@@ -17,6 +17,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.events.ExitAwardRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
