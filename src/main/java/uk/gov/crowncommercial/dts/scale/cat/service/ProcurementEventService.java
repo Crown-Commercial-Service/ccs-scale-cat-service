@@ -514,6 +514,21 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
+     * Retrieve a single event based on the ID
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public ProcurementEvent getEventNoJaggaer(final Integer projectId, final String eventId) {
+        log.debug("About to validate project and eventId");
+        var event = validationService.validateProjectAndEventIds(projectId, eventId);
+        log.debug("Validated project and eventId successfully");
+
+        return event;
+    }
+
+    /**
      * Retrieve a single event's review information based on the ID
      *
      * @param projectId

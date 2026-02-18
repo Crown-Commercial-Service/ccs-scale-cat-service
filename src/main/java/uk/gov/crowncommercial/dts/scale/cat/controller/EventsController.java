@@ -130,6 +130,26 @@ public class EventsController extends AbstractRestController {
 
   }
 
+  @GetMapping("/{eventID}/lite")
+  @TrackExecutionTime
+  public String getEventNoJaggaer(@PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+
+    try {
+      var principal = getPrincipalFromJwt(authentication);
+      log.info("getEvent invoked on behalf of principal: {}", principal);
+
+      var event = procurementEventService.getEventNoJaggaer(procId, eventId);
+
+      return event.getProcurementTemplatePayloadRaw();
+    } catch(Exception ex) {
+      log.error("Failed to get event details. error: {}", ex.getMessage());
+    }
+
+    return null;
+
+  }
+
   @GetMapping("/{eventID}/review")
   @TrackExecutionTime
   public EventDetail getEventReview(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
