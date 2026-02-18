@@ -19,7 +19,7 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.37</swagger-parser.version>
+        <swagger-parser.version>2.1.38</swagger-parser.version>
         <guava.version>33.5.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
@@ -42,7 +42,7 @@
         <junitapi.version>6.0.1</junitapi.version>
         <opensearch.version>2.0.3</opensearch.version>
         <shedlock.version>7.5.0</shedlock.version>
-        <spring-boot.version>3.5.8</spring-boot.version>
+        <spring-boot.version>3.5.9</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.10.0</jsonpath.version>
         <logback.version>1.5.23</logback.version>
