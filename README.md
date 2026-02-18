@@ -1,9 +1,9 @@
-CCS Contract Award Service Tenders API
+GCA Contract Award Service Tenders API
 ===========
 
 Overview
 --------
-This is the code for the user interface of Crown Commercial Service's (_CCS_)
+This is the code for the user interface of Government Commercial Agency's (_GCA_)
 Tenders API, used by the Contract Award Service (_CAS_).
 
 The specification for the API can be found in the [Open API Specification][].
