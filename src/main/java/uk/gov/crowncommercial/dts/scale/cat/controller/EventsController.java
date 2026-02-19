@@ -150,6 +150,28 @@ public class EventsController extends AbstractRestController {
 
   }
 
+  @PutMapping("/{eventID}/lite")
+  @TrackExecutionTime
+  public String saveEventPayload(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @RequestBody JsonNode payload, final JwtAuthenticationToken authentication) {
+      try {
+          var principal = getPrincipalFromJwt(authentication);
+          log.info("PUT event invoked by principal: {}", principal);
+
+          log.info("Received payload: {}", payload.toPrettyString());
+
+          boolean status = procurementEventService.saveEventPayload(procId, eventId, payload);
+
+          if (status) {
+            return "OK";
+          } else {
+            return "NOT_FOUND";
+          }
+      } catch (Exception ex) {
+          log.error("Failed to save event details. error: {}", ex.getMessage(), ex);
+          throw ex;
+      }
+  }
+
   @GetMapping("/{eventID}/review")
   @TrackExecutionTime
   public EventDetail getEventReview(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
