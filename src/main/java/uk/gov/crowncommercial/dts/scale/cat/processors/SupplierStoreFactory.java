@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SupplierStoreFactory {
 
-    private List<String> SPLIT_AGREEMENTS = Arrays.asList("RM1043.8");
+    private List<String> SPLIT_AGREEMENTS = Arrays.asList("RM1043.8", "RM1043.9");
 
     private List<String> SPLIT_EVENTS = Arrays.asList("FC");
 
