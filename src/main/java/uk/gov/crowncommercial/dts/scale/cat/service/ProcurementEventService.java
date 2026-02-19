@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
 
@@ -526,6 +527,29 @@ public class ProcurementEventService implements EventService {
         log.debug("Validated project and eventId successfully");
 
         return event;
+    }
+
+    /**
+     * Saves a single event payload based on the ID
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public boolean saveEventPayload(final Integer projectId, final String eventId, final JsonNode payload) {
+        log.debug("About to validate eventId");
+
+        var eventOCID = validationService.validateEventId(eventId);
+
+        boolean updateSuccess = retryableTendersDBDelegate.saveEventPayloadByIdAndAuthorityAndPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), payload);
+
+        if (updateSuccess) {
+            log.debug("Validated eventId successfully and saved payload");
+        } else {
+            log.debug("Failed to validate eventId and saved payload");
+        }
+
+        return updateSuccess;
     }
 
     /**
