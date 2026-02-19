@@ -529,6 +529,29 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
+     * Saves a single event payload based on the ID
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public boolean saveEventPayload(final Integer projectId, final String eventId, final JsonNode payload) {
+        log.debug("About to validate eventId");
+
+        var eventOCID = validationService.validateEventId(eventId);
+
+        boolean updateSuccess = retryableTendersDBDelegate.saveEventPayloadByIdAndAuthorityAndPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), payload);
+
+        if (updateSuccess) {
+            log.debug("Validated eventId successfully and saved payload");
+        } else {
+            log.debug("Failed to validate eventId and saved payload");
+        }
+
+        return updateSuccess;
+    }
+
+    /**
      * Retrieve a single event's review information based on the ID
      *
      * @param projectId
