@@ -94,6 +94,14 @@ public class RetryableTendersDBDelegate {
 
   @TendersRetryable
   @Transactional
+  public boolean saveEventPayloadByIdAndAuthorityAndPrefix(Integer eventIdKey,String ocdsAuthorityName, String ocidPrefix, JsonNode payload) {
+    int updated = procurementEventRepo.updateTemplatePayload(eventIdKey, ocdsAuthorityName, ocidPrefix, payload.toString());
+
+    return updated > 0;
+  }
+
+  @TendersRetryable
+  @Transactional
   public void deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
     procurementEventRepo.deleteByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
   }
