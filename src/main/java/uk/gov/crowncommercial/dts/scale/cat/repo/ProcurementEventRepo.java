@@ -19,6 +19,16 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
   void deleteByIdAndOcdsAuthorityNameAndOcidPrefix(
       Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix);
 
+  @Modifying
+  @Query("""
+    update ProcurementEvent e
+       set e.procurementTemplatePayload = :payload
+     where e.id = :eventIdKey
+       and e.ocdsAuthorityName = :ocdsAuthorityName
+       and e.ocidPrefix = :ocidPrefix
+  """)
+  int updateTemplatePayload(@Param("eventIdKey") Integer eventIdKey, @Param("ocdsAuthorityName") String ocdsAuthorityName, @Param("ocidPrefix") String ocidPrefix, @Param("payload") String payload);
+
   Set<ProcurementEvent> findByProjectId(Integer projectId);
 
   @Query("select e from ProcurementEvent e where e.publishDate is not null and (:agreementId IS NULL OR e.project.caNumber = :agreementId) order by e.updatedAt desc")
