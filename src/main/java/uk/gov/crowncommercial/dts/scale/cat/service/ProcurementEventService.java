@@ -129,7 +129,11 @@ public class ProcurementEventService implements EventService {
         log.debug("Complete Event {}", eventId);
 
         ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
-        eventTransitionService.completeExistingEvent(eventModel, principal);
+        if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(eventModel.getEventType()))) {
+            new TwoStageEventService().markComplete(retryableTendersDBDelegate, eventModel);
+        } else {
+            eventTransitionService.completeExistingEvent(eventModel, principal);
+        }
     }
 
     /**
@@ -167,7 +171,11 @@ public class ProcurementEventService implements EventService {
             var existingEvent = existingEventOptional.get();
             twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
             if (!twoStageEvent) {
-                eventTransitionService.completeExistingEvent(existingEvent, principal);
+                if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEvent.getEventType()))) {
+                    twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
+                } else {
+                    eventTransitionService.completeExistingEvent(existingEvent, principal);
+                }
             } else {
                 twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
             }
