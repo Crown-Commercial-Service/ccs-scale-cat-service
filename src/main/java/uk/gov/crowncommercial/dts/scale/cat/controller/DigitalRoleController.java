@@ -66,10 +66,14 @@ public class DigitalRoleController extends AbstractRestController {
 
   @DeleteMapping("/{id}")
   @TrackExecutionTime
-  public ResponseEntity<Void> delete(@PathVariable @NonNull final Long id) {
-    final DigitalRole entity =
-        digitalRoleService.findById(id).orElseThrow(EntityNotFoundException::new);
-    digitalRoleService.delete(entity);
-    return ResponseEntity.noContent().build();
+  public ResponseEntity<Object> delete(@PathVariable @NonNull final Long id) {
+    return digitalRoleService
+        .findById(id)
+        .map(
+            entity -> {
+              digitalRoleService.delete(entity);
+              return ResponseEntity.noContent().build();
+            })
+        .orElse(ResponseEntity.notFound().build());
   }
 }
