@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import java.util.*;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +37,11 @@ public class DigitalRoleController extends AbstractRestController {
   @TrackExecutionTime
   public ResponseEntity<DigitalRoleDTO> save(
       @RequestBody @Valid final DigitalRoleDTO dto, final JwtAuthenticationToken authentication) {
+    final List<DigitalRole> existingEntities =
+        digitalRoleService.findAllByProjectIdAndEventId(dto.getProjectId(), dto.getEventId());
+    if (!existingEntities.isEmpty()) {
+      digitalRoleService.deleteAll(existingEntities);
+    }
     final String user = getPrincipalFromJwt(authentication);
     dto.setCreatedBy(user);
     dto.setUpdatedBy(user);

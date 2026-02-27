@@ -43,4 +43,9 @@ public class DigitalRoleService {
   public void delete(final DigitalRole entity) {
     digitalRoleRepository.delete(entity);
   }
+
+  @Transactional
+  public void deleteAll(final List<DigitalRole> entities) {
+    digitalRoleRepository.deleteAllById(entities.stream().map(DigitalRole::getId).toList());
+  }
 }
