@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
+import java.security.InvalidParameterException;
 import java.util.*;
 
 import jakarta.validation.Valid;
@@ -35,18 +36,29 @@ public class DigitalRoleController extends AbstractRestController {
 
   @PostMapping
   @TrackExecutionTime
-  public ResponseEntity<DigitalRoleDTO> save(
-      @RequestBody @Valid final DigitalRoleDTO dto, final JwtAuthenticationToken authentication) {
+  public ResponseEntity<List<DigitalRoleDTO>> save(
+      @RequestBody @Valid final List<DigitalRoleDTO> digitalRoleDTOs,
+      final JwtAuthenticationToken authentication) {
+    final DigitalRoleDTO dto =
+        digitalRoleDTOs.stream().findFirst().orElseThrow(InvalidParameterException::new);
     final List<DigitalRole> existingEntities =
         digitalRoleService.findAllByProjectIdAndEventId(dto.getProjectId(), dto.getEventId());
     if (!existingEntities.isEmpty()) {
       digitalRoleService.deleteAll(existingEntities);
     }
     final String user = getPrincipalFromJwt(authentication);
-    dto.setCreatedBy(user);
-    dto.setUpdatedBy(user);
-    final DigitalRole entity = digitalRoleService.save(DigitalRoleDTO.toEntity(dto));
-    return ResponseEntity.ok(DigitalRoleDTO.toDTO(entity));
+    final List<DigitalRole> entities =
+        digitalRoleDTOs.stream()
+            .map(DigitalRoleDTO::toEntity)
+            .map(
+                entity -> {
+                  entity.setCreatedBy(user);
+                  entity.setUpdatedBy(user);
+                  return entity;
+                })
+            .toList();
+    final List<DigitalRole> result = digitalRoleService.saveAll(entities);
+    return ResponseEntity.ok(result.stream().map(DigitalRoleDTO::toDTO).toList());
   }
 
   @PatchMapping
@@ -60,7 +72,6 @@ public class DigitalRoleController extends AbstractRestController {
             .map(DigitalRoleDTO::toEntity)
             .map(
                 entity -> {
-                  entity.setCreatedBy(user);
                   entity.setUpdatedBy(user);
                   return entity;
                 })
