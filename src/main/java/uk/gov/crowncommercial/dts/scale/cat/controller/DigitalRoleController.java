@@ -81,6 +81,10 @@ public class DigitalRoleController extends AbstractRestController {
                     entity.setRole(Optional.ofNullable(dto.getRole()).orElse(entity.getRole()));
                     entity.setLevel(Optional.ofNullable(dto.getLevel()).orElse(entity.getLevel()));
                     entity.setCount(Optional.ofNullable(dto.getCount()).orElse(entity.getCount()));
+                    entity.setProjectId(
+                        Optional.ofNullable(dto.getProjectId()).orElse(entity.getProjectId()));
+                    entity.setEventId(
+                        Optional.ofNullable(dto.getEventId()).orElse(entity.getEventId()));
                     entity.setUpdatedBy(user);
                   });
         });
