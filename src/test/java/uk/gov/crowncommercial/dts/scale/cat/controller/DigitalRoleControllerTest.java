@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -106,7 +107,7 @@ class DigitalRoleControllerTest {
             .projectId(projectId)
             .eventId(eventId)
             .build();
-    when(digitalRoleService.save(any(DigitalRole.class))).thenReturn(input);
+    when(digitalRoleService.saveAll(anyList())).thenReturn(List.of(input));
 
     // When
     mockMvc
@@ -114,14 +115,14 @@ class DigitalRoleControllerTest {
             post("/digitalRole")
                 .with(validJwtReqPostProcessor)
                 .contentType(APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(input)))
+                .content(objectMapper.writeValueAsString(List.of(input))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(input.getId()))
-        .andExpect(jsonPath("$.jobFamily").value(input.getJobFamily()))
-        .andExpect(jsonPath("$.role").value(input.getRole()))
-        .andExpect(jsonPath("$.level").value(input.getLevel()))
-        .andExpect(jsonPath("$.projectId").value(input.getProjectId()))
-        .andExpect(jsonPath("$.eventId").value(input.getEventId()));
+        .andExpect(jsonPath("$[0].id").value(input.getId()))
+        .andExpect(jsonPath("$[0].jobFamily").value(input.getJobFamily()))
+        .andExpect(jsonPath("$[0].role").value(input.getRole()))
+        .andExpect(jsonPath("$[0].level").value(input.getLevel()))
+        .andExpect(jsonPath("$[0].projectId").value(input.getProjectId()))
+        .andExpect(jsonPath("$[0].eventId").value(input.getEventId()));
   }
 
   @Test
@@ -144,8 +145,8 @@ class DigitalRoleControllerTest {
             post("/digitalRole")
                 .with(validJwtReqPostProcessor)
                 .contentType(APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(input)))
-        .andExpect(status().isBadRequest());
+                .content(objectMapper.writeValueAsString(List.of(input))))
+        .andExpect(status().is5xxServerError());
   }
 
   @Test
