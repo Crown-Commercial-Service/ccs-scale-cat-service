@@ -69,19 +69,21 @@ public class DigitalRoleController extends AbstractRestController {
     final String user = getPrincipalFromJwt(authentication);
     final List<DigitalRole> entities =
         digitalRoleService.findByIdIn(digitalRoleDTOs.stream().map(DigitalRoleDTO::getId).toList());
-    entities.stream()
-        .map(
-            entity -> {
-              entity.setCount(
-                  digitalRoleDTOs.stream()
-                      .filter(dto -> Objects.equals(dto.getId(), entity.getId()))
-                      .findFirst()
-                      .get()
-                      .getCount());
-              entity.setUpdatedBy(user);
-              return entity;
-            })
-        .toList();
+    entities.forEach(
+        entity -> {
+          digitalRoleDTOs.stream()
+              .filter(object -> Objects.equals(object.getId(), entity.getId()))
+              .findFirst()
+              .ifPresent(
+                  dto -> {
+                    entity.setJobFamily(
+                        Optional.ofNullable(dto.getJobFamily()).orElse(entity.getJobFamily()));
+                    entity.setRole(Optional.ofNullable(dto.getRole()).orElse(entity.getRole()));
+                    entity.setLevel(Optional.ofNullable(dto.getLevel()).orElse(entity.getLevel()));
+                    entity.setCount(Optional.ofNullable(dto.getCount()).orElse(entity.getCount()));
+                    entity.setUpdatedBy(user);
+                  });
+        });
     final List<DigitalRole> result = digitalRoleService.saveAll(entities);
     return ResponseEntity.ok(result.stream().map(DigitalRoleDTO::toDTO).toList());
   }
