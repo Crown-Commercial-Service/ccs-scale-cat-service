@@ -64,18 +64,24 @@ public class DigitalRoleController extends AbstractRestController {
   @PatchMapping
   @TrackExecutionTime
   public ResponseEntity<List<DigitalRoleDTO>> patch(
-      @RequestBody @Valid final List<DigitalRoleDTO> digitalRoleDTOs,
+      @RequestBody final List<DigitalRoleDTO> digitalRoleDTOs,
       final JwtAuthenticationToken authentication) {
     final String user = getPrincipalFromJwt(authentication);
     final List<DigitalRole> entities =
-        digitalRoleDTOs.stream()
-            .map(DigitalRoleDTO::toEntity)
-            .map(
-                entity -> {
-                  entity.setUpdatedBy(user);
-                  return entity;
-                })
-            .toList();
+        digitalRoleService.findByIdIn(digitalRoleDTOs.stream().map(DigitalRoleDTO::getId).toList());
+    entities.stream()
+        .map(
+            entity -> {
+              entity.setCount(
+                  digitalRoleDTOs.stream()
+                      .filter(dto -> Objects.equals(dto.getId(), entity.getId()))
+                      .findFirst()
+                      .get()
+                      .getCount());
+              entity.setUpdatedBy(user);
+              return entity;
+            })
+        .toList();
     final List<DigitalRole> result = digitalRoleService.saveAll(entities);
     return ResponseEntity.ok(result.stream().map(DigitalRoleDTO::toDTO).toList());
   }
