@@ -23,6 +23,11 @@ public class DigitalRoleService {
   }
 
   @Transactional(readOnly = true)
+  public List<DigitalRole> findByIdIn(final List<Long> ids) {
+    return digitalRoleRepository.findByIdIn(ids);
+  }
+
+  @Transactional(readOnly = true)
   public List<DigitalRole> findAllByProjectIdAndEventId(
       final String projectId, final String eventId) {
     return digitalRoleRepository.findAllByProjectIdAndEventIdOrderByJobFamilyAscRoleAscLevelAsc(

@@ -9,6 +9,8 @@ import java.util.List;
 @Repository
 public interface DigitalRoleRepository extends JpaRepository<DigitalRole, Long> {
 
+  List<DigitalRole> findByIdIn(final List<Long> ids);
+
   List<DigitalRole> findAllByProjectIdAndEventIdOrderByJobFamilyAscRoleAscLevelAsc(
       final String projectId, final String eventId);
 }
