@@ -58,6 +58,33 @@ public class DigitalRoleServiceTest {
   }
 
   @Test
+  void testValidFindByIdIn() {
+    // Given
+    final Long id = 1L;
+    final String projectId = "12345";
+    final String eventId = "ocds-pfhb7i-25306";
+    final DigitalRole input =
+        DigitalRole.builder()
+            .id(id)
+            .jobFamily("Architecture roles")
+            .role("Business architect")
+            .level("Trainee business architect")
+            .count(10)
+            .projectId(projectId)
+            .eventId(eventId)
+            .build();
+    when(digitalRoleRepository.findByIdIn(List.of(id))).thenReturn(List.of(input));
+
+    // When
+    final List<DigitalRole> result = underTest.findByIdIn(List.of(id));
+
+    // Then
+    assertNotNull(result);
+    assertFalse(result.isEmpty());
+    assertEquals(List.of(input), result);
+  }
+
+  @Test
   void testValidFindAllByProjectIdAndEventId() {
     // Given
     final Long id = 1L;

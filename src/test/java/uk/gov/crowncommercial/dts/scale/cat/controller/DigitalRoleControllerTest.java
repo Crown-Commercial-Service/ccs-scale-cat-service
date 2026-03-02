@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
+import uk.gov.crowncommercial.dts.scale.cat.model.DigitalRoleDTO;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DigitalRole;
 import uk.gov.crowncommercial.dts.scale.cat.service.DigitalRoleService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -165,6 +166,7 @@ class DigitalRoleControllerTest {
             .projectId(projectId)
             .eventId(eventId)
             .build();
+    when(digitalRoleService.findByIdIn(any())).thenReturn(List.of(input));
     when(digitalRoleService.saveAll(any())).thenReturn(List.of(input));
 
     // When
@@ -173,38 +175,17 @@ class DigitalRoleControllerTest {
             patch("/digitalRole")
                 .with(validJwtReqPostProcessor)
                 .contentType(APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(List.of(input))))
+                .content(
+                    objectMapper.writeValueAsString(
+                        List.of(DigitalRoleDTO.builder().id(id).count(9).build()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(input.getId()))
         .andExpect(jsonPath("$[0].jobFamily").value(input.getJobFamily()))
         .andExpect(jsonPath("$[0].role").value(input.getRole()))
         .andExpect(jsonPath("$[0].level").value(input.getLevel()))
+        .andExpect(jsonPath("$[0].count").value(9))
         .andExpect(jsonPath("$[0].projectId").value(input.getProjectId()))
         .andExpect(jsonPath("$[0].eventId").value(input.getEventId()));
-  }
-
-  @Test
-  void testInvalidPatch() throws Exception {
-    // Given
-    final DigitalRole input =
-        DigitalRole.builder()
-            .id(1L)
-            .jobFamily(null)
-            .role("Business architect")
-            .level("Trainee business architect")
-            .count(10)
-            .projectId("12345")
-            .eventId("ocds-pfhb7i-25306")
-            .build();
-
-    // When
-    mockMvc
-        .perform(
-            patch("/digitalRole")
-                .with(validJwtReqPostProcessor)
-                .contentType(APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(List.of(input))))
-        .andExpect(status().is5xxServerError());
   }
 
   @Test
