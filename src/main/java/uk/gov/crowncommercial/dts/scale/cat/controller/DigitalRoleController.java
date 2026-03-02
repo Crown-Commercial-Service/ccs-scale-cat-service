@@ -60,6 +60,7 @@ public class DigitalRoleController extends AbstractRestController {
             .map(DigitalRoleDTO::toEntity)
             .map(
                 entity -> {
+                  entity.setCreatedBy(user);
                   entity.setUpdatedBy(user);
                   return entity;
                 })
