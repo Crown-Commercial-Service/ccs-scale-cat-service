@@ -177,15 +177,24 @@ class DigitalRoleControllerTest {
                 .contentType(APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        List.of(DigitalRoleDTO.builder().id(id).count(9).build()))))
+                        List.of(
+                            DigitalRoleDTO.builder()
+                                .id(id)
+                                .jobFamily("Job Family Test")
+                                .role("Role Test")
+                                .level("Level Test")
+                                .count(9)
+                                .projectId("Project Id Test")
+                                .eventId("Event Id Test")
+                                .build()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(input.getId()))
-        .andExpect(jsonPath("$[0].jobFamily").value(input.getJobFamily()))
-        .andExpect(jsonPath("$[0].role").value(input.getRole()))
-        .andExpect(jsonPath("$[0].level").value(input.getLevel()))
+        .andExpect(jsonPath("$[0].jobFamily").value("Job Family Test"))
+        .andExpect(jsonPath("$[0].role").value("Role Test"))
+        .andExpect(jsonPath("$[0].level").value("Level Test"))
         .andExpect(jsonPath("$[0].count").value(9))
-        .andExpect(jsonPath("$[0].projectId").value(input.getProjectId()))
-        .andExpect(jsonPath("$[0].eventId").value(input.getEventId()));
+        .andExpect(jsonPath("$[0].projectId").value("Project Id Test"))
+        .andExpect(jsonPath("$[0].eventId").value("Event Id Test"));
   }
 
   @Test
