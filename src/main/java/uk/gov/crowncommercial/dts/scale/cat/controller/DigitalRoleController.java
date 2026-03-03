@@ -61,9 +61,9 @@ public class DigitalRoleController extends AbstractRestController {
     return ResponseEntity.ok(result.stream().map(DigitalRoleDTO::toDTO).toList());
   }
 
-  @PatchMapping
+  @PutMapping
   @TrackExecutionTime
-  public ResponseEntity<List<DigitalRoleDTO>> patch(
+  public ResponseEntity<List<DigitalRoleDTO>> put(
       @RequestBody final List<DigitalRoleDTO> digitalRoleDTOs,
       final JwtAuthenticationToken authentication) {
     final String user = getPrincipalFromJwt(authentication);
