@@ -213,10 +213,15 @@ public class QuestionAndAnswerService {
 
     log.debug("QuestionWrite : {}", questionWrite);
       try {
+        // When no event yet exists, set project event to be TBD, and so no questions updates are needed yet.
+        if (eventType.trim().equalsIgnoreCase("TBD")) {
+          return true;
+        }
+
         QuestionWriteResponse questionWriteResponse =  questionAndAnswerClient.createQuestions(questionWrite, eventType, serviceApiKey);
 
         if(questionWriteResponse == null) {
-          // Cater for ACCEPTED response coming back from Q&A service, when no TBD passed and no template data found
+          // Cater for ACCEPTED response coming back from Q&A service.
           log.debug("Question and Answer service responded 202.");
           return true;
         }
