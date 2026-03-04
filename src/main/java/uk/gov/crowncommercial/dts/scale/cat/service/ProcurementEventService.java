@@ -324,14 +324,18 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        // Option to manually revert to legacy Agreement Service flow (NCAS-795), if needed.
+        // The boolean check here is to see if dos6 is the agreement id, and if it is use the legacy AS flow.
+        String dos6AgreementId = "RM1043.8";
+        boolean legacyFlow = dos6AgreementId.equalsIgnoreCase(project.getCaNumber());
 
         if (legacyFlow) {
+            // For DOS6 we should use legacy AS flow.
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
             Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
             TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
         } else {
-            // NCAS-795
+            // NCAS-795; For non-DOS6 we should use new Q&A service flow.
             if(questionAndAnswerService.createQuestion(eventTypeValue,
                     procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
                 log.debug("Question has been created successfully into the QuestionAndAnswer service");
