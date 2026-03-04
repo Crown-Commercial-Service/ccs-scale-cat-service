@@ -294,17 +294,21 @@ public class CriteriaService {
       dataTemplate = event.getProcurementTemplatePayload();
       log.debug(LOG_TAG + "Template has been persisted, getting from the local database. dataTemplate: {}", dataTemplate);
     } else {
-        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        // Option to manually revert to legacy Agreement Service flow (NCAS-795), if needed.
+        // The boolean check here is to see if dos6 is the agreement id, and if it is use the legacy AS flow.
+        String dos6AgreementId = "RM1043.8";
+        boolean legacyFlow = dos6AgreementId.equalsIgnoreCase(event.getProject().getCaNumber());
         List<DataTemplate> lotEventTypeDataTemplates;
 
         if (legacyFlow) {
+          // For DOS6 we should use legacy AS flow.
           log.debug(LOG_TAG + "Getting template data from agreement service as legacyFlow is true.");
           lotEventTypeDataTemplates =
             agreementsService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
         } else {
           log.debug(LOG_TAG + "Getting template data from Q&A service.");
-          // NCAS- 795, should retrieve Questions and answers from new Question and answer service
+          // NCAS- 795; For non-DOS6 we should retrieve Questions and answers from new Question and answer service.
           lotEventTypeDataTemplates =
             questionAndAnswerService.getLotEventTypeDataTemplates(event.getProject().getCaNumber(),
             event.getProject().getLotNumber(), ViewEventType.fromValue(event.getEventType()));
