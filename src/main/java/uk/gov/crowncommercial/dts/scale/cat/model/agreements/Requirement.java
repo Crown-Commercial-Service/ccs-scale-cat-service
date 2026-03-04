@@ -86,13 +86,11 @@ public class Requirement {
      * @param updatedOptions
      */
     public void updateOptions(final List<Option> updatedOptions) {
-
       var selectionQuestionTypes = Set.of("SingleSelect", "MultiSelect", "SingleSelectWithOptions",
-          "MultiSelectWithOptions");
+          "MultiSelectWithOptions", "DropDown");
 
-      if (selectionQuestionTypes.contains(questionType)) {
-
-       options =  populateOptions(updatedOptions, options);
+      if (selectionQuestionTypes.contains(questionType) && null != updatedOptions && !updatedOptions.isEmpty()) {
+        options = populateOptions(updatedOptions, options);
       } else {
         if (options == null) {
           options = new ArrayList<>();
