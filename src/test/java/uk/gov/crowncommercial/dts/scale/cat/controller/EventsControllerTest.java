@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -646,6 +647,9 @@ class EventsControllerTest {
 
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
+    String question = "Select question group";
+    doNothing().when(questionAndAnswerService).deleteSpecificAnswersForGivenQuestion(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, question, Collections.emptyList());
+
     QandA questionGroup1 = new QandA();
     questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
     questionGroup1.setAnswer("group1");
@@ -674,6 +678,8 @@ class EventsControllerTest {
 
     verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
     verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup2, null);
+
+    verify(questionAndAnswerService).deleteSpecificAnswersForGivenQuestion(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, question, Collections.emptyList());
 
     verifyNoMoreInteractions(questionAndAnswerService);
   }
@@ -708,5 +714,69 @@ class EventsControllerTest {
     .andExpect(status().is5xxServerError());
 
     verifyNoInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldSaveQuestionGroupsUnassigningRemovedGroups() throws Exception {
+    //
+    // given we have pre-existing groups: group1 & group2
+    // and we have a pre-existing question assigned to group2
+    //
+    QandA expectedQuestionGroup1 = new QandA();
+    expectedQuestionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    expectedQuestionGroup1.setAnswer("group1");
+    expectedQuestionGroup1.id(BigDecimal.valueOf(123));
+
+    QandA expectedQuestionGroup2 = new QandA();
+    expectedQuestionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    expectedQuestionGroup2.setAnswer("group2");
+    expectedQuestionGroup2.id(BigDecimal.valueOf(456));
+
+    String question = "Select question group";
+    QandA questions = new QandA();
+    questions.setQuestion(question);
+    questions.setAnswer("group2");
+    questions.id(BigDecimal.valueOf(789));
+
+    QandAWithProjectDetails expected = new QandAWithProjectDetails();
+    expected.setQandA(List.of(expectedQuestionGroup1, expectedQuestionGroup2, questions));
+
+    when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
+
+    doNothing().when(questionAndAnswerService).deleteSpecificAnswersForGivenQuestion(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, question, List.of("group2"));
+
+    //
+    // when we delete group2
+    //
+    QandA questionGroup1 = new QandA();
+    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setAnswer("group1");
+
+    QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
+    request.setQuestionGroups(List.of("group1"));
+    request.setQaIds(List.of(123));
+
+    mockMvc
+    .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(objectMapper.writeValueAsString(request)))
+    .andDo(print())
+    .andExpect(status().isOk())
+    .andExpect(content().string(containsString("OK")));
+
+    verify(questionAndAnswerService).getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaIdFromRepo(PROC_PROJECT_ID, EVENT_ID, 123, PRINCIPAL);
+    verify(questionAndAnswerService, times(1)).deleteQuestionAndAnswerByQaIdFromRepo(PROC_PROJECT_ID, EVENT_ID, 456, PRINCIPAL);
+
+    verify(questionAndAnswerService, times(1)).createOrUpdateQuestionAndAnswer(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, questionGroup1, null);
+
+    //
+    // then we expect group2 to be unassigned from the existing questions
+    //
+    verify(questionAndAnswerService).deleteSpecificAnswersForGivenQuestion(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, question, List.of("group2"));
+
+    verifyNoMoreInteractions(questionAndAnswerService);
   }
 }
