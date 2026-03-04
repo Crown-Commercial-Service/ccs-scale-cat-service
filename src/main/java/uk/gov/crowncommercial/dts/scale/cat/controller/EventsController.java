@@ -29,12 +29,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -60,6 +62,8 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
   private static final String USE_QUESTION_GROUPS = "use-question-groups";
   private static final String QUESTION_GROUP_PREFIX = "question-group-";
+  private static final String SELECT_QUESTION_GROUP_QUESTION = "Select question group";
+
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
@@ -691,6 +695,16 @@ public class EventsController extends AbstractRestController {
         newEntry.setAnswer(questionGroupName);
 
         questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
+    }
+
+    if (null != existingGroupNames && null != existingGroupNames.getQuestionGroups() && !existingGroupNames.getQuestionGroups().isEmpty()) {
+        // unassign any questions which have already been assigned to this question group
+
+        List<String> questionGroupsToRemove = existingGroupNames.getQuestionGroups().stream()
+                             .filter(e -> !requestModel.getQuestionGroups().contains(e))
+                             .collect(Collectors.toList());
+
+        questionAndAnswerService.deleteSpecificAnswersForGivenQuestion(principal, procId, eventId, SELECT_QUESTION_GROUP_QUESTION, questionGroupsToRemove);
     }
 
     return new StringValueResponse("OK");
