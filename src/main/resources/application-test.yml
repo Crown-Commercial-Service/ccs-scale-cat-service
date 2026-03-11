@@ -31,6 +31,9 @@ config:
       baseUrl: https://dummy.example.com
     questionAndAnswerService:
       baseUrl: https://dummy.example.com
+    dmp-api:
+      base-url: https://dummy.example.com
+      bearer-token: 11111111
 
 # Feature Flags
 api:
