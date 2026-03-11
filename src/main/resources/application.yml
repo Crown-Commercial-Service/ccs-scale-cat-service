@@ -156,6 +156,9 @@ config:
       getDocumentRecord:
         uriTemplate: /documents/{document-id}
 
+    dmp-api:
+      supplier-detail-path: /suppliers/{supplier-id}
+
     jaggaer:
       timeoutDuration: 300
       addDivisionToProjectTeam: false
