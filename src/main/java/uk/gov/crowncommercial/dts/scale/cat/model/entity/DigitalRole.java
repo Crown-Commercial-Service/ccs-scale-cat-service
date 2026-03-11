@@ -51,6 +51,9 @@ public class DigitalRole {
   @Column(name = "updated_at")
   LocalDateTime updatedAt;
 
+    @Column(name = "search_term")
+    String searchTerm;
+
   @PrePersist
   @PreUpdate
   public void preSave() {

@@ -41,6 +41,7 @@ public class DigitalRoleDTO {
   public LocalDateTime createdAt;
   public String updatedBy;
   public LocalDateTime updatedAt;
+  public String searchTerm;
 
   public static DigitalRoleDTO toDTO(final DigitalRole entity) {
     return DigitalRoleDTO.builder()
@@ -55,6 +56,7 @@ public class DigitalRoleDTO {
         .createdAt(entity.getCreatedAt())
         .updatedBy(entity.getUpdatedBy())
         .updatedAt(entity.getUpdatedAt())
+        .searchTerm(entity.getSearchTerm())
         .build();
   }
 
@@ -71,6 +73,7 @@ public class DigitalRoleDTO {
         .createdAt(dto.getCreatedAt())
         .updatedBy(dto.getUpdatedBy())
         .updatedAt(dto.getUpdatedAt())
+        .searchTerm(dto.getSearchTerm())
         .build();
   }
 }
