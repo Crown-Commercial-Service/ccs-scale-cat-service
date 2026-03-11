@@ -32,6 +32,7 @@ public class DocGenValueAdaptors {
   private final ConclaveService conclaveService;
   private final ProcurementProjectService procurementProjectService;
   private final DocumentUploadService documentUploadService;
+  private final DigitalRoleService digitalRoleService;
 
   @Bean("DocumentValueAdaptorExternalEventID")
   public DocGenValueAdaptor documentValueAdaptorExternalEventID() {
@@ -41,6 +42,14 @@ public class DocGenValueAdaptors {
   @Bean("GetExternalEventId")
   public DocGenValueAdaptor getExternalEventId() {
     return (event, requestCache) -> List.of(event.getExternalReferenceId());
+  }
+
+  @Bean("DocumentValueAdaptorDigitalRoles")
+  public DocGenValueAdaptor documentValueAdaptorDigitalRoles() {
+    return (event,
+            requestCache) -> digitalRoleService
+            .findByProjectId(String.valueOf(event.getProject().getId()))
+            .stream().map(digitalRole -> digitalRole.getCount() + " x " + digitalRole.getLevel()).collect(Collectors.toList());
   }
 
   @Bean("DocumentValueAdaptorLotName")

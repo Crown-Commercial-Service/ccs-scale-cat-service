@@ -11,6 +11,8 @@ public interface DigitalRoleRepository extends JpaRepository<DigitalRole, Long> 
 
   List<DigitalRole> findByIdIn(final List<Long> ids);
 
+  List<DigitalRole> findByProjectId(final String projectId);
+
   List<DigitalRole> findAllByProjectIdAndEventIdOrderByJobFamilyAscRoleAscLevelAsc(
       final String projectId, final String eventId);
 }
