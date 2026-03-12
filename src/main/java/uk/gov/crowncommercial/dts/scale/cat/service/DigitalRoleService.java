@@ -34,6 +34,11 @@ public class DigitalRoleService {
         projectId, eventId);
   }
 
+  @Transactional(readOnly = true)
+  public List<DigitalRole> findByProjectId(final String projectId) {
+    return digitalRoleRepository.findByProjectId(projectId);
+  }
+
   @Transactional
   public DigitalRole save(final DigitalRole entity) {
     return digitalRoleRepository.save(entity);
