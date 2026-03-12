@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
 
@@ -128,7 +129,11 @@ public class ProcurementEventService implements EventService {
         log.debug("Complete Event {}", eventId);
 
         ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
-        eventTransitionService.completeExistingEvent(eventModel, principal);
+        if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(eventModel.getEventType()))) {
+            new TwoStageEventService().markComplete(retryableTendersDBDelegate, eventModel);
+        } else {
+            eventTransitionService.completeExistingEvent(eventModel, principal);
+        }
     }
 
     /**
@@ -166,7 +171,11 @@ public class ProcurementEventService implements EventService {
             var existingEvent = existingEventOptional.get();
             twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
             if (!twoStageEvent) {
-                eventTransitionService.completeExistingEvent(existingEvent, principal);
+                if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEvent.getEventType()))) {
+                    twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
+                } else {
+                    eventTransitionService.completeExistingEvent(existingEvent, principal);
+                }
             } else {
                 twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
             }
@@ -315,14 +324,18 @@ public class ProcurementEventService implements EventService {
             }
         }
 
-        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+        // Option to manually revert to legacy Agreement Service flow (NCAS-795), if needed.
+        // The boolean check here is to see if dos6 is the agreement id, and if it is use the legacy AS flow.
+        String dos6AgreementId = "RM1043.8";
+        boolean legacyFlow = dos6AgreementId.equalsIgnoreCase(project.getCaNumber());
 
         if (legacyFlow) {
+            // For DOS6 we should use legacy AS flow.
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
             Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
             TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
         } else {
-            // NCAS-795
+            // NCAS-795; For non-DOS6 we should use new Q&A service flow.
             if(questionAndAnswerService.createQuestion(eventTypeValue,
                     procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
                 log.debug("Question has been created successfully into the QuestionAndAnswer service");
@@ -526,6 +539,29 @@ public class ProcurementEventService implements EventService {
         log.debug("Validated project and eventId successfully");
 
         return event;
+    }
+
+    /**
+     * Saves a single event payload based on the ID
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public boolean saveEventPayload(final Integer projectId, final String eventId, final JsonNode payload) {
+        log.debug("About to validate eventId");
+
+        var eventOCID = validationService.validateEventId(eventId);
+
+        boolean updateSuccess = retryableTendersDBDelegate.saveEventPayloadByIdAndAuthorityAndPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), payload);
+
+        if (updateSuccess) {
+            log.debug("Validated eventId successfully and saved payload");
+        } else {
+            log.debug("Failed to validate eventId and saved payload");
+        }
+
+        return updateSuccess;
     }
 
     /**

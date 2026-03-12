@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import com.fasterxml.jackson.databind.JsonNode;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
@@ -28,12 +29,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -59,6 +62,8 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
   private static final String USE_QUESTION_GROUPS = "use-question-groups";
   private static final String QUESTION_GROUP_PREFIX = "question-group-";
+  private static final String SELECT_QUESTION_GROUP_QUESTION = "Select question group";
+
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
@@ -148,6 +153,28 @@ public class EventsController extends AbstractRestController {
 
     return null;
 
+  }
+
+  @PutMapping("/{eventID}/lite")
+  @TrackExecutionTime
+  public String saveEventPayload(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @RequestBody JsonNode payload, final JwtAuthenticationToken authentication) {
+      try {
+          var principal = getPrincipalFromJwt(authentication);
+          log.info("PUT event invoked by principal: {}", principal);
+
+          log.info("Received payload: {}", payload.toPrettyString());
+
+          boolean status = procurementEventService.saveEventPayload(procId, eventId, payload);
+
+          if (status) {
+            return "OK";
+          } else {
+            return "NOT_FOUND";
+          }
+      } catch (Exception ex) {
+          log.error("Failed to save event details. error: {}", ex.getMessage(), ex);
+          throw ex;
+      }
   }
 
   @GetMapping("/{eventID}/review")
@@ -668,6 +695,16 @@ public class EventsController extends AbstractRestController {
         newEntry.setAnswer(questionGroupName);
 
         questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
+    }
+
+    if (null != existingGroupNames && null != existingGroupNames.getQuestionGroups() && !existingGroupNames.getQuestionGroups().isEmpty()) {
+        // unassign any questions which have already been assigned to this question group
+
+        List<String> questionGroupsToRemove = existingGroupNames.getQuestionGroups().stream()
+                             .filter(e -> !requestModel.getQuestionGroups().contains(e))
+                             .collect(Collectors.toList());
+
+        questionAndAnswerService.deleteSpecificAnswersForGivenQuestion(principal, procId, eventId, SELECT_QUESTION_GROUP_QUESTION, questionGroupsToRemove);
     }
 
     return new StringValueResponse("OK");

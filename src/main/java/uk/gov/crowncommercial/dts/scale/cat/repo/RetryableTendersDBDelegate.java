@@ -13,6 +13,7 @@ import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
@@ -90,6 +91,14 @@ public class RetryableTendersDBDelegate {
       final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
     return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
         eventIdKey, ocdsAuthorityName, ocidPrefix);
+  }
+
+  @TendersRetryable
+  @Transactional
+  public boolean saveEventPayloadByIdAndAuthorityAndPrefix(Integer eventIdKey,String ocdsAuthorityName, String ocidPrefix, JsonNode payload) {
+    int updated = procurementEventRepo.updateTemplatePayload(eventIdKey, ocdsAuthorityName, ocidPrefix, payload.toString());
+
+    return updated > 0;
   }
 
   @TendersRetryable
