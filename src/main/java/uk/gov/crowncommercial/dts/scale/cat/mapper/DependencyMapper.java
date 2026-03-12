@@ -19,27 +19,27 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.RelationshipType;
 @RequiredArgsConstructor
 @Component
 public class DependencyMapper {
+    public QuestionNonOCDSDependency convertToQuestionNonOCDSDependency(final Requirement requirement) {
+        final var questionNonOCDSDependency = new QuestionNonOCDSDependency();
+        final var dependency = requirement.getNonOCDS().getDependency();
 
-	public QuestionNonOCDSDependency convertToQuestionNonOCDSDependency(final Requirement requirement) {
+        if (Objects.nonNull(dependency.getConditional())) {
+            questionNonOCDSDependency.conditional(new QuestionDependancy()
+                .dependencyType(
+                    DependencyType.fromValue(dependency.getConditional().getDependencyType().getValue()))
+                .dependencyValue(dependency.getConditional().getDependencyValue())
+                .dependentOnId(dependency.getConditional().getDependentOnID()));
+        }
 
-		final var questionNonOCDSDependency = new QuestionNonOCDSDependency();
-		final var dependency = requirement.getNonOCDS().getDependency();
-		if (Objects.nonNull(dependency.getConditional())) {
-			questionNonOCDSDependency.conditional(new QuestionDependancy()
-					.dependencyType(
-							DependencyType.fromValue(dependency.getConditional().getDependencyType().getValue()))
-					.dependencyValue(dependency.getConditional().getDependencyValue())
-					.dependentOnId(dependency.getConditional().getDependentOnID()));
-		}
-		if (Objects.nonNull(dependency.getRelationships())) {
-			final var relationshipList = dependency.getRelationships().stream()
-					.map(relationships -> new QuestionRelationship()
-					.dependentOnId(relationships.getDependentOnID())
-					.relationshipType(RelationshipType.fromValue(relationships.getRelationshipType()))
-					).collect(Collectors.toList());
-			questionNonOCDSDependency.relationships(relationshipList);
-		}
-		return questionNonOCDSDependency;
-	}
+        if (Objects.nonNull(dependency.getRelationships())) {
+            final var relationshipList = dependency.getRelationships().stream()
+                .map(relationships -> new QuestionRelationship()
+                .dependentOnId(relationships.getDependentOnID())
+                .relationshipType(RelationshipType.fromValue(relationships.getRelationshipType()))
+            ).collect(Collectors.toList());
+            questionNonOCDSDependency.relationships(relationshipList);
+        }
 
+        return questionNonOCDSDependency;
+    }
 }
