@@ -147,9 +147,7 @@ public class CriteriaService {
 
     log.debug(LOG_TAG + "question: {}", question);
     return question;
-
   }
-
 
   @Transactional
   public Question putQuestionOptionDetails(final Question question, final Integer projectId,
@@ -176,6 +174,7 @@ public class CriteriaService {
 
     var options = question.getNonOCDS().getOptions();
     log.debug(LOG_TAG + "options: {}", options);
+
     if (options == null) {
       log.error(LOG_TAG +  "'options' property not included in request for event {}", eventId);
       throw new IllegalArgumentException("'options' property must be included in the request");
@@ -184,13 +183,15 @@ public class CriteriaService {
     if(null != question.getNonOCDS() && null != question.getNonOCDS().getAnswered()){
       requirement.getNonOCDS().setAnswered(question.getNonOCDS().getAnswered());
     }
+
     if(null != question.getNonOCDS().getTimelineDependency() && null != question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()){
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()));
-             requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getTimelineDependency().getNonOCDS().getAnswered());
+      requirement.getNonOCDS().getTimelineDependency().getNonOCDS().updateOptions(getUpdatedOptions(question.getNonOCDS().getTimelineDependency().getNonOCDS().getOptions()));
+      requirement.getNonOCDS().getTimelineDependency().getNonOCDS().setAnswered(question.getNonOCDS().getTimelineDependency().getNonOCDS().getAnswered());
     }
+
     validateQuestionsValues(group, requirement, options);
-    requirement.getNonOCDS()
-        .updateOptions(getUpdatedOptions(options));
+
+    requirement.getNonOCDS().updateOptions(getUpdatedOptions(options));
 
     // Update Jaggaer Technical Envelope (only for Supplier questions)
     if (Party.TENDERER == criteria.getRelatesTo()) {
@@ -217,7 +218,6 @@ public class CriteriaService {
     }
 
     // Update Tenders DB
-    System.out.println("31121209.I- " + dataTemplate);
     event.setProcurementTemplatePayload(dataTemplate);
     event.setUpdatedAt(Instant.now());
     retryableTendersDBDelegate.save(event);
@@ -227,9 +227,7 @@ public class CriteriaService {
     return transformRequirementToQuestion;
   }
 
-
-  public void validateQuestionsValues(RequirementGroup group, Requirement requirement,
-      List<QuestionNonOCDSOptions> options) {
+  public void validateQuestionsValues(RequirementGroup group, Requirement requirement, List<QuestionNonOCDSOptions> options) {
     if (Objects.equals(requirement.getNonOCDS().getQuestionType(), MONETARY_QUESTION_TYPE)) {
       String maxValue = null;
       String minValue = null;
@@ -322,7 +320,6 @@ public class CriteriaService {
           log.debug(LOG_TAG + "Single data template: {}", dataTemplate);
         }  else {
           log.debug(LOG_TAG + "Find template with matching templateId");
-          System.out.println("31121209.II.0- " + lotEventTypeDataTemplates);
           String errorLog = ERR_MSG_DATA_TEMPLATE_NOT_FOUND + " event.getTemplateId(): " + event.getTemplateId();
 
           if (legacyFlow) {
@@ -367,7 +364,6 @@ public class CriteriaService {
           }
         }
 
-        System.out.println("31121209.II- " + dataTemplate);
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
         retryableTendersDBDelegate.save(event);
@@ -447,7 +443,6 @@ public class CriteriaService {
   }
 
   public Question convertRequirementToQuestion(final Requirement r, final String agreementNumber) {
-
     log.debug(LOG_TAG + "convertRequirementToQuestion method, agreementNumber: {}, requirement: {}", agreementNumber, r);
     // TODO: Move to object mapper or similar
     // @formatter:off
@@ -462,10 +457,13 @@ public class CriteriaService {
                 .orElseGet(List::of).stream() //Checks if the options list in the source is null.
             .map(this::getQuestionNonOCDSOptions
         ).collect(Collectors.toList()));
+
     log.debug(LOG_TAG + "questionNonOCDS: {}", questionNonOCDS);
+
     if (Objects.nonNull(r.getNonOCDS().getDependency())) {
       questionNonOCDS.dependency(dependencyMapper.convertToQuestionNonOCDSDependency(r));
     }
+
     if (Objects.nonNull(r.getNonOCDS().getTimelineDependency())) {
       questionNonOCDS.timelineDependency(timelineDependencyMapper.convertToTimelineDependency(r));
     }
@@ -475,9 +473,9 @@ public class CriteriaService {
       var agreementDetails = agreementsService.getAgreementDetails(agreementNumber);
       description = description.replaceAll(END_DATE,
               DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(agreementDetails.getEndDate()));
-
       log.debug(LOG_TAG + "Getting aggrementDetails from agreement service. aggrementDetails: {}", agreementDetails);
     }
+
     var questionOCDS = new Requirement1()
         .id(r.getOcds().getId())
         .title(r.getOcds().getTitle())
@@ -493,11 +491,11 @@ public class CriteriaService {
             .maxExtentDate(r.getOcds().getPeriod().getMaxExtentDate())
             .durationInDays(r.getOcds().getPeriod().getDurationInDays()) : null);
     // @formatter:on
+
     log.debug(LOG_TAG + "questionOCDS: {}", questionOCDS);
     var questionAfterConversion = new Question().nonOCDS(questionNonOCDS).OCDS(questionOCDS);
     log.debug(LOG_TAG + "questionAfterConversion: {}", questionAfterConversion);
     return questionAfterConversion;
-
   }
 
   private QuestionNonOCDSOptions getQuestionNonOCDSOptions(Requirement.Option o) {
