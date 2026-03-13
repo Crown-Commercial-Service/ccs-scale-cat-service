@@ -179,11 +179,11 @@ public class GCloudAssessmentsController extends AbstractRestController {
                                     writer.write(",");
                                 }
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getDunsNumber()) + ",");
-                                writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(supplier.getLinks())
-                                        .map(obj -> obj.get("self")).orElse("")) + ",");
                                 if (contactInformation.isPresent()) {
+                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getUrl()) + ",");
                                     writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getContactName()) + ",");
                                 } else {
+                                    writer.write(",");
                                     writer.write(",");
                                 }
                             }
