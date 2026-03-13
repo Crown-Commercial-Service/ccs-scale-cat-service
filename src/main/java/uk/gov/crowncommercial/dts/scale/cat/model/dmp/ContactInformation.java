@@ -18,6 +18,7 @@ public class ContactInformation {
   public String phoneNumber;
   public String postcode;
   public Map<String, String> links;
+  public String url;
 
   public String getFullAddress() {
     return String.format("%s, %s, %s", address1, city, postcode);
