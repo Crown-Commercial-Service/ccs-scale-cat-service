@@ -39,6 +39,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.TargetType;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 
@@ -86,6 +87,7 @@ public class DocGenService {
   private final ObjectMapper objectMapper;
   private final JaggaerService jaggaerService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
+  private final TableGroupGenerator tableGroupGenerator;
 
   /**
    * Trigger the generation and upload of all documents for a given event
@@ -137,9 +139,12 @@ public class DocGenService {
         documentTemplate.getDocumentTemplateSources().forEach(templateSource -> {
           // Grab the value for the replacement, and then apply it to our templated source
           try {
-            List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
-
-            replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
+            if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
+              tableGroupGenerator.fillTableData(procurementEvent.getProcurementTemplatePayloadRaw(), templateSource, textODT);
+            } else {
+              List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
+              replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
+            }
           } catch (Exception ex) {
               log.error("Unable to replace document placeholder of '{}' for event ID '{}'", templateSource.getId(), procurementEvent.getEventID(), ex);
           }
@@ -365,6 +370,10 @@ public class DocGenService {
           case LIST:
             // We're dealing with a list here - this is complicated. Let the sub-method handle it
             replaceList(documentTemplateSource, dataReplacement, textODT);
+            break;
+
+          case TABLE_GROUP:
+            // Handled earlier in generateDocument(...)
             break;
 
           default:
