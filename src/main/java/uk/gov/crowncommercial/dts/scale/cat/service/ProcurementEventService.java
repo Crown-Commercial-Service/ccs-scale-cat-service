@@ -1496,6 +1496,15 @@ public class ProcurementEventService implements EventService {
         var attachments = new ArrayList<DocumentAttachment>();
 
         if (TenderStatus.ACTIVE != status) {
+            // Get documents from S3
+            event.getDocumentUploads().forEach(doc -> {
+                var documentKey = DocumentKey.fromString(doc.getDocumentId());
+                var attachment = DocumentAttachment.builder()
+                        .data(documentUploadService.retrieveDocument(doc, principal))
+                        .fileName(documentKey.getFileName())
+                        .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
+                attachments.add(attachment);
+            });
             // Get draft documents
             dTemplateService.getTemplatesByAgreementAndLot(procId, eventId).forEach(template -> {
                 attachments.add(dTemplateService.getDraftDocument(procId, eventId,
