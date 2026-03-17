@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.DMPService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -62,6 +63,9 @@ public class GCloudAssessmentsControllerTest {
     
     @MockitoBean
     private LockProvider lockProvider;
+
+    @MockitoBean
+    private DMPService dmpService;
 
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validJwtReqPostProcessor;
 

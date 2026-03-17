@@ -11,10 +11,11 @@ import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.ContactInformation;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.SupplierDetail;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.DMPService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 
@@ -23,9 +24,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -35,16 +34,16 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Slf4j
 @Validated
 public class GCloudAssessmentsController extends AbstractRestController {
+
     private static final String CSV_GENERIC_HEADERS = "Framework name,Search ended,Search criteria\n";
     private static final String CSV_STATIC_NAME = "G-Cloud 13";
-    private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL\n";
+    private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL,Company registration number,Company registered name,Company registered address,DUNS number,Company website URL,Contact name\n";
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
 
     private final GCloudAssessmentService assessmentService;
-
     private final AssessmentService coreAssessmentService;
-
     private final AgreementsService agreementsService;
+    private final DMPService dmpService;
 
     /**
      * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
@@ -159,13 +158,39 @@ public class GCloudAssessmentsController extends AbstractRestController {
 
                     if (!assessmentModel.getResults().isEmpty()) {
                         for (GCloudResult result : assessmentModel.getResults()) {
+                            // 1150: Search & Save - Supplier list output fields
+                           final var supplier = Optional.ofNullable(result.getSupplier())
+                                   .map(Supplier::getId)
+                                   .map(dmpService::getSupplierDetails)
+                                   .map(SupplierDetail::getSuppliers)
+                                   .orElse(null);
                             writer.write(StringEscapeUtils.escapeCsv(result.getSupplier().getName()) + ",");
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceName()) + ",");
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceDescription()) + ",");
-                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceLink().toString()) + "\n");
+                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceLink().toString()));
+                            if (Objects.isNull(supplier)) {
+                                writer.write(",,,,,,,");
+                            } else {
+                                writer.write(",");
+                                writer.write(StringEscapeUtils.escapeCsv(supplier.getCompaniesHouseNumber()) + ",");
+                                writer.write(StringEscapeUtils.escapeCsv(supplier.getRegisteredName()) + ",");
+                                final Optional<ContactInformation> contactInformation = supplier.getContactInformation().stream().findFirst();
+                                if (contactInformation.isPresent()) {
+                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getFullAddress()) + ",");
+                                } else {
+                                    writer.write(",");
+                                }
+                                writer.write(StringEscapeUtils.escapeCsv(supplier.getDunsNumber()) + ",");
+                                if (contactInformation.isPresent()) {
+                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getUrl()) + ",");
+                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getContactName()) + ",");
+                                } else {
+                                    writer.write(",,");
+                                }
+                            }
+                            writer.write("\n");
                         }
                     }
-
                     writer.flush();
                 }
             } catch (Exception ex) {
