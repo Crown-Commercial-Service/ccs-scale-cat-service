@@ -143,11 +143,25 @@ public class DocumentTemplateService {
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var draftDocument = docGenService.generateDocument(event, documentTemplate, Boolean.FALSE);
-    var fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, event.getEventID(),
-        event.getEventType(), documentKey.getFileName());
+    var fileName = getFileName(event, documentKey);
 
     return DocumentAttachment.builder().data(draftDocument.toByteArray())
         .contentType(Constants.MEDIA_TYPE_ODT).fileName(fileName).build();
+  }
+
+  private String getFileName(ProcurementEvent event, DocumentKey documentKey) {
+    String fileName = documentKey.getFileName();
+
+    int dashIndex = fileName.indexOf('-');
+    String templateName = dashIndex >= 0
+            ? fileName.substring(dashIndex + 1).trim()
+            : fileName;
+
+    return Constants.GENERATED_DOCUMENT_FILENAME_FMT.formatted(
+            event.getProject().getId(),
+            event.getExternalReferenceId(),
+            templateName
+    );
   }
 
   private DocumentTemplate findDocumentTemplate(final ProcurementEvent event,
