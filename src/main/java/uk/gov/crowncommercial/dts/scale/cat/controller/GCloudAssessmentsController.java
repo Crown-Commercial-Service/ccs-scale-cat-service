@@ -168,7 +168,9 @@ public class GCloudAssessmentsController extends AbstractRestController {
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceName()) + ",");
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceDescription()) + ",");
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceLink().toString()));
-                            if(Objects.nonNull(supplier)) {
+                            if (Objects.isNull(supplier)) {
+                                writer.write(",,,,,,,");
+                            } else {
                                 writer.write(",");
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getCompaniesHouseNumber()) + ",");
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getRegisteredName()) + ",");
@@ -183,14 +185,12 @@ public class GCloudAssessmentsController extends AbstractRestController {
                                     writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getUrl()) + ",");
                                     writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getContactName()) + ",");
                                 } else {
-                                    writer.write(",");
-                                    writer.write(",");
+                                    writer.write(",,");
                                 }
                             }
                             writer.write("\n");
                         }
                     }
-
                     writer.flush();
                 }
             } catch (Exception ex) {
