@@ -35,7 +35,7 @@ public class Constants {
     /**
      * {procurement-event-id}-{event-type}-{document-template-filename} (ODT)
      */
-    public static final String GENERATED_DOCUMENT_FILENAME_FMT = "%s-%s-%s";
+    public static final String GENERATED_DOCUMENT_FILENAME_FMT = "%s_%s_%s";
 
     public static final int WEBCLIENT_DEFAULT_RETRIES = 3;
     public static final int WEBCLIENT_DEFAULT_DELAY = 2;
