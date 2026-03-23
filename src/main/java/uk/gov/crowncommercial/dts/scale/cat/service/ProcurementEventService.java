@@ -51,6 +51,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,6 +90,9 @@ public class ProcurementEventService implements EventService {
     public static final String CONTRACT_DETAILS_NOT_FOUND = "Contract details not found";
     private static final String ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
             "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
+    private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
+    private static final Predicate<DocumentSummary> IS_ATTACHMENT_4 =
+            template -> template.getFileName().contains(ATTACHMENT_4);
 
     private final UserProfileService userProfileService;
     private final CriteriaService criteriaService;
@@ -1487,7 +1491,7 @@ public class ProcurementEventService implements EventService {
      */
     @Transactional
     public List<DocumentAttachment> exportDocuments(final Integer procId, final String eventId,
-                                                    final String principal) {
+                                                    final boolean isStageTwoEvent, final String principal) {
         log.debug("Export all Documents from Event {}", eventId);
         var event = validationService.validateProjectAndEventIds(procId, eventId);
         var exportRfxResponse = jaggaerService.getRfxWithWithBuyerAndSellerAttachments(event.getExternalEventId());
@@ -1506,7 +1510,9 @@ public class ProcurementEventService implements EventService {
                 attachments.add(attachment);
             });
             // Get draft documents
-            dTemplateService.getTemplatesByAgreementAndLot(procId, eventId).forEach(template -> {
+            Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
+            Collection<DocumentSummary> filterTemplates = filterTemplates(isStageTwoEvent, templates);
+            filterTemplates.forEach(template -> {
                 attachments.add(dTemplateService.getDraftDocument(procId, eventId,
                         DocumentKey.fromString(template.getId())));
             });
@@ -1522,6 +1528,13 @@ public class ProcurementEventService implements EventService {
                             .build()));
         }
         return attachments;
+    }
+
+    private Collection<DocumentSummary> filterTemplates(boolean isStageTwoEvent,
+                                                        Collection<DocumentSummary> templates) {
+        return templates.stream()
+                .filter(isStageTwoEvent ? IS_ATTACHMENT_4 : IS_ATTACHMENT_4.negate())
+                .toList();
     }
 
     /**
