@@ -157,7 +157,7 @@ config:
         uriTemplate: /documents/{document-id}
 
     dmp-api:
-      supplier-detail-path: /suppliers/{supplier-id}
+      supplier-detail-path: /suppliers/{supplier-id}?with_cdp_supplier_information=True
 
     jaggaer:
       timeoutDuration: 300
