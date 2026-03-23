@@ -155,6 +155,8 @@ public class GCloudAssessmentService {
                 resultEntity.setAssessmentId(assessmentId);
                 resultEntity.setServiceName(result.getServiceName());
                 resultEntity.setSupplierName(result.getSupplier().getName());
+                // 1150: Save supplier id to the database.
+                resultEntity.setSupplierId(result.getSupplier().getId());
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));

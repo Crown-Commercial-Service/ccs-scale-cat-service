@@ -231,8 +231,8 @@ public class GCloudAssessmentsController extends AbstractRestController {
                                 }
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getDunsNumber()) + ",");
                                 if (contactInformation.isPresent()) {
-                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getUrl()) + ",");
-                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getContactName()) + ",");
+                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getUrl()).orElse("")) + ",");
+                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getContactName()).orElse("")) + ",");
                                 } else {
                                     writer.write(",,");
                                 }
