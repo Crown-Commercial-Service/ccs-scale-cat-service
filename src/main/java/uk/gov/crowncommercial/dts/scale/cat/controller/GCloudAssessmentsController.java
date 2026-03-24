@@ -38,7 +38,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private static final String CSV_GENERIC_HEADERS = "Framework name,Search ended,Search criteria\n";
     private static final String CSV_STATIC_NAME = "G-Cloud 13";
     private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL\n";
-    private static final String CSV_RESULTS_DOS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL,Company registration number,Company registered name,Company registered address,DUNS number,Company website URL,Contact name\n";
+    private static final String CSV_RESULTS_DOS_HEADERS = "\nCompany registration number,Company registered name,Company registered address,DUNS number,Company website URL,Contact name\n";
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
 
     private final GCloudAssessmentService assessmentService;
@@ -241,14 +241,13 @@ public class GCloudAssessmentsController extends AbstractRestController {
                                    .map(dmpService::getSupplierDetails)
                                    .map(SupplierDetail::getSuppliers)
                                    .orElse(null);
-                            writer.write(StringEscapeUtils.escapeCsv(result.getSupplier().getName()) + ",");
+                            /* writer.write(StringEscapeUtils.escapeCsv(result.getSupplier().getName()) + ",");
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceName()) + ",");
                             writer.write(StringEscapeUtils.escapeCsv(result.getServiceDescription()) + ",");
-                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceLink().toString()));
+                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceLink().toString())); */
                             if (Objects.isNull(supplier)) {
-                                writer.write(",,,,,,,");
+                                writer.write(",,,,,,");
                             } else {
-                                writer.write(",");
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getCompaniesHouseNumber()) + ",");
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getRegisteredName()) + ",");
                                 final Optional<ContactInformation> contactInformation = supplier.getContactInformation().stream().findFirst();
