@@ -40,6 +40,7 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
     private static final String ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID = "External Tool Id [%s] is not valid for Gcloud Assessment operations";
     private static final String TOOL_NAME_GCLOUD = "GCloud 13 Search";
+    private static final String TOOL_NAME_DOS7 = "DOS7 Search";
 
     private static final String TIMEZONE_NAME = "Europe/London";
 
@@ -300,7 +301,8 @@ public class GCloudAssessmentService {
         if (optionalTool.isPresent()) {
             AssessmentTool matchingTool = optionalTool.get();
 
-            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)) {
+            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)
+            || Objects.equals(matchingTool.getName(), TOOL_NAME_DOS7)) {
                 // Looks like a tool exists for this ID, and it's the Gcloud tool, so this is valid
                 isValid = true;
             }

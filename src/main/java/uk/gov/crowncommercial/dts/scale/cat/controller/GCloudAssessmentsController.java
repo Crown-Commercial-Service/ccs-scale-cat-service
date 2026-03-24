@@ -110,6 +110,34 @@ public class GCloudAssessmentsController extends AbstractRestController {
     }
 
     /**
+     * Gets a list of GCloud Assessment Summaries for a user
+     */
+    @GetMapping("/gcloud/summaries/{external-tool-id}")
+    @TrackExecutionTime
+    public List<GCloudAssessmentSummary> getGcloudAssessmentSummariesWithExternalToolId(final JwtAuthenticationToken authentication,
+                                                                                        final @PathVariable("external-tool-id") String externalToolId) {
+        List<GCloudAssessmentSummary> model = new ArrayList<>();
+
+        // First get the principal from the token and use it to fetch a list of all GCloud assessments for the user
+        String principal = getPrincipalFromJwt(authentication);
+        List<AssessmentSummary> userAssessments = coreAssessmentService.getAssessmentsForUser(principal, Integer.parseInt(externalToolId));
+
+        if (userAssessments != null && !userAssessments.isEmpty()) {
+            // Now for each assessment we've found we need to build the GCloudAssessmentSummary model and add it to our results
+            userAssessments.stream().forEach(result -> {
+                GCloudAssessmentSummary summaryModel = assessmentService.getGcloudAssessmentSummary(result.getAssessmentId());
+
+                if (summaryModel != null) {
+                    model.add(summaryModel);
+                }
+            });
+        }
+
+        // Results should now have been built up, so return our list
+        return model;
+    }
+
+    /**
      * Exports the results of a requested GCloud Assessment
      */
     @GetMapping(produces="text/csv", path="/{assessment-id}/export/gcloud")
