@@ -10,7 +10,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import jakarta.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -89,10 +92,14 @@ public class DocGenService {
   private final DocumentTemplateResourceService documentTemplateResourceService;
   private final TableGroupGenerator tableGroupGenerator;
 
+  private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
+  private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 =
+          template -> template.getTemplateUrl().contains(ATTACHMENT_4);
+
   /**
    * Trigger the generation and upload of all documents for a given event
    */
-  public void generateAndUploadDocuments(final Integer projectId, final String eventId) {
+  public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isStageTwoEvent) {
     // Start by validating the event passed into us is good to use
     ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 
@@ -107,8 +114,9 @@ public class DocGenService {
         Set<DocumentTemplate> docTemplates = retryableTendersDBDelegate.findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, caNumber, lotNum, templateId);
 
         if (docTemplates != null && !docTemplates.isEmpty()) {
+          Set<DocumentTemplate> filteredDocTemplates = filterTemplates(isStageTwoEvent, docTemplates);
           // Now we have the list of documents needed - iterate over them and process them
-          docTemplates.forEach(template -> {
+          filteredDocTemplates.forEach(template -> {
             ByteArrayOutputStream document = generateDocument(procurementEvent, template, Boolean.TRUE);
 
             if (document != null) {
@@ -119,6 +127,13 @@ public class DocGenService {
         }
       }
     }
+  }
+
+  private Set<DocumentTemplate> filterTemplates(boolean isStageTwoEvent,
+                                                Set<DocumentTemplate> templates) {
+    return templates.stream()
+            .filter(isStageTwoEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
+            .collect(Collectors.toSet());
   }
 
   /**
@@ -168,9 +183,8 @@ public class DocGenService {
   private void uploadProforma(final ProcurementEvent procurementEvent, final ByteArrayOutputStream documentOutputStream, final DocumentTemplate documentTemplate) {
     if (procurementEvent != null && documentTemplate != null && procurementEvent.getEventID() != null && !procurementEvent.getEventID().isEmpty() && procurementEvent.getEventType() != null && !procurementEvent.getEventType().isEmpty() && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty()) {
       // Start by generating the necessary descriptive information about our file
-      String fileName = String.format(Constants.GENERATED_DOCUMENT_FILENAME_FMT, procurementEvent.getEventID(), procurementEvent.getEventType(), StringUtils.getFilename(documentTemplate.getTemplateUrl())),
-              fileDescription = procurementEvent.getEventType() + DOCUMENT_DESC_JOINER + procurementEvent.getEventID();
-
+      String fileName = getFileName(procurementEvent, documentTemplate.getTemplateUrl());
+      String fileDescription = procurementEvent.getEventType() + DOCUMENT_DESC_JOINER + procurementEvent.getExternalReferenceId();
       // Now transform the contents we've been passed into a file which we can upload
       if (documentOutputStream != null) {
         ByteArrayMultipartFile multipartFile = new ByteArrayMultipartFile(documentOutputStream.toByteArray(), fileName, Constants.MEDIA_TYPE_ODT.toString());
@@ -183,6 +197,20 @@ public class DocGenService {
         }
       }
     }
+  }
+
+  private String getFileName(ProcurementEvent event, String fileName) {
+
+    int dashIndex = fileName.indexOf('-');
+    String templateName = dashIndex >= 0
+            ? fileName.substring(dashIndex + 1).trim()
+            : fileName;
+
+    return Constants.GENERATED_DOCUMENT_FILENAME_FMT.formatted(
+            event.getProject().getId(),
+            event.getExternalReferenceId(),
+            templateName
+    );
   }
 
   /**
