@@ -390,7 +390,7 @@ public class EventsController extends AbstractRestController {
   @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-      HttpServletResponse response, final JwtAuthenticationToken authentication) {
+      @RequestParam boolean isStageTwoEvent, HttpServletResponse response, final JwtAuthenticationToken authentication) {
 
     var principal = Objects.nonNull(authentication) ? getPrincipalFromJwt(authentication) : "";
     
@@ -398,7 +398,7 @@ public class EventsController extends AbstractRestController {
 
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
-        procurementEventService.exportDocuments(procId, eventId, principal);
+        procurementEventService.exportDocuments(procId, eventId, isStageTwoEvent, principal);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());

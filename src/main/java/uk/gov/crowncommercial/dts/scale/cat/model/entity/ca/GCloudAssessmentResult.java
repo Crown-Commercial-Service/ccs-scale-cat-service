@@ -28,6 +28,9 @@ public class GCloudAssessmentResult {
     @Column(name = "supplier_name")
     private String supplierName;
 
+    @Column(name = "supplier_id")
+    private String supplierId;
+
     @Column(name = "service_desc")
     private String serviceDescription;
 
