@@ -138,11 +138,11 @@ public class DocumentTemplateService {
    * @return a document attachment containing the generated draft document
    */
   public DocumentAttachment getDraftDocument(final Integer procId, final String eventId,
-      final DocumentKey documentKey) {
+      final DocumentKey documentKey, final boolean isStageTwoEvent) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId);
     var documentTemplate = findDocumentTemplate(event, documentKey);
-    var draftDocument = docGenService.generateDocument(event, documentTemplate, Boolean.FALSE);
+    var draftDocument = docGenService.generateDocument(event, documentTemplate, isStageTwoEvent, Boolean.FALSE);
     var fileName = getFileName(event, documentKey);
 
     return DocumentAttachment.builder().data(draftDocument.toByteArray())

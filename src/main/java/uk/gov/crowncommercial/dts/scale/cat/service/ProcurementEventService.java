@@ -1516,7 +1516,7 @@ public class ProcurementEventService implements EventService {
             Collection<DocumentSummary> filterTemplates = filterTemplates(isStageTwoEvent, templates);
             filterTemplates.forEach(template -> {
                 attachments.add(dTemplateService.getDraftDocument(procId, eventId,
-                        DocumentKey.fromString(template.getId())));
+                        DocumentKey.fromString(template.getId()), isStageTwoEvent));
             });
 
         } else {
