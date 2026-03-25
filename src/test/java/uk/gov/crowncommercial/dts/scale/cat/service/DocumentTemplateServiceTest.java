@@ -177,11 +177,11 @@ class DocumentTemplateServiceTest {
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
         .thenReturn(Optional.of(DOC_TEMPLATE1));
-    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1, Boolean.FALSE))
+    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1, false, Boolean.FALSE))
         .thenReturn(draftProformaOutputStream);
 
     var draftProforma =
-        documentTemplateService.getDraftDocument(PROC_PROJECT_ID, EVENT_ID, documentKey);
+        documentTemplateService.getDraftDocument(PROC_PROJECT_ID, EVENT_ID, documentKey, false);
 
     assertArrayEquals(DRAFT_PROFORMA_CONTENT, draftProforma.getData());
     assertEquals(Constants.MEDIA_TYPE_ODT, draftProforma.getContentType());
