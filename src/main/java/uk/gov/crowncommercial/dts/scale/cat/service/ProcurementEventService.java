@@ -143,13 +143,13 @@ public class ProcurementEventService implements EventService {
     }
 
     /**
-     * Creates a Jaggaer Rfx (CCS 'Event' equivalent). Will use {@link Tender#getTitle()} for the
+     * Creates a Jaggaer Rfx (GCA 'Event' equivalent). Will use {@link Tender#getTitle()} for the
      * event name, if specified, otherwise falls back on the default event title logic (using the
      * project name).
      * <p>
      * Creates with a default event type of 'TBD'.
      *
-     * @param projectId             CCS project id
+     * @param projectId             GCA project id
      * @param createEvent           wraps non-OCDS and OCDS details of the event
      * @param downSelectedSuppliers will default to FALSE if null
      * @param principal
