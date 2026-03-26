@@ -117,7 +117,7 @@ public class DocGenService {
           Set<DocumentTemplate> filteredDocTemplates = filterTemplates(isStageTwoEvent, docTemplates);
           // Now we have the list of documents needed - iterate over them and process them
           filteredDocTemplates.forEach(template -> {
-            ByteArrayOutputStream document = generateDocument(procurementEvent, template, Boolean.TRUE);
+            ByteArrayOutputStream document = generateDocument(procurementEvent, template, isStageTwoEvent, Boolean.TRUE);
 
             if (document != null) {
               // Document has been generated, now trigger the upload
@@ -141,7 +141,7 @@ public class DocGenService {
    */
   @SneakyThrows
   @Transactional
-  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isPublish) {
+  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isStageTwoEvent, final boolean isPublish) {
     // Start by grabbing the template document we need to work against
     if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
       Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -155,7 +155,8 @@ public class DocGenService {
           // Grab the value for the replacement, and then apply it to our templated source
           try {
             if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
-              tableGroupGenerator.fillTableData(procurementEvent.getProcurementTemplatePayloadRaw(), templateSource, textODT);
+              String eventData = isStageTwoEvent  ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
+              tableGroupGenerator.fillTableData(eventData, templateSource, textODT);
             } else {
               List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
               replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
@@ -175,6 +176,18 @@ public class DocGenService {
 
     // Something has gone wrong that wasn't handled elsewhere if we've reached this point - just return null
     return null;
+  }
+
+  private String getStage1EventData(ProcurementEvent currentEvent) {
+    return retryableTendersDBDelegate
+            .findProcurementEventsByProjectId(currentEvent.getProject().getId())
+            .stream()
+            .filter(e -> e.getPublishDate() != null
+                    && e.getId() != null
+                    && e.getId() < currentEvent.getId())
+            .min(Comparator.comparing(ProcurementEvent::getId))
+            .map(ProcurementEvent::getProcurementTemplatePayloadRaw)
+            .orElse(null);
   }
 
   /**
