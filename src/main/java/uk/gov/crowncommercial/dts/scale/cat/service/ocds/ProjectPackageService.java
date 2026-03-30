@@ -91,7 +91,7 @@ public class ProjectPackageService {
 
     private RecordPackageAllOfPublisher getPublisherInfo() {
         RecordPackageAllOfPublisher publisher = new RecordPackageAllOfPublisher();
-        publisher.setName("Crown Commercial Services");
+        publisher.setName("Government Commercial Agency");
         publisher.setUri("https://www.crowncommercial.gov.uk/");
         return publisher;
     }
