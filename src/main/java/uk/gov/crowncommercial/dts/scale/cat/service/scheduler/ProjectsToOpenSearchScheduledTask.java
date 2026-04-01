@@ -39,7 +39,7 @@ public class ProjectsToOpenSearchScheduledTask {
 
   private final SearchProjectRepo searchProjectRepo;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private static final String DOS6_AGREEMENT_ID = "RM1043.8";
+  private static final List<String> AGREEMENT_IDS = List.of("RM1043.8", "RM1043.9");
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
@@ -53,31 +53,31 @@ public class ProjectsToOpenSearchScheduledTask {
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process");
-    var events =
-        retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
-    log.info("Dos6 agreements count to update in opensearch: {}", events.size());
-    
-    var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
-    this.reinstateIndex();
-    this.saveProjectDataAsBatches(events, agreementDetails);
-    
-    log.info("Successfully updated projects data in open search");
+    // 1316: Process DOS6 and DOS7 events
+    AGREEMENT_IDS.forEach(agreementId -> {
+      var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId);
+      log.info("Dos6 agreements count to update in opensearch: {}", events.size());
+      var agreementDetails = agreementsService.getAgreementDetails(agreementId);
+      this.reinstateIndex();
+      this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
+      log.info("Successfully updated projects data in open search for agreementId: {}", agreementId);
+    });
   }
   
-  private void saveProjectDataAsBatches(Set<ProcurementProject> events,
+  private void saveProjectDataAsBatches(String agreementId, Set<ProcurementProject> events,
       AgreementDetail agreementDetail) {
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     List<List<ProcurementProject>> batches =
         TendersAPIModelUtils.getBatches(new ArrayList<ProcurementProject>(events), bathcSize);
     for (List<ProcurementProject> batch : batches) {
-      mapToOpenSearch(batch, eventSearchDataList, agreementDetail);
+      mapToOpenSearch(agreementId, batch, eventSearchDataList, agreementDetail);
       searchProjectRepo.saveAll(eventSearchDataList);
       log.info("successfully updated events: "+eventSearchDataList.size());
       eventSearchDataList.clear();
     }
   }
   
-  private List<ProcurementEventSearch> mapToOpenSearch(List<ProcurementProject> events,
+  private List<ProcurementEventSearch> mapToOpenSearch(String agreementId, List<ProcurementProject> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
 
     var eventSearchDataListDTO = new ArrayList<ProcurementEventSearchDTO>();
@@ -87,7 +87,7 @@ public class ProjectsToOpenSearchScheduledTask {
         var firstAndLastPublishedEvent = EventsHelper.getFirstAndLastPublishedEvent(project);
         var event = firstAndLastPublishedEvent.getLeft();
 
-        var lotDetails = agreementsService.getLotDetails(DOS6_AGREEMENT_ID, project.getLotNumber());
+        var lotDetails = agreementsService.getLotDetails(agreementId, project.getLotNumber());
         var organisationIdentity = conclaveService
             .getOrganisationIdentity(project.getOrganisationMapping().getOrganisationId());
         
@@ -102,7 +102,8 @@ public class ProjectsToOpenSearchScheduledTask {
             .buyerName(organisationIdentity.get().getIdentifier().getLegalName())
             .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
             .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().getEpochSecond())
-            .agreement(agreementDetails.getName()).build();
+            .agreement(agreementDetails.getName())
+                .agreementId(agreementId).build();
         
         eventSearchDataListDTO.add(eventSearchDataDTO);
       } catch (Exception e) {
@@ -201,6 +202,7 @@ class ProcurementEventSearchDTO {
   String location;
   String budgetRange;
   String agreement;
+  String agreementId;
   String lot;
   String lotDescription;
   String status;

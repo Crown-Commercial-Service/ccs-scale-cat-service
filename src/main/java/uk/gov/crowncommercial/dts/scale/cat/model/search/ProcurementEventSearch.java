@@ -33,6 +33,8 @@ public class ProcurementEventSearch {
     String budgetRange;
     @JsonProperty("agreement")
     String agreement;
+    @JsonProperty("agreementId")
+    String agreementId;
     @JsonProperty("lot")
     String lot;
     @JsonProperty("lotDescription")
