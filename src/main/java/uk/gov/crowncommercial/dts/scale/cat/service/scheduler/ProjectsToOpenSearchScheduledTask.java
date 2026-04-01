@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -47,13 +48,11 @@ public class ProjectsToOpenSearchScheduledTask {
   private int bathcSize;
   
   @Transactional
-  // 1316: TODO uncomment after test
-  //@Scheduled(cron = "${config.external.projects.sync.schedule}")
-  @Scheduled(fixedDelay = 1000 * 60)
+  @Scheduled(cron = "${config.external.projects.sync.schedule}")
   @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask", 
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
-    log.info("Started projects data to open search scheduler process");
+    log.info("Started projects data to open search scheduler process, Time: {}", LocalDateTime.now());
     // 1316: Process DOS6 and DOS7 events
     this.reinstateIndex();
     AGREEMENT_IDS.forEach(agreementId -> {
@@ -67,6 +66,7 @@ public class ProjectsToOpenSearchScheduledTask {
         log.error("Error processing OpenSearch for agreementId: {}", agreementId, e);
       }
     });
+    log.info("saveProjectsDataToOpenSearch successful, Time: {}", LocalDateTime.now());
   }
   
   private void saveProjectDataAsBatches(String agreementId, Set<ProcurementProject> events,
