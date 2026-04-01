@@ -58,10 +58,10 @@ public class ProjectsToOpenSearchScheduledTask {
       var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId);
       log.info("Dos6 agreements count to update in opensearch: {}", events.size());
       var agreementDetails = agreementsService.getAgreementDetails(agreementId);
-      this.reinstateIndex();
       this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
       log.info("Successfully updated projects data in open search for agreementId: {}", agreementId);
     });
+    this.reinstateIndex();
   }
   
   private void saveProjectDataAsBatches(String agreementId, Set<ProcurementProject> events,
@@ -72,7 +72,7 @@ public class ProjectsToOpenSearchScheduledTask {
     for (List<ProcurementProject> batch : batches) {
       mapToOpenSearch(agreementId, batch, eventSearchDataList, agreementDetail);
       searchProjectRepo.saveAll(eventSearchDataList);
-      log.info("successfully updated events: "+eventSearchDataList.size());
+      log.info("successfully updated events: {} for agreementId: {}", eventSearchDataList.size(), agreementId);
       eventSearchDataList.clear();
     }
   }
@@ -107,7 +107,7 @@ public class ProjectsToOpenSearchScheduledTask {
         
         eventSearchDataListDTO.add(eventSearchDataDTO);
       } catch (Exception e) {
-        log.error("Error while saving project details to opensearch", e);
+        log.error("Error while saving project details to opensearch, agreementId: {}", agreementId, e);
       }
     }
     populateStatus(eventSearchDataListDTO);
