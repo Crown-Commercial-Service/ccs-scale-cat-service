@@ -1071,7 +1071,7 @@ public class ProcurementProjectService {
     Stream<ProcurementEventSearch> stream = allResults.stream();
     // 1316: filter by framework selected from cas_ui
     if (agreementId != null && !agreementId.isEmpty()) {
-      stream = stream.filter(p -> agreementId.equalsIgnoreCase(p.getAgreement()));
+      stream = stream.filter(eventSearch -> eventSearch.getProjectName().startsWith(agreementId));
     }
 
     if (lotId != null && !lotId.isEmpty()) {
