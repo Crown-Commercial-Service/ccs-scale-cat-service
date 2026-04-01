@@ -57,17 +57,22 @@ public class ProjectsToOpenSearchScheduledTask {
     log.info("Started projects data to open search scheduler process");
     // 1316: Process DOS6 and DOS7 events
     AGREEMENT_IDS.forEach(agreementId -> {
-      var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId);
-      log.info("Dos6 agreements count to update in opensearch: {}", events.size());
-      var agreementDetails = agreementsService.getAgreementDetails(agreementId);
-      this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
-      log.info("Successfully updated projects data in open search for agreementId: {}", agreementId);
+      try {
+        final Set<ProcurementProject> events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId);
+        log.info("AgreementId: {}, Count to update in opensearch: {}", agreementId, events.size());
+        final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
+        this.reinstateIndex();
+        this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
+        log.info("Successfully updated projects data in open search for agreementId: {}", agreementId);
+      } catch (Exception e) {
+        log.error("Error processing OpenSearch for agreementId: {}", agreementId, e);
+      }
     });
-    this.reinstateIndex();
   }
   
   private void saveProjectDataAsBatches(String agreementId, Set<ProcurementProject> events,
       AgreementDetail agreementDetail) {
+    log.info("saveProjectDataAsBatches for agreementId: {}", agreementId);
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     List<List<ProcurementProject>> batches =
         TendersAPIModelUtils.getBatches(new ArrayList<ProcurementProject>(events), bathcSize);
@@ -81,7 +86,7 @@ public class ProjectsToOpenSearchScheduledTask {
   
   private List<ProcurementEventSearch> mapToOpenSearch(String agreementId, List<ProcurementProject> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
-
+    log.info("mapToOpenSearch for agreementId: {}", agreementId);
     var eventSearchDataListDTO = new ArrayList<ProcurementEventSearchDTO>();
     
     for (ProcurementProject project : events) {
@@ -119,6 +124,7 @@ public class ProjectsToOpenSearchScheduledTask {
   }
   
   private void populateStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
+    log.info("populateStatus()");
     Set<String> rfxIds = searchDataDTO.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
     var rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
@@ -140,6 +146,7 @@ public class ProjectsToOpenSearchScheduledTask {
   }
   
   private void populateSubStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
+    log.info("populateSubStatus()");
     Set<String> rfxIds = searchDataDTO.stream()
         .map(e -> e.getSecondRfxId()).collect(Collectors.toSet());
     Set<ExportRfxResponse> rfxResponse =
@@ -157,6 +164,7 @@ public class ProjectsToOpenSearchScheduledTask {
 
   private void populateSearchData(List<ProcurementEventSearchDTO> searchDataDTO,
       List<ProcurementEventSearch> searchDataList) {
+    log.info("populateSearchData()");
     //removed broken projects
     searchDataDTO = searchDataDTO.stream().filter(e -> e.getStatus() != null).toList();
     
@@ -168,6 +176,7 @@ public class ProjectsToOpenSearchScheduledTask {
   }
   
   private static String getSummaryOfWork(ProcurementEvent event) {
+    log.info("getSummaryOfWork()");
     try {
       if (Objects.nonNull(event.getProcurementTemplatePayload())) {
         var summary = EventsHelper.getData("Criterion 3", "Group 3", "Question 1",
@@ -178,15 +187,18 @@ public class ProjectsToOpenSearchScheduledTask {
       }
     } catch (Exception e) {
       // TODO: handle exception
+      log.error("getSummaryOfWork Error", e);
     }
     return null;
   }
   
   private void reinstateIndex() {
+    log.info("reinstateIndex()");
     try {
       searchProjectRepo.deleteAll();
-      log.info("delete data in opensearch");
+      log.info("Delete data in opensearch by reinstateIndex");
     } catch (Exception e) {
+      log.error("reinstateIndex Error", e);
     }
   }
 }
