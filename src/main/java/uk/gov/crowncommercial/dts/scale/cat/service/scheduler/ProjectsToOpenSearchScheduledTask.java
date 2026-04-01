@@ -1,9 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -18,6 +15,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
@@ -63,7 +62,7 @@ public class ProjectsToOpenSearchScheduledTask {
         final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
         this.reinstateIndex();
         this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
-        log.info("Successfully updated projects data in open search for agreementId: {}", agreementId);
+        log.info("Successfully updated projects data in open search for agreementId: {}, size: {}", agreementId, events.size());
       } catch (Exception e) {
         log.error("Error processing OpenSearch for agreementId: {}", agreementId, e);
       }
@@ -95,7 +94,7 @@ public class ProjectsToOpenSearchScheduledTask {
         var event = firstAndLastPublishedEvent.getLeft();
 
         var lotDetails = agreementsService.getLotDetails(agreementId, project.getLotNumber());
-        var organisationIdentity = conclaveService
+        final Optional<OrganisationProfileResponseInfo> organisationIdentity = conclaveService
             .getOrganisationIdentity(project.getOrganisationMapping().getOrganisationId());
         
         String srfxId = null;
@@ -106,7 +105,7 @@ public class ProjectsToOpenSearchScheduledTask {
         var eventSearchDataDTO = ProcurementEventSearchDTO.builder().rfxId(firstAndLastPublishedEvent.getLeft().getExternalEventId())
             .secondRfxId(srfxId).projectId(event.getProject().getId()).description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
-            .buyerName(organisationIdentity.get().getIdentifier().getLegalName())
+            .buyerName(organisationIdentity.map(OrganisationProfileResponseInfo::getIdentifier).map(OrganisationIdentifier::getLegalName).orElse(null))
             .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
             .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().getEpochSecond())
             .agreement(agreementDetails.getName())
