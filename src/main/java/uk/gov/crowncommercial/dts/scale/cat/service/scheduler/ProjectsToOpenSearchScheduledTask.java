@@ -38,7 +38,7 @@ public class ProjectsToOpenSearchScheduledTask {
 
   private final SearchProjectRepo searchProjectRepo;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private static final List<String> AGREEMENT_IDS = List.of("RM1043.8", "RM1043.9");
+  private static final List<String> AGREEMENT_IDS = List.of(/*"RM1043.8", */"RM1043.9");
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
