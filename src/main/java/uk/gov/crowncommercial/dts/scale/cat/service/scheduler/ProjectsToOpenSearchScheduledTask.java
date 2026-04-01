@@ -38,7 +38,7 @@ public class ProjectsToOpenSearchScheduledTask {
 
   private final SearchProjectRepo searchProjectRepo;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private static final List<String> AGREEMENT_IDS = List.of(/*"RM1043.8", */"RM1043.9");
+  private static final List<String> AGREEMENT_IDS = List.of("RM1043.9", "RM1043.8");
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
@@ -55,12 +55,12 @@ public class ProjectsToOpenSearchScheduledTask {
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process");
     // 1316: Process DOS6 and DOS7 events
+    this.reinstateIndex();
     AGREEMENT_IDS.forEach(agreementId -> {
       try {
         final Set<ProcurementProject> events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId);
         log.info("AgreementId: {}, Count to update in opensearch: {}", agreementId, events.size());
         final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
-        this.reinstateIndex();
         this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
         log.info("Successfully updated projects data in open search for agreementId: {}, size: {}", agreementId, events.size());
       } catch (Exception e) {
