@@ -48,7 +48,9 @@ public class ProjectsToOpenSearchScheduledTask {
   private int bathcSize;
   
   @Transactional
-  @Scheduled(cron = "${config.external.projects.sync.schedule}")
+  // 1316: TODO uncomment after test
+  //@Scheduled(cron = "${config.external.projects.sync.schedule}")
+  @Scheduled(fixedDelay = 1000 * 60)
   @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask", 
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
