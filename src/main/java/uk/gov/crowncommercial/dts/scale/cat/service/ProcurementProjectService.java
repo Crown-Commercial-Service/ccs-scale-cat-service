@@ -363,7 +363,7 @@ public class ProcurementProjectService {
    * Get Project Team members. This is a combination of Project Team members on the project and
    * email recipients on the rfx.
    *
-   * @param projectId CCS project id
+   * @param projectId GCA project id
    * @param principal
    * @return Collection of project team members
    */
@@ -441,7 +441,7 @@ public class ProcurementProjectService {
   /**
    * Add/Update Project Team Member (owner, team members, email recipients).
    *
-   * @param projectId CCS project id
+   * @param projectId GCA project id
    * @param userId Conclave user id (email)
    * @param updateTeamMember contains details of type of update to perform
    * @param principal
