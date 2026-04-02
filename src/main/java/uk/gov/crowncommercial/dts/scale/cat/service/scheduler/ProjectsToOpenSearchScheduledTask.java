@@ -16,6 +16,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
 import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
@@ -93,7 +94,7 @@ public class ProjectsToOpenSearchScheduledTask {
         var firstAndLastPublishedEvent = EventsHelper.getFirstAndLastPublishedEvent(project);
         var event = firstAndLastPublishedEvent.getLeft();
 
-        var lotDetails = agreementsService.getLotDetails(agreementId, project.getLotNumber());
+        final LotDetail lotDetails = agreementsService.getLotDetails(agreementId, project.getLotNumber());
         final Optional<OrganisationProfileResponseInfo> organisationIdentity = conclaveService
             .getOrganisationIdentity(project.getOrganisationMapping().getOrganisationId());
         
@@ -103,13 +104,18 @@ public class ProjectsToOpenSearchScheduledTask {
         }
 
         var eventSearchDataDTO = ProcurementEventSearchDTO.builder().rfxId(firstAndLastPublishedEvent.getLeft().getExternalEventId())
-            .secondRfxId(srfxId).projectId(event.getProject().getId()).description(getSummaryOfWork(event))
+            .secondRfxId(srfxId).projectId(event.getProject().getId())
+            .description(getSummaryOfWork(event))
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
             .buyerName(organisationIdentity.map(OrganisationProfileResponseInfo::getIdentifier).map(OrganisationIdentifier::getLegalName).orElse(null))
-            .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
-            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().getEpochSecond())
+            .projectName(event.getProject().getProjectName())
+            .location(TemplateDataExtractor.getLocation(event))
+            .lot(event.getProject().getLotNumber())
+            .lotDescription(Optional.ofNullable(lotDetails).map(LotDetail::getDescription).orElse(null))
+            .lastUpdated(event.getUpdatedAt().getEpochSecond())
+            .lotName(Optional.ofNullable(lotDetails).map(LotDetail::getName).orElse(null))
             .agreement(agreementDetails.getName())
-                .agreementId(agreementId).build();
+            .agreementId(agreementId).build();
         
         eventSearchDataListDTO.add(eventSearchDataDTO);
       } catch (Exception e) {
@@ -217,6 +223,7 @@ class ProcurementEventSearchDTO {
   String agreement;
   String agreementId;
   String lot;
+  String lotName;
   String lotDescription;
   String status;
   String subStatus;
