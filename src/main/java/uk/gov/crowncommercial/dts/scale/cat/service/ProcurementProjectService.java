@@ -1143,7 +1143,8 @@ public class ProcurementProjectService {
       summary.setDescription(object.getDescription());
       summary.setBuyerName(object.getBuyerName());
       summary.setLot(object.getLot());
-      summary.setLotName(object.getLotDescription());
+      summary.setLotName(object.getLotName());
+      //summary.setLotDescription(object.getLotDescription());
       summary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       summary.setSubStatus(object.getSubStatus());
       summary.setLocation(object.getLocation());
