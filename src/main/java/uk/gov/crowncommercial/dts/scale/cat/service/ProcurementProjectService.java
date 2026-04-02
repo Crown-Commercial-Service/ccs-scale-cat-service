@@ -1137,14 +1137,13 @@ public class ProcurementProjectService {
       summary.setProjectId(object.getProjectId());
       summary.setProjectName(object.getProjectName());
       summary.setAgreement(object.getAgreement());
-      // 1316: TODO set agreement Id
-      //summary.setAgreementId(object.getAgreementId());
+      summary.setAgreementId(object.getAgreementId());
       summary.setBudgetRange(object.getBudgetRange());
       summary.setDescription(object.getDescription());
       summary.setBuyerName(object.getBuyerName());
       summary.setLot(object.getLot());
       summary.setLotName(object.getLotName());
-      //summary.setLotDescription(object.getLotDescription());
+      summary.setLotDescription(object.getLotDescription());
       summary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       summary.setSubStatus(object.getSubStatus());
       summary.setLocation(object.getLocation());
