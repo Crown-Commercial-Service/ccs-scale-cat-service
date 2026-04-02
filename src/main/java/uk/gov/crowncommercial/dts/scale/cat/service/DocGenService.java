@@ -99,7 +99,7 @@ public class DocGenService {
   /**
    * Trigger the generation and upload of all documents for a given event
    */
-  public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isStageTwoEvent) {
+  public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isLastStageEvent) {
     // Start by validating the event passed into us is good to use
     ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
 
@@ -114,10 +114,10 @@ public class DocGenService {
         Set<DocumentTemplate> docTemplates = retryableTendersDBDelegate.findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, caNumber, lotNum, templateId);
 
         if (docTemplates != null && !docTemplates.isEmpty()) {
-          Set<DocumentTemplate> filteredDocTemplates = filterTemplates(isStageTwoEvent, docTemplates);
+          Set<DocumentTemplate> filteredDocTemplates = filterTemplates(isLastStageEvent, docTemplates);
           // Now we have the list of documents needed - iterate over them and process them
           filteredDocTemplates.forEach(template -> {
-            ByteArrayOutputStream document = generateDocument(procurementEvent, template, isStageTwoEvent, Boolean.TRUE);
+            ByteArrayOutputStream document = generateDocument(procurementEvent, template, isLastStageEvent, Boolean.TRUE);
 
             if (document != null) {
               // Document has been generated, now trigger the upload
@@ -129,10 +129,10 @@ public class DocGenService {
     }
   }
 
-  private Set<DocumentTemplate> filterTemplates(boolean isStageTwoEvent,
+  private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent,
                                                 Set<DocumentTemplate> templates) {
     return templates.stream()
-            .filter(isStageTwoEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
+            .filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
             .collect(Collectors.toSet());
   }
 
@@ -141,7 +141,7 @@ public class DocGenService {
    */
   @SneakyThrows
   @Transactional
-  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isStageTwoEvent, final boolean isPublish) {
+  public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isLastStageEvent, final boolean isPublish) {
     // Start by grabbing the template document we need to work against
     if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
       Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -155,7 +155,7 @@ public class DocGenService {
           // Grab the value for the replacement, and then apply it to our templated source
           try {
             if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
-              String eventData = isStageTwoEvent  ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
+              String eventData = isLastStageEvent  ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
               tableGroupGenerator.fillTableData(eventData, templateSource, textODT);
             } else {
               List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);

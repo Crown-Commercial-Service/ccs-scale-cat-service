@@ -16,7 +16,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
-import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageTypesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesWrite;
 import uk.gov.crowncommercial.dts.scale.cat.service.StageService;
@@ -28,19 +27,12 @@ import uk.gov.crowncommercial.dts.scale.cat.service.StageService;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping(path = "/stages", produces = APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/stages/event/{event-id}", produces = APPLICATION_JSON_VALUE)
 public class StageController extends AbstractRestController {
 
   private final StageService stageService;
 
-  @GetMapping("/types")
-  @TrackExecutionTime
-  public ResponseEntity<StageTypesRead> getStageTypes(final JwtAuthenticationToken authentication) {
-    log.info("getStageTypes invoked");
-    return ResponseEntity.ok(stageService.getStageTypes());
-  }
-
-  @GetMapping("/event/{event-id}")
+  @GetMapping()
   @TrackExecutionTime
   public ResponseEntity<StagesRead> getStagesForEventId(
       @PathVariable("event-id") final String eventId,
@@ -49,7 +41,7 @@ public class StageController extends AbstractRestController {
     return ResponseEntity.ok(stageService.getStagesForEventId(eventId));
   }
 
-  @PostMapping("/event/{event-id}")
+  @PostMapping()
   @TrackExecutionTime
   public ResponseEntity<Boolean> createOrUpdateStagesForEventId(
       @PathVariable("event-id") final String eventId,

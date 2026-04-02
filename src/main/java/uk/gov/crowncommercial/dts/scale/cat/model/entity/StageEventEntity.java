@@ -18,19 +18,25 @@ import lombok.experimental.FieldDefaults;
 *
 */
 @Entity
-@Table(name = "stage_types")
+@Table(name = "stage_events")
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class StageTypesEntity {
+public class StageEventEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "stage_id")
+  @Column(name = "id")
   Integer id;
 
-  @Column(name = "stage_type")
-  private String stageType;
+  @Column(name = "event_id")
+  private String eventId;
+
+  @Column(name = "stage_number")
+  private Integer stageNumber;
+
+  @Column(name = "prior_event_id")
+  private String priorEventId;
 }
