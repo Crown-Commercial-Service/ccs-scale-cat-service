@@ -44,7 +44,7 @@ public class StageService {
                 .id(null)
                 .eventId(eventId)
                 .numberOfStages(0)
-                .currentStageNumber(0)
+                .currentStageNumber(1)
                 .stageNames(List.of())
                 .stageEvents(List.of());
     }
