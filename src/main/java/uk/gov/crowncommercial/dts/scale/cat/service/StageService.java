@@ -44,7 +44,7 @@ public class StageService {
                 .id(null)
                 .eventId(eventId)
                 .numberOfStages(0)
-                .currentStage(0)
+                .currentStageNumber(0)
                 .stageNames(List.of())
                 .stageEvents(List.of());
     }
@@ -76,7 +76,7 @@ public class StageService {
         .id(response.get().getId())
         .eventId(response.get().getEventId())
         .numberOfStages(response.get().getNumberOfStages())
-        .currentStage(response.get().getCurrentStage())
+        .currentStageNumber(response.get().getCurrentStage())
         .stageNames(stageNames)
         .stageEvents(eventsList);
   }
@@ -117,7 +117,7 @@ public class StageService {
               .id(stagesWrite.getId())
               .eventId(stagesWrite.getEventId())
               .numberOfStages(stagesWrite.getNumberOfStages())
-              .currentStage(stagesWrite.getCurrentStage())
+              .currentStage(stagesWrite.getCurrentStageNumber())
               .stageNames(stageNames)
               .stageEvents(stageEvents)
           .build());
