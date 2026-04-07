@@ -2,13 +2,16 @@ package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
 import java.util.List;
 
-import org.hibernate.annotations.JdbcTypeCode;
-
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -17,7 +20,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.type.SqlTypes;
 
 /**
 *
@@ -42,7 +44,16 @@ public class StageDataEntity {
   @Column(name = "number_of_stages")
   private Integer numberOfStages;
 
-  @JdbcTypeCode(SqlTypes.ARRAY)
-  @Column(name = "stage_ids", columnDefinition = "integer[]")
-  private List<Integer> stageIds;
+  @Column(name = "current_stage")
+  private Integer currentStage;
+
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OrderBy("stage_number ASC")
+  @JoinColumn(name = "event_id", referencedColumnName="event_id")
+  private List<StageNameEntity> stageNames;
+
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OrderBy("stage_number ASC")
+  @JoinColumn(name = "event_id", referencedColumnName="event_id")
+  private List<StageEventEntity> stageEvents;
 }

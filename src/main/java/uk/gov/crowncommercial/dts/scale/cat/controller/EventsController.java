@@ -347,13 +347,13 @@ public class EventsController extends AbstractRestController {
   public StringValueResponse generateEventDocs(
           @PathVariable("procID") final Integer projectId,
           @PathVariable("eventID") final String eventId,
-          @RequestParam(defaultValue = "false") boolean isStageTwoEvent,
+          @RequestParam(defaultValue = "false") boolean isLastStageEvent,
           final JwtAuthenticationToken authentication) {
     // Firstly validate the user auth
     String principal = getPrincipalFromJwt(authentication);
 
     // Now generate the documents for this event
-    docGenService.generateAndUploadDocuments(projectId, eventId, isStageTwoEvent);
+    docGenService.generateAndUploadDocuments(projectId, eventId, isLastStageEvent);
 
     // Job done, return an indicator to represent this
     return new StringValueResponse("OK");
@@ -365,14 +365,14 @@ public class EventsController extends AbstractRestController {
   @PutMapping("/{eventID}/publish")
   @TrackExecutionTime
   public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-                                          @RequestParam(defaultValue = "false") boolean isStageTwoEvent,
+                                          @RequestParam(defaultValue = "false") boolean isLastStageEvent,
                                           @RequestBody @Valid final PublishDates publishDates, final JwtAuthenticationToken authentication) {
     // Firstly validate the user auth
     String principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
     // Next step is generating the necessary documents for the event
-    docGenService.generateAndUploadDocuments(procId, eventId, isStageTwoEvent);
+    docGenService.generateAndUploadDocuments(procId, eventId, isLastStageEvent);
 
     // Documents should now be generated, so publish the event now
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
@@ -396,7 +396,7 @@ public class EventsController extends AbstractRestController {
   @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(
       @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-      @RequestParam boolean isStageTwoEvent, HttpServletResponse response, final JwtAuthenticationToken authentication) {
+      @RequestParam boolean isLastStageEvent, HttpServletResponse response, final JwtAuthenticationToken authentication) {
 
     var principal = Objects.nonNull(authentication) ? getPrincipalFromJwt(authentication) : "";
     
@@ -404,7 +404,7 @@ public class EventsController extends AbstractRestController {
 
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
-        procurementEventService.exportDocuments(procId, eventId, isStageTwoEvent, principal);
+        procurementEventService.exportDocuments(procId, eventId, isLastStageEvent, principal);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
