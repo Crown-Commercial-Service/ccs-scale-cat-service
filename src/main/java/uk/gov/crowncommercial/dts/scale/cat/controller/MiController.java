@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -56,4 +57,25 @@ public class MiController extends AbstractRestController {
 
         return miService.getMiDetails(principal);
     }
+
+  @GetMapping("/{projectId}")
+  @TrackExecutionTime
+  public ResponseEntity<List<MiQuestionAnswer>> findByProjectId(@PathVariable final String projectId) {
+      final List<MiQuestionAnswer> answers =
+        miService.findAllByProjectId(projectId).stream()
+            .map(
+                entity ->
+                    MiQuestionAnswer.builder()
+                        .assessmentId(entity.getAssessmentId())
+                        .projectId(entity.getProjectId())
+                        .eventId(entity.getEventId())
+                        .questionId(entity.getQuestionId())
+                        .questionAnswer(entity.getAnswer())
+                        .createdBy(entity.getCreatedBy())
+                        .createdAt(entity.getCreatedAt())
+                        .build())
+            .toList();
+    log.debug("Found {} answers for project {}", answers.size(), projectId);
+    return ResponseEntity.ok(answers);
+  }
 }
