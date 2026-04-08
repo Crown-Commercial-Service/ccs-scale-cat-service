@@ -29,6 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.processors.store.DatabaseSupplierSto
 import uk.gov.crowncommercial.dts.scale.cat.processors.store.JaggaerSupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.repo.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.documentupload.DocumentUploadService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -195,6 +196,9 @@ class ProcurementEventServiceTest {
   
   @MockitoBean
   private ContractDetailsRepo contractDetailsRepo;
+
+  @MockitoBean
+  private SearchProjectRepo searchProjectRepo;
   
   @MockitoBean
   private AwardService awardService;
