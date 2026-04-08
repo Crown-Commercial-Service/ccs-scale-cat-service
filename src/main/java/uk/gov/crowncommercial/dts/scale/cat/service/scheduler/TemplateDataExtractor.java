@@ -144,6 +144,19 @@ public class TemplateDataExtractor {
     }
     return "";
   }
+
+  public static String getDos7Location(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = "Group 3";
+      String questionId = "Question 4";
+      String location = EventsHelper.getData(criterionId, groupId, questionId,
+              event.getProcurementTemplatePayload().getCriteria());
+      return Objects.nonNull(location) ? location : "";
+    } catch (Exception e) {
+    }
+    return "";
+  }
   
   public static Set<ExportRfxResponse> removeBrokenEvents(Set<ExportRfxResponse> jaggaerData) {
     // removed broken projects

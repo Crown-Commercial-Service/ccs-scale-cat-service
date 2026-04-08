@@ -116,7 +116,7 @@ public class ProjectsToOpenSearchScheduledTask {
             .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
             .buyerName(organisationIdentity.map(OrganisationProfileResponseInfo::getIdentifier).map(OrganisationIdentifier::getLegalName).orElse(null))
             .projectName(event.getProject().getProjectName())
-            .location(TemplateDataExtractor.getLocation(event))
+            .location("RM1043.8".equalsIgnoreCase(agreementId) ? TemplateDataExtractor.getLocation(event) : TemplateDataExtractor.getDos7Location(event))
             .lot(event.getProject().getLotNumber())
             .lotDescription(Optional.ofNullable(lotDetails).map(LotDetail::getDescription).orElse(null))
             .lastUpdated(event.getUpdatedAt().getEpochSecond())
