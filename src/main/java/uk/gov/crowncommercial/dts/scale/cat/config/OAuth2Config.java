@@ -47,6 +47,7 @@ public class OAuth2Config {
         .requestMatchers("/actuator/**").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*/events/*/documents/export").permitAll()
+        .requestMatchers(HttpMethod.GET,"/eprocurement/mi/*").permitAll()
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/supplier/**").permitAll()
         .requestMatchers("/audit/**").permitAll()
