@@ -6,9 +6,10 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -47,25 +48,31 @@ public class ProjectsToOpenSearchScheduledTask {
   
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int bathcSize;
-  
-  @Transactional
+
   @Scheduled(cron = "${config.external.projects.sync.schedule}")
-  @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask", 
+  @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask",
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
     log.info("Started projects data to open search scheduler process, Time: {}", LocalDateTime.now());
     // 1316: Process DOS6 and DOS7 events
-    this.reinstateIndex();
+    reinstateIndex();
     AGREEMENT_IDS.forEach(agreementId -> {
-      try {
-        final Set<ProcurementProject> events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId);
-        log.info("AgreementId: {}, Count to update in opensearch: {}", agreementId, events.size());
         final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
-        this.saveProjectDataAsBatches(agreementId, events, agreementDetails);
-        log.info("Successfully updated projects data in open search for agreementId: {}, size: {}", agreementId, events.size());
-      } catch (Exception e) {
-        log.error("Error processing OpenSearch for agreementId: {}", agreementId, e);
-      }
+        Set<ProcurementProject> events = Collections.emptySet();
+        int index = 0;
+        int totalEvents = 0;
+        do {
+          try {
+            events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
+                    PageRequest.of(index++, bathcSize, Sort.by("project_id").ascending()));
+            log.info("AgreementId: {} Count to update in opensearch: {} bathcSize {}", agreementId, events.size(), bathcSize);
+            saveProjectDataAsBatches(agreementId, events, agreementDetails);
+            totalEvents += events.size();
+          } catch (Exception e) {
+            log.error("Error processing OpenSearch for agreementId: {}", agreementId, e);
+          }
+        } while (!events.isEmpty());
+        log.info("Successfully updated projects data in open search for agreementId: {}, size: {}", agreementId, totalEvents);
     });
     log.info("saveProjectsDataToOpenSearch successful, Time: {}", LocalDateTime.now());
   }
@@ -75,10 +82,10 @@ public class ProjectsToOpenSearchScheduledTask {
     log.info("saveProjectDataAsBatches for agreementId: {}", agreementId);
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     List<List<ProcurementProject>> batches =
-        TendersAPIModelUtils.getBatches(new ArrayList<ProcurementProject>(events), bathcSize);
+        TendersAPIModelUtils.getBatches(new ArrayList<>(events), bathcSize);
     for (List<ProcurementProject> batch : batches) {
       mapToOpenSearch(agreementId, batch, eventSearchDataList, agreementDetail);
-      searchProjectRepo.saveAll(eventSearchDataList);
+      retryableTendersDBDelegate.searchProjectSaveAll(eventSearchDataList);
       log.info("successfully updated events: {} for agreementId: {}", eventSearchDataList.size(), agreementId);
       eventSearchDataList.clear();
     }

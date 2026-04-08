@@ -1,5 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
+import org.springframework.data.domain.Pageable;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -81,7 +82,7 @@ public class ProjectsCSVGenerationScheduledTask {
 
   public void writeOppertunitiesToCsv() {
 
-    var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
+    var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID, Pageable.unpaged());
     log.info("Dos6 agreements count for CSV generation: {}", events.size());
 
     try {
