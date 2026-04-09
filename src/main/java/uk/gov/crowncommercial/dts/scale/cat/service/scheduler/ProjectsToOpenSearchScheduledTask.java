@@ -113,7 +113,7 @@ public class ProjectsToOpenSearchScheduledTask {
         var eventSearchDataDTO = ProcurementEventSearchDTO.builder().rfxId(firstAndLastPublishedEvent.getLeft().getExternalEventId())
             .secondRfxId(srfxId).projectId(event.getProject().getId())
             .description(getSummaryOfWork(event))
-            .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
+            .budgetRange("RM1043.8".equalsIgnoreCase(agreementId) ? TemplateDataExtractor.getBudgetRangeData(event) : TemplateDataExtractor.getDos7BudgetRangeData(event))
             .buyerName(organisationIdentity.map(OrganisationProfileResponseInfo::getIdentifier).map(OrganisationIdentifier::getLegalName).orElse(null))
             .projectName(event.getProject().getProjectName())
             .location("RM1043.8".equalsIgnoreCase(agreementId) ? TemplateDataExtractor.getLocation(event) : TemplateDataExtractor.getDos7Location(event))
