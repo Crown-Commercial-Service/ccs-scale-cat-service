@@ -7,9 +7,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.MiQuestionAnswerEntity;
 import uk.gov.crowncommercial.dts.scale.cat.service.MiService;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.MiQuestionAnswer;
 
+import java.util.Comparator;
 import java.util.List;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -63,6 +65,7 @@ public class MiController extends AbstractRestController {
   public ResponseEntity<List<MiQuestionAnswer>> findByProjectId(@PathVariable final String projectId) {
       final List<MiQuestionAnswer> answers =
         miService.findAllByProjectId(projectId).stream()
+            .sorted(Comparator.comparing(MiQuestionAnswerEntity::getQuestionId, Comparator.naturalOrder()))
             .map(
                 entity ->
                     MiQuestionAnswer.builder()
