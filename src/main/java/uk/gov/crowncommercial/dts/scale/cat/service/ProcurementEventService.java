@@ -1082,6 +1082,13 @@ public class ProcurementEventService implements EventService {
         updateStatusAndDates(principal, procurementEvent);
     }
 
+    @Transactional
+    public void publishDOS7MIEvent(final Integer procId, final String eventId) {
+        final ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        procurementEvent.setPublishDate(Instant.now());
+        retryableTendersDBDelegate.save(procurementEvent);
+    }
+
     /**
      * Delete an event by ID for a given project in the CaS Database.
      * <p>

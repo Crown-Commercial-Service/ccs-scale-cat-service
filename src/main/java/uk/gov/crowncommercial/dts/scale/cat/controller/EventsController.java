@@ -381,6 +381,19 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
+  /**
+   * Publishes DOS7 MI project
+   */
+  @PutMapping("/{eventID}/publish/DOS7/MI")
+  @TrackExecutionTime
+  public StringValueResponse publishDOS7MIProject(@PathVariable("procID") final Integer procId,
+                                                  @PathVariable("eventID") final String eventId,
+                                                  final JwtAuthenticationToken authentication) {
+    // NCAS-1492: Publish the event now
+    procurementEventService.publishDOS7MIEvent(procId, eventId);
+    return new StringValueResponse("OK");
+  }
+
   @PutMapping("/{eventID}/complete")
   @TrackExecutionTime
   public StringValueResponse completeEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
