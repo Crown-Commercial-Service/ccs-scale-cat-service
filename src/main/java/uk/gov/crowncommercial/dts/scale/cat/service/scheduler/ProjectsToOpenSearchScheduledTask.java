@@ -122,7 +122,11 @@ public class ProjectsToOpenSearchScheduledTask {
             .lastUpdated(event.getUpdatedAt().getEpochSecond())
             .lotName(Optional.ofNullable(lotDetails).map(LotDetail::getName).orElse(null))
             .agreement(agreementDetails.getName())
-            .agreementId(agreementId).build();
+            .agreementId(agreementId)
+            .eventId(event.getEventID())
+            .eventName(event.getEventName())
+            .eventType(event.getEventType())
+            .build();
         
         eventSearchDataListDTO.add(eventSearchDataDTO);
       } catch (Exception e) {
@@ -236,5 +240,7 @@ class ProcurementEventSearchDTO {
   String subStatus;
   String description;
   Long lastUpdated;
-
+  String eventId;
+  String eventName;
+  String eventType;
 }
