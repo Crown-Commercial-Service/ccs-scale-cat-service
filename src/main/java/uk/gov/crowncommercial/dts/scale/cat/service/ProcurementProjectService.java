@@ -1147,6 +1147,9 @@ public class ProcurementProjectService {
       summary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       summary.setSubStatus(object.getSubStatus());
       summary.setLocation(object.getLocation());
+      summary.setEventId(object.getEventId());
+      summary.setEventName(object.getEventName());
+      summary.setEventType(object.getEventType());
       return summary;
     }).toList();
   }
