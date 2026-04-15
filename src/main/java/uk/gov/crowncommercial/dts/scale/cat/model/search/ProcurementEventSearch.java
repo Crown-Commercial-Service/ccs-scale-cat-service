@@ -37,6 +37,12 @@ public class ProcurementEventSearch {
     String lotName;
     @JsonProperty("lotDescription")
     String lotDescription;
+    @JsonProperty("eventId")
+    String eventId;
+    @JsonProperty("eventName")
+    String eventName;
+    @JsonProperty("eventType")
+    String eventType;
 
     @JsonProperty("status")
     String status;
