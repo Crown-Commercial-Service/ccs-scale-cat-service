@@ -63,7 +63,7 @@ public class EventsController extends AbstractRestController {
   private static final String USE_QUESTION_GROUPS = "use-question-groups";
   private static final String QUESTION_GROUP_PREFIX = "question-group-";
   private static final String SELECT_QUESTION_GROUP_QUESTION = "Select question group";
-
+  private static final String STAGE_NUMBER = "stage";
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
@@ -601,41 +601,48 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  @GetMapping("/{eventID}/use-question-groups/{groupType}")
+  @GetMapping("/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}")
   @TrackExecutionTime
   public QuestionGroupNamesRead getUseQuestionGroups(
       @Valid @PathVariable("procID") final Integer procId,
       @Valid @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
       @PathVariable("groupType") final String groupType,
       final JwtAuthenticationToken authentication) {
     String principal = getPrincipalFromJwt(authentication);
     log.info("getUseQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == stageNumber) {
+        log.error("getQuestionGroups - no stageNumber provided: {}", principal);
+        return null;
+    }
 
     if (null == groupType || groupType.isBlank()) {
         log.error("getUseQuestionGroups - no groupType provided: {}", principal);
         return null;
     }
 
-    return readUseQuestionGroups(procId, eventId, groupType, principal);
+    return readUseQuestionGroups(procId, eventId, stageNumber, groupType, principal);
   }
 
-  @PostMapping("/{eventID}/use-question-groups/{groupType}")
+  @PostMapping("/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}")
   @TrackExecutionTime
   public StringValueResponse saveUseQuestionGroups(
       @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
       @PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
       @PathVariable("groupType") final String groupType,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("saveUseQuestionGroups invoked on behalf of principal: {}", principal);
 
-    if (null == requestModel || null == groupType || groupType.isBlank()) {
+    if (null == requestModel || null == stageNumber || null == groupType || groupType.isBlank()) {
         log.error("saveUseQuestionGroups - invalid data provided: {}", principal);
         return new StringValueResponse("ERROR");
     }
 
-    QuestionGroupNamesRead existingUsequestionGroups = readUseQuestionGroups(procId, eventId, groupType, principal);
+    QuestionGroupNamesRead existingUsequestionGroups = readUseQuestionGroups(procId, eventId, stageNumber, groupType, principal);
 
     if (null != existingUsequestionGroups && null != existingUsequestionGroups.getUseQuestionGroupsQaId()) {
         Integer qaId = existingUsequestionGroups.getUseQuestionGroupsQaId();
@@ -649,7 +656,7 @@ public class EventsController extends AbstractRestController {
 
     // create the new question groups
     QandA newEntry = new QandA();
-    newEntry.setQuestion(groupType + "-" + USE_QUESTION_GROUPS);
+    newEntry.setQuestion(groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + USE_QUESTION_GROUPS);
     newEntry.setAnswer(requestModel.getUseQuestionGroups().toString());
 
     questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
@@ -657,41 +664,48 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  @GetMapping("/{eventID}/question-groups/{groupType}")
+  @GetMapping("/{eventID}/stage/{stageNumber}/question-groups/{groupType}")
   @TrackExecutionTime
   public QuestionGroupNamesRead getQuestionGroups(
       @Valid @PathVariable("procID") final Integer procId,
       @Valid @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
       @PathVariable("groupType") final String groupType,
       final JwtAuthenticationToken authentication) {
     String principal = getPrincipalFromJwt(authentication);
     log.info("getQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == stageNumber) {
+        log.error("getQuestionGroups - no stageNumber provided: {}", principal);
+        return null;
+    }
 
     if (null == groupType || groupType.isBlank()) {
         log.error("getQuestionGroups - no groupType provided: {}", principal);
         return null;
     }
 
-    return readQuestionGroups(procId, eventId, groupType, principal);
+    return readQuestionGroups(procId, eventId, stageNumber, groupType, principal);
   }
 
-  @PostMapping("/{eventID}/question-groups/{groupType}")
+  @PostMapping("/{eventID}/stage/{stageNumber}/question-groups/{groupType}")
   @TrackExecutionTime
   public StringValueResponse saveQuestionGroups(
       @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
       @PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
       @PathVariable("groupType") final String groupType,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("saveQuestionGroups invoked on behalf of principal: {}", principal);
 
-    if (null == requestModel || null == groupType || groupType.isBlank()) {
+    if (null == requestModel || null == stageNumber || null == groupType || groupType.isBlank()) {
         log.error("saveQuestionGroups - invalid data provided: {}", principal);
         return new StringValueResponse("ERROR");
     }
 
-    QuestionGroupNamesRead existingGroupNames = readQuestionGroups(procId, eventId, groupType, principal);
+    QuestionGroupNamesRead existingGroupNames = readQuestionGroups(procId, eventId, stageNumber, groupType, principal);
 
     if (null != existingGroupNames && null != existingGroupNames.getQaIds() && !existingGroupNames.getQaIds().isEmpty()) {
         for (String qaId : existingGroupNames.getQaIds()) {
@@ -710,7 +724,7 @@ public class EventsController extends AbstractRestController {
     for (String questionGroupName : requestModel.getQuestionGroups()) {
         QandA newEntry = new QandA();
 
-        newEntry.setQuestion(groupType + "-" + QUESTION_GROUP_PREFIX + i++);
+        newEntry.setQuestion(groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + QUESTION_GROUP_PREFIX + i++);
         newEntry.setAnswer(questionGroupName);
 
         questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
@@ -729,14 +743,14 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  private QuestionGroupNamesRead readUseQuestionGroups(final Integer procId, final String eventId, final String groupType, String principal) {
+  private QuestionGroupNamesRead readUseQuestionGroups(final Integer procId, final String eventId, final Integer stageNumber, final String groupType, String principal) {
       QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
 
       if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
           return null;
       }
 
-      final String fullPrefix = groupType + "-" + USE_QUESTION_GROUPS;
+      final String fullPrefix = groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + USE_QUESTION_GROUPS;
 
       final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
 
@@ -753,7 +767,7 @@ public class EventsController extends AbstractRestController {
       return null;
   }
 
-  private QuestionGroupNamesRead readQuestionGroups(final Integer procId, final String eventId, final String groupType, String principal)
+  private QuestionGroupNamesRead readQuestionGroups(final Integer procId, final String eventId, final Integer stageNumber, final String groupType, String principal)
   {
       QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
 
@@ -761,7 +775,7 @@ public class EventsController extends AbstractRestController {
           return null;
       }
 
-      final String fullPrefix = groupType + "-" + QUESTION_GROUP_PREFIX;
+      final String fullPrefix = groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + QUESTION_GROUP_PREFIX;
 
       // note we use a map to ensure we can ultimately return the list in numeric order;
       // just reading directly from the DB does not always give the order we need
