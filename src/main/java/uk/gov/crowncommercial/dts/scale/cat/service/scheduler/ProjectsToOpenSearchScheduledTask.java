@@ -137,6 +137,10 @@ public class ProjectsToOpenSearchScheduledTask {
     }
     populateStatus(eventSearchDataListDTO);
     populateSubStatus(eventSearchDataListDTO);
+    // Populate MI status for DOS7 project.
+    if ("RM1043.9".equalsIgnoreCase(agreementId)) {
+      populateMIStatus(eventSearchDataListDTO);
+    }
     populateSearchData(eventSearchDataListDTO, eventSearchDataList);
     return eventSearchDataList;
   }
@@ -164,14 +168,6 @@ public class ProjectsToOpenSearchScheduledTask {
         }
       }
     }
-
-    // 1511: Set MI project status to open.
-    searchDataDTO.forEach(
-        obj -> {
-          if (!miService.findAllByProjectId(String.valueOf(obj.getProjectId())).isEmpty()) {
-            obj.setStatus(StatusEnum.OPEN.getValue());
-          }
-        });
   }
   
   private void populateSubStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
@@ -192,6 +188,17 @@ public class ProjectsToOpenSearchScheduledTask {
         }
       }
     }
+  }
+
+  private void populateMIStatus(final List<ProcurementEventSearchDTO> searchDataDTO) {
+    // 1511: Set MI project status to open.
+    searchDataDTO.forEach(
+        obj -> {
+          if (!miService.findAllByProjectId(String.valueOf(obj.getProjectId())).isEmpty()) {
+            obj.setStatus(StatusEnum.OPEN.getValue());
+            obj.setSubStatus(null);
+          }
+        });
   }
 
   private void populateSearchData(List<ProcurementEventSearchDTO> searchDataDTO,
