@@ -30,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.MiService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -45,6 +46,7 @@ public class ProjectsToOpenSearchScheduledTask {
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
+  private final MiService miService;
   
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int bathcSize;
@@ -141,7 +143,10 @@ public class ProjectsToOpenSearchScheduledTask {
   
   private void populateStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
     log.info("populateStatus()");
-    Set<String> rfxIds = searchDataDTO.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
+    Set<String> rfxIds = searchDataDTO.stream().map(ProcurementEventSearchDTO::getRfxId)
+            .filter(Objects::nonNull)
+            .filter(StringUtils::isNotBlank)
+            .collect(Collectors.toSet());
     var rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
     
@@ -150,21 +155,32 @@ public class ProjectsToOpenSearchScheduledTask {
     
     for (ExportRfxResponse exportRfxResponse : rfxResponse) {
       for (ProcurementEventSearchDTO data : searchDataDTO) {
-        if (data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
+        if (data.getRfxId() != null && data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
           var eventStatus = EventStatusHelper.getEventStatus(exportRfxResponse.getRfxSetting());
           data.setStatus(eventStatus);
-          if (eventStatus.equals(StatusEnum.CLOSED.getValue())) {
+          if (eventStatus != null && eventStatus.equals(StatusEnum.CLOSED.getValue())) {
             data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
           }
         }
       }
     }
+
+    // 1511: Set MI project status to open.
+    searchDataDTO.forEach(
+        obj -> {
+          if (!miService.findAllByProjectId(String.valueOf(obj.getProjectId())).isEmpty()) {
+            obj.setStatus(StatusEnum.OPEN.getValue());
+          }
+        });
   }
   
   private void populateSubStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
     log.info("populateSubStatus()");
     Set<String> rfxIds = searchDataDTO.stream()
-        .map(e -> e.getSecondRfxId()).collect(Collectors.toSet());
+        .map(ProcurementEventSearchDTO::getSecondRfxId)
+            .filter(Objects::nonNull)
+            .filter(StringUtils::isNotBlank)
+            .collect(Collectors.toSet());
     Set<ExportRfxResponse> rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
     
@@ -184,7 +200,7 @@ public class ProjectsToOpenSearchScheduledTask {
     //removed broken projects
     searchDataDTO = searchDataDTO.stream().filter(e -> e.getStatus() != null).toList();
     
-    searchDataDTO.stream().forEach(dto -> {
+    searchDataDTO.forEach(dto -> {
       ProcurementEventSearch searchData = new ProcurementEventSearch();
       BeanUtils.copyProperties(dto, searchData);
       searchDataList.add(searchData);
