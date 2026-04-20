@@ -195,6 +195,7 @@ public class ProjectsToOpenSearchScheduledTask {
     searchDataDTO.forEach(
         obj -> {
           if (!miService.findAllByProjectId(String.valueOf(obj.getProjectId())).isEmpty()) {
+            log.debug("Setup MI project status to open, ProjectId: {}", obj.getProjectId());
             obj.setStatus(StatusEnum.OPEN.getValue());
             obj.setSubStatus(null);
           }
