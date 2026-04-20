@@ -20,6 +20,10 @@ public interface ProcurementProjectRepo extends JpaRepository<ProcurementProject
               + " inner join procurement_events pe on pe.project_id = pp.project_id"
               + " where pp.commercial_agreement_number = :agreementId and pe.publish_date is not null"
               + " group by pp.project_id",
+      countQuery = "select count(*) from procurement_projects pp "
+              + " inner join procurement_events pe on pe.project_id = pp.project_id"
+              + " where pp.commercial_agreement_number = :agreementId and pe.publish_date is not null"
+              + " group by pp.project_id",
       nativeQuery = true)
   List<ProcurementProject> findPublishedEventsByAgreementId(String agreementId, Pageable pageable);
 }
