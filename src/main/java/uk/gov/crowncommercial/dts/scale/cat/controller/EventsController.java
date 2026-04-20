@@ -408,16 +408,22 @@ public class EventsController extends AbstractRestController {
   @GetMapping("/{eventID}/documents/export")
   @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(
-      @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-      @RequestParam boolean isLastStageEvent, HttpServletResponse response, final JwtAuthenticationToken authentication) {
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @RequestParam boolean isLastStage,
+      @RequestParam final Boolean isMultiStage,
+      @RequestParam final Integer totalNumberOfStages,
+      @RequestParam final Integer currentStage,
+      HttpServletResponse response,
+      final JwtAuthenticationToken authentication) {
 
     var principal = Objects.nonNull(authentication) ? getPrincipalFromJwt(authentication) : "";
-    
+
     log.info("Export documents invoked on behalf of principal: {}", principal);
 
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
-        procurementEventService.exportDocuments(procId, eventId, isLastStageEvent, principal);
+        procurementEventService.exportDocuments(procId, eventId, isLastStage, isMultiStage, totalNumberOfStages, currentStage, principal);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
@@ -429,17 +435,19 @@ public class EventsController extends AbstractRestController {
           IOUtils.copy(is, zipOutputStream);
         }
       }
+
       // set zip size in response
       response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
       if (zipOutputStream != null) {
         zipOutputStream.close();
       }
     };
+
     response.setContentType("application/zip");
-    response.setHeader("Content-Disposition",
-        "attachment; filename=" + EXPORT_BUYER_DOCUMENTS_NAME + ".zip");
+    response.setHeader("Content-Disposition", "attachment; filename=" + EXPORT_BUYER_DOCUMENTS_NAME + ".zip");
     response.addHeader("Pragma", "no-cache");
     response.addHeader("Expires", "0");
+
     return ResponseEntity.ok(streamResponseBody);
   }
 

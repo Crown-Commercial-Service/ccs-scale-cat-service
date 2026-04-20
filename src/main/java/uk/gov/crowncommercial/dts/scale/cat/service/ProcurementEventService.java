@@ -1499,8 +1499,13 @@ public class ProcurementEventService implements EventService {
      * @return list of attachments
      */
     @Transactional
-    public List<DocumentAttachment> exportDocuments(final Integer procId, final String eventId,
-                                                    final boolean isStageTwoEvent, final String principal) {
+    public List<DocumentAttachment> exportDocuments(final Integer procId,
+                                                    final String eventId,
+                                                    final boolean isLastStage,
+                                                    final Boolean isMultiStage,
+                                                    final Integer totalNumberOfStages,
+                                                    final Integer currentStage,
+                                                    final String principal) {
         log.debug("Export all Documents from Event {}", eventId);
         var event = validationService.validateProjectAndEventIds(procId, eventId);
         var exportRfxResponse = jaggaerService.getRfxWithWithBuyerAndSellerAttachments(event.getExternalEventId());
@@ -1520,16 +1525,16 @@ public class ProcurementEventService implements EventService {
             });
             // Get draft documents
             Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
-            Collection<DocumentSummary> filterTemplates = filterTemplates(isStageTwoEvent, templates);
+            Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
             filterTemplates.forEach(template -> {
                 attachments.add(dTemplateService.getDraftDocument(procId, eventId,
-                        DocumentKey.fromString(template.getId()), isStageTwoEvent));
+                        DocumentKey.fromString(template.getId()), isLastStage));
             });
 
         } else {
             // Get documents from Jaggaer
             List<Attachment> sellerAttachments = exportRfxResponse.getSellerAttachmentsList().getAttachment();
-            List<Attachment> filteredAttachments = filterAttachments(isStageTwoEvent, sellerAttachments);
+            List<Attachment> filteredAttachments = filterAttachments(isLastStage, sellerAttachments);
             Stream
                     .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
                             filteredAttachments.stream())
