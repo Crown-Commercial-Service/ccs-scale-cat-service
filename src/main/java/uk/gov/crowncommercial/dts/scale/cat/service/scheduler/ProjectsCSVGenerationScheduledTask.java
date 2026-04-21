@@ -73,8 +73,8 @@ public class ProjectsCSVGenerationScheduledTask {
   private int awardedBatchSize;
 
   @Transactional
-  @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
-  //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
+  //@Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
+  @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
@@ -121,11 +121,11 @@ public class ProjectsCSVGenerationScheduledTask {
 
       csvPrinter.flush();
       csvPrinter.close();
-      log.info("Successfully generated CSV data, Initiating transfer to S3 Storage");
+      log.info("Successfully generated CSV data now initiating transfer to S3 Storage");
       transferToS3(tempFile);
       log.info("CSV Data uploaded to S3 Storage");
     } catch (Exception e) {
-      log.error("Error While generating Projects CSV ", e);
+      log.error("Error While generating Projects CSV", e);
     }
   }
 
