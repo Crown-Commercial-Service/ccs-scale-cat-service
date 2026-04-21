@@ -42,6 +42,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -115,7 +116,7 @@ public class ProjectsCSVGenerationScheduledTask {
           log.info("S3 Successfully fetch projects data from OpenSearch for agreementId {} size {}", agreementId, totalEvents);
         });
 
-      populateJaggaerFields(csvDataList);
+      CompletableFuture.runAsync(() -> populateJaggaerFields(new ArrayList<>(csvDataList)));
       populateCSVPrinter(csvDataList, csvPrinter);
 
       csvPrinter.flush();
