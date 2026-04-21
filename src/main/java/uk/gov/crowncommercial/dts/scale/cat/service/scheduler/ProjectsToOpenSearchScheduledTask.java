@@ -60,42 +60,42 @@ public class ProjectsToOpenSearchScheduledTask {
     reinstateIndex();
     AGREEMENT_IDS.forEach(agreementId -> {
         final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
-        Set<ProcurementProject> events = Collections.emptySet();
+        List<ProcurementProject> events = Collections.emptyList();
         int index = 0;
         int totalEvents = 0;
         do {
           try {
             events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
-                    PageRequest.of(index++, bathcSize, Sort.by("project_id").ascending()));
-            log.info("AgreementId: {} Count to update in opensearch: {} bathcSize {}", agreementId, events.size(), bathcSize);
+                    PageRequest.of(index++, 100, Sort.by("project_id").ascending()));
+            log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), 100, index);
             saveProjectDataAsBatches(agreementId, events, agreementDetails);
             totalEvents += events.size();
           } catch (Exception e) {
-            log.error("Error processing OpenSearch for agreementId: {}", agreementId, e);
+            log.error("Error processing OpenSearch for agreementId {}", agreementId, e);
           }
         } while (!events.isEmpty());
-        log.info("Successfully updated projects data in open search for agreementId: {}, size: {}", agreementId, totalEvents);
+        log.info("Successfully updated projects data in open search for agreementId {} size {}", agreementId, totalEvents);
     });
     log.info("saveProjectsDataToOpenSearch successful, Time: {}", LocalDateTime.now());
   }
   
-  private void saveProjectDataAsBatches(String agreementId, Set<ProcurementProject> events,
+  private void saveProjectDataAsBatches(String agreementId, List<ProcurementProject> events,
       AgreementDetail agreementDetail) {
-    log.info("saveProjectDataAsBatches for agreementId: {}", agreementId);
+    log.info("saveProjectDataAsBatches for agreementId {}", agreementId);
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     List<List<ProcurementProject>> batches =
         TendersAPIModelUtils.getBatches(new ArrayList<>(events), bathcSize);
     for (List<ProcurementProject> batch : batches) {
       mapToOpenSearch(agreementId, batch, eventSearchDataList, agreementDetail);
       retryableTendersDBDelegate.searchProjectSaveAll(eventSearchDataList);
-      log.info("successfully updated events: {} for agreementId: {}", eventSearchDataList.size(), agreementId);
+      log.info("successfully updated events {} for agreementId {}", eventSearchDataList.size(), agreementId);
       eventSearchDataList.clear();
     }
   }
   
   private List<ProcurementEventSearch> mapToOpenSearch(String agreementId, List<ProcurementProject> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
-    log.info("mapToOpenSearch for agreementId: {}", agreementId);
+    log.info("mapToOpenSearch for agreementId {}", agreementId);
     var eventSearchDataListDTO = new ArrayList<ProcurementEventSearchDTO>();
     
     for (ProcurementProject project : events) {
@@ -191,11 +191,12 @@ public class ProjectsToOpenSearchScheduledTask {
   }
 
   private void populateMIStatus(final List<ProcurementEventSearchDTO> searchDataDTO) {
+    log.info("populateMIStatus()");
     // 1511: Set MI project status to open.
     searchDataDTO.forEach(
         obj -> {
           if (!miService.findAllByProjectId(String.valueOf(obj.getProjectId())).isEmpty()) {
-            log.debug("Setup MI project status to open, ProjectId: {}", obj.getProjectId());
+            log.debug("Setup MI project status to open ProjectId {}", obj.getProjectId());
             obj.setStatus(StatusEnum.OPEN.getValue());
             obj.setSubStatus(null);
           }
@@ -216,7 +217,6 @@ public class ProjectsToOpenSearchScheduledTask {
   }
   
   private static String getSummaryOfWork(ProcurementEvent event) {
-    log.info("getSummaryOfWork()");
     try {
       if (Objects.nonNull(event.getProcurementTemplatePayload())) {
         var summary = EventsHelper.getData("Criterion 3", "Group 3", "Question 1",
