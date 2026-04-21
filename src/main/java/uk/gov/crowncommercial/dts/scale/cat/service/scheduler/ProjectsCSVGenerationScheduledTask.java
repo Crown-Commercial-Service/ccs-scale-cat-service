@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -20,9 +21,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.TenderStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -39,12 +40,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/**
- *
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -57,13 +58,13 @@ public class ProjectsCSVGenerationScheduledTask {
   private final Environment env;
   private final S3Client tendersS3Client;
   private final AWSS3Service tendersS3Service;
-  private static final String DOS6_AGREEMENT_ID = "RM1043.8";
   private static final Integer JAGGAER_SUPPLIER_WINNER_STATUS = 3;
   public static final String CSV_FILE_NAME = "opportunity_data.csv";
   public static final String XLSX_FILE_NAME = "opportunity_data.xlsx";
   public static final String ODS_FILE_NAME = "opportunity_data.ods";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
+  private static final List<String> AGREEMENT_IDS = List.of("RM1043.9", "RM1043.8");
 
   @Value("${config.oppertunities.published.batch.size: 20}")
   private int publishedBatchSize;
@@ -72,61 +73,74 @@ public class ProjectsCSVGenerationScheduledTask {
   private int awardedBatchSize;
 
   @Transactional
+  //@Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
   @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
-    log.info("Started oppertunities CSV generation");
+    log.info("Started oppertunities CSV generation Time {}",  LocalDateTime.now());
     writeOppertunitiesToCsv();
   }
 
   public void writeOppertunitiesToCsv() {
-
-    var events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID, Pageable.unpaged());
-    log.info("Dos6 agreements count for CSV generation: {}", events.size());
-
+    log.info("writeOppertunitiesToCsv()");
     try {
-      var tempFile = Files.createTempFile("temp", ".csv");
-      var writer = new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
-      writer.write('\ufeff');
-      var csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
-      var csvDataList = new ArrayList<CSVData>();
+        var tempFile = Files.createTempFile("temp", ".csv");
+        var writer = new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
+        writer.write('\ufeff');
+        CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+        List<CSVData> csvDataList = new ArrayList<>();
+        // NCAS-1314: Download Opportunity Search Results
+        AGREEMENT_IDS.forEach(agreementId -> {
+          final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
+          List<ProcurementProject> events = Collections.emptyList();
+          int index = 0;
+          int totalEvents = 0;
+          do {
+            try {
+              events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
+                      PageRequest.of(index++, 100, Sort.by("project_id").ascending()));
+              log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), 100, index);
+              csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
+                      "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
+                      "Expected Contract Length", "Budget range", "Applications from SMEs",
+                      "Applications from Large Organisations", "Total Organisations", "Status",
+                      "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
+                      "Clarification questions", "Employment status");
+              populateCSVData(agreementDetails, events, csvDataList);
+              totalEvents += events.size();
+            } catch (Exception e) {
+              log.error("S3 Error processing OpenSearch for agreementId {}", agreementId, e);
+            }
+          } while (!events.isEmpty());
+          log.info("S3 Successfully fetch projects data from OpenSearch for agreementId {} size {}", agreementId, totalEvents);
+        });
 
-      csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
-          "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
-          "Expected Contract Length", "Budget range", "Applications from SMEs",
-          "Applications from Large Organisations", "Total Organisations", "Status",
-          "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
-          "Clarification questions", "Employment status");
-
-      populateCSVData(events, csvPrinter, csvDataList);
-      populateJaggaerFields(csvDataList);
+      CompletableFuture.runAsync(() -> populateJaggaerFields(new ArrayList<>(csvDataList)));
       populateCSVPrinter(csvDataList, csvPrinter);
 
       csvPrinter.flush();
       csvPrinter.close();
-      log.info("Successfully generated CSV data, Initiating transfer to S3 Storage");
+      log.info("Successfully generated CSV data now initiating transfer to S3 Storage");
       transferToS3(tempFile);
-      log.info("DOS6 CSV Data uploaded to S3 Storage");
+      log.info("CSV Data uploaded to S3 Storage");
     } catch (Exception e) {
-      log.error("Error While generating Projects CSV ", e);
+      log.error("Error While generating Projects CSV", e);
     }
   }
 
-  private void populateCSVData(Set<ProcurementProject> events, CSVPrinter csvPrinter, List<CSVData> csvDataList)
-      throws Exception {
+  private void populateCSVData(AgreementDetail agreementDetails, List<ProcurementProject> events,
+                               List<CSVData> csvDataList) {
+    log.info("populateCSVData()");
     try {
-      log.info("Populating CSV data");
-      var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
       for (ProcurementProject project : events) {
-
         var totalOrganisationsCountAndWinningSupplier = Pair.of("", "");
         var firstAndLastPublishedEvent =
             EventsHelper.getFirstAndLastPublishedEvent(project);
         var event = firstAndLastPublishedEvent.getLeft();
 
         var lotDetails =
-            agreementsService.getLotDetails(DOS6_AGREEMENT_ID, project.getLotNumber());
+            agreementsService.getLotDetails(agreementDetails.getNumber(), project.getLotNumber());
         var organisationIdentity = conclaveService.getOrganisationIdentity(
             project.getOrganisationMapping().getOrganisationId());
 
@@ -148,8 +162,8 @@ public class ProjectsCSVGenerationScheduledTask {
             .projectId(event.getProject().getId()).oppertunity(event.getProject().getProjectName())
             .link(env.getProperty(PROJECT_UI_LINK_KEY) + "/" + event.getProject().getId())
             .framework(agreementDetails.getName()).category(lotDetails.getName())
-            .orgName(organisationIdentity.get().getIdentifier().getLegalName())
-            .buyerDomain(organisationIdentity.get().getIdentifier().getUri())
+            .orgName(organisationIdentity.map(obj -> obj.getIdentifier().getLegalName()).orElse(""))
+            .buyerDomain(organisationIdentity.map(obj -> obj.getIdentifier().getUri()).orElse(""))
             .locationOfWork(TemplateDataExtractor.getLocation(event))
             .publishedDate(event.getPublishDate())
             .expectedContractLength(TemplateDataExtractor.getExpectedContractLength(event))
@@ -196,6 +210,7 @@ public class ProjectsCSVGenerationScheduledTask {
             "", "", csvData.getContractStartDate(), csvData.getClarificationQuestions(),
             csvData.getEmploymentStatus());
       } catch (Exception e) {
+        log.error("Error populateCSVPrinter", e);
       }
     }
   }

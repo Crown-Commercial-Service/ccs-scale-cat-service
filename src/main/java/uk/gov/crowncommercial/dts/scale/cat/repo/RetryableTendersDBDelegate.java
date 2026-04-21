@@ -456,8 +456,8 @@ public class RetryableTendersDBDelegate {
   
   @TendersRetryable
   @Transactional(readOnly = true)
-  public Set<ProcurementProject> findPublishedEventsByAgreementId(final String agreementId, final Pageable pageable) {
-    return new HashSet<>(procurementProjectRepo.findPublishedEventsByAgreementId(agreementId, pageable));
+  public List<ProcurementProject> findPublishedEventsByAgreementId(final String agreementId, final Pageable pageable) {
+    return procurementProjectRepo.findPublishedEventsByAgreementId(agreementId, pageable);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
