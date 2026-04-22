@@ -62,11 +62,12 @@ public class ProjectsToOpenSearchScheduledTask {
     reinstateIndex();
     AGREEMENT_IDS.forEach(agreementId -> {
         final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
-        List<ProcurementProject> events = Collections.emptyList();
+        List<ProcurementProject> events = new ArrayList<>();
         int index = 0;
         int totalEvents = 0;
         do {
           try {
+            events.clear();
             events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
                     PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
             log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
