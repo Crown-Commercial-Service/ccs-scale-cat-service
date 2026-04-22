@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -49,9 +50,10 @@ public class ProjectsToOpenSearchScheduledTask {
   private final MiService miService;
   
   @Value("${config.oppertunities.published.batch.size: 80}")
-  private int bathcSize;
+  private int batchSize;
 
-  @Scheduled(cron = "${config.external.projects.sync.schedule}")
+  @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
+  //@Scheduled(cron = "${config.external.projects.sync.schedule}")
   @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask",
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
@@ -66,8 +68,8 @@ public class ProjectsToOpenSearchScheduledTask {
         do {
           try {
             events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
-                    PageRequest.of(index++, 100, Sort.by("project_id").ascending()));
-            log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), 100, index);
+                    PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
+            log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
             saveProjectDataAsBatches(agreementId, events, agreementDetails);
             totalEvents += events.size();
           } catch (Exception e) {
@@ -84,7 +86,7 @@ public class ProjectsToOpenSearchScheduledTask {
     log.info("saveProjectDataAsBatches for agreementId {}", agreementId);
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     List<List<ProcurementProject>> batches =
-        TendersAPIModelUtils.getBatches(new ArrayList<>(events), bathcSize);
+        TendersAPIModelUtils.getBatches(new ArrayList<>(events), batchSize);
     for (List<ProcurementProject> batch : batches) {
       mapToOpenSearch(agreementId, batch, eventSearchDataList, agreementDetail);
       retryableTendersDBDelegate.searchProjectSaveAll(eventSearchDataList);
