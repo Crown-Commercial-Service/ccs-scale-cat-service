@@ -73,11 +73,11 @@ public class ProjectsCSVGenerationScheduledTask {
   private int awardedBatchSize;
 
   @Value("${config.oppertunities.published.batch.size: 80}")
-  private int bathcSize;
+  private int batchSize;
 
   @Transactional
-  //@Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
-  @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
+  @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
+  //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
@@ -102,8 +102,8 @@ public class ProjectsCSVGenerationScheduledTask {
           do {
             try {
               events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
-                      PageRequest.of(index++, bathcSize, Sort.by("project_id").ascending()));
-              log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), bathcSize, index);
+                      PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
+              log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
               csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
                       "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
                       "Expected Contract Length", "Budget range", "Applications from SMEs",
@@ -119,7 +119,7 @@ public class ProjectsCSVGenerationScheduledTask {
           log.info("S3 Successfully fetch projects data from OpenSearch for agreementId {} size {}", agreementId, totalEvents);
         });
 
-      CompletableFuture.runAsync(() -> populateJaggaerFields(new ArrayList<>(csvDataList)));
+      populateJaggaerFields(csvDataList);
       populateCSVPrinter(csvDataList, csvPrinter);
 
       csvPrinter.flush();
