@@ -72,6 +72,9 @@ public class ProjectsCSVGenerationScheduledTask {
   @Value("${config.oppertunities.awarded.batch.size: 5}")
   private int awardedBatchSize;
 
+  @Value("${config.oppertunities.published.batch.size: 80}")
+  private int bathcSize;
+
   @Transactional
   //@Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
   @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
@@ -99,8 +102,8 @@ public class ProjectsCSVGenerationScheduledTask {
           do {
             try {
               events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
-                      PageRequest.of(index++, 100, Sort.by("project_id").ascending()));
-              log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), 100, index);
+                      PageRequest.of(index++, bathcSize, Sort.by("project_id").ascending()));
+              log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), bathcSize, index);
               csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
                       "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
                       "Expected Contract Length", "Budget range", "Applications from SMEs",

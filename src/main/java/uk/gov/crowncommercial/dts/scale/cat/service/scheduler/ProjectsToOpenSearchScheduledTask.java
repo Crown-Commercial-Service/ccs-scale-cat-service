@@ -66,8 +66,8 @@ public class ProjectsToOpenSearchScheduledTask {
         do {
           try {
             events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
-                    PageRequest.of(index++, 100, Sort.by("project_id").ascending()));
-            log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), 100, index);
+                    PageRequest.of(index++, bathcSize, Sort.by("project_id").ascending()));
+            log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), bathcSize, index);
             saveProjectDataAsBatches(agreementId, events, agreementDetails);
             totalEvents += events.size();
           } catch (Exception e) {
