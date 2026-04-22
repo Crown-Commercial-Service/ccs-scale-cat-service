@@ -52,7 +52,7 @@ public class ProjectsToOpenSearchScheduledTask {
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int batchSize;
 
-  @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.HOURS)
+  @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
   //@Scheduled(cron = "${config.external.projects.sync.schedule}")
   @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask",
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
