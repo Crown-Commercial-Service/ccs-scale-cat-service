@@ -5,28 +5,23 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.DATA_TEMPLAT
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
 
 import java.time.Instant;
-import java.util.Set;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
@@ -38,24 +33,28 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
  * and Jaggaer internal event code
  */
 @Entity
-@Table(name = "procurement_events")
+@Table(name = "procurement_stage_events")
 @Data
 @Slf4j
 @SuperBuilder
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"project","capabilityAssessmentSuppliers"})
-public class ProcurementEvent {
+@EqualsAndHashCode
+@IdClass(ProcurementStageEventId.class)
+public class ProcurementStageEvent {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "event_id")
     protected Integer id;
+
+    @Id
+    @Column(name = "stage_number")
+    Integer stageNumber;
+
+    @Column(name = "stage_description")
+    String stageDescription;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "project_id")
     ProcurementProject project;
-
-    @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    Set<SupplierSelection> capabilityAssessmentSuppliers;
 
     @Column(name = "ocds_authority_name")
     String ocdsAuthorityName;
@@ -74,15 +73,6 @@ public class ProcurementEvent {
 
     @Column(name = "event_type")
     String eventType;
-
-    @Column(name = "down_selected_suppliers_ind")
-    Boolean downSelectedSuppliers;
-
-    @Column(name = "refresh_suppliers_ind")
-    Boolean refreshSuppliers;
-
-    @Column(name = "assessment_supplier_target")
-    Integer assessmentSupplierTarget;
 
     @Column(name = "assessment_id")
     Integer assessmentId;
@@ -124,9 +114,6 @@ public class ProcurementEvent {
     @Column(name = "procurement_template_payload", insertable = false, updatable = false)
     String procurementTemplatePayloadRaw;
 
-    @Column(name = "supplier_selection_justification")
-    String supplierSelectionJustification;
-
     @Column(name = "buyer_exited")
     Boolean buyerExited;
 
@@ -142,16 +129,36 @@ public class ProcurementEvent {
     @Column(name = "award_url")
     String awardUrl;
 
-    @ToString.Exclude
-    @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    Set<DocumentUpload> documentUploads;
-
     public Integer getId() {
         return id;
     }
 
+    public void setId(final Integer id) {
+        this.id = id;
+    }
+
+    public String getOcdsAuthorityName() {
+        return ocdsAuthorityName;
+    }
+
+    public String getOcidPrefix() {
+        return ocidPrefix;
+    }
+
     public String getEventID() {
       return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
+    }
+
+    public void setStageNumber(final Integer stageNumber) {
+        this.stageNumber = stageNumber;
+    }
+
+    public Integer getStageNumber() {
+        return stageNumber;
+    }
+
+    public void setStageDescription(final String stageDescription) {
+        this.stageDescription = stageDescription;
     }
 
     public DataTemplate getProcurementTemplatePayload() {

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.NOT_ALLOWED_EVENTS_AFTER_AWARD;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -50,18 +51,29 @@ public class ValidationService {
    * @param eventId
    * @return procurement event entity
    */
-  public ProcurementEvent validateProjectAndEventIds(final Integer projectId,
-      final String eventId) {
+  public ProcurementEvent validateProjectAndEventIds(final Integer projectId, final String eventId, final Integer stageNumber) {
     var eventOCID = validateEventId(eventId);
 
     // Get event from tenders DB to obtain Jaggaer project id
-    var event = retryableTendersDBDelegate
-        .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-            Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),
-            eventOCID.getPublisherPrefix())
-        .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
+    ProcurementEvent event = null;
+
+    if (null != stageNumber && stageNumber > 0) {
+        // we ARE in multi-stage
+        event = retryableTendersDBDelegate
+                .findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
+                    Integer.valueOf(eventOCID.getInternalId()), stageNumber, eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
+                .orElse(null);
+    }
+
+    if (null == event) {
+        event = retryableTendersDBDelegate
+                .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
+                    Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
+                .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
+    }
 
     log.debug(LOG_TAG + "Saved event to tender db. event: {}", event);
+
     // Validate projectId is correct
     if (!event.getProject().getId().equals(projectId)) {
       log.error("Project '" + projectId + "' is not valid for event '" + eventId + "'");

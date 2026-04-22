@@ -46,7 +46,7 @@ public class DocumentTemplateService {
    */
   public Collection<DocumentSummary> getTemplatesByEventType(final Integer procId,
       final String eventId) {
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     return getTemplates(retryableTendersDBDelegate.findByEventType(event.getEventType()),
         String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()));
   }
@@ -60,7 +60,7 @@ public class DocumentTemplateService {
    */
   public Collection<DocumentSummary> getTemplatesByAgreementAndLot(final Integer procId,
       final String eventId) {
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     return getTemplates(
         retryableTendersDBDelegate
             .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
@@ -79,7 +79,7 @@ public class DocumentTemplateService {
    */
   public Collection<DocumentSummary> getTemplatesByEventStage(final Integer procId,
       final String eventId, final String eventStage) {
-    validationService.validateProjectAndEventIds(procId, eventId);
+    validationService.validateProjectAndEventIds(procId, eventId, null);
     return getTemplates(retryableTendersDBDelegate.findByEventStage(eventStage),
         SCORING_TEMPLATE_DESCRIPTION);
   }
@@ -119,7 +119,7 @@ public class DocumentTemplateService {
   public DocumentAttachment getTemplate(final Integer procId, final String eventId,
       final DocumentKey documentKey) {
 
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var templateResource =
         documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -140,7 +140,7 @@ public class DocumentTemplateService {
   public DocumentAttachment getDraftDocument(final Integer procId, final String eventId,
       final DocumentKey documentKey, final boolean isStageTwoEvent) {
 
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var draftDocument = docGenService.generateDocument(event, documentTemplate, isStageTwoEvent, Boolean.FALSE);
     var fileName = getFileName(event, documentKey);
