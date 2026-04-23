@@ -64,7 +64,7 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String ODS_FILE_NAME = "opportunity_data.ods";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
-  private static final List<String> AGREEMENT_IDS = List.of("RM1043.9", "RM1043.8");
+  private static final List<String> AGREEMENT_IDS = List.of("RM1043.8");
 
   @Value("${config.oppertunities.published.batch.size: 20}")
   private int publishedBatchSize;
@@ -76,8 +76,8 @@ public class ProjectsCSVGenerationScheduledTask {
   private int batchSize;
 
   @Transactional
-  //@Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
-  @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
+  @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
+  //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
@@ -91,7 +91,13 @@ public class ProjectsCSVGenerationScheduledTask {
         var tempFile = Files.createTempFile("temp", ".csv");
         var writer = new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
         writer.write('\ufeff');
-        CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+        final CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+        csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
+              "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
+              "Expected Contract Length", "Budget range", "Applications from SMEs",
+              "Applications from Large Organisations", "Total Organisations", "Status",
+              "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
+              "Clarification questions", "Employment status");
         List<CSVData> csvDataList = new ArrayList<>();
         // NCAS-1314: Download Opportunity Search Results
         AGREEMENT_IDS.forEach(agreementId -> {
@@ -105,12 +111,6 @@ public class ProjectsCSVGenerationScheduledTask {
               events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
                       PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
               log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
-              csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
-                      "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
-                      "Expected Contract Length", "Budget range", "Applications from SMEs",
-                      "Applications from Large Organisations", "Total Organisations", "Status",
-                      "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
-                      "Clarification questions", "Employment status");
               populateCSVData(agreementDetails, events, csvDataList);
               totalEvents += events.size();
             } catch (Exception e) {
@@ -187,6 +187,7 @@ public class ProjectsCSVGenerationScheduledTask {
   }
 
   private void populateJaggaerFields(List<CSVData> csvDataList) {
+    log.info("populateJaggaerFields()");
     Pair<List<CSVData>, List<CSVData>> splitAwardedProjects = splitAwardedProjects(csvDataList);
     List<List<CSVData>> supplierFetchList = TendersAPIModelUtils.getBatches(splitAwardedProjects.getLeft(), awardedBatchSize);
     List<List<CSVData>> published = TendersAPIModelUtils.getBatches(splitAwardedProjects.getRight(), publishedBatchSize);
@@ -202,6 +203,7 @@ public class ProjectsCSVGenerationScheduledTask {
   }
 
   private void populateCSVPrinter(List<CSVData> csvDataList, CSVPrinter csvPrinter) {
+    log.info("populateCSVPrinter()");
     //removed broken projects
     csvDataList = csvDataList.stream().filter(e -> e.getStatus() != null).toList();
     for (CSVData csvData : csvDataList) {
