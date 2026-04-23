@@ -64,7 +64,7 @@ public class ProjectsCSVGenerationScheduledTask {
   public static final String ODS_FILE_NAME = "opportunity_data.ods";
   public static final String CSV_FILE_PREFIX = "/Oppertunity/";
   public static final String PROJECT_UI_LINK_KEY = "config.external.s3.oppertunities.ui.link";
-  private static final List<String> AGREEMENT_IDS = List.of("RM1043.8");
+  private static final List<String> AGREEMENT_IDS = List.of("RM1043.9", "RM1043.8");
 
   @Value("${config.oppertunities.published.batch.size: 20}")
   private int publishedBatchSize;
@@ -75,7 +75,6 @@ public class ProjectsCSVGenerationScheduledTask {
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int batchSize;
 
-  @Transactional
   @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
   //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
