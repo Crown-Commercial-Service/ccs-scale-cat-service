@@ -76,8 +76,8 @@ public class ProjectsCSVGenerationScheduledTask {
   private int batchSize;
 
   @Transactional
-  @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
-  //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
+  //@Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
+  @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
