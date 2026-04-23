@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -42,8 +41,6 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Component
@@ -75,9 +72,7 @@ public class ProjectsCSVGenerationScheduledTask {
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int batchSize;
 
-  @Transactional
-  @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
-  //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
+  @Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void generateCSV() {
@@ -91,7 +86,13 @@ public class ProjectsCSVGenerationScheduledTask {
         var tempFile = Files.createTempFile("temp", ".csv");
         var writer = new PrintWriter(Files.newBufferedWriter(tempFile, StandardOpenOption.WRITE));
         writer.write('\ufeff');
-        CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+        final CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
+        csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
+              "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
+              "Expected Contract Length", "Budget range", "Applications from SMEs",
+              "Applications from Large Organisations", "Total Organisations", "Status",
+              "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
+              "Clarification questions", "Employment status");
         List<CSVData> csvDataList = new ArrayList<>();
         // NCAS-1314: Download Opportunity Search Results
         AGREEMENT_IDS.forEach(agreementId -> {
@@ -105,12 +106,6 @@ public class ProjectsCSVGenerationScheduledTask {
               events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
                       PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
               log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
-              csvPrinter.printRecord("ID", "Opportunity", "Link", "Framework", "Category", "Specialist",
-                      "Organization Name", "Buyer Domain", "Location Of The Work", "Published At", "Open For",
-                      "Expected Contract Length", "Budget range", "Applications from SMEs",
-                      "Applications from Large Organisations", "Total Organisations", "Status",
-                      "Winning supplier", "Size of supplier", "Contract amount", "Contract start date",
-                      "Clarification questions", "Employment status");
               populateCSVData(agreementDetails, events, csvDataList);
               totalEvents += events.size();
             } catch (Exception e) {
@@ -187,6 +182,7 @@ public class ProjectsCSVGenerationScheduledTask {
   }
 
   private void populateJaggaerFields(List<CSVData> csvDataList) {
+    log.info("populateJaggaerFields()");
     Pair<List<CSVData>, List<CSVData>> splitAwardedProjects = splitAwardedProjects(csvDataList);
     List<List<CSVData>> supplierFetchList = TendersAPIModelUtils.getBatches(splitAwardedProjects.getLeft(), awardedBatchSize);
     List<List<CSVData>> published = TendersAPIModelUtils.getBatches(splitAwardedProjects.getRight(), publishedBatchSize);
@@ -202,6 +198,7 @@ public class ProjectsCSVGenerationScheduledTask {
   }
 
   private void populateCSVPrinter(List<CSVData> csvDataList, CSVPrinter csvPrinter) {
+    log.info("populateCSVPrinter()");
     //removed broken projects
     csvDataList = csvDataList.stream().filter(e -> e.getStatus() != null).toList();
     for (CSVData csvData : csvDataList) {

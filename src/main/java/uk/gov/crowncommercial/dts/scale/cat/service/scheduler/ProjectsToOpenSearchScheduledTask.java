@@ -2,7 +2,6 @@ package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -52,8 +51,7 @@ public class ProjectsToOpenSearchScheduledTask {
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int batchSize;
 
-  @Scheduled(fixedDelay = 24, timeUnit = TimeUnit.HOURS)
-  //@Scheduled(cron = "${config.external.projects.sync.schedule}")
+  @Scheduled(cron = "${config.external.projects.sync.schedule}")
   @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask",
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
