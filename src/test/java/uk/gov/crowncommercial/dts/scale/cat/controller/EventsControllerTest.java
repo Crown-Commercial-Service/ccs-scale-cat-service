@@ -223,7 +223,7 @@ class EventsControllerTest {
   void getEvent_200_OK() throws Exception {
 
     var eventDetail = new EventDetail();
-    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID)).thenReturn(eventDetail);
+    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID, null)).thenReturn(eventDetail);
 
     mockMvc
         .perform(get(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
@@ -232,7 +232,7 @@ class EventsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
     // TODO: Verify content
 
-    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID);
+    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID, null);
   }
 
   @Test
@@ -372,7 +372,7 @@ class EventsControllerTest {
 
   @Test
   void deleteEvent_200_OK() throws Exception {
-    mockMvc.perform(delete(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
+    mockMvc.perform(delete(EVENTS_PATH + "/{eventID}/stageCount/{totalNumberOfStages}", PROC_PROJECT_ID, EVENT_ID, 0)
                     .with(validJwtReqPostProcessor)
                     .contentType(APPLICATION_JSON))
             .andDo(print())
@@ -380,7 +380,7 @@ class EventsControllerTest {
             .andExpect(jsonPath("$").value("OK"));
 
     verify(procurementEventService, times(1))
-            .deleteEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+            .deleteEvent(PROC_PROJECT_ID, EVENT_ID, 0, PRINCIPAL);
   }
 
   @Test

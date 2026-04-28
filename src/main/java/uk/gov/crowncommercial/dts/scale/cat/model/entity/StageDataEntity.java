@@ -56,4 +56,8 @@ public class StageDataEntity {
   @OrderBy("stage_number ASC")
   @JoinColumn(name = "event_id", referencedColumnName="event_id")
   private List<StageEventEntity> stageEvents;
+
+  public List<StageEventEntity> getStageEvents() {
+      return stageEvents;
+  }
 }

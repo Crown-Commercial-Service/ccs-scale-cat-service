@@ -98,7 +98,7 @@ public class EventTransitionService {
             .resolveBuyerUserProfile(principal)
             .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
             .getUserId();
-    var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
 
     if (terminatingEvent.isTendersDBOnly()) {
       updateDbEvent(terminatingEvent, principal, type.name(), cancellationReason, cancellationReasonDetail);

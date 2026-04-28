@@ -134,7 +134,7 @@ public class ProcurementEventService implements EventService {
         // Fetch the event specified, and then trigger completion
         log.debug("Complete Event {}", eventId);
 
-        ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId);
+        ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId, null);
         if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(eventModel.getEventType()))) {
             new TwoStageEventService().markComplete(retryableTendersDBDelegate, eventModel);
         } else {
@@ -506,14 +506,14 @@ public class ProcurementEventService implements EventService {
      * @param eventId
      * @return the converted Tender object
      */
-    public EventDetail getEvent(final Integer projectId, final String eventId) {
+    public EventDetail getEvent(final Integer projectId, final String eventId, final Integer stageNumber) {
         log.debug("About to validate project and eventId");
-        var event = validationService.validateProjectAndEventIds(projectId, eventId);
+        var event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
         log.debug("Validated project and eventId successfully");
         // Try to get RFX data, but handle cases where it might not be available (e.g., closed events)
         ExportRfxResponse exportRfxResponse = null;
         RfxSetting rfxSetting = null;
-        
+
         try {
             if (event.getExternalEventId() != null) {
                 log.debug("Let's call Jaggaer and get single rfx");
@@ -528,7 +528,7 @@ public class ProcurementEventService implements EventService {
         log.debug("Successfully called Jaggaer and get single rfx");
 
         return tendersAPIModelUtils.buildEventDetail(rfxSetting, event,
-                event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, true)
+                event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, stageNumber, true)
                         : Collections.emptySet());
     }
 
@@ -539,9 +539,9 @@ public class ProcurementEventService implements EventService {
      * @param eventId
      * @return the converted Tender object
      */
-    public ProcurementEvent getEventNoJaggaer(final Integer projectId, final String eventId) {
+    public ProcurementEvent getEventNoJaggaer(final Integer projectId, final String eventId, final Integer stageNumber) {
         log.debug("About to validate project and eventId");
-        var event = validationService.validateProjectAndEventIds(projectId, eventId);
+        var event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
         log.debug("Validated project and eventId successfully");
 
         return event;
@@ -554,12 +554,20 @@ public class ProcurementEventService implements EventService {
      * @param eventId
      * @return the converted Tender object
      */
-    public boolean saveEventPayload(final Integer projectId, final String eventId, final JsonNode payload) {
+    public boolean saveEventPayload(final Integer projectId, final String eventId, final Integer stageNumber, final JsonNode payload) {
         log.debug("About to validate eventId");
 
         var eventOCID = validationService.validateEventId(eventId);
 
-        boolean updateSuccess = retryableTendersDBDelegate.saveEventPayloadByIdAndAuthorityAndPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), payload);
+        boolean updateSuccess = false;
+
+        if (null == stageNumber || 0 == stageNumber) {
+            // we are NOT in multi-stage
+            updateSuccess = retryableTendersDBDelegate.saveEventPayloadByIdAndAuthorityAndPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), payload);
+        } else {
+            // we ARE in multi-stage
+            updateSuccess = retryableTendersDBDelegate.saveEventPayloadByIdAndStageNumberAndAuthorityAndPrefix(Integer.valueOf(eventOCID.getInternalId()), stageNumber, eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), payload);
+        }
 
         if (updateSuccess) {
             log.debug("Validated eventId successfully and saved payload");
@@ -577,13 +585,13 @@ public class ProcurementEventService implements EventService {
      * @param eventId
      * @return the converted Tender object
      */
-    public EventDetail getEventReview(final Integer projectId, final String eventId) {
+    public EventDetail getEventReview(final Integer projectId, final String eventId, final Integer stageNumber) {
         // Grab the event as its core RFX format
-        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
+        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
         ExportRfxResponse exportRfxResponse = jaggaerService.getSingleRfx(event.getExternalEventId());
 
         // The main difference between this and getEvent is that we always want it to provide us with the eval criteria - it shouldn't be suppressed based on event type
-        return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event, criteriaService.getEvalCriteria(projectId, eventId, true));
+        return tendersAPIModelUtils.buildEventDetail(exportRfxResponse.getRfxSetting(), event, criteriaService.getEvalCriteria(projectId, eventId, stageNumber, true));
     }
 
     /**
@@ -601,7 +609,7 @@ public class ProcurementEventService implements EventService {
 
         log.debug("Update Event {}", updateEvent);
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
         var exportRfxResponse = getSingleRfx(event.getExternalEventId());
 
         if (updateEvent.getEventType() != null) {
@@ -766,7 +774,7 @@ public class ProcurementEventService implements EventService {
 
         log.debug("Get suppliers for event '{}'", eventId);
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
@@ -792,7 +800,7 @@ public class ProcurementEventService implements EventService {
     public OrganizationReference1 getSupplierInfo(final Integer procId, final String eventId, final String supplierId) {
 
         log.debug("Get suppliers for event '{}'", eventId);
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         log.debug("Event {} is retrieved from Jaggaer {}", event.getId(), event.getEventType());
         return getSupplierInfoFromJaggaer(supplierId);
@@ -815,7 +823,7 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public EventSuppliers addSuppliers(final Integer procId, final String eventId, final EventSuppliers eventSuppliers, final boolean overwrite, final String principal) {
         // Grab the existing Supplier Store for this event
-        ProcurementEvent event = validationService.validateProjectAndEventIds(procId, eventId);
+        ProcurementEvent event = validationService.validateProjectAndEventIds(procId, eventId, null);
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
         // Set refresh suppliers to false and then save the event
@@ -841,7 +849,7 @@ public class ProcurementEventService implements EventService {
 
         log.debug("Delete supplier '{}' from event '{}'", organisationId, eventId);
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
@@ -881,7 +889,7 @@ public class ProcurementEventService implements EventService {
     public Collection<DocumentSummary> getDocumentSummaries(final Integer procId,
                                                             final String eventId) {
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         return event.getDocumentUploads().stream().map(tendersAPIModelUtils::buildDocumentSummary)
                 .collect(Collectors.toList());
@@ -893,7 +901,7 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public ResponseSummary getSupplierResponses(final Integer procId, final String eventId) {
         // First validate the event and then fetch its details from Jaegger
-        ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
         ExportRfxResponse exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
 
         // Now process any responses received within the last round of responses
@@ -985,7 +993,7 @@ public class ProcurementEventService implements EventService {
                     + " bytes. Maximum allowed upload size is: " + documentConfig.getMaxSize() + " bytes");
         }
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         // Validate total file size
         var totalEventFileSize =
@@ -1016,7 +1024,7 @@ public class ProcurementEventService implements EventService {
 
         log.debug("Get Document {} from Event {}", documentId, eventId);
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
         var documentUpload = findDocumentUploadInEvent(event, documentId);
         var documentKey = DocumentKey.fromString(documentId);
         log.debug("Retrieving Document {}", documentKey.getFileName());
@@ -1038,7 +1046,7 @@ public class ProcurementEventService implements EventService {
     public void deleteDocument(final Integer procId, final String eventId, final String documentId) {
         log.debug("Delete Document {} from Event {}", documentId, eventId);
 
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
         var documentUpload = findDocumentUploadInEvent(event, documentId);
         var documentKey = DocumentKey.fromString(documentId);
         log.debug("Deleting Document {}", documentKey.getFileName());
@@ -1061,7 +1069,7 @@ public class ProcurementEventService implements EventService {
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
                 .getUserId();
 
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
         var exportRfxResponse = getRfxWithSuppliers(procurementEvent.getExternalEventId());
         var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
                 .get(exportRfxResponse.getRfxSetting().getStatusCode());
@@ -1084,7 +1092,7 @@ public class ProcurementEventService implements EventService {
 
     @Transactional
     public void publishDOS7MIEvent(final Integer procId, final String eventId) {
-        final ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        final ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
         procurementEvent.setPublishDate(Instant.now());
         retryableTendersDBDelegate.save(procurementEvent);
     }
@@ -1097,17 +1105,25 @@ public class ProcurementEventService implements EventService {
      * @param procId
      * @param eventId
      */
-    public void deleteEvent(final Integer procId, final String eventId, final String principal) {
+    public void deleteEvent(final Integer procId, final String eventId, final Integer totalNumberOfStages, final String principal) {
         log.debug("Delete event '{}' from project '{}'", eventId, procId);
 
         // Use validation service to confirm the given Project and Event exists, otherwise error thrown to the calling client
         // Then convert Event ID into usable ocid format
-        ProcurementEvent event = validationService.validateProjectAndEventIds(procId, eventId);
+        ProcurementEvent event = validationService.validateProjectAndEventIds(procId, eventId, null);
         OCID eventOCID = validationService.validateEventId(eventId);
 
         if (event != null && eventOCID != null) {
             // Delete the event in the database. Returns long (integer) for number of rows updated, which will be 1 or 0 depending on if a successful deletion or not respectively
             retryableTendersDBDelegate.deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
+
+            if (null != totalNumberOfStages && totalNumberOfStages > 0) {
+                // for multi-stage, we need to delete the stage specific entries also
+                for (int stageNumber=1; stageNumber <= totalNumberOfStages; stageNumber++) {
+                    // Delete the event in the database. Returns long (integer) for number of rows updated, which will be 1 or 0 depending on if a successful deletion or not respectively
+                    retryableTendersDBDelegate.deleteProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(Integer.valueOf(eventOCID.getInternalId()), stageNumber, eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
+                }
+            }
         } else {
             throw new ResourceNotFoundException("Event cannot be found.");
         }
@@ -1300,7 +1316,7 @@ public class ProcurementEventService implements EventService {
         log.info("saveExitAwardData invoked for event {} on behalf of principal: {}", eventId, principal);
 
         // Validate event exists and user has access
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         // Update event with exit award data
         event.setBuyerExited(true);
@@ -1507,7 +1523,7 @@ public class ProcurementEventService implements EventService {
                                                     final Integer currentStage,
                                                     final String principal) {
         log.debug("Export all Documents from Event {}", eventId);
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
         var exportRfxResponse = jaggaerService.getRfxWithWithBuyerAndSellerAttachments(event.getExternalEventId());
         var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
                 .get(exportRfxResponse.getRfxSetting().getStatusCode());
@@ -1574,7 +1590,7 @@ public class ProcurementEventService implements EventService {
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
                 .getUserId();
 
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
         var rfxResponse = getSingleRfx(procurementEvent.getExternalEventId());
         var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
                 .get(rfxResponse.getRfxSetting().getStatusCode());
@@ -1635,7 +1651,7 @@ public class ProcurementEventService implements EventService {
     private List<SupplierAttachmentResponse> getSupplierAttachmentResponses(final String profile,
                                                                             final Integer procId, final String eventId, final String supplierId) {
 
-        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+        var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         var exportRfxResponse = jaggaerService.getRfxWithSuppliersOffersAndResponseCounters(procurementEvent.getExternalEventId());
         var supplierList = exportRfxResponse.getSuppliersList();
@@ -1777,7 +1793,7 @@ public class ProcurementEventService implements EventService {
                                 final String principal) {
         var user = userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
         awardService.getAwardOrPreAwardDetails(procId, eventId, AwardState.AWARD);
         event.setTenderStatus(COMPLETE_STATUS);
         event.setUpdatedBy(principal);
@@ -1799,7 +1815,7 @@ public class ProcurementEventService implements EventService {
     public Contract getContract(final Integer procId, final String eventId, final String principal) {
         userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
-        var event = validationService.validateProjectAndEventIds(procId, eventId);
+        var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
         // Check if event has completed status
         var eventStatus = event.getTenderStatus();
@@ -1854,7 +1870,7 @@ public class ProcurementEventService implements EventService {
     }
     
     public void startEvaluation(final String profile, final Integer procId, final String eventId) {
-      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+      var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
       var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
           .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
       jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());

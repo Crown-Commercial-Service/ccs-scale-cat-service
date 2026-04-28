@@ -126,25 +126,47 @@ public class EventsController extends AbstractRestController {
       var principal = getPrincipalFromJwt(authentication);
       log.info("getEvent invoked on behalf of principal: {}", principal);
 
-      return procurementEventService.getEvent(procId, eventId);
+      return procurementEventService.getEvent(procId, eventId, null);
     } catch(Exception ex) {
       log.error("Failed to get event details. error: {}", ex.getMessage());
     }
 
     return null;
-
   }
 
-  @GetMapping("/{eventID}/lite")
+  @GetMapping("/{eventID}/stage/{stageNumber}")
   @TrackExecutionTime
-  public String getEventNoJaggaer(@PathVariable("procID") final Integer procId,
-      @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+  public EventDetail getEventWithStageNumber(
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("stageNumber") final Integer stageNumber,
+      final JwtAuthenticationToken authentication) {
+
+    try {
+      var principal = getPrincipalFromJwt(authentication);
+      log.info("getEvent invoked on behalf of principal: {}, stageNumber: {}", principal, stageNumber);
+
+      return procurementEventService.getEvent(procId, eventId, stageNumber);
+    } catch(Exception ex) {
+      log.error("Failed to get event details. error: {}", ex.getMessage());
+    }
+
+    return null;
+  }
+
+  @GetMapping("/{eventID}/stage/{stageNumber}/lite")
+  @TrackExecutionTime
+  public String getEventNoJaggaer(
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("stageNumber") final Integer stageNumber,
+      final JwtAuthenticationToken authentication) {
 
     try {
       var principal = getPrincipalFromJwt(authentication);
       log.info("getEvent invoked on behalf of principal: {}", principal);
 
-      var event = procurementEventService.getEventNoJaggaer(procId, eventId);
+      var event = procurementEventService.getEventNoJaggaer(procId, eventId, stageNumber);
 
       return event.getProcurementTemplatePayloadRaw();
     } catch(Exception ex) {
@@ -155,16 +177,16 @@ public class EventsController extends AbstractRestController {
 
   }
 
-  @PutMapping("/{eventID}/lite")
+  @PutMapping("/{eventID}/stage/{stageNumber}/lite")
   @TrackExecutionTime
-  public String saveEventPayload(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @RequestBody JsonNode payload, final JwtAuthenticationToken authentication) {
+  public String saveEventPayload(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("stageNumber") final Integer stageNumber, @RequestBody JsonNode payload, final JwtAuthenticationToken authentication) {
       try {
           var principal = getPrincipalFromJwt(authentication);
           log.info("PUT event invoked by principal: {}", principal);
 
           log.info("Received payload: {}", payload.toPrettyString());
 
-          boolean status = procurementEventService.saveEventPayload(procId, eventId, payload);
+          boolean status = procurementEventService.saveEventPayload(procId, eventId, stageNumber, payload);
 
           if (status) {
             return "OK";
@@ -184,7 +206,17 @@ public class EventsController extends AbstractRestController {
     log.info("getEventReview invoked on behalf of principal: {}", principal);
 
     // Fetch the event review model
-    return procurementEventService.getEventReview(procId, eventId);
+    return procurementEventService.getEventReview(procId, eventId, null);
+  }
+
+  @GetMapping("/{eventID}/review/stage/{stageNumber}")
+  @TrackExecutionTime
+  public EventDetail getEventReviewWithStageNumber(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("stageNumber") final Integer stageNumber, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getEventReview invoked on behalf of principal: {}, stageNumber: {}", principal, stageNumber);
+
+    // Fetch the event review model
+    return procurementEventService.getEventReview(procId, eventId, stageNumber);
   }
 
   @PutMapping("/{eventID}")
@@ -598,13 +630,13 @@ public class EventsController extends AbstractRestController {
     return procurementEventService.saveExitAwardData(procId, eventId, exitAwardRequest, principal);
   }
 
-  @DeleteMapping("/{eventID}")
+  @DeleteMapping("/{eventID}/stageCount/{totalNumberOfStages}")
   @TrackExecutionTime
-  public StringValueResponse deleteEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+  public StringValueResponse deleteEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("totalNumberOfStages") final Integer totalNumberOfStages, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteSupplier invoked on behalf of principal: {}", principal);
 
-    procurementEventService.deleteEvent(procId, eventId, principal);
+    procurementEventService.deleteEvent(procId, eventId, totalNumberOfStages, principal);
 
     return new StringValueResponse("OK");
   }

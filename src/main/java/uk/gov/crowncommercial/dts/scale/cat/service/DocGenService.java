@@ -101,7 +101,7 @@ public class DocGenService {
    */
   public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isLastStageEvent) {
     // Start by validating the event passed into us is good to use
-    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
 
     if (procurementEvent != null && procurementEvent.getProject() != null) {
       // We've got the event, now grab the data we need from it and then use that to fetch the list of documents needed for it
