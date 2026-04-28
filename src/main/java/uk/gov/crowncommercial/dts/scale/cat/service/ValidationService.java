@@ -20,6 +20,11 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
@@ -66,10 +71,62 @@ public class ValidationService {
     }
 
     if (null == event) {
+        boolean needToDeleteAnswers = (null != stageNumber && stageNumber > 0);
+
         event = retryableTendersDBDelegate
                 .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
                     Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
                 .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
+
+        if (needToDeleteAnswers) {
+            // we tried to retrieve the template associated with a multi-stage event
+            // but we don't have it, therefore we are now using the 'normal' non-multi-stage
+            // event to generate a copy; so we need to wipe the original answers before
+            // we return it
+
+            final DataTemplate dataTemplate = event.getProcurementTemplatePayload();
+
+            if (null != dataTemplate && null != dataTemplate.getCriteria()) {
+
+                boolean updated = false;
+
+                for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
+
+                    if (null == criteria || null == criteria.getRequirementGroups()) {
+                        continue;
+                    }
+
+                    for (final RequirementGroup requirementGroup: criteria.getRequirementGroups()) {
+
+                        if (null == requirementGroup || null == requirementGroup.getOcds() || null == requirementGroup.getOcds().getRequirements()) {
+                            continue;
+                        }
+
+                        for (final Requirement requirement: requirementGroup.getOcds().getRequirements()) {
+
+                            if (null == requirement || null == requirement.getNonOCDS() || null == requirement.getNonOCDS().getOptions()) {
+                                continue;
+                            }
+
+                            if (!"Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) &&
+                                !"Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+                                continue;
+                            }
+
+                            for (final Option option: requirement.getNonOCDS().getOptions()) {
+                                option.setValue("");
+                                option.setSelect(false);
+                                updated = true;
+                            }
+                        }
+                    }
+                }
+
+                if (updated) {
+                    event.setProcurementTemplatePayload(dataTemplate);
+                }
+            }
+        }
     }
 
     log.debug(LOG_TAG + "Saved event to tender db. event: {}", event);
@@ -77,8 +134,7 @@ public class ValidationService {
     // Validate projectId is correct
     if (!event.getProject().getId().equals(projectId)) {
       log.error("Project '" + projectId + "' is not valid for event '" + eventId + "'");
-      throw new ResourceNotFoundException(
-          "Project '" + projectId + "' is not valid for event '" + eventId + "'");
+      throw new ResourceNotFoundException("Project '" + projectId + "' is not valid for event '" + eventId + "'");
     }
 
     return event;
