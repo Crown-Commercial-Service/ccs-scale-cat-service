@@ -1819,7 +1819,7 @@ public class ProcurementEventService implements EventService {
 
         // Check if event has completed status
         var eventStatus = event.getTenderStatus();
-        if (!eventStatus.equals(COMPLETE_STATUS)) {
+        if (!COMPLETE_STATUS.equals(eventStatus)) {
             return null;
         }
 
