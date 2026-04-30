@@ -49,6 +49,9 @@ public class ValidationService {
 
   private static final Period FOUR_YEAR_PERIOD = Period.parse("P4Y");
 
+  private static final String COP = "Conditions of participation";
+  private static final String AWARD_CRITERIA = "Award criteria";
+
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
    *
@@ -92,7 +95,11 @@ public class ValidationService {
 
                 for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
 
-                    if (null == criteria || null == criteria.getRequirementGroups()) {
+                    if (null == criteria ||
+                        null == criteria.getRequirementGroups() ||
+                        null == criteria.getDescription() ||
+                        (!COP.equals(criteria.getDescription()) && !AWARD_CRITERIA.equals(criteria.getDescription()))
+                       ) {
                         continue;
                     }
 
