@@ -15,7 +15,11 @@ public enum FieldMapping {
     COP_DOC("COND_OF_PART", "«cop_doc»", "Would the supplier need to attach any document?", "«cop_group_name»"),
     COP_DOC_DES("COND_OF_PART", "«cop_doc_des»", "What type of document do you want the supplier to attach?", "«cop_group_name»"),
 
-    // Award criteria table
+    // New Multi-Stage Anchor
+    STAGE_GROUP_DETAILS("STAGE_DESC", "«stage_description»", "STAGE_DESCRIPTION", "«stage_group»"),
+    STAGE_TOTAL("STAGE_DESC", "«total_stages»", "STAGE_TOTAL", "«stage_group»"),
+    STAGE_CURRENT_STAGE("STAGE_DESC", "«current_stage»", "STAGE_NUMBER", "«stage_group»"),
+
     AC_QUESTION("AWARD_CRITERIA", "«ac_question»", "Enter your question", "«ac_group_name»");
 
     private final String tableName;

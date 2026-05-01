@@ -4,6 +4,7 @@ import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudie
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -752,53 +753,56 @@ public class DocGenService {
 
     /**
      * Multi stages code
+     * Main entry point for multi-stage table generation.
+     * Collects all payloads and triggers the merged document generation.
      */
-
     private void handleMultiStageTableGroups(ProcurementEvent procurementEvent,
                                              DocumentTemplateSource templateSource,
                                              TextDocument textODT) {
-
         StagesRead stageInfo = stageService.getStagesForEventId(procurementEvent.getEventID());
-        if (stageInfo == null || stageInfo.getNumberOfStages() <= 0) {
-            return;
-        }
+        if (stageInfo == null || stageInfo.getNumberOfStages() <= 0) return;
 
         Integer firstEventId = retryableTendersDBDelegate.findEventIdOfFirstStageForMultiStageEvent(
                 procurementEvent.getEventID(), stageInfo.getNumberOfStages());
 
         int totalStages = stageInfo.getNumberOfStages();
-        List<String> allStagePayloads = new ArrayList<>();
+        // Use a list of Maps to store payload + metadata together
+        List<Map<String, Object>> stageDataList = new ArrayList<>();
 
-        // Collect all raw JSON payloads from the database into a list
         for (int i = 1; i <= totalStages; i++) {
             retryableTendersDBDelegate.findByIdAndStageNumber(firstEventId, i)
                     .ifPresent(stageEvent -> {
-                        if (StringUtils.hasText(stageEvent.getProcurementTemplatePayloadRaw())) {
-                            allStagePayloads.add(stageEvent.getProcurementTemplatePayloadRaw());
+                        String payload = stageEvent.getProcurementTemplatePayloadRaw();
+                        if (StringUtils.hasText(payload)) {
+                            Map<String, Object> data = new HashMap<>();
+                            data.put("payload", payload);
+                            data.put("stageNumber", stageEvent.getStageNumber());
+                            data.put("stageDescription", stageEvent.getStageDescription());
+                            stageDataList.add(data);
                         }
                     });
         }
 
-        // Merge payloads into a single OCDS structure (Testable logic)
-        if (!allStagePayloads.isEmpty()) {
-            String mergedJson = mergeStageJsonPayloads(allStagePayloads);
-
-            // Call the standard generator ONCE with the merged data
+        if (!stageDataList.isEmpty()) {
+            // Pass the enriched list instead of just Strings
+            String mergedJson = mergeStageJsonPayloads(stageDataList);
             tableGroupGenerator.fillTableData(mergedJson, templateSource, textODT);
         }
     }
 
-
+    /**
+     * Merges multiple stage JSONs using the first one as a foundation template.
+     */
     @SneakyThrows
-    public String mergeStageJsonPayloads(List<String> stagePayloads) {
-        if (stagePayloads == null || stagePayloads.isEmpty()) return "";
+    public String mergeStageJsonPayloads(List<Map<String, Object>> stageDataList) {
+        if (stageDataList == null || stageDataList.isEmpty()) return "";
 
-        // 1. Use the first payload as the Foundation
-        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree(stagePayloads.get(0));
+        // Use the first entry as Foundation
+        Map<String, Object> stage1Data = stageDataList.getFirst();
+        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree((String) stage1Data.get("payload"));
         ArrayNode baseCriteria = (ArrayNode) baseRoot.get("criteria");
         ArrayNode targetRequirementGroups = null;
 
-        // Find Criterion 2 in the foundation
         for (JsonNode criterion : baseCriteria) {
             if ("Criterion 2".equals(criterion.path("id").asText())) {
                 targetRequirementGroups = (ArrayNode) criterion.get("requirementGroups");
@@ -808,33 +812,111 @@ public class DocGenService {
 
         if (targetRequirementGroups == null) return objectMapper.writeValueAsString(baseRoot);
 
-        // 2. Inject groups from Stage 2 onwards
-        for (int i = 1; i < stagePayloads.size(); i++) {
-            String currentStageJson = stagePayloads.get(i);
+        // Counters for IDs and Order
+        int nextCopSuffix = getMaxGroupSuffix(targetRequirementGroups, "Group 1") + 1;
+        int nextAcSuffix = getMaxGroupSuffix(targetRequirementGroups, "Group 2") + 1;
+        int nextOrder = getStartingOrder(targetRequirementGroups);
 
-            // Pattern: Source is Group 1, Target is Group 1.1, 1.2, etc.
-            appendAndRenameGroup(currentStageJson, "Group 1", "Group 1." + i, targetRequirementGroups);
-            appendAndRenameGroup(currentStageJson, "Group 2", "Group 2." + i, targetRequirementGroups);
+        // Inject Metadata into Stage 1 foundation groups
+        injectStageMetadata(targetRequirementGroups,
+                (Integer) stage1Data.get("stageNumber"),
+                stageDataList.size(),
+                (String) stage1Data.get("stageDescription"));
+
+        // Process Stage 2 onwards
+        for (int i = 1; i < stageDataList.size(); i++) {
+            Map<String, Object> currentData = stageDataList.get(i);
+            String payload = (String) currentData.get("payload");
+            int stageNum = (Integer) currentData.get("stageNumber");
+            String stageDesc = (String) currentData.get("stageDescription");
+
+            String newCopId = "Group 1." + (nextCopSuffix + (i - 1));
+            String newAcId = "Group 2." + (nextAcSuffix + (i - 1));
+
+            appendRenameAndInject(payload, "Group 1", newCopId, targetRequirementGroups, stageNum, stageDataList.size(), stageDesc, nextOrder++);
+            appendRenameAndInject(payload, "Group 2", newAcId, targetRequirementGroups, stageNum, stageDataList.size(), stageDesc, nextOrder++);
         }
 
         return objectMapper.writeValueAsString(baseRoot);
     }
 
-    private void appendAndRenameGroup(String sourceJson, String sourceGroupId, String newGroupId, ArrayNode targetArray) {
+    private void appendRenameAndInject(String sourceJson, String sourceId, String newId,
+                                       ArrayNode targetArray, int currentNum, int total,
+                                       String stageDesc, int newOrder) {
         try {
-            String jsonPath = "$.criteria[?(@.id == 'Criterion 2')].requirementGroups[?(@.OCDS.id == '" + sourceGroupId + "')]";
+            String jsonPath = "$.criteria[?(@.id == 'Criterion 2')].requirementGroups[?(@.OCDS.id == '" + sourceId + "')]";
             List<Map<String, Object>> result = JsonPath.read(sourceJson, jsonPath);
 
             if (result != null && !result.isEmpty()) {
                 ObjectNode groupNode = (ObjectNode) objectMapper.valueToTree(result.get(0));
 
-                // JUST update the ID so the generator finds it
-                ((ObjectNode) groupNode.path("OCDS")).put("id", newGroupId);
+                ((ObjectNode) groupNode.path("OCDS")).put("id", newId);
+                ((ObjectNode) groupNode.path("nonOCDS")).put("order", newOrder);
+
+                // SAFE WAY: Use withArray to avoid ClassCastException
+                ObjectNode ocdsPart = (ObjectNode) groupNode.path("OCDS");
+                ArrayNode reqs = ocdsPart.withArray("requirements");
+
+                addVirtualRequirement(reqs, "STAGE_NUMBER", String.valueOf(currentNum));
+                addVirtualRequirement(reqs, "STAGE_TOTAL", String.valueOf(total));
+                addVirtualRequirement(reqs, "STAGE_DESCRIPTION", stageDesc);
 
                 targetArray.add(groupNode);
             }
         } catch (Exception e) {
-            // Log skip
+            log.error("Failed to append group {} as {} for stage {}", sourceId, newId, currentNum, e);
         }
     }
+
+    private void injectStageMetadata(ArrayNode groups, int current, int total, String stageDesc) {
+        for (JsonNode group : groups) {
+            String id = group.path("OCDS").path("id").asText();
+            if (id.startsWith("Group 1") || id.startsWith("Group 2")) {
+                ObjectNode ocdsNode = (ObjectNode) group.path("OCDS");
+                ArrayNode reqs = ocdsNode.withArray("requirements");
+                addVirtualRequirement(reqs, "STAGE_NUMBER", String.valueOf(current));
+                addVirtualRequirement(reqs, "STAGE_TOTAL", String.valueOf(total));
+                addVirtualRequirement(reqs, "STAGE_DESCRIPTION", stageDesc);
+            }
+        }
+    }
+
+    private void addVirtualRequirement(ArrayNode requirements, String title, String value) {
+        ObjectNode req = objectMapper.createObjectNode();
+        ObjectNode ocds = req.putObject("OCDS");
+        ocds.put("title", title);
+
+        ObjectNode nonOcds = req.putObject("nonOCDS");
+        ArrayNode options = nonOcds.putArray("options");
+        ObjectNode opt = options.addObject();
+        opt.put("value", value != null ? value : "");
+        opt.put("select", true);
+
+        requirements.add(req);
+    }
+
+    private int getMaxGroupSuffix(ArrayNode groups, String prefix) {
+        int maxSuffix = 0;
+        for (JsonNode group : groups) {
+            String id = group.path("OCDS").path("id").asText();
+            if (id.startsWith(prefix + ".")) {
+                try {
+                    String suffixStr = id.substring(id.lastIndexOf(".") + 1);
+                    int suffix = Integer.parseInt(suffixStr);
+                    if (suffix > maxSuffix) maxSuffix = suffix;
+                } catch (Exception ignored) {}
+            }
+        }
+        return maxSuffix;
+    }
+
+    private int getStartingOrder(ArrayNode groups) {
+        int maxOrder = 0;
+        for (JsonNode group : groups) {
+            int order = group.path("nonOCDS").path("order").asInt();
+            if (order > maxOrder) maxOrder = order;
+        }
+        return maxOrder + 1;
+    }
+
 }
