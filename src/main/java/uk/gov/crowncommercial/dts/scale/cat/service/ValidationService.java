@@ -135,15 +135,28 @@ public class ValidationService {
                             continue;
                         }
 
-                        if (!"Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) &&
-                            !"Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+                        if ("Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "Value".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+
+                            for (final Option option: requirement.getNonOCDS().getOptions()) {
+                                option.setValue("");
+                                option.setSelect(false);
+                                updated = true;
+                            }
+
                             continue;
                         }
 
-                        for (final Option option: requirement.getNonOCDS().getOptions()) {
-                            option.setValue("");
-                            option.setSelect(false);
-                            updated = true;
+                        if ("SingleSelect".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "MultiSelect".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+
+                            for (final Option option: requirement.getNonOCDS().getOptions()) {
+                                option.setSelect(false);
+                                updated = true;
+                            }
+
+                            continue;
                         }
                     }
                 }
