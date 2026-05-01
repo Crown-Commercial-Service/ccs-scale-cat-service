@@ -10,10 +10,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.transaction.Transactional;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -38,11 +42,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.TargetType;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 
@@ -91,6 +92,7 @@ public class DocGenService {
   private final JaggaerService jaggaerService;
   private final DocumentTemplateResourceService documentTemplateResourceService;
   private final TableGroupGenerator tableGroupGenerator;
+  private final StageService stageService;
 
   private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
   private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 =
@@ -155,8 +157,13 @@ public class DocGenService {
           // Grab the value for the replacement, and then apply it to our templated source
           try {
             if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
-              String eventData = isLastStageEvent  ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
-              tableGroupGenerator.fillTableData(eventData, templateSource, textODT);
+                if ("MS1".equals(procurementEvent.getEventType())) {
+                    handleMultiStageTableGroups(procurementEvent, templateSource, textODT);
+                } else {
+                    // Old standard logic
+                    String eventData = isLastStageEvent ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
+                    tableGroupGenerator.fillTableData(eventData, templateSource, textODT);
+                }
             } else {
               List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
               replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
@@ -741,4 +748,93 @@ public class DocGenService {
       log.error("Unable to complete default placeholder mapping for DB table: '{}'", documentTemplateSource.getTableName(), ex);
     }
   }
+
+
+    /**
+     * Multi stages code
+     */
+
+    private void handleMultiStageTableGroups(ProcurementEvent procurementEvent,
+                                             DocumentTemplateSource templateSource,
+                                             TextDocument textODT) {
+
+        StagesRead stageInfo = stageService.getStagesForEventId(procurementEvent.getEventID());
+        if (stageInfo == null || stageInfo.getNumberOfStages() <= 0) {
+            return;
+        }
+
+        Integer firstEventId = retryableTendersDBDelegate.findEventIdOfFirstStageForMultiStageEvent(
+                procurementEvent.getEventID(), stageInfo.getNumberOfStages());
+
+        int totalStages = stageInfo.getNumberOfStages();
+        List<String> allStagePayloads = new ArrayList<>();
+
+        // Collect all raw JSON payloads from the database into a list
+        for (int i = 1; i <= totalStages; i++) {
+            retryableTendersDBDelegate.findByIdAndStageNumber(firstEventId, i)
+                    .ifPresent(stageEvent -> {
+                        if (StringUtils.hasText(stageEvent.getProcurementTemplatePayloadRaw())) {
+                            allStagePayloads.add(stageEvent.getProcurementTemplatePayloadRaw());
+                        }
+                    });
+        }
+
+        // Merge payloads into a single OCDS structure (Testable logic)
+        if (!allStagePayloads.isEmpty()) {
+            String mergedJson = mergeStageJsonPayloads(allStagePayloads);
+
+            // Call the standard generator ONCE with the merged data
+            tableGroupGenerator.fillTableData(mergedJson, templateSource, textODT);
+        }
+    }
+
+
+    @SneakyThrows
+    public String mergeStageJsonPayloads(List<String> stagePayloads) {
+        if (stagePayloads == null || stagePayloads.isEmpty()) return "";
+
+        // 1. Use the first payload as the Foundation
+        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree(stagePayloads.get(0));
+        ArrayNode baseCriteria = (ArrayNode) baseRoot.get("criteria");
+        ArrayNode targetRequirementGroups = null;
+
+        // Find Criterion 2 in the foundation
+        for (JsonNode criterion : baseCriteria) {
+            if ("Criterion 2".equals(criterion.path("id").asText())) {
+                targetRequirementGroups = (ArrayNode) criterion.get("requirementGroups");
+                break;
+            }
+        }
+
+        if (targetRequirementGroups == null) return objectMapper.writeValueAsString(baseRoot);
+
+        // 2. Inject groups from Stage 2 onwards
+        for (int i = 1; i < stagePayloads.size(); i++) {
+            String currentStageJson = stagePayloads.get(i);
+
+            // Pattern: Source is Group 1, Target is Group 1.1, 1.2, etc.
+            appendAndRenameGroup(currentStageJson, "Group 1", "Group 1." + i, targetRequirementGroups);
+            appendAndRenameGroup(currentStageJson, "Group 2", "Group 2." + i, targetRequirementGroups);
+        }
+
+        return objectMapper.writeValueAsString(baseRoot);
+    }
+
+    private void appendAndRenameGroup(String sourceJson, String sourceGroupId, String newGroupId, ArrayNode targetArray) {
+        try {
+            String jsonPath = "$.criteria[?(@.id == 'Criterion 2')].requirementGroups[?(@.OCDS.id == '" + sourceGroupId + "')]";
+            List<Map<String, Object>> result = JsonPath.read(sourceJson, jsonPath);
+
+            if (result != null && !result.isEmpty()) {
+                ObjectNode groupNode = (ObjectNode) objectMapper.valueToTree(result.get(0));
+
+                // JUST update the ID so the generator finds it
+                ((ObjectNode) groupNode.path("OCDS")).put("id", newGroupId);
+
+                targetArray.add(groupNode);
+            }
+        } catch (Exception e) {
+            // Log skip
+        }
+    }
 }
