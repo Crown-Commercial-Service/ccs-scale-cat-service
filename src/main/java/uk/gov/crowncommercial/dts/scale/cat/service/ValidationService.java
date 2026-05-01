@@ -70,6 +70,7 @@ public class ValidationService {
     var eventOCID = validateEventId(eventId);
 
     ProcurementEvent procurementEventForStage = null;
+    DataTemplate procurementStageEventDataTemplate = null;
 
     if (null != stageNumber && stageNumber > 0) {
         // grab the stage-specific data
@@ -78,6 +79,9 @@ public class ValidationService {
                 .findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
                     Integer.valueOf(eventOCID.getInternalId()), stageNumber, eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
                 .orElse(null);
+
+        procurementStageEventDataTemplate = null == procurementEventForStage ? null : procurementEventForStage.getProcurementTemplatePayload();
+
     }
 
     ProcurementEvent event = retryableTendersDBDelegate
@@ -114,11 +118,10 @@ public class ValidationService {
                     // we are in multi-stage, so replace the current data
                     // with the data associated with the given stage
 
-                    Set<Requirement> stageRequirements = extractStageRequirements(requirementGroup.getOcds().getId(), procurementEventForStage);
+                    Set<Requirement> stageRequirements = extractStageRequirements(requirementGroup.getOcds().getId(), procurementStageEventDataTemplate);
 
                     if (null != stageRequirements) {
                         requirementGroup.getOcds().setRequirements(stageRequirements);
-
                         updated = true;
                     }
 
@@ -135,15 +138,28 @@ public class ValidationService {
                             continue;
                         }
 
-                        if (!"Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) &&
-                            !"Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+                        if ("Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "Value".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+
+                            for (final Option option: requirement.getNonOCDS().getOptions()) {
+                                option.setValue("");
+                                option.setSelect(false);
+                                updated = true;
+                            }
+
                             continue;
                         }
 
-                        for (final Option option: requirement.getNonOCDS().getOptions()) {
-                            option.setValue("");
-                            option.setSelect(false);
-                            updated = true;
+                        if ("SingleSelect".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "MultiSelect".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+
+                            for (final Option option: requirement.getNonOCDS().getOptions()) {
+                                option.setSelect(false);
+                                updated = true;
+                            }
+
+                            continue;
                         }
                     }
                 }
@@ -166,11 +182,9 @@ public class ValidationService {
     return event;
   }
 
-  private Set<Requirement> extractStageRequirements(final String groupId, ProcurementEvent procurementStageEvent) {
-      final DataTemplate dataTemplate = procurementStageEvent.getProcurementTemplatePayload();
-
-      if (null != dataTemplate && null != dataTemplate.getCriteria()) {
-          for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
+  private Set<Requirement> extractStageRequirements(final String groupId, DataTemplate procurementStageEventDataTemplate) {
+      if (null != procurementStageEventDataTemplate && null != procurementStageEventDataTemplate.getCriteria()) {
+          for (final TemplateCriteria criteria: procurementStageEventDataTemplate.getCriteria()) {
               // we are only interested in 'Criterion 2'
               if (null == criteria || null == criteria.getRequirementGroups() || !ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
                   continue;
