@@ -796,9 +796,6 @@ public class DocGenService {
         }
     }
 
-    /**
-     * Merges multiple stage JSONs using the first one as a foundation template.
-     */
     @SneakyThrows
     public String mergeStageJsonPayloads(List<Map<String, Object>> stageDataList) {
         if (stageDataList == null || stageDataList.isEmpty()) return "";
@@ -812,33 +809,30 @@ public class DocGenService {
         for (JsonNode criterion : baseCriteria) {
             if ("Criterion 2".equals(criterion.path("id").asText())) {
                 targetRequirementGroups = (ArrayNode) criterion.get("requirementGroups");
+                targetRequirementGroups.removeAll();
                 break;
             }
         }
 
         if (targetRequirementGroups == null) return objectMapper.writeValueAsString(baseRoot);
 
-        // Counters for IDs and Order
-        int nextCopSuffix = getMaxGroupSuffix(targetRequirementGroups, "Group 1") + 1;
-        int nextAcSuffix = getMaxGroupSuffix(targetRequirementGroups, "Group 2") + 1;
-        int nextOrder = getStartingOrder(targetRequirementGroups);
+        // Initial indices for IDs and Order
+        int nextCopSuffix = 1;
+        int nextAcSuffix = 1;
+        int nextOrder = 1;
 
-        // Inject Metadata into Stage 1 foundation groups
-        injectStageMetadata(targetRequirementGroups,
-                (Integer) stage1Data.get("stageNumber"),
-                stageDataList.size(),
-                (String) stage1Data.get("stageDescription"));
-
-        // Process Stage 2 onwards
-        for (int i = 1; i < stageDataList.size(); i++) {
+        // Process ALL stages (including the first one) to ensure they all get the same treatment
+        for (int i = 0; i < stageDataList.size(); i++) {
             Map<String, Object> currentData = stageDataList.get(i);
             String payload = (String) currentData.get("payload");
             int stageNum = (Integer) currentData.get("stageNumber");
             String stageDesc = (String) currentData.get("stageDescription");
 
-            String newCopId = "Group 1." + (nextCopSuffix + (i - 1));
-            String newAcId = "Group 2." + (nextAcSuffix + (i - 1));
+            // Unique IDs for each stage's groups
+            String newCopId = "Group 1." + (nextCopSuffix++);
+            String newAcId = "Group 2." + (nextAcSuffix++);
 
+            // Rename and Inject metadata for both COP and AC groups
             appendRenameAndInject(payload, "Group 1", newCopId, targetRequirementGroups, stageNum, stageDataList.size(), stageDesc, nextOrder++);
             appendRenameAndInject(payload, "Group 2", newAcId, targetRequirementGroups, stageNum, stageDataList.size(), stageDesc, nextOrder++);
         }
@@ -863,27 +857,14 @@ public class DocGenService {
                 ObjectNode ocdsPart = (ObjectNode) groupNode.path("OCDS");
                 ArrayNode reqs = ocdsPart.withArray("requirements");
 
-                addVirtualRequirement(reqs, "STAGE_NUMBER", String.valueOf(currentNum));
-                addVirtualRequirement(reqs, "STAGE_TOTAL", String.valueOf(total));
-                addVirtualRequirement(reqs, "STAGE_DESCRIPTION", stageDesc);
+                addVirtualRequirement(reqs, CURRENT_STAGE, String.valueOf(currentNum));
+                addVirtualRequirement(reqs, TOTAL_STAGES, String.valueOf(total));
+                addVirtualRequirement(reqs, STAGE_DESCRIPTION, stageDesc);
 
                 targetArray.add(groupNode);
             }
         } catch (Exception e) {
             log.error("Failed to append group {} as {} for stage {}", sourceId, newId, currentNum, e);
-        }
-    }
-
-    private void injectStageMetadata(ArrayNode groups, int current, int total, String stageDesc) {
-        for (JsonNode group : groups) {
-            String id = group.path("OCDS").path("id").asText();
-            if (id.startsWith("Group 2")) {
-                ObjectNode ocdsNode = (ObjectNode) group.path("OCDS");
-                ArrayNode reqs = ocdsNode.withArray("requirements");
-                addVirtualRequirement(reqs, "CURRENT_STAGE", String.valueOf(current));
-                addVirtualRequirement(reqs, "TOTAL_STAGES", String.valueOf(total));
-                addVirtualRequirement(reqs, "STAGE_DESCRIPTION", stageDesc);
-            }
         }
     }
 
@@ -900,30 +881,6 @@ public class DocGenService {
         opt.put("select", true);
 
         requirements.add(req);
-    }
-
-    private int getMaxGroupSuffix(ArrayNode groups, String prefix) {
-        int maxSuffix = 0;
-        for (JsonNode group : groups) {
-            String id = group.path("OCDS").path("id").asText();
-            if (id.startsWith(prefix + ".")) {
-                try {
-                    String suffixStr = id.substring(id.lastIndexOf(".") + 1);
-                    int suffix = Integer.parseInt(suffixStr);
-                    if (suffix > maxSuffix) maxSuffix = suffix;
-                } catch (Exception ignored) {}
-            }
-        }
-        return maxSuffix;
-    }
-
-    private int getStartingOrder(ArrayNode groups) {
-        int maxOrder = 0;
-        for (JsonNode group : groups) {
-            int order = group.path("nonOCDS").path("order").asInt();
-            if (order > maxOrder) maxOrder = order;
-        }
-        return maxOrder + 1;
     }
 
 }
