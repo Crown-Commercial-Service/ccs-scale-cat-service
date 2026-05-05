@@ -48,7 +48,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private final AgreementsService agreementsService;
     private final DMPService dmpService;
 
-    @Value("${config.api-key}")
+    @Value("${config.api-key:dummy}")
     private String serviceApiKey;
 
     /**
