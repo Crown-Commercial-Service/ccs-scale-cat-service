@@ -105,11 +105,14 @@ public class ProjectsCSVGenerationScheduledTask {
               events.clear();
               events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
                       PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
-              log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
-              populateCSVData(agreementDetails, events, csvDataList);
-              totalEvents += events.size();
+              if (events != null && !events.isEmpty()) {
+                log.info("S3 AgreementId {} Count fetched from opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
+                populateCSVData(agreementDetails, events, csvDataList);
+              }
             } catch (Exception e) {
               log.error("S3 Error processing OpenSearch for agreementId {}", agreementId, e);
+            } finally {
+              totalEvents += events == null ? 0 : events.size();
             }
           } while (!events.isEmpty());
           log.info("S3 Successfully fetch projects data from OpenSearch for agreementId {} size {}", agreementId, totalEvents);
