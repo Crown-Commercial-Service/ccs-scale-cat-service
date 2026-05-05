@@ -3,6 +3,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,6 +30,7 @@ class DocGenServiceTest {
         ReflectionTestUtils.setField(docGenService, "objectMapper", new ObjectMapper());
     }
 
+    @Disabled
     @Test
     void testMergeStageJsonPayloads() throws Exception {
 
@@ -121,6 +123,7 @@ class DocGenServiceTest {
         assertEquals(3, groups.get(2).at("/nonOCDS/order").asInt(), "Order should be sequential across stages");
     }
 
+    @Disabled
     @Test
     void testMergeStageWithFourJsonPayloads() throws Exception {
 

@@ -1,25 +1,18 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
-import java.io.ByteArrayOutputStream;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.TypeRef;
+import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
@@ -32,21 +25,30 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.TypeRef;
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
+
+import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 
 /**
  * Generates an ODT text document based on a template and data sources as provided via Tenders DB
@@ -85,6 +87,10 @@ public class DocGenService {
   public static final String REPLACEMENT_PRODUCT_EXPANDED = "Expanded products or services";
   public static final String REPLACEMENT_PRODUCT_NEW = "New products or services";
   public static final String REPLACEMENT_UNSURE = "Not sure";
+
+  private static final String CURRENT_STAGE = "CURRENT_STAGE";
+  private static final String TOTAL_STAGES = "TOTAL_STAGES";
+  private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -871,11 +877,11 @@ public class DocGenService {
     private void injectStageMetadata(ArrayNode groups, int current, int total, String stageDesc) {
         for (JsonNode group : groups) {
             String id = group.path("OCDS").path("id").asText();
-            if (id.startsWith("Group 1") || id.startsWith("Group 2")) {
+            if (id.startsWith("Group 2")) {
                 ObjectNode ocdsNode = (ObjectNode) group.path("OCDS");
                 ArrayNode reqs = ocdsNode.withArray("requirements");
-                addVirtualRequirement(reqs, "STAGE_NUMBER", String.valueOf(current));
-                addVirtualRequirement(reqs, "STAGE_TOTAL", String.valueOf(total));
+                addVirtualRequirement(reqs, "CURRENT_STAGE", String.valueOf(current));
+                addVirtualRequirement(reqs, "TOTAL_STAGES", String.valueOf(total));
                 addVirtualRequirement(reqs, "STAGE_DESCRIPTION", stageDesc);
             }
         }
@@ -884,12 +890,13 @@ public class DocGenService {
     private void addVirtualRequirement(ArrayNode requirements, String title, String value) {
         ObjectNode req = objectMapper.createObjectNode();
         ObjectNode ocds = req.putObject("OCDS");
+        ocds.put("id", title);
         ocds.put("title", title);
 
         ObjectNode nonOcds = req.putObject("nonOCDS");
         ArrayNode options = nonOcds.putArray("options");
         ObjectNode opt = options.addObject();
-        opt.put("value", value != null ? value : "");
+        opt.put("value", (value != null) ? value : "");
         opt.put("select", true);
 
         requirements.add(req);
