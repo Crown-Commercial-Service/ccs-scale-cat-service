@@ -792,7 +792,7 @@ public class DocGenService {
         if (!stageDataList.isEmpty()) {
             // Pass the enriched list instead of just Strings
             String mergedJson = mergeStageJsonPayloads(stageDataList);
-            tableGroupGenerator.fillTableData(mergedJson, templateSource, textODT);
+            tableGroupGenerator.fillMultiStageTableData(mergedJson, templateSource, textODT);
         }
     }
 
