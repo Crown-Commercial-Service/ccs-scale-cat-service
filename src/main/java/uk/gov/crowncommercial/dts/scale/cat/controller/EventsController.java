@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.IOUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -28,14 +29,7 @@ import jakarta.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -69,6 +63,9 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
   private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
 
+  @Value("${config.api-key}")
+  private String serviceApiKey;
+
   @GetMapping
   @TrackExecutionTime
   public List<EventSummary> getEventsForProject(@PathVariable("procID") final Integer procId,
@@ -78,6 +75,18 @@ public class EventsController extends AbstractRestController {
     log.info("getEventsForProject invoked on behalf of principal: {}", principal);
 
     return procurementEventService.getEventsForProject(procId, principal);
+  }
+
+  @GetMapping("/apiKey")
+  @TrackExecutionTime
+  public ResponseEntity<List<EventSummary>> getEventsForProjectByApiKey(@PathVariable("procID") final Integer procId,
+                                                        @RequestParam("apiKey") String apiKey) {
+    log.info("getEventsForProjectByApiKey invoked on behalf of procID: {}", procId);
+    if (serviceApiKey.equals(apiKey)) {
+      return ResponseEntity.ok(procurementEventService.getEventsForProject(procId, null));
+    } else  {
+      return ResponseEntity.badRequest().build();
+    }
   }
 
   @PostMapping

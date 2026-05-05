@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +47,9 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private final AssessmentService coreAssessmentService;
     private final AgreementsService agreementsService;
     private final DMPService dmpService;
+
+    @Value("${config.api-key}")
+    private String serviceApiKey;
 
     /**
      * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
@@ -135,6 +140,31 @@ public class GCloudAssessmentsController extends AbstractRestController {
 
         // Results should now have been built up, so return our list
         return model;
+    }
+
+    /**
+     * Gets a list of GCloud Assessment Summaries by apikey
+     */
+    @GetMapping("/gcloud/summaries/{external-tool-id}/apiKey")
+    @TrackExecutionTime
+    public ResponseEntity<List<GCloudAssessmentSummary>> getGcloudAssessmentSummariesWithExternalToolIdByApiKey(
+            final @PathVariable("external-tool-id") String externalToolId,
+            @RequestParam final String apiKey) {
+        log.info("getGcloudAssessmentSummariesWithExternalToolIdByApiKey()");
+        if (!serviceApiKey.equals(apiKey)) {
+            ResponseEntity.badRequest().build();
+        }
+        List<GCloudAssessmentSummary> model = new ArrayList<>();
+        List<AssessmentSummary> userAssessments = coreAssessmentService.getAssessmentsByExternalToolId(Integer.parseInt(externalToolId));
+        if (userAssessments != null && !userAssessments.isEmpty()) {
+            userAssessments.forEach(result -> {
+                GCloudAssessmentSummary summaryModel = assessmentService.getGcloudAssessmentSummary(result.getAssessmentId());
+                if (summaryModel != null) {
+                    model.add(summaryModel);
+                }
+            });
+        }
+        return ResponseEntity.ok(model);
     }
 
     /**
