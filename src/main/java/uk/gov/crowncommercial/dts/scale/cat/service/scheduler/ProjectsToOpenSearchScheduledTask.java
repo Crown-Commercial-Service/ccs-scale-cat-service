@@ -68,11 +68,14 @@ public class ProjectsToOpenSearchScheduledTask {
             events.clear();
             events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
                     PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
-            log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
-            saveProjectDataAsBatches(agreementId, events, agreementDetails);
-            totalEvents += events.size();
+            if (events != null && !events.isEmpty()) {
+              log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
+              saveProjectDataAsBatches(agreementId, events, agreementDetails);
+            }
           } catch (Exception e) {
             log.error("Error processing OpenSearch for agreementId {}", agreementId, e);
+          } finally {
+            totalEvents += events == null ? 0 : events.size();
           }
         } while (!events.isEmpty());
         log.info("Successfully updated projects data in open search for agreementId {} size {}", agreementId, totalEvents);

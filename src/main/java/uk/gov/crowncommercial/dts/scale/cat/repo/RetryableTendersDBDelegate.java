@@ -284,6 +284,11 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Set<AssessmentProjection> findAssessmentsByExternalToolId(final Integer externalToolId) {
+    return assessmentRepo.findAssessmentsByExternalToolId(externalToolId);
+  }
+
+  @TendersRetryable
   public Set<AssessmentProjection> findAssessmentsProjectionForUser(final String userId) {
     return assessmentRepo.findAssessmentsByCreatedBy(userId);
   }

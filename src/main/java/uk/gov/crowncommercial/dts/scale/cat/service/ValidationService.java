@@ -12,6 +12,8 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -40,14 +42,20 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 @Slf4j
 public class ValidationService {
 
-  static final String LOG_TAG = "12322912 - ";
-  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private final AssessmentService assessmentService;
-  private final Clock clock;
+  private static final String LOG_TAG = "12322912 - ";
+
   private static final Integer AWARD_STATUS = 500;
   private static final Integer ABANDONED_STATUS = 1500;
 
   private static final Period FOUR_YEAR_PERIOD = Period.parse("P4Y");
+
+  private static final String COP_GROUP_ID = "Group 1";
+  private static final String AWARD_CRITERIA_GROUP_ID = "Group 2";
+  private static final String ASSESSMENT_CRITERIA_CRITERION_ID = "Criterion 2";
+
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+  private final AssessmentService assessmentService;
+  private final Clock clock;
 
   /**
    * Validate the project and event IDs and return the {@link ProcurementEvent} entity
@@ -57,79 +65,113 @@ public class ValidationService {
    * @return procurement event entity
    */
   public ProcurementEvent validateProjectAndEventIds(final Integer projectId, final String eventId, final Integer stageNumber) {
+    // Get event from tenders DB to obtain Jaggaer project id
+
     var eventOCID = validateEventId(eventId);
 
-    // Get event from tenders DB to obtain Jaggaer project id
-    ProcurementEvent event = null;
+    ProcurementEvent procurementEventForStage = null;
+    DataTemplate procurementStageEventDataTemplate = null;
 
     if (null != stageNumber && stageNumber > 0) {
-        // we ARE in multi-stage
-        event = retryableTendersDBDelegate
+        // grab the stage-specific data
+        // (we will then merge it into the response to return, below)
+        procurementEventForStage = retryableTendersDBDelegate
                 .findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
                     Integer.valueOf(eventOCID.getInternalId()), stageNumber, eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
                 .orElse(null);
+
+        procurementStageEventDataTemplate = null == procurementEventForStage ? null : procurementEventForStage.getProcurementTemplatePayload();
+
     }
 
-    if (null == event) {
-        boolean needToDeleteAnswers = (null != stageNumber && stageNumber > 0);
-
-        event = retryableTendersDBDelegate
+    ProcurementEvent event = retryableTendersDBDelegate
                 .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
                     Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
                 .orElseThrow(() -> new ResourceNotFoundException("Event '" + eventId + "' not found"));
 
-        if (needToDeleteAnswers) {
-            // we tried to retrieve the template associated with a multi-stage event
-            // but we don't have it, therefore we are now using the 'normal' non-multi-stage
-            // event to generate a copy; so we need to wipe the original answers before
-            // we return it
+    final DataTemplate dataTemplate = event.getProcurementTemplatePayload();
 
-            final DataTemplate dataTemplate = event.getProcurementTemplatePayload();
+    if (null != dataTemplate && null != dataTemplate.getCriteria()) {
 
-            if (null != dataTemplate && null != dataTemplate.getCriteria()) {
+        boolean updated = false;
 
-                boolean updated = false;
+        for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
 
-                for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
+            // we are only interested in 'Criterion 2'
+            if (null == criteria || null == criteria.getRequirementGroups() || !ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
+                continue;
+            }
 
-                    if (null == criteria || null == criteria.getRequirementGroups()) {
-                        continue;
+            for (final RequirementGroup requirementGroup: criteria.getRequirementGroups()) {
+
+                if (null == requirementGroup || null == requirementGroup.getOcds() || null == requirementGroup.getOcds().getRequirements()) {
+                    continue;
+                }
+
+                // we are only interested in CoP and Award Criteria
+                if (!COP_GROUP_ID.equals(requirementGroup.getOcds().getId()) &&
+                    !AWARD_CRITERIA_GROUP_ID.equals(requirementGroup.getOcds().getId())) {
+                    continue;
+                }
+
+                if (null != procurementEventForStage) {
+                    // we are in multi-stage, so replace the current data
+                    // with the data associated with the given stage
+
+                    Set<Requirement> stageRequirements = extractStageRequirements(requirementGroup.getOcds().getId(), procurementStageEventDataTemplate);
+
+                    if (null != stageRequirements) {
+                        requirementGroup.getOcds().setRequirements(stageRequirements);
+                        updated = true;
                     }
 
-                    for (final RequirementGroup requirementGroup: criteria.getRequirementGroups()) {
+                    continue;
+                }
 
-                        if (null == requirementGroup || null == requirementGroup.getOcds() || null == requirementGroup.getOcds().getRequirements()) {
+                if (null != stageNumber && stageNumber > 0) {
+                    // we are in multi-stage. but we don't have any stage-specific data,
+                    // so clear any stored answers to prevent pre-population of fields
+
+                    for (final Requirement requirement: requirementGroup.getOcds().getRequirements()) {
+
+                        if (null == requirement || null == requirement.getNonOCDS() || null == requirement.getNonOCDS().getOptions()) {
                             continue;
                         }
 
-                        for (final Requirement requirement: requirementGroup.getOcds().getRequirements()) {
-
-                            if (null == requirement || null == requirement.getNonOCDS() || null == requirement.getNonOCDS().getOptions()) {
-                                continue;
-                            }
-
-                            if (!"Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) &&
-                                !"Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
-                                continue;
-                            }
+                        if ("Text".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "Value".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "Integer".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
 
                             for (final Option option: requirement.getNonOCDS().getOptions()) {
                                 option.setValue("");
                                 option.setSelect(false);
                                 updated = true;
                             }
+
+                            continue;
+                        }
+
+                        if ("SingleSelect".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType()) ||
+                            "MultiSelect".equalsIgnoreCase(requirement.getNonOCDS().getQuestionType())) {
+
+                            for (final Option option: requirement.getNonOCDS().getOptions()) {
+                                option.setSelect(false);
+                                updated = true;
+                            }
+
+                            continue;
                         }
                     }
                 }
-
-                if (updated) {
-                    event.setProcurementTemplatePayload(dataTemplate);
-                }
             }
+        }
+
+        if (updated) {
+            event.setProcurementTemplatePayload(dataTemplate);
         }
     }
 
-    log.debug(LOG_TAG + "Saved event to tender db. event: {}", event);
+    log.debug(LOG_TAG + "Retrieved event from tender db, event: {}", event);
 
     // Validate projectId is correct
     if (!event.getProject().getId().equals(projectId)) {
@@ -138,6 +180,30 @@ public class ValidationService {
     }
 
     return event;
+  }
+
+  private Set<Requirement> extractStageRequirements(final String groupId, DataTemplate procurementStageEventDataTemplate) {
+      if (null != procurementStageEventDataTemplate && null != procurementStageEventDataTemplate.getCriteria()) {
+          for (final TemplateCriteria criteria: procurementStageEventDataTemplate.getCriteria()) {
+              // we are only interested in 'Criterion 2'
+              if (null == criteria || null == criteria.getRequirementGroups() || !ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
+                  continue;
+              }
+
+              for (final RequirementGroup requirementGroup: criteria.getRequirementGroups()) {
+                  if (null == requirementGroup || null == requirementGroup.getOcds() || null == requirementGroup.getOcds().getRequirements()) {
+                      continue;
+                  }
+
+                  // we are only interested in our given group
+                  if (groupId.equals(requirementGroup.getOcds().getId())) {
+                      return requirementGroup.getOcds().getRequirements();
+                  }
+              }
+          }
+      }
+
+      return null;
   }
 
   /**
