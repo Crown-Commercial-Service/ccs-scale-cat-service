@@ -11,14 +11,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.odftoolkit.odfdom.dom.element.table.TableCoveredTableCellElement;
 import org.odftoolkit.odfdom.dom.element.table.TableTableElement;
 import org.odftoolkit.odfdom.dom.element.text.TextPElement;
+import org.odftoolkit.odfdom.pkg.OdfElement;
 import org.odftoolkit.odfdom.pkg.OdfFileDom;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
+import org.odftoolkit.simple.style.Font;
+import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
 import org.odftoolkit.simple.table.Row;
 import org.odftoolkit.simple.table.Table;
+import org.odftoolkit.simple.text.Paragraph;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Node;
@@ -26,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -664,46 +669,173 @@ public class TableGroupGenerator {
         }
     }
 
-    /**
-     * Multi stages re-grouping
-     *
-     */
+
+    // --- Multi stage grouping code (Separated to prevent breaking existing logic) ---
     public void fillMultiStageTableData(String eventData, DocumentTemplateSource templateSource, TextDocument textODT) {
-        if (!StringUtils.hasText(eventData) || templateSource == null || textODT == null) {
-            return;
+        if (!StringUtils.hasText(eventData)) return;
+
+        String tableName = templateSource.getTableName();
+        List<FieldMapping> mappings = getCombinedMappings(tableName);
+        String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
+
+        List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
+        if (requirementGroups.isEmpty()) return;
+
+        Table prototype = textODT.getTableByName(tableName);
+        if (prototype == null) return;
+
+        // Take a clean snapshot of the empty template table
+        TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
+
+        // Group the data into Stage buckets first
+        LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
+        for (Map<String, Object> rg : requirementGroups) {
+            String stageNum = extractMetadataValue(rg, "CURRENT_STAGE");
+            stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
         }
 
-        String tableName = templateSource.getTableName(); // e.g., "STAGE_DESC"
+        TableTableElement lastTableElem =  prototype.getOdfElement();
 
-        // Aggregate all mappings needed for this "Virtual" Table
+        int stageCount = 1;
+        for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
+            List<Map<String, Object>> stageGroups = entry.getValue();
+            Map<String, Object> firstGroup = stageGroups.get(0);
+
+            String stageNum = entry.getKey();
+            String stageDesc = extractMetadataValue(firstGroup, "STAGE_DESCRIPTION");
+            String totalStages = extractMetadataValue(firstGroup, "TOTAL_STAGES");
+            String headerText = String.format("%s [ Stage %s (of %s): ]", stageDesc, stageNum, totalStages);
+
+            Table currentTable;
+            if (stageCount == 1) {
+                // For Stage 1, use the existing table and insert header above it
+                currentTable = prototype;
+                insertHeaderAboveElement(lastTableElem, headerText);
+            } else {
+                // For subsequent stages, insert header THEN clone the table after the last table
+                TextPElement headerP = insertHeaderAfterElement(lastTableElem, headerText);
+                currentTable = cloneTableAfterParagraph(textODT, snapshot, headerP, tableName + "_Stage_" + stageNum);
+            }
+
+            // Fill only this stage's data into this specific table
+            fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
+
+            lastTableElem = currentTable.getOdfElement();
+            stageCount++;
+        }
+    }
+
+    private void fillOneTableStandard(Table table, List<Map<String, Object>> groups, String anchor, List<FieldMapping> mappings) {
+        int anchorIdx = findRowContaining(table, anchor);
+        if (anchorIdx < 0) return;
+
+        Map<String, String> titleToPlaceholder = new HashMap<>();
+        for (FieldMapping m : mappings) titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
+
+        List<Integer> blockIdxs = findTemplateBlockRowIndexes(table, anchorIdx);
+        List<Row> templateRows = blockIdxs.stream().map(table::getRowByIndex).collect(Collectors.toList());
+
+        for (Map<String, Object> rgMap : groups) {
+            List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, titleToPlaceholder.values());
+            for (Map<String, String> rowMap : rows) {
+                for (Row templateRow : templateRows) {
+                    Row newRow = appendClonedRow(table, templateRow);
+                    replacePlaceholdersInRow(newRow, rowMap);
+                }
+            }
+        }
+        for (int i = blockIdxs.size() - 1; i >= 0; i--) table.removeRowsByIndex(blockIdxs.get(i), 1);
+    }
+
+    // --- Helper Methods to fix UI/UX flow ---
+    private void insertHeaderAboveElement(OdfElement elem, String text) {
+        OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
+
+        // Create and Style the Header
+        TextPElement headerP = new TextPElement(dom);
+        headerP.setTextContent(text);
+        applyHeaderStyle(headerP);
+
+        // Create the Spacing (Blank Line)
+        TextPElement spacerP = new TextPElement(dom);
+        spacerP.setTextContent("");
+
+        // Insert into Document (Header -> Spacer -> Table)
+        elem.getParentNode().insertBefore(headerP, elem);
+        elem.getParentNode().insertBefore(spacerP, elem);
+    }
+
+    private TextPElement insertHeaderAfterElement(OdfElement elem, String text) {
+        OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
+        Node parent = elem.getParentNode();
+        Node next = elem.getNextSibling();
+
+        // Create a spacer before the header to separate from the previous table
+        TextPElement topSpacer = new TextPElement(dom);
+        topSpacer.setTextContent("");
+
+        // Create and Style the Header
+        TextPElement headerP = new TextPElement(dom);
+        headerP.setTextContent(text);
+        applyHeaderStyle(headerP);
+
+        // Create a spacer after the header to separate from the next table
+        TextPElement bottomSpacer = new TextPElement(dom);
+        bottomSpacer.setTextContent("");
+
+        // Logic to insert sequentially after the element
+        if (next != null) {
+            parent.insertBefore(topSpacer, next);
+            parent.insertBefore(headerP, next);
+            parent.insertBefore(bottomSpacer, next);
+        } else {
+            parent.appendChild(topSpacer);
+            parent.appendChild(headerP);
+            parent.appendChild(bottomSpacer);
+        }
+
+        return bottomSpacer; // We return the last element added so the table follows it
+    }
+
+    /**
+     * Internal helper to apply consistent Bold, Font, and Size to the injected paragraph
+     */
+    private void applyHeaderStyle(TextPElement p) {
+        try {
+            // Get the Simple API Paragraph instance
+            Paragraph para = Paragraph.getInstanceof(p);
+
+            Font headerFont = new Font(
+                    "Arial",
+                    StyleTypeDefinitions.FontStyle.BOLD,
+                    12
+            );
+
+            // Apply the font to the paragraph
+            para.setFont(headerFont);
+
+        } catch (Exception e) {
+            log.error("Failed to apply styles to stage header paragraph", e);
+        }
+    }
+
+    private String extractMetadataValue(Map<String, Object> rgMap, String metadataId) {
+        try {
+            List<Map<String, Object>> reqs = (List<Map<String, Object>>) ((Map)rgMap.get("OCDS")).get("requirements");
+            return reqs.stream()
+                    .filter(r -> metadataId.equals(((Map)r.get("OCDS")).get("id")))
+                    .map(this::readSelectedOptionValue)
+                    .findFirst().orElse("");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private List<FieldMapping> getCombinedMappings(String tableName) {
         List<FieldMapping> mappings = new ArrayList<>();
         mappings.addAll(FieldMapping.getFieldsByTableName(tableName));
-        mappings.addAll(FieldMapping.getFieldsByTableName(COND_OF_PART));
-        mappings.addAll(FieldMapping.getFieldsByTableName(AWARD_CRITERIA));
-
-        String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
-        String groupNamePlaceholder = FieldMapping.getTableGroupName(tableName);
-
-        // Read all the separate groups (1.1, 2.1, 1.2, 2.2, etc.)
-        List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
-
-        // Custom Grouping: Group by the ID suffix (the Stage Number)
-        LinkedHashMap<String, GroupBucket> stageBuckets = new LinkedHashMap<>();
-        for (Map<String, Object> rg : requirementGroups) {
-            Map<String, Object> ocds = (Map<String, Object>) rg.get("OCDS");
-            String id = (String) ocds.get("id"); // e.g., "Group 1.1"
-
-            // Extract the suffix after the dot
-            String stageIndex = id.substring(id.lastIndexOf(".") + 1);
-
-            // Find or create a bucket for this stage (e.g., Stage 1, Stage 2)
-            GroupBucket bucket = stageBuckets.computeIfAbsent(stageIndex,
-                    k -> new GroupBucket("Stage " + k));
-
-            bucket.requirementGroups.add(rg);
-        }
-
-        // Build the tables using the stage buckets
-        buildTableGroup(stageBuckets, textODT, tableName, anchorPlaceholder, groupNamePlaceholder, mappings);
+        mappings.addAll(FieldMapping.getFieldsByTableName("COND_OF_PART"));
+        mappings.addAll(FieldMapping.getFieldsByTableName("AWARD_CRITERIA"));
+        return mappings;
     }
 }
