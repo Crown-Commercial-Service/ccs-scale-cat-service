@@ -88,9 +88,25 @@ public class DocGenService {
   public static final String REPLACEMENT_PRODUCT_NEW = "New products or services";
   public static final String REPLACEMENT_UNSURE = "Not sure";
 
-  private static final String CURRENT_STAGE = "CURRENT_STAGE";
-  private static final String TOTAL_STAGES = "TOTAL_STAGES";
-  private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
+  private static final String CURRENT_STAGE_TITLE = "CURRENT_STAGE";
+  private static final String TOTAL_STAGES_TITLE = "TOTAL_STAGES";
+  private static final String STAGE_DESCRIPTION_TITLE = "STAGE_DESCRIPTION";
+  private static final String OCDS = "OCDS";
+  private static final String NON_OCDS = "nonOCDS";
+  private static final String MULTI_STAGE_JSON_PATH = "$.criteria[?(@.id == 'Criterion 2')].requirementGroups[?(@.OCDS.id == '%s')]";
+  private static final String ID = "id";
+  private static final String PAYLOAD_TAG = "payload";
+  private static final String STAGE_NUMBER_TAG = "stageNumber";
+  private static final String STAGE_DESCRIPTION_TAG = "stageDescription";
+  private static final String CRITERION2 = "Criterion 2";
+  private static final String CRITERIA = "criteria";
+  private static final String REQUIREMENT_GROUPS = "requirementGroups";
+  private static final String REQUIREMENTS = "requirements";
+  private static final String ORDER = "order";
+  private static final String TITLE = "title";
+  private static final String OPTIONS = "options";
+  private static final String VALUE = "value";
+  private static final String SELECT = "select";
 
   private final ApplicationContext applicationContext;
   private final ValidationService validationService;
@@ -781,16 +797,15 @@ public class DocGenService {
                         String payload = stageEvent.getProcurementTemplatePayloadRaw();
                         if (StringUtils.hasText(payload)) {
                             Map<String, Object> data = new HashMap<>();
-                            data.put("payload", payload);
-                            data.put("stageNumber", stageEvent.getStageNumber());
-                            data.put("stageDescription", stageEvent.getStageDescription());
+                            data.put(PAYLOAD_TAG, payload);
+                            data.put(STAGE_NUMBER_TAG, stageEvent.getStageNumber());
+                            data.put(STAGE_DESCRIPTION_TAG, stageEvent.getStageDescription());
                             stageDataList.add(data);
                         }
                     });
         }
 
         if (!stageDataList.isEmpty()) {
-            // Pass the enriched list instead of just Strings
             String mergedJson = mergeStageJsonPayloads(stageDataList);
             tableGroupGenerator.fillMultiStageTableData(mergedJson, templateSource, textODT);
         }
@@ -802,13 +817,13 @@ public class DocGenService {
 
         // Use the first entry as Foundation
         Map<String, Object> stage1Data = stageDataList.getFirst();
-        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree((String) stage1Data.get("payload"));
-        ArrayNode baseCriteria = (ArrayNode) baseRoot.get("criteria");
+        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree((String) stage1Data.get(PAYLOAD_TAG));
+        ArrayNode baseCriteria = (ArrayNode) baseRoot.get(CRITERIA);
         ArrayNode targetRequirementGroups = null;
 
         for (JsonNode criterion : baseCriteria) {
-            if ("Criterion 2".equals(criterion.path("id").asText())) {
-                targetRequirementGroups = (ArrayNode) criterion.get("requirementGroups");
+            if (CRITERION2.equals(criterion.path(ID).asText())) {
+                targetRequirementGroups = (ArrayNode) criterion.get(REQUIREMENT_GROUPS);
                 targetRequirementGroups.removeAll();
                 break;
             }
@@ -824,9 +839,9 @@ public class DocGenService {
         // Process ALL stages (including the first one) to ensure they all get the same treatment
         for (int i = 0; i < stageDataList.size(); i++) {
             Map<String, Object> currentData = stageDataList.get(i);
-            String payload = (String) currentData.get("payload");
-            int stageNum = (Integer) currentData.get("stageNumber");
-            String stageDesc = (String) currentData.get("stageDescription");
+            String payload = (String) currentData.get(PAYLOAD_TAG);
+            int stageNum = (Integer) currentData.get(STAGE_NUMBER_TAG);
+            String stageDesc = (String) currentData.get(STAGE_DESCRIPTION_TAG);
 
             // Unique IDs for each stage's groups
             String newCopId = "Group 1." + (nextCopSuffix++);
@@ -844,22 +859,21 @@ public class DocGenService {
                                        ArrayNode targetArray, int currentNum, int total,
                                        String stageDesc, int newOrder) {
         try {
-            String jsonPath = "$.criteria[?(@.id == 'Criterion 2')].requirementGroups[?(@.OCDS.id == '" + sourceId + "')]";
+            String jsonPath =String.format(MULTI_STAGE_JSON_PATH, sourceId);
             List<Map<String, Object>> result = JsonPath.read(sourceJson, jsonPath);
 
             if (result != null && !result.isEmpty()) {
-                ObjectNode groupNode = (ObjectNode) objectMapper.valueToTree(result.get(0));
+                ObjectNode groupNode = objectMapper.valueToTree(result.getFirst());
 
-                ((ObjectNode) groupNode.path("OCDS")).put("id", newId);
-                ((ObjectNode) groupNode.path("nonOCDS")).put("order", newOrder);
+                ((ObjectNode) groupNode.path(OCDS)).put(ID, newId);
+                ((ObjectNode) groupNode.path(NON_OCDS)).put(ORDER, newOrder);
 
-                // SAFE WAY: Use withArray to avoid ClassCastException
-                ObjectNode ocdsPart = (ObjectNode) groupNode.path("OCDS");
-                ArrayNode reqs = ocdsPart.withArray("requirements");
+                ObjectNode ocdsPart = (ObjectNode) groupNode.path(OCDS);
+                ArrayNode reqs = ocdsPart.withArray(REQUIREMENTS);
 
-                addVirtualRequirement(reqs, CURRENT_STAGE, String.valueOf(currentNum));
-                addVirtualRequirement(reqs, TOTAL_STAGES, String.valueOf(total));
-                addVirtualRequirement(reqs, STAGE_DESCRIPTION, stageDesc);
+                addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(currentNum));
+                addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(total));
+                addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
 
                 targetArray.add(groupNode);
             }
@@ -870,15 +884,15 @@ public class DocGenService {
 
     private void addVirtualRequirement(ArrayNode requirements, String title, String value) {
         ObjectNode req = objectMapper.createObjectNode();
-        ObjectNode ocds = req.putObject("OCDS");
-        ocds.put("id", title);
-        ocds.put("title", title);
+        ObjectNode ocds = req.putObject(OCDS);
+        ocds.put(ID, title);
+        ocds.put(TITLE, title);
 
-        ObjectNode nonOcds = req.putObject("nonOCDS");
-        ArrayNode options = nonOcds.putArray("options");
+        ObjectNode nonOcds = req.putObject(NON_OCDS);
+        ArrayNode options = nonOcds.putArray(OPTIONS);
         ObjectNode opt = options.addObject();
-        opt.put("value", (value != null) ? value : "");
-        opt.put("select", true);
+        opt.put(VALUE, (value != null) ? value : "");
+        opt.put(SELECT, true);
 
         requirements.add(req);
     }

@@ -37,6 +37,8 @@ public class TableGroupGenerator {
     private static final String SUPPLIER_MARKER = "supplier response";
     private static final String PLACEHOLDER_UNKNOWN = "Not Specified";
     private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
+    private static final String COND_OF_PART = "COND_OF_PART";
+    private static final String AWARD_CRITERIA = "AWARD_CRITERIA";
 
     private final ObjectMapper objectMapper;
 
@@ -675,17 +677,17 @@ public class TableGroupGenerator {
 
         // Aggregate all mappings needed for this "Virtual" Table
         List<FieldMapping> mappings = new ArrayList<>();
-        mappings.addAll(FieldMapping.getFieldsByTableName(tableName)); // Metadata
-        mappings.addAll(FieldMapping.getFieldsByTableName("COND_OF_PART")); // Borrow COP
-        mappings.addAll(FieldMapping.getFieldsByTableName("AWARD_CRITERIA")); // Borrow AC
+        mappings.addAll(FieldMapping.getFieldsByTableName(tableName));
+        mappings.addAll(FieldMapping.getFieldsByTableName(COND_OF_PART));
+        mappings.addAll(FieldMapping.getFieldsByTableName(AWARD_CRITERIA));
 
         String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
         String groupNamePlaceholder = FieldMapping.getTableGroupName(tableName);
 
-        // 1. Read all the separate groups (1.1, 2.1, 1.2, 2.2, etc.)
+        // Read all the separate groups (1.1, 2.1, 1.2, 2.2, etc.)
         List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
 
-        // 2. Custom Grouping: Group by the ID suffix (the Stage Number)
+        // Custom Grouping: Group by the ID suffix (the Stage Number)
         LinkedHashMap<String, GroupBucket> stageBuckets = new LinkedHashMap<>();
         for (Map<String, Object> rg : requirementGroups) {
             Map<String, Object> ocds = (Map<String, Object>) rg.get("OCDS");
@@ -701,7 +703,7 @@ public class TableGroupGenerator {
             bucket.requirementGroups.add(rg);
         }
 
-        // 3. Build the tables using the stage buckets
+        // Build the tables using the stage buckets
         buildTableGroup(stageBuckets, textODT, tableName, anchorPlaceholder, groupNamePlaceholder, mappings);
     }
 }
