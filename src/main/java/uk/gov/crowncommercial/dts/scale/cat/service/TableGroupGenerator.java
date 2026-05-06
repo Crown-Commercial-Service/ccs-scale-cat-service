@@ -22,7 +22,6 @@ import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
 import org.odftoolkit.simple.table.Row;
 import org.odftoolkit.simple.table.Table;
-import org.odftoolkit.simple.text.Paragraph;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Node;
@@ -44,6 +43,10 @@ public class TableGroupGenerator {
     private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
     private static final String COND_OF_PART = "COND_OF_PART";
     private static final String AWARD_CRITERIA = "AWARD_CRITERIA";
+    private static final String STAGE_DESCRIPTION_HEADER_TAG = "Stage description";
+    private static final String CURRENT_STAGE = "CURRENT_STAGE";
+    private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
+    private static final String TOTAL_STAGES = "TOTAL_STAGES";
 
     private final ObjectMapper objectMapper;
 
@@ -690,7 +693,7 @@ public class TableGroupGenerator {
 
         LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
         for (Map<String, Object> rg : requirementGroups) {
-            String stageNum = extractMetadataValue(rg, "CURRENT_STAGE");
+            String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
             stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
         }
 
@@ -699,19 +702,21 @@ public class TableGroupGenerator {
         int stageCount = 1;
         for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
             List<Map<String, Object>> stageGroups = entry.getValue();
-            Map<String, Object> firstGroup = stageGroups.get(0);
+            Map<String, Object> firstGroup = stageGroups.getFirst();
 
             String stageNum = entry.getKey();
-            String stageDesc = extractMetadataValue(firstGroup, "STAGE_DESCRIPTION");
-            String totalStages = extractMetadataValue(firstGroup, "TOTAL_STAGES");
+            String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
+            String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
 
             Table currentTable;
             if (stageCount == 1) {
                 currentTable = prototype;
                 insertHeadersAboveElement(textODT, lastTableElem, lastTableElem, stageDesc, stageNum, totalStages);
             } else {
-                TextPElement spacerAfterHeader = insertHeadersAfterElement(textODT, lastTableElem, lastTableElem,stageDesc, stageNum, totalStages);
-                currentTable = cloneTableAfterParagraph(textODT, snapshot, spacerAfterHeader, tableName + "_Stage_" + stageNum);
+                TextPElement spacerAfterHeader = insertHeadersAfterElement(textODT,
+                        lastTableElem, lastTableElem,stageDesc, stageNum, totalStages);
+                currentTable = cloneTableAfterParagraph(textODT, snapshot,
+                        spacerAfterHeader, tableName + "_Stage_" + stageNum);
             }
 
             fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
@@ -811,15 +816,15 @@ public class TableGroupGenerator {
         try {
             org.odftoolkit.simple.text.Paragraph para = org.odftoolkit.simple.text.Paragraph.getInstanceof(p);
 
-            // 1. DYNAMIC FONT EXTRACTION
+            // DYNAMIC FONT EXTRACTION
             // We get font details from the document's default or a prototype cell
             Table prototype = textODT.getTableList().getFirst();
-            org.odftoolkit.simple.style.Font docFont = prototype.getCellByPosition(0, 0).getFont();
+            Font docFont = prototype.getCellByPosition(0, 0).getFont();
 
-            String fontName = docFont != null ? docFont.getFamilyName() : "Arial";
-            double fontSize = docFont != null ? docFont.getSize() : 12.0;
+            String fontName = getTextFontName(docFont);
+            double fontSize = getTextFontSize(docFont);
 
-            // 2. Create a Font object using extracted details but forced to BOLD
+            // Create a Font object using extracted details but forced to BOLD
             org.odftoolkit.simple.style.Font headerFont = new org.odftoolkit.simple.style.Font(
                     fontName,
                     org.odftoolkit.simple.style.StyleTypeDefinitions.FontStyle.BOLD,
@@ -844,18 +849,18 @@ public class TableGroupGenerator {
 
             // DYNAMIC FONT EXTRACTION for the Label Cell
             Table prototypeTable = Table.getInstance(snapshot);
-            org.odftoolkit.simple.style.Font docFont = prototypeTable.getCellByPosition(0, 0).getFont();
+            Font docFont = prototypeTable.getCellByPosition(0, 0).getFont();
 
-            String fontName = docFont != null ? docFont.getFamilyName() : "Arial";
-            double fontSize = docFont != null ? docFont.getSize() : 12.0;
+            String fontName = getTextFontName(docFont);
+            double fontSize = getTextFontSize(docFont);
 
             // Column 1: Label
             Cell labelCell = table.getCellByPosition(0, 0);
-            labelCell.setStringValue("Stage description");
+            labelCell.setStringValue(STAGE_DESCRIPTION_HEADER_TAG);
 
-            org.odftoolkit.simple.style.Font boldFont = new org.odftoolkit.simple.style.Font(
+            Font boldFont = new Font(
                     fontName,
-                    org.odftoolkit.simple.style.StyleTypeDefinitions.FontStyle.BOLD,
+                    StyleTypeDefinitions.FontStyle.BOLD,
                     fontSize
             );
             labelCell.setFont(boldFont);
@@ -863,7 +868,7 @@ public class TableGroupGenerator {
             // Column 2: Value (Normal weight, dynamic font)
             Cell valueCell = table.getCellByPosition(1, 0);
             valueCell.setStringValue(stageDescValue);
-            valueCell.setFont(new org.odftoolkit.simple.style.Font(fontName, org.odftoolkit.simple.style.StyleTypeDefinitions.FontStyle.REGULAR, fontSize));
+            valueCell.setFont(new Font(fontName, StyleTypeDefinitions.FontStyle.REGULAR, fontSize));
 
         } catch (Exception e) {
             log.warn("Dynamic styling failed, using defaults", e);
@@ -894,5 +899,13 @@ public class TableGroupGenerator {
         mappings.addAll(FieldMapping.getFieldsByTableName(COND_OF_PART));
         mappings.addAll(FieldMapping.getFieldsByTableName(AWARD_CRITERIA));
         return mappings;
+    }
+
+    private String getTextFontName(Font docFont) {
+        return docFont != null ? docFont.getFamilyName() : "Arial";
+    }
+
+    private double getTextFontSize(Font docFont) {
+        return docFont != null ? docFont.getSize() : 12.0;
     }
 }
