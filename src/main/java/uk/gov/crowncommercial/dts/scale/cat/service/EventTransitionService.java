@@ -67,7 +67,7 @@ public class EventTransitionService {
     } else if (ASSESMENT_COMPLETE_EVENT_TYPES.contains(
         ViewEventType.fromValue(existingEvent.getEventType()))) {
 
-        dashboardStatus = getDashboardStatus( null!=rfxResponse?rfxResponse.getRfxSetting():null,existingEvent);
+      dashboardStatus = getDashboardStatus( null!=rfxResponse?rfxResponse.getRfxSetting():null,existingEvent);
 
       if (DashboardStatus.ASSESSMENT.equals(dashboardStatus)) {
         updateDbEvent(existingEvent, principal, COMPLETE_STATUS);
