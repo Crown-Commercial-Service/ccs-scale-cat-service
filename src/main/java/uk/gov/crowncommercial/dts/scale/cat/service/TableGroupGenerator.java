@@ -22,6 +22,7 @@ import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
 import org.odftoolkit.simple.table.Row;
 import org.odftoolkit.simple.table.Table;
+import org.odftoolkit.simple.text.Paragraph;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Node;
@@ -47,6 +48,8 @@ public class TableGroupGenerator {
     private static final String CURRENT_STAGE = "CURRENT_STAGE";
     private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
     private static final String TOTAL_STAGES = "TOTAL_STAGES";
+    private static final String TEXT_FONT = "Arial";
+    private static final double TEXT_FONT_SIZE = 12.0;
 
     private final ObjectMapper objectMapper;
 
@@ -688,7 +691,6 @@ public class TableGroupGenerator {
 
         Table prototype = textODT.getTableByName(tableName);
         if (prototype == null) return;
-
         TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
 
         LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
@@ -698,8 +700,8 @@ public class TableGroupGenerator {
         }
 
         TableTableElement lastTableElem = prototype.getOdfElement();
-
         int stageCount = 1;
+
         for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
             List<Map<String, Object>> stageGroups = entry.getValue();
             Map<String, Object> firstGroup = stageGroups.getFirst();
@@ -707,20 +709,29 @@ public class TableGroupGenerator {
             String stageNum = entry.getKey();
             String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
             String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
+            String groupTitle = extractSelectedGroupName(firstGroup);
 
             Table currentTable;
             if (stageCount == 1) {
                 currentTable = prototype;
-                insertHeadersAboveElement(textODT, lastTableElem, lastTableElem, stageDesc, stageNum, totalStages);
+                insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
             } else {
-                TextPElement spacerAfterHeader = insertHeadersAfterElement(textODT,
-                        lastTableElem, lastTableElem,stageDesc, stageNum, totalStages);
-                currentTable = cloneTableAfterParagraph(textODT, snapshot,
-                        spacerAfterHeader, tableName + "_Stage_" + stageNum);
+
+                TextPElement lastAddedElem = insertHeadersAfterElement(textODT,
+                        snapshot,
+                        lastTableElem,
+                        stageDesc,
+                        stageNum,
+                        totalStages,
+                        groupTitle);
+
+                currentTable = cloneTableAfterParagraph(textODT,
+                        snapshot,
+                        lastAddedElem,
+                        tableName + "_Stage_" + stageNum);
             }
 
             fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
-
             lastTableElem = currentTable.getOdfElement();
             stageCount++;
         }
@@ -731,29 +742,44 @@ public class TableGroupGenerator {
                                            OdfElement elem,
                                            String stageDesc,
                                            String stageNum,
-                                           String totalStages) {
+                                           String totalStages,
+                                           String groupTitle) {
+
         OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
         Node parent = elem.getParentNode();
 
+        // Stage Header
         TextPElement p1 = new TextPElement(dom);
         p1.setTextContent("Stage " + stageNum + " (of " + totalStages + "):");
-        applyHeaderStyle(textODT, p1);
+        applyHeaderStyle(p1);
 
-        // Spacer between Text and Description Table
+        TextPElement beforeDescTableSpacer = new TextPElement(dom);
+        beforeDescTableSpacer.setTextContent("");
+
+        // Stage Description Table
+        Table descTable = createStageDescTable(textODT, snapshot, stageDesc);
+
+        // MID SPACER (The fix: Move this between Table and Group Title)
         TextPElement midSpacer = new TextPElement(dom);
         midSpacer.setTextContent("");
 
-        // Programmatic Table for Stage Description
-        Table descTable = createStageDescTable(textODT, snapshot, stageDesc);
+        // Group Title
+        TextPElement pGroup = new TextPElement(dom);
+        pGroup.setTextContent((StringUtils.hasText(groupTitle) ? groupTitle : PLACEHOLDER_UNKNOWN));
+        applyHeaderStyle(pGroup);
 
-        // Bottom Spacer
+        // Bottom Spacer (Separates Group Title from Question Table)
         TextPElement bottomSpacer = new TextPElement(dom);
         bottomSpacer.setTextContent("");
 
+        // Sequential insertion order: Header -> Spacer -> Table -> Spacer -> Group Title -> Spacer -> Table
         parent.insertBefore(p1, elem);
-        parent.insertBefore(midSpacer, elem);
+        parent.insertBefore(beforeDescTableSpacer, elem);
         parent.insertBefore(descTable.getOdfElement(), elem);
+        parent.insertBefore(midSpacer, elem);
+        parent.insertBefore(pGroup, elem);
         parent.insertBefore(bottomSpacer, elem);
+
     }
 
     private TextPElement insertHeadersAfterElement(TextDocument textODT,
@@ -761,151 +787,149 @@ public class TableGroupGenerator {
                                                    OdfElement elem,
                                                    String stageDesc,
                                                    String stageNum,
-                                                   String totalStages) {
+                                                   String totalStages,
+                                                   String groupTitle) {
+
         OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
         Node parent = elem.getParentNode();
         Node next = elem.getNextSibling();
 
+        // Top Spacer (Separates from the previous table)
         TextPElement topSpacer = new TextPElement(dom);
         topSpacer.setTextContent("");
 
+        // Stage Header
         TextPElement p1 = new TextPElement(dom);
         p1.setTextContent("Stage " + stageNum + " (of " + totalStages + "):");
-        applyHeaderStyle(textODT, p1);
+        applyHeaderStyle(p1);
 
+        TextPElement beforeDescTableSpacer = new TextPElement(dom);
+        beforeDescTableSpacer.setTextContent("");
+
+        // Stage Description Table
+        Table descTable = createStageDescTable(textODT, snapshot, stageDesc);
+
+        // MID SPACER (The fix: Inserted here)
         TextPElement midSpacer = new TextPElement(dom);
         midSpacer.setTextContent("");
 
-        Table descTable = createStageDescTable(textODT, snapshot, stageDesc);
+        // Group Title
+        TextPElement pGroup = new TextPElement(dom);
+        pGroup.setTextContent((StringUtils.hasText(groupTitle) ? groupTitle : PLACEHOLDER_UNKNOWN));
+        applyHeaderStyle(pGroup);
 
+        // Bottom Spacer
         TextPElement bottomSpacer = new TextPElement(dom);
         bottomSpacer.setTextContent("");
 
-        List<Node> nodes = Arrays.asList(topSpacer, p1, midSpacer, descTable.getOdfElement(), bottomSpacer);
+        List<Node> nodes = Arrays.asList(topSpacer, p1, beforeDescTableSpacer,
+                descTable.getOdfElement(), midSpacer, pGroup, bottomSpacer);
+
         if (next != null) {
             for (Node n : nodes) parent.insertBefore(n, next);
         } else {
             for (Node n : nodes) parent.appendChild(n);
         }
+
         return bottomSpacer;
     }
 
-    private void fillOneTableStandard(Table table, List<Map<String, Object>> groups, String anchor, List<FieldMapping> mappings) {
+    private Table createStageDescTable(TextDocument textODT,
+                                       TableTableElement snapshot,
+                                       String stageDescValue) {
+
+        Table table = Table.newTable(textODT, 1, 2);
+        try {
+            String styleName = snapshot.getTableStyleNameAttribute();
+            if (StringUtils.hasText(styleName)) table.getOdfElement().setTableStyleNameAttribute(styleName);
+
+            String fName = getTextFontName();
+            double fSize = getTextFontSize();
+
+            Cell labelCell = table.getCellByPosition(0, 0);
+            labelCell.setStringValue(STAGE_DESCRIPTION_HEADER_TAG);
+            labelCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.BOLD, fSize));
+
+            Cell valueCell = table.getCellByPosition(1, 0);
+            valueCell.setStringValue(stageDescValue);
+            valueCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.REGULAR, fSize));
+
+        } catch (Exception ignored) {}
+
+            table.getColumnByIndex(0).setWidth(55.0);
+            table.getColumnByIndex(1).setWidth(110.0);
+
+        return table;
+    }
+
+    private void applyHeaderStyle(TextPElement p) {
+        try {
+            Paragraph para = Paragraph.getInstanceof(p);
+            para.setFont(new Font(getTextFontName(), StyleTypeDefinitions.FontStyle.BOLD, getTextFontSize()));
+        } catch (Exception ignored) {}
+    }
+
+    private void fillOneTableStandard(Table table,
+                                      List<Map<String, Object>> groups,
+                                      String anchor,
+                                      List<FieldMapping> mappings) {
         int anchorIdx = findRowContaining(table, anchor);
         if (anchorIdx < 0) return;
-
         Map<String, String> titleToPlaceholder = new HashMap<>();
         for (FieldMapping m : mappings) titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
 
         List<Integer> blockIdxs = findTemplateBlockRowIndexes(table, anchorIdx);
-        List<Row> templateRows = blockIdxs.stream().map(table::getRowByIndex).collect(Collectors.toList());
+        List<Row> templateRows = blockIdxs.stream().map(table::getRowByIndex).toList();
 
+        int numberColIdx = findNumberColumnIndex(table);
+        int counter = 1;
         for (Map<String, Object> rgMap : groups) {
             List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, titleToPlaceholder.values());
             for (Map<String, String> rowMap : rows) {
                 for (Row templateRow : templateRows) {
                     Row newRow = appendClonedRow(table, templateRow);
                     replacePlaceholdersInRow(newRow, rowMap);
+                    if (numberColIdx >= 0) setCellTextIfNotCovered(newRow, numberColIdx, String.valueOf(counter));
                 }
+                counter++;
             }
         }
         for (int i = blockIdxs.size() - 1; i >= 0; i--) table.removeRowsByIndex(blockIdxs.get(i), 1);
     }
 
-    private void applyHeaderStyle(TextDocument textODT, TextPElement p) {
-        try {
-            org.odftoolkit.simple.text.Paragraph para = org.odftoolkit.simple.text.Paragraph.getInstanceof(p);
-
-            // DYNAMIC FONT EXTRACTION
-            // We get font details from the document's default or a prototype cell
-            Table prototype = textODT.getTableList().getFirst();
-            Font docFont = prototype.getCellByPosition(0, 0).getFont();
-
-            String fontName = getTextFontName(docFont);
-            double fontSize = getTextFontSize(docFont);
-
-            // Create a Font object using extracted details but forced to BOLD
-            org.odftoolkit.simple.style.Font headerFont = new org.odftoolkit.simple.style.Font(
-                    fontName,
-                    org.odftoolkit.simple.style.StyleTypeDefinitions.FontStyle.BOLD,
-                    fontSize
-            );
-
-            para.setFont(headerFont);
-        } catch (Exception e) {
-            log.error("Failed to extract or apply dynamic styles", e);
-        }
-    }
-
-    private Table createStageDescTable(TextDocument textODT, TableTableElement snapshot, String stageDescValue) {
-        Table table = Table.newTable(textODT, 1, 2);
-
-        try {
-            // Match the structural style (margins/alignment) from the snapshot
-            String styleName = snapshot.getTableStyleNameAttribute();
-            if (StringUtils.hasText(styleName)) {
-                table.getOdfElement().setTableStyleNameAttribute(styleName);
-            }
-
-            // DYNAMIC FONT EXTRACTION for the Label Cell
-            Table prototypeTable = Table.getInstance(snapshot);
-            Font docFont = prototypeTable.getCellByPosition(0, 0).getFont();
-
-            String fontName = getTextFontName(docFont);
-            double fontSize = getTextFontSize(docFont);
-
-            // Column 1: Label
-            Cell labelCell = table.getCellByPosition(0, 0);
-            labelCell.setStringValue(STAGE_DESCRIPTION_HEADER_TAG);
-
-            Font boldFont = new Font(
-                    fontName,
-                    StyleTypeDefinitions.FontStyle.BOLD,
-                    fontSize
-            );
-            labelCell.setFont(boldFont);
-
-            // Column 2: Value (Normal weight, dynamic font)
-            Cell valueCell = table.getCellByPosition(1, 0);
-            valueCell.setStringValue(stageDescValue);
-            valueCell.setFont(new Font(fontName, StyleTypeDefinitions.FontStyle.REGULAR, fontSize));
-
-        } catch (Exception e) {
-            log.warn("Dynamic styling failed, using defaults", e);
-        }
-
-        // Fixed width proportions for a clean look
-        table.getColumnByIndex(0).setWidth(45.0);
-        table.getColumnByIndex(1).setWidth(120.0);
-
-        return table;
-    }
-
     private String extractMetadataValue(Map<String, Object> rgMap, String metadataId) {
         try {
             List<Map<String, Object>> reqs = (List<Map<String, Object>>) ((Map)rgMap.get("OCDS")).get("requirements");
-            return reqs.stream()
-                    .filter(r -> metadataId.equals(((Map)r.get("OCDS")).get("id")))
+            return reqs.stream().filter(r ->
+                    metadataId.equals(((Map)r.get("OCDS")).get("id")))
                     .map(this::readSelectedOptionValue)
-                    .findFirst().orElse("");
-        } catch (Exception e) {
-            return "";
+                    .findFirst()
+                    .orElse("");
+        } catch (Exception e) { return ""; }
+    }
+
+    private String extractGroupId(Map<String, Object> rgMap) {
+        Map<String, Object> ocds = (Map<String, Object>) rgMap.get("OCDS");
+        if (ocds == null) {
+            return null;
         }
+
+        Object description = ocds.get("id");
+        return description == null ? null : description.toString();
     }
 
     private List<FieldMapping> getCombinedMappings(String tableName) {
-        List<FieldMapping> mappings = new ArrayList<>();
-        mappings.addAll(FieldMapping.getFieldsByTableName(tableName));
+        List<FieldMapping> mappings = new ArrayList<>(FieldMapping.getFieldsByTableName(tableName));
         mappings.addAll(FieldMapping.getFieldsByTableName(COND_OF_PART));
         mappings.addAll(FieldMapping.getFieldsByTableName(AWARD_CRITERIA));
         return mappings;
     }
 
-    private String getTextFontName(Font docFont) {
-        return docFont != null ? docFont.getFamilyName() : "Arial";
+    private String getTextFontName() {
+        return TEXT_FONT;
     }
 
-    private double getTextFontSize(Font docFont) {
-        return docFont != null ? docFont.getSize() : 12.0;
+    private double getTextFontSize() {
+        return TEXT_FONT_SIZE;
     }
 }
