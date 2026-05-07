@@ -195,9 +195,14 @@ public class ValidationService {
                       continue;
                   }
 
-                  // we are only interested in our given group
-                  if (groupId.equals(requirementGroup.getOcds().getId())) {
-                      return requirementGroup.getOcds().getRequirements();
+                  // we are only interested in our given group (either 'Group 1' or 'Group 2'),
+                  // but if we have multiple-questions, their groupId will be of the form:
+                  //   Group 1.1, Group 1.2, Group 1.3, Group 1.4 ...
+                  // or
+                  //   Group 2.1, Group 2.2, Group 2.3, Group 2.4 ...
+                  if (groupId.equals(requirementGroup.getOcds().getId()) ||
+                      requirementGroup.getOcds().getId().startsWith(groupId + ".")) {
+                          return requirementGroup.getOcds().getRequirements();
                   }
               }
           }

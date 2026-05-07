@@ -527,9 +527,9 @@ public class ProcurementEventService implements EventService {
 
         log.debug("Successfully called Jaggaer and get single rfx");
 
-        return tendersAPIModelUtils.buildEventDetail(rfxSetting, event,
-                event.isDataTemplateEvent() ? criteriaService.getEvalCriteria(projectId, eventId, stageNumber, true)
-                        : Collections.emptySet());
+        return tendersAPIModelUtils.buildEventDetail(rfxSetting, event, event.isDataTemplateEvent() ?
+                   criteriaService.getEvalCriteria(projectId, eventId, stageNumber, true) :
+                   Collections.emptySet());
     }
 
     /**
