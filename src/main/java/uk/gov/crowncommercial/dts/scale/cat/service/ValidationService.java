@@ -9,6 +9,8 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -81,7 +83,6 @@ public class ValidationService {
                 .orElse(null);
 
         procurementStageEventDataTemplate = null == procurementEventForStage ? null : procurementEventForStage.getProcurementTemplatePayload();
-
     }
 
     ProcurementEvent event = retryableTendersDBDelegate
@@ -94,6 +95,29 @@ public class ValidationService {
     if (null != dataTemplate && null != dataTemplate.getCriteria()) {
 
         boolean updated = false;
+
+        if (null != stageNumber && stageNumber > 0) {
+            Set<RequirementGroup> criterion2RequirementGroups = null;
+
+            for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
+                // we are only interested in 'Criterion 2'
+                if (null == criteria || null == criteria.getRequirementGroups()) {
+                    continue;
+                }
+
+                if (ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
+                    criterion2RequirementGroups = criteria.getRequirementGroups();
+                    break;
+                }
+            }
+
+            List<RequirementGroup> requirementGroupsToRemove = findSubGroupsToRemove(criterion2RequirementGroups);
+
+            for (RequirementGroup entry : requirementGroupsToRemove) {
+                criterion2RequirementGroups.remove(entry);
+                updated = true;
+            }
+        }
 
         for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
 
@@ -108,19 +132,19 @@ public class ValidationService {
                     continue;
                 }
 
-                // we are only interested in CoP and Award Criteria
+                // we are only interested in CoP and Award Criteria groups
                 if (!COP_GROUP_ID.equals(requirementGroup.getOcds().getId()) &&
                     !AWARD_CRITERIA_GROUP_ID.equals(requirementGroup.getOcds().getId())) {
                     continue;
                 }
 
-                if (null != procurementEventForStage) {
+                if (null != stageNumber && stageNumber > 0 && null != procurementEventForStage) {
                     // we are in multi-stage, so replace the current data
                     // with the data associated with the given stage
 
                     Set<Requirement> stageRequirements = extractStageRequirements(requirementGroup.getOcds().getId(), procurementStageEventDataTemplate);
 
-                    if (null != stageRequirements) {
+                    if (!stageRequirements.isEmpty()) {
                         requirementGroup.getOcds().setRequirements(stageRequirements);
                         updated = true;
                     }
@@ -128,7 +152,7 @@ public class ValidationService {
                     continue;
                 }
 
-                if (null != stageNumber && stageNumber > 0) {
+                if (null != stageNumber && stageNumber > 0 && null == procurementStageEventDataTemplate) {
                     // we are in multi-stage. but we don't have any stage-specific data,
                     // so clear any stored answers to prevent pre-population of fields
 
@@ -166,6 +190,51 @@ public class ValidationService {
             }
         }
 
+        if (null != stageNumber && stageNumber > 0 && null != procurementEventForStage) {
+            Set<RequirementGroup> criterion2RequirementGroups = null;
+
+            for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
+                // we are only interested in 'Criterion 2'
+                if (null == criteria || null == criteria.getRequirementGroups()) {
+                    continue;
+                }
+
+                if (ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
+                    criterion2RequirementGroups = criteria.getRequirementGroups();
+                    break;
+                }
+            }
+
+            // for multi-stage, if we have multiple-questions, their groupId will be of the form:
+            //   Group 1.1, Group 1.2, Group 1.3, Group 1.4 ...
+            // or
+            //   Group 2.1, Group 2.2, Group 2.3, Group 2.4 ...
+            // so we need to add them in
+
+            RequirementGroup awardCriteriaStageRequirementGroup = null;
+            RequirementGroup copStageRequirementGroup = null;
+            int count = 1;
+
+            do {
+                awardCriteriaStageRequirementGroup = extractStageRequirementGroup(AWARD_CRITERIA_GROUP_ID + "." + count, procurementStageEventDataTemplate);
+
+                if (null != awardCriteriaStageRequirementGroup) {
+                    criterion2RequirementGroups.add(awardCriteriaStageRequirementGroup);
+                    updated = true;
+                }
+
+                copStageRequirementGroup = extractStageRequirementGroup(COP_GROUP_ID + "." + count, procurementStageEventDataTemplate);
+
+                if (null != copStageRequirementGroup) {
+                    criterion2RequirementGroups.add(copStageRequirementGroup);
+                    updated = true;
+                }
+
+                count++;
+
+            } while (null != awardCriteriaStageRequirementGroup || null != copStageRequirementGroup);
+        }
+
         if (updated) {
             event.setProcurementTemplatePayload(dataTemplate);
         }
@@ -183,6 +252,8 @@ public class ValidationService {
   }
 
   private Set<Requirement> extractStageRequirements(final String groupId, DataTemplate procurementStageEventDataTemplate) {
+      Set<Requirement> requirements = new HashSet<>();
+
       if (null != procurementStageEventDataTemplate && null != procurementStageEventDataTemplate.getCriteria()) {
           for (final TemplateCriteria criteria: procurementStageEventDataTemplate.getCriteria()) {
               // we are only interested in 'Criterion 2'
@@ -195,20 +266,57 @@ public class ValidationService {
                       continue;
                   }
 
-                  // we are only interested in our given group (either 'Group 1' or 'Group 2'),
-                  // but if we have multiple-questions, their groupId will be of the form:
-                  //   Group 1.1, Group 1.2, Group 1.3, Group 1.4 ...
-                  // or
-                  //   Group 2.1, Group 2.2, Group 2.3, Group 2.4 ...
-                  if (groupId.equals(requirementGroup.getOcds().getId()) ||
-                      requirementGroup.getOcds().getId().startsWith(groupId + ".")) {
-                          return requirementGroup.getOcds().getRequirements();
+                  if (groupId.equals(requirementGroup.getOcds().getId())) {
+                      requirements.addAll(requirementGroup.getOcds().getRequirements());
+                  }
+              }
+          }
+      }
+
+      return requirements;
+  }
+
+  private RequirementGroup extractStageRequirementGroup(final String groupId, DataTemplate procurementStageEventDataTemplate) {
+      if (null != procurementStageEventDataTemplate && null != procurementStageEventDataTemplate.getCriteria()) {
+          for (final TemplateCriteria criteria: procurementStageEventDataTemplate.getCriteria()) {
+              // we are only interested in 'Criterion 2'
+              if (null == criteria || null == criteria.getRequirementGroups() || !ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
+                  continue;
+              }
+
+              for (final RequirementGroup requirementGroup: criteria.getRequirementGroups()) {
+                  if (null == requirementGroup || null == requirementGroup.getOcds() || null == requirementGroup.getOcds().getRequirements()) {
+                      continue;
+                  }
+
+                  if (groupId.equals(requirementGroup.getOcds().getId())) {
+                      return requirementGroup;
                   }
               }
           }
       }
 
       return null;
+  }
+
+  private List<RequirementGroup> findSubGroupsToRemove(Set<RequirementGroup> requirementGroups) {
+      // For multi-stage, iterate over the RequirementGroups and remove any sub-groups
+
+      List<RequirementGroup> groupsToRemove = new ArrayList<>();
+
+      for (final RequirementGroup entry: requirementGroups) {
+          if (null == entry) {
+              continue;
+          }
+
+          // we are only interested in CoP and Award Criteria sub-groups
+          if (entry.getOcds().getId().startsWith(COP_GROUP_ID + ".") ||
+              entry.getOcds().getId().startsWith(AWARD_CRITERIA_GROUP_ID + ".")) {
+                  groupsToRemove.add(entry);
+          }
+      }
+
+      return groupsToRemove;
   }
 
   /**
