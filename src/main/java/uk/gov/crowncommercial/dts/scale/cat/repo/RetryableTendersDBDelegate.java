@@ -576,6 +576,10 @@ public class RetryableTendersDBDelegate {
         // Take no action here - the method annotation deals with the action
     }
 
+    public Optional<ProcurementStageEvent> findByIdAndStageNumber(Integer id, Integer stageNumber) {
+        return procurementStageEventRepo.findByIdAndStageNumber(id, stageNumber);
+    }
+
     /**
      * For multi-stage events, all of the stage description values along with all
      * of the CoP and Award Criteria details are captured during the 1st stage.
@@ -594,7 +598,7 @@ public class RetryableTendersDBDelegate {
      *
      * @return the correct eventId to use for further processing
      */
-    private Integer findEventIdOfFirstStageForMultiStageEvent(final String eventId, final Integer stageNumber) {
+    public Integer findEventIdOfFirstStageForMultiStageEvent(final String eventId, final Integer stageNumber) {
         if (null == stageNumber || 0 == stageNumber || 1 == stageNumber) {
             // either we are NOT in multi-stage, or we are in the first stage of multi-stage;
             // either way, the given eventId is the correct one to use

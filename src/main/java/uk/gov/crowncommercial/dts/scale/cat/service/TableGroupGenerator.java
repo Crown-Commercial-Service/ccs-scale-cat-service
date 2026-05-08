@@ -11,14 +11,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.odftoolkit.odfdom.dom.element.table.TableCoveredTableCellElement;
 import org.odftoolkit.odfdom.dom.element.table.TableTableElement;
 import org.odftoolkit.odfdom.dom.element.text.TextPElement;
+import org.odftoolkit.odfdom.pkg.OdfElement;
 import org.odftoolkit.odfdom.pkg.OdfFileDom;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
+import org.odftoolkit.simple.style.Font;
+import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
 import org.odftoolkit.simple.table.Row;
 import org.odftoolkit.simple.table.Table;
+import org.odftoolkit.simple.text.Paragraph;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.w3c.dom.Node;
@@ -37,6 +41,14 @@ public class TableGroupGenerator {
     private static final String SUPPLIER_MARKER = "supplier response";
     private static final String PLACEHOLDER_UNKNOWN = "Not Specified";
     private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
+    private static final String COND_OF_PART = "COND_OF_PART";
+    private static final String AWARD_CRITERIA = "AWARD_CRITERIA";
+    private static final String STAGE_DESCRIPTION_HEADER_TAG = "Stage description";
+    private static final String CURRENT_STAGE = "CURRENT_STAGE";
+    private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
+    private static final String TOTAL_STAGES = "TOTAL_STAGES";
+    private static final String TEXT_FONT = "Arial";
+    private static final double TEXT_FONT_SIZE = 12.0;
 
     private final ObjectMapper objectMapper;
 
@@ -660,5 +672,260 @@ public class TableGroupGenerator {
         private GroupBucket(String displayName) {
             this.displayName = displayName;
         }
+    }
+
+
+    // --- Multi stage grouping code (Separated to prevent breaking existing logic) ---
+
+    /**
+     * Fill multi stages data with stage details and group name
+     *
+     * stage details are injected on the fly programmatically
+     *
+     */
+    public void fillMultiStageTableData(String eventData,
+                                        DocumentTemplateSource templateSource,
+                                        TextDocument textODT) {
+        if (!StringUtils.hasText(eventData)) return;
+
+        String tableName = templateSource.getTableName();
+        List<FieldMapping> mappings = getCombinedMappings(tableName);
+        String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
+
+        List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
+        if (requirementGroups.isEmpty()) return;
+
+        Table prototype = textODT.getTableByName(tableName);
+        if (prototype == null) return;
+        TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
+
+        LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
+        for (Map<String, Object> rg : requirementGroups) {
+            String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
+            stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
+        }
+
+        TableTableElement lastTableElem = prototype.getOdfElement();
+        int stageCount = 1;
+
+        for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
+            List<Map<String, Object>> stageGroups = entry.getValue();
+            Map<String, Object> firstGroup = stageGroups.getFirst();
+
+            String stageNum = entry.getKey();
+            String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
+            String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
+            String groupTitle = extractSelectedGroupName(firstGroup);
+
+            Table currentTable;
+            if (stageCount == 1) {
+                currentTable = prototype;
+                insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
+            } else {
+
+                TextPElement lastAddedElem = insertHeadersAfterElement(textODT,
+                        snapshot,
+                        lastTableElem,
+                        stageDesc,
+                        stageNum,
+                        totalStages,
+                        groupTitle);
+
+                currentTable = cloneTableAfterParagraph(textODT,
+                        snapshot,
+                        lastAddedElem,
+                        tableName + "_Stage_" + stageNum);
+            }
+
+            fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
+            lastTableElem = currentTable.getOdfElement();
+            stageCount++;
+        }
+    }
+
+    private void insertHeadersAboveElement(TextDocument textODT,
+                                           TableTableElement snapshot,
+                                           OdfElement elem,
+                                           String stageDesc,
+                                           String stageNum,
+                                           String totalStages,
+                                           String groupTitle) {
+
+        OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
+        Node parent = elem.getParentNode();
+
+        // Stage Header
+        TextPElement p1 = new TextPElement(dom);
+        p1.setTextContent("Stage " + stageNum + " (of " + totalStages + "):");
+        applyHeaderStyle(p1);
+
+        TextPElement beforeDescTableSpacer = new TextPElement(dom);
+        beforeDescTableSpacer.setTextContent("");
+
+        // Stage Description Table
+        Table descTable = createStageDescTable(textODT, snapshot, stageDesc);
+
+        // MID SPACER (The fix: Move this between Table and Group Title)
+        TextPElement midSpacer = new TextPElement(dom);
+        midSpacer.setTextContent("");
+
+        // Group Title
+        TextPElement pGroup = new TextPElement(dom);
+        pGroup.setTextContent((StringUtils.hasText(groupTitle) ? groupTitle : PLACEHOLDER_UNKNOWN));
+        applyHeaderStyle(pGroup);
+
+        // Bottom Spacer (Separates Group Title from Question Table)
+        TextPElement bottomSpacer = new TextPElement(dom);
+        bottomSpacer.setTextContent("");
+
+        // Sequential insertion order: Header -> Spacer -> Table -> Spacer -> Group Title -> Spacer -> Table
+        parent.insertBefore(p1, elem);
+        parent.insertBefore(beforeDescTableSpacer, elem);
+        parent.insertBefore(descTable.getOdfElement(), elem);
+        parent.insertBefore(midSpacer, elem);
+        parent.insertBefore(pGroup, elem);
+        parent.insertBefore(bottomSpacer, elem);
+
+    }
+
+    private TextPElement insertHeadersAfterElement(TextDocument textODT,
+                                                   TableTableElement snapshot,
+                                                   OdfElement elem,
+                                                   String stageDesc,
+                                                   String stageNum,
+                                                   String totalStages,
+                                                   String groupTitle) {
+
+        OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
+        Node parent = elem.getParentNode();
+        Node next = elem.getNextSibling();
+
+        // Top Spacer (Separates from the previous table)
+        TextPElement topSpacer = new TextPElement(dom);
+        topSpacer.setTextContent("");
+
+        // Stage Header
+        TextPElement p1 = new TextPElement(dom);
+        p1.setTextContent("Stage " + stageNum + " (of " + totalStages + "):");
+        applyHeaderStyle(p1);
+
+        TextPElement beforeDescTableSpacer = new TextPElement(dom);
+        beforeDescTableSpacer.setTextContent("");
+
+        // Stage Description Table
+        Table descTable = createStageDescTable(textODT, snapshot, stageDesc);
+
+        // MID SPACER (The fix: Inserted here)
+        TextPElement midSpacer = new TextPElement(dom);
+        midSpacer.setTextContent("");
+
+        // Group Title
+        TextPElement pGroup = new TextPElement(dom);
+        pGroup.setTextContent((StringUtils.hasText(groupTitle) ? groupTitle : PLACEHOLDER_UNKNOWN));
+        applyHeaderStyle(pGroup);
+
+        // Bottom Spacer
+        TextPElement bottomSpacer = new TextPElement(dom);
+        bottomSpacer.setTextContent("");
+
+        List<Node> nodes = Arrays.asList(topSpacer, p1, beforeDescTableSpacer,
+                descTable.getOdfElement(), midSpacer, pGroup, bottomSpacer);
+
+        if (next != null) {
+            for (Node n : nodes) parent.insertBefore(n, next);
+        } else {
+            for (Node n : nodes) parent.appendChild(n);
+        }
+
+        return bottomSpacer;
+    }
+
+    private Table createStageDescTable(TextDocument textODT,
+                                       TableTableElement snapshot,
+                                       String stageDescValue) {
+
+        Table table = Table.newTable(textODT, 1, 2);
+        try {
+            String styleName = snapshot.getTableStyleNameAttribute();
+            if (StringUtils.hasText(styleName)) table.getOdfElement().setTableStyleNameAttribute(styleName);
+
+            String fName = getTextFontName();
+            double fSize = getTextFontSize();
+
+            Cell labelCell = table.getCellByPosition(0, 0);
+            labelCell.setStringValue(STAGE_DESCRIPTION_HEADER_TAG);
+            labelCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.BOLD, fSize));
+
+            Cell valueCell = table.getCellByPosition(1, 0);
+            valueCell.setStringValue(stageDescValue);
+            valueCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.REGULAR, fSize));
+
+        } catch (Exception ignored) {}
+
+            table.getColumnByIndex(0).setWidth(55.0);
+            table.getColumnByIndex(1).setWidth(110.0);
+
+        return table;
+    }
+
+    private void applyHeaderStyle(TextPElement p) {
+        try {
+            Paragraph para = Paragraph.getInstanceof(p);
+            para.setFont(new Font(getTextFontName(), StyleTypeDefinitions.FontStyle.BOLD, getTextFontSize()));
+        } catch (Exception ignored) {}
+    }
+
+    private void fillOneTableStandard(Table table,
+                                      List<Map<String, Object>> groups,
+                                      String anchor,
+                                      List<FieldMapping> mappings) {
+        int anchorIdx = findRowContaining(table, anchor);
+        if (anchorIdx < 0) return;
+        Map<String, String> titleToPlaceholder = new HashMap<>();
+        for (FieldMapping m : mappings) titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
+
+        List<Integer> blockIdxs = findTemplateBlockRowIndexes(table, anchorIdx);
+        List<Row> templateRows = blockIdxs.stream().map(table::getRowByIndex).toList();
+
+        int numberColIdx = findNumberColumnIndex(table);
+        int counter = 1;
+        for (Map<String, Object> rgMap : groups) {
+            List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, titleToPlaceholder.values());
+            for (Map<String, String> rowMap : rows) {
+                for (Row templateRow : templateRows) {
+                    Row newRow = appendClonedRow(table, templateRow);
+                    replacePlaceholdersInRow(newRow, rowMap);
+                    if (numberColIdx >= 0) setCellTextIfNotCovered(newRow, numberColIdx, String.valueOf(counter));
+                }
+                counter++;
+            }
+        }
+        for (int i = blockIdxs.size() - 1; i >= 0; i--) table.removeRowsByIndex(blockIdxs.get(i), 1);
+    }
+
+    private String extractMetadataValue(Map<String, Object> rgMap, String metadataId) {
+        try {
+            List<Map<String, Object>> reqs = (List<Map<String, Object>>) ((Map)rgMap.get("OCDS")).get("requirements");
+            return reqs.stream().filter(r ->
+                    metadataId.equals(((Map)r.get("OCDS")).get("id")))
+                    .map(this::readSelectedOptionValue)
+                    .findFirst()
+                    .orElse("");
+        } catch (Exception e) { return ""; }
+    }
+
+    private List<FieldMapping> getCombinedMappings(String tableName) {
+        List<FieldMapping> mappings = new ArrayList<>(FieldMapping.getFieldsByTableName(tableName));
+        mappings.addAll(FieldMapping.getFieldsByTableName(COND_OF_PART));
+        mappings.addAll(FieldMapping.getFieldsByTableName(AWARD_CRITERIA));
+        return mappings;
+    }
+
+    private String getTextFontName() {
+        return TEXT_FONT;
+    }
+
+    private double getTextFontSize() {
+        return TEXT_FONT_SIZE;
     }
 }
