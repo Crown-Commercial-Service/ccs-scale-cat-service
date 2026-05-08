@@ -676,6 +676,13 @@ public class TableGroupGenerator {
 
 
     // --- Multi stage grouping code (Separated to prevent breaking existing logic) ---
+
+    /**
+     * Fill multi stages data with stage details and group name
+     *
+     * stage details are injected on the fly programmatically
+     *
+     */
     public void fillMultiStageTableData(String eventData,
                                         DocumentTemplateSource templateSource,
                                         TextDocument textODT) {
@@ -905,16 +912,6 @@ public class TableGroupGenerator {
                     .findFirst()
                     .orElse("");
         } catch (Exception e) { return ""; }
-    }
-
-    private String extractGroupId(Map<String, Object> rgMap) {
-        Map<String, Object> ocds = (Map<String, Object>) rgMap.get("OCDS");
-        if (ocds == null) {
-            return null;
-        }
-
-        Object description = ocds.get("id");
-        return description == null ? null : description.toString();
     }
 
     private List<FieldMapping> getCombinedMappings(String tableName) {

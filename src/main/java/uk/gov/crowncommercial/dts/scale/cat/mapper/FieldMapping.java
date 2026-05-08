@@ -21,17 +21,7 @@ public enum FieldMapping {
     // All mapped to STAGE_DESC table and share the «stage_group» anchor
     MS_STAGE_GROUP_DETAILS("STAGE_DESC", "«stage_description»", "STAGE_DESCRIPTION", "«stage_group»"),
     MS_STAGE_TOTAL("STAGE_DESC", "«total_stages»", "TOTAL_STAGES", "«stage_group»"),
-    MS_STAGE_CURRENT_STAGE("STAGE_DESC", "«current_stage»", "CURRENT_STAGE", "«stage_group»"),
-
-    // Multi-stage COP (Using _ms postfix)
-    MS_COP_QUESTION("STAGE_DESC", "«cop_question_ms»", "Enter your question", "«stage_group»"),
-    MS_COP_RES("STAGE_DESC", "«cop_res_ms»", "What type of response would you expect from the supplier for this question?", "«stage_group»"),
-    MS_COP_RES_SIZE("STAGE_DESC", "«cop_res_size_ms»", "Describe the response length/limit for this answer (e.g. 'not to exceed 2500 characters')", "«stage_group»"),
-    MS_COP_DOC("STAGE_DESC", "«cop_doc_ms»", "Would the supplier need to attach any document?", "«stage_group»"),
-    MS_COP_DOC_DES("STAGE_DESC", "«cop_doc_des_ms»", "What type of document do you want the supplier to attach?", "«stage_group»"),
-
-    // Multi-stage AC (Using _ms postfix)
-    MS_AC_QUESTION("STAGE_DESC", "«ac_question_ms»", "Enter your question", "«stage_group»");
+    MS_STAGE_CURRENT_STAGE("STAGE_DESC", "«current_stage»", "CURRENT_STAGE", "«stage_group»");
 
     private final String tableName;
     private final String placeholder;
