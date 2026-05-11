@@ -48,9 +48,8 @@ public class TemplateDataExtractor {
       String criterionId = "Criterion 3";
       String groupId = "Group 3";
       String questionId = "Question 6";
-      String value = EventsHelper.getData(criterionId, groupId, questionId,
+      return EventsHelper.getData(criterionId, groupId, questionId,
               event.getProcurementTemplatePayload().getCriteria());
-      return Objects.nonNull(value) ? value : "";
     } catch (Exception e) {
     }
     return "";
@@ -126,9 +125,8 @@ public class TemplateDataExtractor {
       String criterionId = "Criterion 3";
       String groupId = "Group 4";
       String questionId = "Question 8";
-      String value = EventsHelper.getData(criterionId, groupId, questionId,
+      return EventsHelper.getData(criterionId, groupId, questionId,
               event.getProcurementTemplatePayload().getCriteria());
-      return Objects.nonNull(value) ? value : "";
     } catch (Exception e) {
     }
     return null;
@@ -183,13 +181,11 @@ public class TemplateDataExtractor {
         String criterionId = "Criterion 3";
         String groupId = "Group 3";
         String questionId = "Question 2";
-        String value =
-            EventsHelper.getData(
+        return EventsHelper.getData(
                 criterionId,
                 groupId,
                 questionId,
                 event.getProcurementTemplatePayload().getCriteria());
-        return Objects.nonNull(value) ? value : "";
       }
     } catch (Exception e) {
     }
