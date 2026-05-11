@@ -242,7 +242,7 @@ public class ProjectsCSVGenerationScheduledTask {
     for (CSVData csvData : csvDataList) {
       try {
         csvPrinter.printRecord(csvData.getProjectId(), csvData.getOppertunity(), csvData.getLink(),
-            csvData.getFramework(), csvData.getCategory(), "", csvData.getSpecialist() ,csvData.getOrgName(),
+            csvData.getFramework(), csvData.getCategory(), csvData.getSpecialist() ,csvData.getOrgName(),
             csvData.getBuyerDomain(), csvData.getLocationOfWork(), csvData.getPublishedDate(),
             csvData.getOpenFor(), csvData.getExpectedContractLength(), csvData.getBudgetRange(), csvData.getApplicationsFromSME(),
             csvData.getApplicationsFromLargeOrganisations(), csvData.getTotalOrganisations(), csvData.getStatus(), csvData.getWinningSupplier(),
