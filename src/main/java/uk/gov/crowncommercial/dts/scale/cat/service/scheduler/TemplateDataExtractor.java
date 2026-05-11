@@ -42,6 +42,19 @@ public class TemplateDataExtractor {
     }
     return "";
   }
+
+  public static String getDos7ExpectedContractLength(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = "Group 3";
+      String questionId = "Question 6";
+      String value = EventsHelper.getData(criterionId, groupId, questionId,
+              event.getProcurementTemplatePayload().getCriteria());
+      return Objects.nonNull(value) ? value : "";
+    } catch (Exception e) {
+    }
+    return "";
+  }
   
   public static final String periodFormat(Period period) {
     if (period != null && period == Period.ZERO) {
@@ -107,6 +120,27 @@ public class TemplateDataExtractor {
     }
     return null;
   }
+
+  public static String getDos7IncumbentSupplier(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = "Group 4";
+      String questionId = "Question 8";
+      String value = EventsHelper.getData(criterionId, groupId, questionId,
+              event.getProcurementTemplatePayload().getCriteria());
+      return Objects.nonNull(value) ? value : "";
+    } catch (Exception e) {
+    }
+    return null;
+  }
+
+  public static String getDos7CallOffProcedure(final ProcurementEvent event) {
+    try {
+      return event.getEventType();
+    } catch (Exception e) {
+    }
+    return null;
+  }
   
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
@@ -142,7 +176,26 @@ public class TemplateDataExtractor {
     }
     return "";
   }
-  
+
+  public static String getDos7EmploymentStatus(final ProcurementEvent event) {
+    try {
+      if (!event.getProject().getLotNumber().equals("4")) {
+        String criterionId = "Criterion 3";
+        String groupId = "Group 3";
+        String questionId = "Question 2";
+        String value =
+            EventsHelper.getData(
+                criterionId,
+                groupId,
+                questionId,
+                event.getProcurementTemplatePayload().getCriteria());
+        return Objects.nonNull(value) ? value : "";
+      }
+    } catch (Exception e) {
+    }
+    return null;
+  }
+
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
