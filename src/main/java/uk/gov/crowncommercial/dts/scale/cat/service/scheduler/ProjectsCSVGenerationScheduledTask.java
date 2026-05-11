@@ -76,7 +76,7 @@ public class ProjectsCSVGenerationScheduledTask {
   @Value("${config.oppertunities.published.batch.size: 80}")
   private int batchSize;
 
-  @Scheduled(fixedDelay = 600000000)
+  @Scheduled(fixedDelay = 1000 * 60 * 60 * 2)
   //@Scheduled(cron = "${config.external.s3.oppertunities.schedule}")
   @SchedulerLock(name = "CSVGeneration_scheduledTask",
     lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
