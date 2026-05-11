@@ -211,7 +211,8 @@ public class ProjectsCSVGenerationScheduledTask {
                     : (isDos7 ? TemplateDataExtractor.getDos7IncumbentSupplier(event) : null))
             .callOffProcedure(isMIProject ? miAnswers.stream().filter(obj -> obj.getQuestionId() == 8).map(MiQuestionAnswerEntity::getAnswer).findFirst().map(miCallOffProcedureMapping::get).orElse(null)
                     : (isDos7 ? casCallOffProcedureMapping.get(TemplateDataExtractor.getDos7CallOffProcedure(event)) : "Two stage"))
-            .procurementRoute(isMIProject ? "Customer own system" : "GCA Contract Award Service (CAS)").build();
+            .procurementRoute(isMIProject ? "Customer own system" : "GCA Contract Award Service (CAS)")
+            .status(isMIProject ? ProjectPublicDetail.StatusEnum.OPEN.getValue() : null).build();
         csvDataList.add(csvData);
       }
     } catch (Exception e) {
