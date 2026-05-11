@@ -298,7 +298,10 @@ public class ProjectsCSVGenerationScheduledTask {
         rfx.getSupplierResponseCounters().getLastRound().getNumSupplResponded() + "");
     // Open for
     final boolean isMiProject = !miService.findAllByProjectId(String.valueOf(csvData.getProjectId())).isEmpty();
-    if (!isMiProject) {
+    if (isMiProject) {
+      csvData.setStatus(ProjectPublicDetail.StatusEnum.OPEN.getValue());
+      csvData.setSubStatus(null);
+    } else {
       csvData.setOpenFor(TemplateDataExtractor.getOpenForCount(
           rfx.getRfxSetting().getPublishDate(), rfx.getRfxSetting().getCloseDate()));
       // Status
