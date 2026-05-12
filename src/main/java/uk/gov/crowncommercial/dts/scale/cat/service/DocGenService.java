@@ -847,6 +847,7 @@ public class DocGenService {
 
     @SneakyThrows
     public String mergeStageJsonPayloads(List<Map<String, Object>> stageDataList) {
+
         if (stageDataList == null || stageDataList.isEmpty()) return "";
 
         // Use the first entry as Foundation
