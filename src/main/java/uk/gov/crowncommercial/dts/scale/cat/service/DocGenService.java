@@ -107,8 +107,9 @@ public class DocGenService {
   private static final String OPTIONS = "options";
   private static final String VALUE = "value";
   private static final String SELECT = "select";
+    private static final String TOTAL_STAGES_TAG = "totalStages";
 
-  private final ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
   private final ValidationService validationService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ObjectMapper objectMapper;
@@ -783,34 +784,67 @@ public class DocGenService {
                                              TextDocument textODT,
                                              Resource templateResource) {
 
+        // Identify the Resource Name
+        String resourceName = templateResource.getFilename();
+        log.debug("Processing multi-stage logic for resource: {}", resourceName);
+
+        // Define the "Merge Rule" Condition
+        // We only apply the merge logic if it's 'Attachment 1'.
+        // Using .contains or a regex is safer than .equals in case of versioning (e.g. Attachment 1 v2)
+        boolean shouldMerge = resourceName != null && resourceName.toLowerCase().contains("attachment 1");
+
+        // Fetch Stage Information
         StagesRead stageInfo = stageService.getStagesForEventId(procurementEvent.getEventID());
         if (stageInfo == null || stageInfo.getNumberOfStages() <= 0) return;
+
+        final int totalStages = stageInfo.getNumberOfStages();
 
         Integer firstEventId = retryableTendersDBDelegate.findEventIdOfFirstStageForMultiStageEvent(
                 procurementEvent.getEventID(), stageInfo.getNumberOfStages());
 
-        int totalStages = stageInfo.getNumberOfStages();
-        // Use a list of Maps to store payload + metadata together
         List<Map<String, Object>> stageDataList = new ArrayList<>();
 
-        for (int i = 1; i <= totalStages; i++) {
-            retryableTendersDBDelegate.findByIdAndStageNumber(firstEventId, i)
-                    .ifPresent(stageEvent -> {
-                        String payload = stageEvent.getProcurementTemplatePayloadRaw();
-                        if (StringUtils.hasText(payload)) {
-                            Map<String, Object> data = new HashMap<>();
-                            data.put(PAYLOAD_TAG, payload);
-                            data.put(STAGE_NUMBER_TAG, stageEvent.getStageNumber());
-                            data.put(STAGE_DESCRIPTION_TAG, stageEvent.getStageDescription());
-                            stageDataList.add(data);
-                        }
-                    });
+        if (shouldMerge) {
+            for (int i = 1; i <= stageInfo.getNumberOfStages(); i++) {
+                fillStageSpecificJson(firstEventId, i, totalStages, stageDataList);
+            }
+        } else {
+            // TODO journey for attachment 3 hardcoded at the moment
+            // TODO we need to implement logic for stage 4 and others up to 10 stage and write new file
+            // TODO stage 5,6,7,8,9 and 10 should use attachment 4 template placeholder and add stage number in the file name
+            // TODO file name:  DOS_7 MultiStage - Lot{LotNumber} - Attachment {AttachmentNumber} Responses to Stage {StageNumber} assessment criteria
+            fillStageSpecificJson(firstEventId, 1, totalStages, stageDataList);
         }
+
 
         if (!stageDataList.isEmpty()) {
             String mergedJson = mergeStageJsonPayloads(stageDataList);
             tableGroupGenerator.fillMultiStageTableData(mergedJson, templateSource, textODT);
         }
+    }
+
+    /**
+     * Encapsulated logic for the Attachment 1 Merge Rule
+     */
+
+    private void fillStageSpecificJson(int eventId,
+                                       int currentStage,
+                                       int totalStage,
+                                       List<Map<String, Object>> stageDataList) {
+
+        Optional<ProcurementStageEvent> stageEventOpt = retryableTendersDBDelegate.findByIdAndStageNumber(eventId, currentStage);
+
+        stageEventOpt.ifPresent(stageEvent -> {
+            String payload = stageEvent.getProcurementTemplatePayloadRaw();
+            if (StringUtils.hasText(payload)) {
+                Map<String, Object> data = new HashMap<>();
+                data.put(PAYLOAD_TAG, payload);
+                data.put(STAGE_NUMBER_TAG, stageEvent.getStageNumber());
+                data.put(TOTAL_STAGES_TAG, totalStage);
+                data.put(STAGE_DESCRIPTION_TAG, stageEvent.getStageDescription());
+                stageDataList.add(data);
+            }
+        });
     }
 
     @SneakyThrows
@@ -843,6 +877,7 @@ public class DocGenService {
             Map<String, Object> currentData = stageDataList.get(i);
             String payload = (String) currentData.get(PAYLOAD_TAG);
             int stageNum = (Integer) currentData.get(STAGE_NUMBER_TAG);
+            int totalStages = (Integer) currentData.get(TOTAL_STAGES_TAG);
             String stageDesc = (String) currentData.get(STAGE_DESCRIPTION_TAG);
 
             // Unique IDs for each stage's groups
@@ -850,8 +885,8 @@ public class DocGenService {
             String newAcId = "Group 2." + (nextAcSuffix++);
 
             // Rename and Inject metadata for both COP and AC groups
-            appendRenameAndInject(payload, "Group 1", newCopId, targetRequirementGroups, stageNum, stageDataList.size(), stageDesc, nextOrder++);
-            appendRenameAndInject(payload, "Group 2", newAcId, targetRequirementGroups, stageNum, stageDataList.size(), stageDesc, nextOrder++);
+            appendRenameAndInject(payload, "Group 1", newCopId, targetRequirementGroups, stageNum, totalStages, stageDesc, nextOrder++);
+            appendRenameAndInject(payload, "Group 2", newAcId, targetRequirementGroups, stageNum, totalStages, stageDesc, nextOrder++);
         }
 
         return objectMapper.writeValueAsString(baseRoot);
