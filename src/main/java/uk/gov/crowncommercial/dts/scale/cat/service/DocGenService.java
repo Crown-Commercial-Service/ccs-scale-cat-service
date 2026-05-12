@@ -789,8 +789,6 @@ public class DocGenService {
         log.debug("Processing multi-stage logic for resource: {}", resourceName);
 
         // Define the "Merge Rule" Condition
-        // We only apply the merge logic if it's 'Attachment 1'.
-        // Using .contains or a regex is safer than .equals in case of versioning (e.g. Attachment 1 v2)
         boolean shouldMerge = resourceName != null && resourceName.toLowerCase().contains("attachment 1");
 
         // Fetch Stage Information
