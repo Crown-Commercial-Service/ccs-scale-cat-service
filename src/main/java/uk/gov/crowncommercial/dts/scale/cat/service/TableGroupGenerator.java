@@ -47,7 +47,7 @@ public class TableGroupGenerator {
     private static final String CURRENT_STAGE = "CURRENT_STAGE";
     private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
     private static final String TOTAL_STAGES = "TOTAL_STAGES";
-    private static final String TEXT_FONT = "Arial";
+    private static final String TEXT_FONT_NAME = "Arial";
     private static final double TEXT_FONT_SIZE = 12.0;
 
     private final ObjectMapper objectMapper;
@@ -699,7 +699,7 @@ public class TableGroupGenerator {
         if (prototype == null) return;
         TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
 
-        // 1. FILTERING: Create buckets only for groups that HAVE real answers
+        // Look for real answers
         LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
         for (Map<String, Object> rg : requirementGroups) {
             if (hasRealAnswers(rg)) { // The Gatekeeper
@@ -708,7 +708,6 @@ public class TableGroupGenerator {
             }
         }
 
-        // 2. If no data survived the filter, remove the "Ghost" prototype and exit
         if (stageBuckets.isEmpty()) {
             prototype.remove();
             return;
@@ -719,7 +718,6 @@ public class TableGroupGenerator {
 
         for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
             List<Map<String, Object>> stageGroups = entry.getValue();
-            // Since we filtered above, stageGroups is guaranteed to have data
 
             Map<String, Object> firstGroup = stageGroups.getFirst();
             String stageNum = entry.getKey();
@@ -875,16 +873,13 @@ public class TableGroupGenerator {
             String styleName = snapshot.getTableStyleNameAttribute();
             if (StringUtils.hasText(styleName)) table.getOdfElement().setTableStyleNameAttribute(styleName);
 
-            String fName = getTextFontName();
-            double fSize = getTextFontSize();
-
             Cell labelCell = table.getCellByPosition(0, 0);
             labelCell.setStringValue(STAGE_DESCRIPTION_HEADER_TAG);
-            labelCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.BOLD, fSize));
+            labelCell.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
 
             Cell valueCell = table.getCellByPosition(1, 0);
             valueCell.setStringValue(stageDescValue);
-            valueCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.REGULAR, fSize));
+            valueCell.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.REGULAR, TEXT_FONT_SIZE));
 
         } catch (Exception ignored) {}
 
@@ -897,7 +892,7 @@ public class TableGroupGenerator {
     private void applyHeaderStyle(TextPElement p) {
         try {
             Paragraph para = Paragraph.getInstanceof(p);
-            para.setFont(new Font(getTextFontName(), StyleTypeDefinitions.FontStyle.BOLD, getTextFontSize()));
+            para.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
         } catch (Exception ignored) {}
     }
 
@@ -947,11 +942,4 @@ public class TableGroupGenerator {
         return mappings;
     }
 
-    private String getTextFontName() {
-        return TEXT_FONT;
-    }
-
-    private double getTextFontSize() {
-        return TEXT_FONT_SIZE;
-    }
 }
