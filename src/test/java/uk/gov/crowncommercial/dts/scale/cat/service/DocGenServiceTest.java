@@ -74,11 +74,13 @@ class DocGenServiceTest {
         Map<String, Object> stage1 = new HashMap<>();
         stage1.put("payload", stage1Payload);
         stage1.put("stageNumber", 1);
+        stage1.put("totalStages", 2);
         stage1.put("stageDescription", "Description for Stage 1");
 
         Map<String, Object> stage2 = new HashMap<>();
         stage2.put("payload", stage2Payload);
         stage2.put("stageNumber", 2);
+        stage2.put("totalStages", 2);
         stage2.put("stageDescription", "Description for Stage 2");
 
         List<Map<String, Object>> stageDataList = Arrays.asList(stage1, stage2);
@@ -126,10 +128,10 @@ class DocGenServiceTest {
 
         List<Map<String, Object>> stageDataList = new ArrayList<>();
 
-        stageDataList.add(createStageMap(STAGE_1, 1, "Stage 1 Description"));
-        stageDataList.add(createStageMap(STAGE_2, 2, "Stage 2 Description"));
-        stageDataList.add(createStageMap(STAGE_3, 3, "Stage 3 Description"));
-        stageDataList.add(createStageMap(STAGE_4, 4, "Stage 4 Description"));
+        stageDataList.add(createStageMap(STAGE_1, 1, "Stage 1 Description", 4));
+        stageDataList.add(createStageMap(STAGE_2, 2, "Stage 2 Description", 4));
+        stageDataList.add(createStageMap(STAGE_3, 3, "Stage 3 Description", 4));
+        stageDataList.add(createStageMap(STAGE_4, 4, "Stage 4 Description", 4));
 
         String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
 
@@ -192,11 +194,12 @@ class DocGenServiceTest {
     /**
      * Helper method to create the Map expected by the service
      */
-    private Map<String, Object> createStageMap(String payload, int num, String desc) {
+    private Map<String, Object> createStageMap(String payload, int num, String desc, int total) {
         Map<String, Object> map = new HashMap<>();
         map.put("payload", payload);
         map.put("stageNumber", num);
         map.put("stageDescription", desc);
+        map.put("totalStages", total); // FIXED: Added totalStages
         return map;
     }
 

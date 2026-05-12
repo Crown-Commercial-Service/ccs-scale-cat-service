@@ -1531,7 +1531,7 @@ public class ProcurementEventService implements EventService {
 
         if (TenderStatus.ACTIVE != status) {
             // Get documents from S3
-            event.getDocumentUploads().forEach(doc -> {
+           event.getDocumentUploads().forEach(doc -> {
                 var documentKey = DocumentKey.fromString(doc.getDocumentId());
                 var attachment = DocumentAttachment.builder()
                         .data(documentUploadService.retrieveDocument(doc, principal))

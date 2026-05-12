@@ -47,7 +47,7 @@ public class TableGroupGenerator {
     private static final String CURRENT_STAGE = "CURRENT_STAGE";
     private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
     private static final String TOTAL_STAGES = "TOTAL_STAGES";
-    private static final String TEXT_FONT = "Arial";
+    private static final String TEXT_FONT_NAME = "Arial";
     private static final double TEXT_FONT_SIZE = 12.0;
 
     private final ObjectMapper objectMapper;
@@ -699,10 +699,18 @@ public class TableGroupGenerator {
         if (prototype == null) return;
         TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
 
+        // Look for real answers
         LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
         for (Map<String, Object> rg : requirementGroups) {
-            String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
-            stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
+            if (hasRealAnswers(rg)) { // The Gatekeeper
+                String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
+                stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
+            }
+        }
+
+        if (stageBuckets.isEmpty()) {
+            prototype.remove();
+            return;
         }
 
         TableTableElement lastTableElem = prototype.getOdfElement();
@@ -710,8 +718,8 @@ public class TableGroupGenerator {
 
         for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
             List<Map<String, Object>> stageGroups = entry.getValue();
-            Map<String, Object> firstGroup = stageGroups.getFirst();
 
+            Map<String, Object> firstGroup = stageGroups.getFirst();
             String stageNum = entry.getKey();
             String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
             String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
@@ -722,24 +730,40 @@ public class TableGroupGenerator {
                 currentTable = prototype;
                 insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
             } else {
-
-                TextPElement lastAddedElem = insertHeadersAfterElement(textODT,
-                        snapshot,
-                        lastTableElem,
-                        stageDesc,
-                        stageNum,
-                        totalStages,
-                        groupTitle);
-
-                currentTable = cloneTableAfterParagraph(textODT,
-                        snapshot,
-                        lastAddedElem,
-                        tableName + "_Stage_" + stageNum);
+                TextPElement lastAddedElem = insertHeadersAfterElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
+                currentTable = cloneTableAfterParagraph(textODT, snapshot, lastAddedElem, tableName + "_Stage_" + stageNum);
             }
 
             fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
             lastTableElem = currentTable.getOdfElement();
             stageCount++;
+        }
+    }
+
+    private boolean hasRealAnswers(Map<String, Object> rg) {
+        try {
+            List<Map<String, Object>> requirements = (List<Map<String, Object>>) ((Map)rg.get("OCDS")).get("requirements");
+
+            return requirements.stream().anyMatch(r -> {
+                String rid = (String) ((Map)r.get("OCDS")).get("id");
+
+                // Do not count stage metadata as a "Real Answer"
+                if (Arrays.asList(CURRENT_STAGE, TOTAL_STAGES, STAGE_DESCRIPTION).contains(rid)) {
+                    return false;
+                }
+
+                Map<String, Object> nonOcds = (Map<String, Object>) r.get("nonOCDS");
+                List<Map<String, Object>> options = (List<Map<String, Object>>) nonOcds.get("options");
+
+                // A "Real Answer" is where select is true and value is not blank
+                return options != null && options.stream().anyMatch(o ->
+                        Boolean.TRUE.equals(o.get("select")) &&
+                                o.get("value") != null &&
+                                StringUtils.hasText(o.get("value").toString())
+                );
+            });
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -849,16 +873,13 @@ public class TableGroupGenerator {
             String styleName = snapshot.getTableStyleNameAttribute();
             if (StringUtils.hasText(styleName)) table.getOdfElement().setTableStyleNameAttribute(styleName);
 
-            String fName = getTextFontName();
-            double fSize = getTextFontSize();
-
             Cell labelCell = table.getCellByPosition(0, 0);
             labelCell.setStringValue(STAGE_DESCRIPTION_HEADER_TAG);
-            labelCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.BOLD, fSize));
+            labelCell.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
 
             Cell valueCell = table.getCellByPosition(1, 0);
             valueCell.setStringValue(stageDescValue);
-            valueCell.setFont(new Font(fName, StyleTypeDefinitions.FontStyle.REGULAR, fSize));
+            valueCell.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.REGULAR, TEXT_FONT_SIZE));
 
         } catch (Exception ignored) {}
 
@@ -871,7 +892,7 @@ public class TableGroupGenerator {
     private void applyHeaderStyle(TextPElement p) {
         try {
             Paragraph para = Paragraph.getInstanceof(p);
-            para.setFont(new Font(getTextFontName(), StyleTypeDefinitions.FontStyle.BOLD, getTextFontSize()));
+            para.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
         } catch (Exception ignored) {}
     }
 
@@ -921,11 +942,4 @@ public class TableGroupGenerator {
         return mappings;
     }
 
-    private String getTextFontName() {
-        return TEXT_FONT;
-    }
-
-    private double getTextFontSize() {
-        return TEXT_FONT_SIZE;
-    }
 }
