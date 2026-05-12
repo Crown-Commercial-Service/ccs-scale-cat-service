@@ -181,7 +181,7 @@ public class DocGenService {
           try {
             if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
                 if ("MS1".equals(procurementEvent.getEventType())) {
-                    handleMultiStageTableGroups(procurementEvent, templateSource, textODT);
+                    handleMultiStageTableGroups(procurementEvent, templateSource, textODT, templateResource);
                 } else {
                     // Old standard logic
                     String eventData = isLastStageEvent ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
@@ -780,7 +780,9 @@ public class DocGenService {
      */
     private void handleMultiStageTableGroups(ProcurementEvent procurementEvent,
                                              DocumentTemplateSource templateSource,
-                                             TextDocument textODT) {
+                                             TextDocument textODT,
+                                             Resource templateResource) {
+
         StagesRead stageInfo = stageService.getStagesForEventId(procurementEvent.getEventID());
         if (stageInfo == null || stageInfo.getNumberOfStages() <= 0) return;
 

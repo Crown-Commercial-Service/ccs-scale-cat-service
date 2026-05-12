@@ -699,10 +699,19 @@ public class TableGroupGenerator {
         if (prototype == null) return;
         TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
 
+        // 1. FILTERING: Create buckets only for groups that HAVE real answers
         LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
         for (Map<String, Object> rg : requirementGroups) {
-            String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
-            stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
+            if (hasRealAnswers(rg)) { // The Gatekeeper
+                String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
+                stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
+            }
+        }
+
+        // 2. If no data survived the filter, remove the "Ghost" prototype and exit
+        if (stageBuckets.isEmpty()) {
+            prototype.remove();
+            return;
         }
 
         TableTableElement lastTableElem = prototype.getOdfElement();
@@ -710,8 +719,9 @@ public class TableGroupGenerator {
 
         for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
             List<Map<String, Object>> stageGroups = entry.getValue();
-            Map<String, Object> firstGroup = stageGroups.getFirst();
+            // Since we filtered above, stageGroups is guaranteed to have data
 
+            Map<String, Object> firstGroup = stageGroups.getFirst();
             String stageNum = entry.getKey();
             String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
             String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
@@ -722,24 +732,40 @@ public class TableGroupGenerator {
                 currentTable = prototype;
                 insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
             } else {
-
-                TextPElement lastAddedElem = insertHeadersAfterElement(textODT,
-                        snapshot,
-                        lastTableElem,
-                        stageDesc,
-                        stageNum,
-                        totalStages,
-                        groupTitle);
-
-                currentTable = cloneTableAfterParagraph(textODT,
-                        snapshot,
-                        lastAddedElem,
-                        tableName + "_Stage_" + stageNum);
+                TextPElement lastAddedElem = insertHeadersAfterElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
+                currentTable = cloneTableAfterParagraph(textODT, snapshot, lastAddedElem, tableName + "_Stage_" + stageNum);
             }
 
             fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
             lastTableElem = currentTable.getOdfElement();
             stageCount++;
+        }
+    }
+
+    private boolean hasRealAnswers(Map<String, Object> rg) {
+        try {
+            List<Map<String, Object>> requirements = (List<Map<String, Object>>) ((Map)rg.get("OCDS")).get("requirements");
+
+            return requirements.stream().anyMatch(r -> {
+                String rid = (String) ((Map)r.get("OCDS")).get("id");
+
+                // Do not count stage metadata as a "Real Answer"
+                if (Arrays.asList(CURRENT_STAGE, TOTAL_STAGES, STAGE_DESCRIPTION).contains(rid)) {
+                    return false;
+                }
+
+                Map<String, Object> nonOcds = (Map<String, Object>) r.get("nonOCDS");
+                List<Map<String, Object>> options = (List<Map<String, Object>>) nonOcds.get("options");
+
+                // A "Real Answer" is where select is true and value is not blank
+                return options != null && options.stream().anyMatch(o ->
+                        Boolean.TRUE.equals(o.get("select")) &&
+                                o.get("value") != null &&
+                                StringUtils.hasText(o.get("value").toString())
+                );
+            });
+        } catch (Exception e) {
+            return false;
         }
     }
 
