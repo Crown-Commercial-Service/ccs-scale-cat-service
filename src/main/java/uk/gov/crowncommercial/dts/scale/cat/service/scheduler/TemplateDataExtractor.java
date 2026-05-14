@@ -40,7 +40,7 @@ public class TemplateDataExtractor {
       }
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
 
   public static String getDos7ExpectedContractLength(final ProcurementEvent event) {
@@ -52,7 +52,7 @@ public class TemplateDataExtractor {
               event.getProcurementTemplatePayload().getCriteria());
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
   
   public static final String periodFormat(Period period) {
@@ -112,9 +112,8 @@ public class TemplateDataExtractor {
       String groupId = "Group 3";
       String questionId = Objects.nonNull(event) && event.getProject().getLotNumber().equals("4")
               ? "Question 6" : "Question 8";
-      String value = EventsHelper.getData(criterionId, groupId, questionId,
+      return EventsHelper.getData(criterionId, groupId, questionId,
               event.getProcurementTemplatePayload().getCriteria());
-      return Objects.nonNull(value) ? value : "";
     } catch (Exception e) {
     }
     return null;
@@ -156,7 +155,7 @@ public class TemplateDataExtractor {
       }
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
   
   /**
@@ -172,7 +171,7 @@ public class TemplateDataExtractor {
       }
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
 
   public static String getDos7EmploymentStatus(final ProcurementEvent event) {
@@ -200,12 +199,11 @@ public class TemplateDataExtractor {
       String criterionId = "Criterion 3";
       String groupId = event.getProject().getLotNumber().equals("1") ? "Group 5" : "Group 4";
       String questionId = "Question 6";
-      String location = EventsHelper.getData(criterionId, groupId, questionId,
+      return EventsHelper.getData(criterionId, groupId, questionId,
           event.getProcurementTemplatePayload().getCriteria());
-      return Objects.nonNull(location) ? location : "";
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
 
   // TODO: Lot-4 Studio location (Optional), Participant location (Optional)
@@ -221,10 +219,10 @@ public class TemplateDataExtractor {
         location = EventsHelper.getData(criterionId, groupId, questionId,
                 event.getProcurementTemplatePayload().getCriteria());
       }
-      return Objects.nonNull(location) ? location : "";
+      return location;
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
   
   public static Set<ExportRfxResponse> removeBrokenEvents(Set<ExportRfxResponse> jaggaerData) {
