@@ -942,4 +942,9 @@ public class TableGroupGenerator {
         return mappings;
     }
 
+    public void replacePlaceholderText(TextDocument doc, String placeholder, String value) {
+        if (doc == null || !StringUtils.hasText(placeholder)) return;
+        replaceAllTextOccurrences(doc, placeholder, value != null ? value : PLACEHOLDER_UNKNOWN);
+    }
+
 }

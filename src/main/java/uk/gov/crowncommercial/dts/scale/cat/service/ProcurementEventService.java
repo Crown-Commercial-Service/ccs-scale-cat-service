@@ -1531,17 +1531,18 @@ public class ProcurementEventService implements EventService {
 
         if (TenderStatus.ACTIVE != status) {
             // Get documents from S3
-           event.getDocumentUploads().forEach(doc -> {
+/*           event.getDocumentUploads().forEach(doc -> {
                 var documentKey = DocumentKey.fromString(doc.getDocumentId());
                 var attachment = DocumentAttachment.builder()
                         .data(documentUploadService.retrieveDocument(doc, principal))
                         .fileName(documentKey.getFileName())
                         .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
                 attachments.add(attachment);
-            });
+            });*/
             // Get draft documents
             Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
             Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
+            // TODO if it's rollover journey, add additional attachment 4 file (depending on totalStages)
             filterTemplates.forEach(template -> {
                 attachments.add(dTemplateService.getDraftDocument(procId, eventId,
                         DocumentKey.fromString(template.getId()), isLastStage));

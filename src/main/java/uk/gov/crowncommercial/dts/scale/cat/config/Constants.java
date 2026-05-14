@@ -94,4 +94,8 @@ public class Constants {
 
     // DUNS formatting constants
     public static final String DUNS_PREFIX = "US-DUNS-";
+
+    //Multistage
+    public static final String MULTI_STAGE_EVENT_TYPE = "MS1";
+    public static final String MULTI_STAGE_RETURN_EVENT_TYPE = "MSR";
 }

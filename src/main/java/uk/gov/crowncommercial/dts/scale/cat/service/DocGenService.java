@@ -27,6 +27,7 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
+import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -45,9 +46,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.MULTI_STAGE_EVENT_TYPE;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.MULTI_STAGE_RETURN_EVENT_TYPE;
 import static uk.gov.crowncommercial.dts.scale.cat.model.generated.DocumentAudienceType.SUPPLIER;
 
 /**
@@ -98,6 +102,7 @@ public class DocGenService {
   private static final String PAYLOAD_TAG = "payload";
   private static final String STAGE_NUMBER_TAG = "stageNumber";
   private static final String STAGE_DESCRIPTION_TAG = "stageDescription";
+  private static final String TOTAL_STAGES_TAG = "totalStages";
   private static final String CRITERION2 = "Criterion 2";
   private static final String CRITERIA = "criteria";
   private static final String REQUIREMENT_GROUPS = "requirementGroups";
@@ -107,9 +112,9 @@ public class DocGenService {
   private static final String OPTIONS = "options";
   private static final String VALUE = "value";
   private static final String SELECT = "select";
-    private static final String TOTAL_STAGES_TAG = "totalStages";
+  private static final String CURRENT_STAGE_ANCHOR_TAG = "«current_stage»";
 
-    private final ApplicationContext applicationContext;
+  private final ApplicationContext applicationContext;
   private final ValidationService validationService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final ObjectMapper objectMapper;
@@ -181,7 +186,7 @@ public class DocGenService {
           // Grab the value for the replacement, and then apply it to our templated source
           try {
             if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
-                if ("MS1".equals(procurementEvent.getEventType())) {
+                if (isEventTypeMultiStage(procurementEvent.getEventType())) {
                     handleMultiStageTableGroups(procurementEvent, templateSource, textODT, templateResource);
                 } else {
                     // Old standard logic
@@ -773,11 +778,20 @@ public class DocGenService {
     }
   }
 
-
     /**
-     * Multi stages code
-     * Main entry point for multi-stage table generation.
-     * Collects all payloads and triggers the merged document generation.
+     * Multi stages code start here.
+     * Determine if event type is MS1 or MSR, if yes apply multi-stage logic otherwise continue with old flow.
+     *
+     */
+    private boolean isEventTypeMultiStage(String eventType) {
+        return MULTI_STAGE_EVENT_TYPE.equals(eventType)
+                || MULTI_STAGE_RETURN_EVENT_TYPE.equals(eventType);
+    }
+    /**
+     * Multi-stage grouping logic to merge stage specific jsons.
+     * Collects all json payloads and triggers the merged document generation.
+     * So Table group generator understand how to write stage information COP and AC data into the attachment file.
+     *
      */
     private void handleMultiStageTableGroups(ProcurementEvent procurementEvent,
                                              DocumentTemplateSource templateSource,
@@ -786,10 +800,19 @@ public class DocGenService {
 
         // Identify the Resource Name
         String resourceName = templateResource.getFilename();
+        if(org.apache.commons.lang3.StringUtils.isBlank(resourceName)) {
+            log.error("Multi stage Resource file name is not defined check document_templates table has entry for template_url");
+            throw new ResourceNotFoundException("Multi stage Resource file name is not defined check document_templates table has entry for template_url");
+        }
+
         log.debug("Processing multi-stage logic for resource: {}", resourceName);
 
-        // Define the "Merge Rule" Condition
-        boolean shouldMerge = resourceName != null && resourceName.toLowerCase().contains("attachment 1");
+        Integer targetStage = extractStageNumber(resourceName);
+
+        if(targetStage == 0) {
+            log.error("Multi stage Resource file name is malformed, it should have attachment followed with digit 1 or 2 or 3 or 4");
+            throw new ResourceNotFoundException("Multi stage Resource file name is malformed, it should have attachment followed with digit 1 or 2 or 3 or 4");
+        }
 
         // Fetch Stage Information
         StagesRead stageInfo = stageService.getStagesForEventId(procurementEvent.getEventID());
@@ -802,22 +825,50 @@ public class DocGenService {
 
         List<Map<String, Object>> stageDataList = new ArrayList<>();
 
-        if (shouldMerge) {
-            for (int i = 1; i <= stageInfo.getNumberOfStages(); i++) {
-                fillStageSpecificJson(firstEventId, i, totalStages, stageDataList);
-            }
-        } else {
+        if (targetStage == 1 || targetStage == 2) {
+            fillStageJsonWithMergedJson(totalStages, firstEventId, stageDataList);
+        } else if (targetStage == 3) {
+            fillStageSpecificJson(firstEventId, 1, totalStages, stageDataList);
+
+        } else if(targetStage == 4) {
             // TODO journey for attachment 3 hardcoded at the moment
             // TODO we need to implement logic for stage 4 and others up to 10 stage and write new file
             // TODO stage 5,6,7,8,9 and 10 should use attachment 4 template placeholder and add stage number in the file name
             // TODO file name:  DOS_7 MultiStage - Lot{LotNumber} - Attachment {AttachmentNumber} Responses to Stage {StageNumber} assessment criteria
-            fillStageSpecificJson(firstEventId, 1, totalStages, stageDataList);
+
+            String priorEventId = stageInfo.getStageEvents().getFirst().getPriorEventId();
+            if(priorEventId == null || priorEventId.isBlank()) {
+                log.error("No prior eventId found for this first eventId: {}", stageInfo.getStageEvents().getFirst().getEventId());
+                throw new ResourceNotFoundException("No prior eventId found for this first eventId: "
+                        +  stageInfo.getStageEvents().getFirst().getEventId());
+            }
+
+            Integer legacyEventId = extractEventId(priorEventId);
+            if(legacyEventId == null) {
+                log.error("Failed to extract eventId from priorEventId firstEventId: {}", firstEventId);
+                throw new ResourceNotFoundException("Failed to extract eventId from priorEventId firstEventId: " + firstEventId);
+            }
+            firstEventId = legacyEventId;
+            fillStageSpecificJson(firstEventId, 2, totalStages, stageDataList);
+            // Add current stage value at the top of attachment 4 file starting paragraph
+            tableGroupGenerator.replacePlaceholderText(textODT, CURRENT_STAGE_ANCHOR_TAG, "2");
+        } else {
+            log.error("Multi stage Resource file name is malformed, it should have attachment followed with digit 1 or 2 or 3 or 4");
+            throw new ResourceNotFoundException("Multi stage Resource file name is malformed, it should have attachment followed with digit 1 or 2 or 3 or 4");
+
         }
+
 
 
         if (!stageDataList.isEmpty()) {
             String mergedJson = mergeStageJsonPayloads(stageDataList);
             tableGroupGenerator.fillMultiStageTableData(mergedJson, templateSource, textODT);
+        }
+    }
+
+    private void fillStageJsonWithMergedJson(int totalStages, int firstEventId, List<Map<String, Object>> stageDataList) {
+        for (int i = 1; i <= totalStages; i++) {
+            fillStageSpecificJson(firstEventId, i, totalStages, stageDataList);
         }
     }
 
@@ -931,6 +982,36 @@ public class DocGenService {
         opt.put(SELECT, true);
 
         requirements.add(req);
+    }
+
+    private Integer extractStageNumber(String filename) {
+        if (filename == null) return null;
+        try {
+            Pattern p = Pattern.compile("attachment\\s+(\\d+)", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(filename);
+            if (m.find()) {
+                return Integer.parseInt(m.group(1));
+            }
+        } catch (Exception ex) {
+            log.error("Failed to extract stage number from filename: {}", filename, ex);
+        }
+        return null;
+    }
+
+    private Integer extractEventId(String eventId) {
+
+        Pattern p = Pattern.compile("-(\\d+)$");
+        Matcher matcher = p.matcher(eventId.trim());
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException ex) {
+                log.error("Failed to extract event number from String eventId: {}", eventId, ex);
+                return null;
+            }
+        }
+
+        return null;
     }
 
 }
