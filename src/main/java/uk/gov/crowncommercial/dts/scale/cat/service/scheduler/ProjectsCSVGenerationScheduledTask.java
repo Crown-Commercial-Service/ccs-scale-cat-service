@@ -20,6 +20,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.DigitalRole;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.MiQuestionAnswerEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail;
@@ -170,13 +171,7 @@ public class ProjectsCSVGenerationScheduledTask {
         final String specialist =
             isDos7 && event.getProject().getLotNumber().equals("3")
                 ? digitalRoleService.findByProjectId(String.valueOf(project.getId())).stream()
-                    .map(
-                        digitalRole ->
-                            String.format(
-                                "%s-%s-%s",
-                                digitalRole.getJobFamily(),
-                                digitalRole.getRole(),
-                                digitalRole.getLevel()))
+                    .map(DigitalRole::getLevel)
                     .collect(Collectors.joining(", "))
                 : null;
 

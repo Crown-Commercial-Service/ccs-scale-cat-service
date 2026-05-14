@@ -277,7 +277,6 @@ public class ProcurementEventService implements EventService {
 
         eventBuilder.project(project).eventName(eventName).eventType(eventTypeValue)
                 .downSelectedSuppliers(downSelectedSuppliers).ocdsAuthorityName(ocdsAuthority)
-
                 .ocidPrefix(ocidPrefix).createdBy(principal).createdAt(Instant.now()).updatedBy(principal)
                 .updatedAt(Instant.now()).tenderStatus(tenderStatus);
 
@@ -355,7 +354,6 @@ public class ProcurementEventService implements EventService {
     }
 
     private void setRefreshSuppliersForEvent(ProcurementEvent.ProcurementEventBuilder eventBuilder, Set<ProcurementEvent> procurementEvents) {
-
         Optional<ProcurementEvent>  downSelectedProcurementEvent=procurementEvents.stream().filter(event -> !isClosedStatus(event.getTenderStatus())).filter(ProcurementEvent::getDownSelectedSuppliers).findFirst();
         if(downSelectedProcurementEvent.isPresent()){
             eventBuilder.refreshSuppliers(false);
@@ -371,6 +369,7 @@ public class ProcurementEventService implements EventService {
             }
         }
     }
+
     private void setRefreshSuppliersForEvent(ProcurementEvent  event, Assessment validatedAssessment) {
         Optional<AssessmentTool> assesmentToolOptional=retryableTendersDBDelegate.findAssessmentToolByExternalToolId(validatedAssessment.getExternalToolId());
         if(assesmentToolOptional.isPresent()){
@@ -379,9 +378,6 @@ public class ProcurementEventService implements EventService {
             }
         }
     }
-
-
-
 
     public List<Supplier> getSuppliers(ProcurementProject project, ProcurementEvent existingEvent,
                                        String eventTypeValue, boolean twoStageEvent) {
@@ -704,8 +700,8 @@ public class ProcurementEventService implements EventService {
 
         // Save to Tenders DB
         if (updateDB) {
-
             var tenderStatus = TenderStatus.PLANNING.getValue();
+
             if (exportRfxResponse.getRfxSetting() != null) {
                 var rfxStatus = jaggaerAPIConfig.getRfxStatusAndEventTypeToTenderStatus()
                         .get(exportRfxResponse.getRfxSetting().getStatusCode());
@@ -722,11 +718,15 @@ public class ProcurementEventService implements EventService {
 
             event.setUpdatedAt(Instant.now());
             event.setUpdatedBy(principal);
-            if (null != returnAssessmentId)
+
+            if (null != returnAssessmentId) {
                 event.setAssessmentId(returnAssessmentId);
+            }
+
             if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
                 event.setPublishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
             }
+
             if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
                 event.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
             }
@@ -734,6 +734,7 @@ public class ProcurementEventService implements EventService {
             if (tenderStatus != null) {
                 event.setTenderStatus(tenderStatus);
             }
+
             retryableTendersDBDelegate.save(event);
         }
 
@@ -1222,13 +1223,12 @@ public class ProcurementEventService implements EventService {
             procurementEvent.setCloseDate(Instant.now());
         }
 
-
         if (tenderStatus != null) {
             procurementEvent.setTenderStatus(tenderStatus);
         }
+
         retryableTendersDBDelegate.save(procurementEvent);
     }
-
 
     /**
      * Get Summaries of all Events on a Project.
@@ -1832,7 +1832,7 @@ public class ProcurementEventService implements EventService {
 
         // Check if event has completed status
         var eventStatus = event.getTenderStatus();
-        if (!eventStatus.equals(COMPLETE_STATUS)) {
+        if (!COMPLETE_STATUS.equals(eventStatus)) {
             return null;
         }
 
