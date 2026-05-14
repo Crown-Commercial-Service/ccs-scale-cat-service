@@ -679,7 +679,6 @@ public class TableGroupGenerator {
 
     /**
      * Fill multi stages data with stage details and group name
-     *
      * stage details are injected on the fly programmatically
      *
      */
@@ -940,6 +939,11 @@ public class TableGroupGenerator {
         mappings.addAll(FieldMapping.getFieldsByTableName(COND_OF_PART));
         mappings.addAll(FieldMapping.getFieldsByTableName(AWARD_CRITERIA));
         return mappings;
+    }
+
+    public void replacePlaceholderText(TextDocument doc, String placeholder, String value) {
+        if (doc == null || !StringUtils.hasText(placeholder)) return;
+        replaceAllTextOccurrences(doc, placeholder, value != null ? value : PLACEHOLDER_UNKNOWN);
     }
 
 }

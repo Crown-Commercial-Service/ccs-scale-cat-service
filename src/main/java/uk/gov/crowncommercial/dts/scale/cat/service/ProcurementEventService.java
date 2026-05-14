@@ -1541,11 +1541,24 @@ public class ProcurementEventService implements EventService {
             });
             // Get draft documents
             Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
-            Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
-            filterTemplates.forEach(template -> {
-                attachments.add(dTemplateService.getDraftDocument(procId, eventId,
-                        DocumentKey.fromString(template.getId()), isLastStage));
-            });
+            if (isMultiStage) {
+                for (DocumentSummary summary : templates) {
+                    DocumentKey docKey = DocumentKey.fromString(summary.getId());
+
+                    // Route directly to the new multi-stage template service wrapper for attachment 4
+                    // create n number of files on the fly - depending on total number of stages
+                    List<DocumentAttachment> multiFiles = dTemplateService
+                            .getDraftDocumentsForMultiStage(procId, eventId, docKey, isLastStage);
+                    attachments.addAll(multiFiles);
+                }
+            } else {
+                // --- Old flow ---
+                Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
+                filterTemplates.forEach(template -> {
+                    attachments.add(dTemplateService.getDraftDocument(procId, eventId,
+                            DocumentKey.fromString(template.getId()), isLastStage));
+                });
+            }
 
         } else {
             // Get documents from Jaggaer
