@@ -807,7 +807,7 @@ public class DocGenService {
 
         final int totalStages = stageInfo.getNumberOfStages();
 
-        // If it's targetStage 4 but NOT the last stage, we fall back to a single iteration (4 to 4) to compile only the base file.
+        // If it's targetStage 4 but NOT the last stage, fall back to a single iteration
         int startLoop = (targetStage == 4 && isLastStage) ? 2 : targetStage;
         int endLoop = (targetStage == 4 && isLastStage) ? totalStages : targetStage;
 
@@ -819,7 +819,7 @@ public class DocGenService {
             final TextDocument textODT = TextDocument.loadDocument(templateResource.getInputStream());
             final ConcurrentHashMap<String, Object> requestCache = new ConcurrentHashMap<>();
 
-            // Handle top header replacements safely for attachment 4 and on word
+            // Top header replace anchor tag for attachment 4 and on word
             if (targetStage == 4) {
                 tableGroupGenerator
                         .replacePlaceholderText(textODT, CURRENT_STAGE_ANCHOR_TAG, String.valueOf(currentStageNum));
@@ -860,7 +860,6 @@ public class DocGenService {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             textODT.save(outputStream);
 
-            // Compute filenames dynamically depending on factory loop assignments
             String outputFileName = (targetStage == 4 && isLastStage)
                     ? String.format(ATTACHMENT_4_OUTPUT_FILE_NAME, currentStageNum)
                     : getFileName(procurementEvent, templateUrl);
@@ -886,7 +885,6 @@ public class DocGenService {
     /**
      * Encapsulated logic for the Attachment 1 Merge Rule
      */
-
     private void fillStageSpecificJson(int eventId,
                                        int currentStage,
                                        int totalStage,
