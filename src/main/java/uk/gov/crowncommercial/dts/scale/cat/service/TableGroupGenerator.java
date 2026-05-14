@@ -679,7 +679,6 @@ public class TableGroupGenerator {
 
     /**
      * Fill multi stages data with stage details and group name
-     *
      * stage details are injected on the fly programmatically
      *
      */
