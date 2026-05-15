@@ -72,7 +72,7 @@ public class MessageService {
    */
   public String createOrReplyMessage(final String profile, final Integer projectId,
       final String eventId, final Message message) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(profile)
             .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
             .getUserId();
@@ -129,7 +129,7 @@ public class MessageService {
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
 
     var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
-        messageRequestInfo.getEventId());
+        messageRequestInfo.getEventId(), null);
 
     Predicate<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> directionPredicate =
         message -> (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
@@ -233,7 +233,7 @@ public class MessageService {
 
     var jaggaerUserId = userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
     var updateMessage = jaggaerService.updateMessage(MessageUpdate.builder().messageId(Integer.parseInt(messageId))
             .objectReferenceCode(procurementEvent.getExternalReferenceId()).objectType(OBJECT_TYPE).operatorUser(OwnerUser.builder().id(jaggaerUserId).build()).build());
     var response = jaggaerService.getMessage(messageId);
@@ -247,7 +247,7 @@ public class MessageService {
 
     userProfileService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
-    validationService.validateProjectAndEventIds(procId, eventId);
+    validationService.validateProjectAndEventIds(procId, eventId, null);
 
     log.debug("Requested messageId {} and documentId {}", messageId, documentId);
     var response = jaggaerService.getMessage(messageId);

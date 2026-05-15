@@ -93,7 +93,7 @@ class DocumentTemplateServiceTest {
 
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findByEventType(procurementEvent.getEventType()))
         .thenReturn(Set.of(DOC_TEMPLATE1, DOC_TEMPLATE2));
@@ -122,7 +122,7 @@ class DocumentTemplateServiceTest {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
         .thenReturn(Optional.of(DOC_TEMPLATE1));
@@ -139,7 +139,7 @@ class DocumentTemplateServiceTest {
   void testGetTemplateNotFoundForEventType() throws Exception {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenThrow(new ResourceNotFoundException(ERR_MSG_TEMPLATE_NOT_FOUND_FOR_EVENT_TYPE));
 
     var ex = assertThrows(ResourceNotFoundException.class,
@@ -153,7 +153,7 @@ class DocumentTemplateServiceTest {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId())).thenReturn(Optional.empty());
 
@@ -169,23 +169,24 @@ class DocumentTemplateServiceTest {
     var procurementProject =
         ProcurementProject.builder().id(PROC_PROJECT_ID).projectName(PROJECT_NAME).build();
     var procurementEvent = ProcurementEvent.builder().id(1).ocdsAuthorityName("ocds")
-        .ocidPrefix("pfhb7i").eventType("RFI").project(procurementProject).build();
+        .ocidPrefix("pfhb7i").eventType("RFI").externalReferenceId("1").project(procurementProject).build();
     var draftProformaOutputStream = new ByteArrayOutputStream();
     draftProformaOutputStream.write(DRAFT_PROFORMA_CONTENT);
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
         .thenReturn(Optional.of(DOC_TEMPLATE1));
-    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1, Boolean.FALSE))
+    when(docGenService.generateDocument(procurementEvent, DOC_TEMPLATE1, false, Boolean.FALSE))
         .thenReturn(draftProformaOutputStream);
 
     var draftProforma =
-        documentTemplateService.getDraftDocument(PROC_PROJECT_ID, EVENT_ID, documentKey);
+        documentTemplateService.getDraftDocument(PROC_PROJECT_ID, EVENT_ID, documentKey, false);
 
     assertArrayEquals(DRAFT_PROFORMA_CONTENT, draftProforma.getData());
     assertEquals(Constants.MEDIA_TYPE_ODT, draftProforma.getContentType());
-    assertEquals(EVENT_ID + "-RFI-RFI_template1.odt", draftProforma.getFileName());
+    assertEquals(PROC_PROJECT_ID + "_" + procurementEvent.getExternalReferenceId() + "_RFI_template1.odt",
+            draftProforma.getFileName());
   }
 
 }

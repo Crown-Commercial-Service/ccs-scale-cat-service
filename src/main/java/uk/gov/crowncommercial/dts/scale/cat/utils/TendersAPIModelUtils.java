@@ -120,6 +120,25 @@ public class TendersAPIModelUtils {
       eventDetailNonOCDS.setCancellationReasonDetail(procurementEvent.getCancellationReasonDetail());
       log.debug("Set cancellationReasonDetail: {}", procurementEvent.getCancellationReasonDetail());
     }
+
+    // Set exit award data if it exists
+    if (procurementEvent.getBuyerExited() != null) {
+      eventDetailNonOCDS.setBuyerExited(procurementEvent.getBuyerExited());
+      log.debug("Event buyerExited: {}, supplierAwarded: {}", 
+          procurementEvent.getBuyerExited(), procurementEvent.getSupplierAwarded());
+    }
+    if (procurementEvent.getSupplierAwarded() != null) {
+      eventDetailNonOCDS.setSupplierAwarded(procurementEvent.getSupplierAwarded());
+    }
+    if (procurementEvent.getContractStartDate() != null) {
+      eventDetailNonOCDS.setContractStartDate(getOffsetDateTimeFromInstant(procurementEvent.getContractStartDate()));
+    }
+    if (procurementEvent.getContractValue() != null) {
+      eventDetailNonOCDS.setContractValue(procurementEvent.getContractValue());
+    }
+    if (procurementEvent.getAwardUrl() != null) {
+      eventDetailNonOCDS.setAwardUrl(procurementEvent.getAwardUrl());
+    }
     
     eventDetail.setNonOCDS(eventDetailNonOCDS);
 
@@ -150,6 +169,11 @@ public class TendersAPIModelUtils {
    */
   public static DashboardStatus getDashboardStatus(
       final RfxSetting rfxSetting, final ProcurementEvent procurementEvent) {
+
+    // Check buyer_exited flag FIRST - this takes precedence over all other statuses
+    if (procurementEvent.getBuyerExited() != null && procurementEvent.getBuyerExited()) {
+      return DashboardStatus.EXITED;
+    }
 
     var tenderStatus = procurementEvent.getTenderStatus();
     var dashboardStatusFromTenderStatus =
