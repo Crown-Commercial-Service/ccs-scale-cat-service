@@ -47,13 +47,17 @@ public class StageDataEntity {
   @Column(name = "current_stage")
   private Integer currentStage;
 
-  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
   @OrderBy("stage_number ASC")
   @JoinColumn(name = "event_id", referencedColumnName="event_id")
   private List<StageNameEntity> stageNames;
 
-  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
   @OrderBy("stage_number ASC")
   @JoinColumn(name = "event_id", referencedColumnName="event_id")
   private List<StageEventEntity> stageEvents;
+
+  public List<StageEventEntity> getStageEvents() {
+      return stageEvents;
+  }
 }

@@ -73,6 +73,7 @@ class EventsControllerTest {
   private static final String EVENT_NAME = "NAME";
   private static final String GROUP_TYPE = "MyGroupType";
   private static final String JAGGAER_ID = "1";
+  private static final Integer STAGE_NUMBER = 1;
   private static final ViewEventType EVENT_TYPE = ViewEventType.TBD;
   private static final TenderStatus EVENT_STATUS = TenderStatus.PLANNING;
   private static final ReleaseTag EVENT_STAGE = ReleaseTag.TENDER;
@@ -222,7 +223,7 @@ class EventsControllerTest {
   void getEvent_200_OK() throws Exception {
 
     var eventDetail = new EventDetail();
-    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID)).thenReturn(eventDetail);
+    when(procurementEventService.getEvent(PROC_PROJECT_ID, EVENT_ID, null)).thenReturn(eventDetail);
 
     mockMvc
         .perform(get(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
@@ -231,7 +232,7 @@ class EventsControllerTest {
         .andExpect(content().contentType(APPLICATION_JSON));
     // TODO: Verify content
 
-    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID);
+    verify(procurementEventService, times(1)).getEvent(PROC_PROJECT_ID, EVENT_ID, null);
   }
 
   @Test
@@ -371,7 +372,7 @@ class EventsControllerTest {
 
   @Test
   void deleteEvent_200_OK() throws Exception {
-    mockMvc.perform(delete(EVENTS_PATH + "/{eventID}", PROC_PROJECT_ID, EVENT_ID)
+    mockMvc.perform(delete(EVENTS_PATH + "/{eventID}/stageCount/{totalNumberOfStages}", PROC_PROJECT_ID, EVENT_ID, 0)
                     .with(validJwtReqPostProcessor)
                     .contentType(APPLICATION_JSON))
             .andDo(print())
@@ -379,7 +380,7 @@ class EventsControllerTest {
             .andExpect(jsonPath("$").value("OK"));
 
     verify(procurementEventService, times(1))
-            .deleteEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL);
+            .deleteEvent(PROC_PROJECT_ID, EVENT_ID, 0, PRINCIPAL);
   }
 
   @Test
@@ -398,7 +399,6 @@ class EventsControllerTest {
     mockMvc.perform(get(EVENTS_PATH + "/{eventID}/responses", PROC_PROJECT_ID, EVENT_ID).with(
             validJwtReqPostProcessor).contentType(APPLICATION_JSON)).andDo(print())
         .andExpect(status().isOk());
-//        .andExpect(content().contentType(APPLICATION_JSON));
 
     verify(procurementEventService, times(1)).getSupplierResponses(PROC_PROJECT_ID, EVENT_ID);
   }
@@ -406,7 +406,7 @@ class EventsControllerTest {
   @Test
   void shouldGetUseQuestionGroup_Answer_True() throws Exception {
     QandA useQuestionGroups = new QandA();
-    useQuestionGroups.setQuestion(GROUP_TYPE + "-use-question-groups");
+    useQuestionGroups.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-use-question-groups");
     useQuestionGroups.setAnswer("TRUE");
     useQuestionGroups.id(BigDecimal.valueOf(123));
 
@@ -416,7 +416,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
@@ -429,7 +429,7 @@ class EventsControllerTest {
   @Test
   void shouldGetUseQuestionGroup_Answer_False() throws Exception {
     QandA useQuestionGroups = new QandA();
-    useQuestionGroups.setQuestion(GROUP_TYPE + "-use-question-groups");
+    useQuestionGroups.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-use-question-groups");
     useQuestionGroups.setAnswer("FALSE");
     useQuestionGroups.id(BigDecimal.valueOf(234));
 
@@ -439,7 +439,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
@@ -454,7 +454,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
@@ -471,7 +471,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, nullGroupType)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, nullGroupType)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().is5xxServerError())
@@ -484,7 +484,7 @@ class EventsControllerTest {
   @Test
   void shouldSaveUseQuestionGroup_AnswerTrue() throws Exception {
     QandA useQuestionGroupsQandA = new QandA();
-    useQuestionGroupsQandA.setQuestion(GROUP_TYPE + "-use-question-groups");
+    useQuestionGroupsQandA.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-use-question-groups");
     useQuestionGroupsQandA.setAnswer("true");
 
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
@@ -495,7 +495,7 @@ class EventsControllerTest {
     useQuestionGroups.setUseQuestionGroupsQaId(123);
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(useQuestionGroups)))
@@ -514,7 +514,7 @@ class EventsControllerTest {
     useQuestionGroups.setUseQuestionGroupsQaId(123);
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, "")
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, "")
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(useQuestionGroups)))
@@ -529,7 +529,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(new QuestionGroupNamesWrite())))
@@ -544,17 +544,17 @@ class EventsControllerTest {
   @Test
   void shouldGetQuestionGroups() throws Exception {
     QandA questionGroup1 = new QandA();
-    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-0");
     questionGroup1.setAnswer("group1");
     questionGroup1.id(BigDecimal.valueOf(123));
 
     QandA questionGroup2 = new QandA();
-    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    questionGroup2.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-1");
     questionGroup2.setAnswer("group2");
     questionGroup2.id(BigDecimal.valueOf(456));
 
     QandA questionGroup3 = new QandA();
-    questionGroup3.setQuestion(GROUP_TYPE + "-question-group-2");
+    questionGroup3.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-2");
     questionGroup3.setAnswer("group3");
     questionGroup3.id(BigDecimal.valueOf(789));
 
@@ -565,7 +565,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
@@ -578,7 +578,7 @@ class EventsControllerTest {
   @Test
   void shouldGetQuestionGroups_NoData_OnNoMatch() throws Exception {
     QandA qanda = new QandA();
-    qanda.setQuestion(GROUP_TYPE + "-something");
+    qanda.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-something");
     qanda.setAnswer("something");
     qanda.id(BigDecimal.valueOf(123));
 
@@ -588,7 +588,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(expected);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
@@ -603,7 +603,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().isOk())
@@ -620,7 +620,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
 
     mockMvc
-      .perform(get(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, nullGroupType)
+      .perform(get(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, nullGroupType)
         .with(validJwtReqPostProcessor).accept(APPLICATION_JSON))
       .andDo(print())
       .andExpect(status().is5xxServerError())
@@ -633,12 +633,12 @@ class EventsControllerTest {
   @Test
   void shouldSaveQuestionGroup() throws Exception {
     QandA expectedQuestionGroup1 = new QandA();
-    expectedQuestionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    expectedQuestionGroup1.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-0");
     expectedQuestionGroup1.setAnswer("group1");
     expectedQuestionGroup1.id(BigDecimal.valueOf(123));
 
     QandA expectedQuestionGroup2 = new QandA();
-    expectedQuestionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    expectedQuestionGroup2.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-1");
     expectedQuestionGroup2.setAnswer("group2");
     expectedQuestionGroup2.id(BigDecimal.valueOf(456));
 
@@ -651,11 +651,11 @@ class EventsControllerTest {
     doNothing().when(questionAndAnswerService).deleteSpecificAnswersForGivenQuestion(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, question, Collections.emptyList());
 
     QandA questionGroup1 = new QandA();
-    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-0");
     questionGroup1.setAnswer("group1");
 
     QandA questionGroup2 = new QandA();
-    questionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    questionGroup2.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-1");
     questionGroup2.setAnswer("group2");
 
     QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
@@ -663,7 +663,7 @@ class EventsControllerTest {
     request.setQaIds(List.of(123, 456));
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(request)))
@@ -689,7 +689,7 @@ class EventsControllerTest {
     when(questionAndAnswerService.getQuestionAndAnswerByEvent(PROC_PROJECT_ID, EVENT_ID, PRINCIPAL)).thenReturn(null);
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(new QuestionGroupNamesWrite())))
@@ -706,7 +706,7 @@ class EventsControllerTest {
     final String nullGroupType = null;
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, nullGroupType)
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, nullGroupType)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(new QuestionGroupNamesWrite())))
@@ -723,12 +723,12 @@ class EventsControllerTest {
     // and we have a pre-existing question assigned to group2
     //
     QandA expectedQuestionGroup1 = new QandA();
-    expectedQuestionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    expectedQuestionGroup1.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-0");
     expectedQuestionGroup1.setAnswer("group1");
     expectedQuestionGroup1.id(BigDecimal.valueOf(123));
 
     QandA expectedQuestionGroup2 = new QandA();
-    expectedQuestionGroup2.setQuestion(GROUP_TYPE + "-question-group-1");
+    expectedQuestionGroup2.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-1");
     expectedQuestionGroup2.setAnswer("group2");
     expectedQuestionGroup2.id(BigDecimal.valueOf(456));
 
@@ -749,7 +749,7 @@ class EventsControllerTest {
     // when we delete group2
     //
     QandA questionGroup1 = new QandA();
-    questionGroup1.setQuestion(GROUP_TYPE + "-question-group-0");
+    questionGroup1.setQuestion(GROUP_TYPE + "-stage-" + STAGE_NUMBER + "-question-group-0");
     questionGroup1.setAnswer("group1");
 
     QuestionGroupNamesWrite request = new QuestionGroupNamesWrite();
@@ -757,7 +757,7 @@ class EventsControllerTest {
     request.setQaIds(List.of(123));
 
     mockMvc
-    .perform(post(EVENTS_PATH + "/{eventID}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, GROUP_TYPE)
+    .perform(post(EVENTS_PATH + "/{eventID}/stage/{stageNumber}/question-groups/{groupType}", PROC_PROJECT_ID, EVENT_ID, STAGE_NUMBER, GROUP_TYPE)
       .with(validJwtReqPostProcessor).accept(APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .content(objectMapper.writeValueAsString(request)))

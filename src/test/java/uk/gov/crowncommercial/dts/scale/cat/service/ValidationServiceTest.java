@@ -72,7 +72,7 @@ class ValidationServiceTest {
     when(retryableTendersDBDelegate.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
         Integer.valueOf(PROC_EVENT_INTERNAL_ID), PROC_EVENT_AUTHORITY, PROC_EVENT_PREFIX))
             .thenReturn(Optional.of(event));
-    var response = validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID);
+    var response = validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID, null);
     assertEquals(event, response);
   }
 
@@ -88,7 +88,7 @@ class ValidationServiceTest {
         Integer.valueOf(PROC_EVENT_INTERNAL_ID), PROC_EVENT_AUTHORITY, PROC_EVENT_PREFIX))
             .thenReturn(Optional.of(event));
     assertThrows(ResourceNotFoundException.class,
-        () -> validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID));
+        () -> validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID, null));
   }
 
   @Test
@@ -97,7 +97,7 @@ class ValidationServiceTest {
         Integer.valueOf(PROC_EVENT_INTERNAL_ID), PROC_EVENT_AUTHORITY, PROC_EVENT_PREFIX))
             .thenReturn(Optional.empty());
     assertThrows(ResourceNotFoundException.class,
-        () -> validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID));
+        () -> validationService.validateProjectAndEventIds(PROC_PROJECT_ID, PROC_EVENT_ID, null));
   }
 
   @Test

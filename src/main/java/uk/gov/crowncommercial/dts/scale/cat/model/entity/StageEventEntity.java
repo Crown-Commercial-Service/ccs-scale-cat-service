@@ -39,4 +39,12 @@ public class StageEventEntity {
 
   @Column(name = "prior_event_id")
   private String priorEventId;
+
+  public String getEventId() {
+      return eventId;
+  }
+
+  public Integer getStageNumber() {
+      return stageNumber;
+  }
 }

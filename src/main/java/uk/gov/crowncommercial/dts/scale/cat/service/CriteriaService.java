@@ -1,26 +1,61 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import static java.time.Duration.ofSeconds;
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
+
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.exception.AgreementsServiceApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.ProcurementEventMapper;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Requirement.Option;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageNameRead;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Period1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroupNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroupOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDSOptions;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
-import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Requirement1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.TableDefinition;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.Value1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CreateUpdateRfxResponse;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.OperationCode;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Rfx;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.RfxSetting;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelope;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeParameter;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeParameterList;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeQuestionType;
+import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.TechEnvelopeSection;
 import uk.gov.crowncommercial.dts.scale.cat.processors.DataTemplateProcessor;
 import uk.gov.crowncommercial.dts.scale.cat.processors.ProcurementEventHelperService;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -31,11 +66,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static java.time.Duration.ofSeconds;
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 
 /**
  *
@@ -54,6 +84,7 @@ public class CriteriaService {
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
+  private final StageService stageService;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final JaggaerAPIConfig jaggaerAPIConfig;
   private final WebClient jaggaerWebClient;
@@ -61,19 +92,18 @@ public class CriteriaService {
 
   private final TimelineDependencyMapper timelineDependencyMapper;
 
-
   private final DataTemplateProcessor templateProcessor;
   private final ProcurementEventHelperService eventHelperService;
   private final QuestionAndAnswerService questionAndAnswerService;
+  private final ProcurementEventMapper procurementEventMapper;
 
   @Transactional
-  public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId,
-      final boolean populateGroups) {
+  public Set<EvalCriteria> getEvalCriteria(final Integer projectId, final String eventId, final Integer stageNumber, final boolean populateGroups) {
 
     log.debug(LOG_TAG + "Get project from tenders DB to obtain Jaggaer project id");
     // Get project from tenders DB to obtain Jaggaer project id
-    var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    var dataTemplate = retrieveDataTemplate(event);
+    var event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
+    var dataTemplate = retrieveDataTemplate(event, stageNumber);
     log.debug(LOG_TAG + "retrieveDataTemplate successfully. dataTemplate: {}", dataTemplate);
     // Convert to EvalCriteria and return
     if (populateGroups) {
@@ -81,7 +111,7 @@ public class CriteriaService {
       var eventCriteria = dataTemplate.getCriteria().stream()
           .map(tc -> new EvalCriteria().id(tc.getId()).description(tc.getDescription())
               .description(tc.getDescription()).title(tc.getTitle()).requirementGroups(
-                  new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), true))))
+                  new ArrayList<>(getEvalCriterionGroups(projectId, eventId, tc.getId(), stageNumber, true))))
           .collect(Collectors.toSet());
 
       log.debug(LOG_TAG + "Event criteria: {}", eventCriteria);
@@ -99,9 +129,9 @@ public class CriteriaService {
   }
 
   public Set<QuestionGroup> getEvalCriterionGroups(final Integer projectId, final String eventId,
-      final String criterionId, final boolean populateRequirements) {
-    var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    var dataTemplate = retrieveDataTemplate(event);
+      final String criterionId, final Integer stageNumber, final boolean populateRequirements) {
+    var event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
+    var dataTemplate = retrieveDataTemplate(event, stageNumber);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
 
     var questionGroup =  criteria.getRequirementGroups().stream().map(rg -> {
@@ -136,9 +166,9 @@ public class CriteriaService {
   }
 
   public Set<Question> getEvalCriterionGroupQuestions(final Integer projectId, final String eventId,
-      final String criterionId, final String groupId) {
-    var event = validationService.validateProjectAndEventIds(projectId, eventId);
-    var dataTemplate = retrieveDataTemplate(event);
+      final String criterionId, final String groupId, final Integer stageNumber) {
+    var event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
+    var dataTemplate = retrieveDataTemplate(event, stageNumber);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     var group = extractRequirementGroup(criteria, groupId);
     var question =  group.getOcds().getRequirements().stream().map(
@@ -152,12 +182,12 @@ public class CriteriaService {
   @Transactional
   public Question putQuestionOptionDetails(final Question question, final Integer projectId,
       final String eventId, final String criterionId, final String groupId,
-      final String questionId) {
+      final String questionId, final Integer stageNumber) {
 
     // Get the project/event and check if there is a pre-existing event.procurement_template_payload
-    var event = validationService.validateProjectAndEventIds(projectId, eventId);
+    var event = validationService.validateProjectAndEventIds(projectId, eventId, stageNumber);
     log.debug(LOG_TAG + "event: {}", event);
-    var dataTemplate = retrieveDataTemplate(event);
+    var dataTemplate = retrieveDataTemplate(event, stageNumber);
     log.debug(LOG_TAG + "dataTemplate: {}", dataTemplate);
     var criteria = extractTemplateCriteria(dataTemplate, criterionId);
     log.debug(LOG_TAG + "criteria: {}", criteria);
@@ -220,8 +250,34 @@ public class CriteriaService {
     // Update Tenders DB
     event.setProcurementTemplatePayload(dataTemplate);
     event.setUpdatedAt(Instant.now());
-    retryableTendersDBDelegate.save(event);
-    log.debug(LOG_TAG + "Event saved into the tender DB. event: {}", event);
+
+    Integer thisStageNumber = null == stageNumber || 0 == stageNumber ? null : stageNumber;
+
+    if (null == thisStageNumber) {
+        // we are NOT in multi-stage
+        retryableTendersDBDelegate.save(event);
+        log.debug(LOG_TAG + "Event saved into the tender DB. event: {}", event);
+    } else {
+        // we ARE in multi-stage
+        ProcurementStageEvent procurementStageEvent = procurementEventMapper.procurementEventToProcurementStageEvent(event);
+        procurementStageEvent.setStageNumber(thisStageNumber);
+
+        // add in the stage description (this helps when generating the bid-packs)
+        final StagesRead stagesRead = stageService.getStagesForEventId(eventId);
+
+        if (null != stagesRead && null != stagesRead.getStageNames() && !stagesRead.getStageNames().isEmpty()) {
+            for (StageNameRead entry : stagesRead.getStageNames()) {
+                if (thisStageNumber == entry.getStageNumber()) {
+                    procurementStageEvent.setStageDescription(entry.getStageName());
+                    break;
+                }
+            }
+        }
+
+        retryableTendersDBDelegate.save(procurementStageEvent);
+        log.debug(LOG_TAG + "Event saved into the tender DB. event: {}", procurementStageEvent);
+    }
+
     var transformRequirementToQuestion =  convertRequirementToQuestion(requirement, event.getProject().getCaNumber());
     log.debug(LOG_TAG + "Successfully transformed requirement to question. question: {}", transformRequirementToQuestion);
     return transformRequirementToQuestion;
@@ -284,7 +340,7 @@ public class CriteriaService {
     return option.getValue();
   }
 
-  private DataTemplate retrieveDataTemplate(final ProcurementEvent event) {
+  private DataTemplate retrieveDataTemplate(final ProcurementEvent event, final Integer stageNumber) {
     DataTemplate dataTemplate;
 
     // If the template has been persisted, get it from the local database
@@ -366,8 +422,33 @@ public class CriteriaService {
 
         event.setProcurementTemplatePayload(dataTemplate);
         event.setUpdatedAt(Instant.now());
-        retryableTendersDBDelegate.save(event);
-        log.debug(LOG_TAG + "Saved event details into the tenders DB. event: {}", event);
+
+        Integer thisStageNumber = null == stageNumber || 0 == stageNumber ? null : stageNumber;
+
+        if (null == thisStageNumber) {
+            // we are NOT in multi-stage
+            retryableTendersDBDelegate.save(event);
+            log.debug(LOG_TAG + "Event saved into the tender DB. event: {}", event);
+        } else {
+            // we ARE in multi-stage
+            ProcurementStageEvent procurementStageEvent = procurementEventMapper.procurementEventToProcurementStageEvent(event);
+            procurementStageEvent.setStageNumber(thisStageNumber);
+
+            // add in the stage description (this helps when generating the bid-packs)
+            final StagesRead stagesRead = stageService.getStagesForEventId(event.getEventID());
+
+            if (null != stagesRead && null != stagesRead.getStageNames() && !stagesRead.getStageNames().isEmpty()) {
+                for (StageNameRead entry : stagesRead.getStageNames()) {
+                    if (thisStageNumber == entry.getStageNumber()) {
+                        procurementStageEvent.setStageDescription(entry.getStageName());
+                        break;
+                    }
+                }
+            }
+
+            retryableTendersDBDelegate.save(procurementStageEvent);
+            log.debug(LOG_TAG + "Event saved into the tender DB. event: {}", procurementStageEvent);
+        }
     }
 
     log.debug(LOG_TAG + "Returning from retrieveDataTemplate method. dataTemplate: {}", dataTemplate);
