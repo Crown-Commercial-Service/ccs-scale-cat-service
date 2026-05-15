@@ -13,7 +13,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -51,7 +50,7 @@ class EmailControllerTest {
             TEST_TEMPLATE_ID, TEST_EMAIL, placeholders, TEST_REFERENCE, mockAuth);
 
         // Then
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         Map<String, Object> body = response.getBody();
         assertTrue((Boolean) body.get("success"));
         assertEquals("Email sent successfully", body.get("message"));
@@ -73,7 +72,7 @@ class EmailControllerTest {
             TEST_TEMPLATE_ID, TEST_EMAIL, placeholders, TEST_REFERENCE, mockAuth);
 
         // Then
-        assertEquals(400, response.getStatusCodeValue());
+        assertEquals(400, response.getStatusCode().value());
         Map<String, Object> body = response.getBody();
         assertFalse((Boolean) body.get("success"));
         assertEquals("Failed to send email: Test error", body.get("message"));
@@ -95,7 +94,7 @@ class EmailControllerTest {
             TEST_TEMPLATE_ID, TEST_EMAIL, placeholders, null, mockAuth);
 
         // Then
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         Map<String, Object> body = response.getBody();
         assertTrue((Boolean) body.get("success"));
         assertEquals("Email sent successfully", body.get("message"));
