@@ -20,7 +20,7 @@ public class SupplierStoreFactory {
 
     private List<String> SPLIT_AGREEMENTS = Arrays.asList("RM1043.8", "RM1043.9");
 
-    private List<String> SPLIT_EVENTS = Arrays.asList("FC");
+    private List<String> SPLIT_EVENTS = Arrays.asList("FC", "MS1");
 
     private final JaggaerSupplierStore jaggaerSupplierStore;
     private final DatabaseSupplierStore databaseSupplierStore;

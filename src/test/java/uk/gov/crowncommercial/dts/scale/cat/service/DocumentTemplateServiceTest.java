@@ -93,7 +93,7 @@ class DocumentTemplateServiceTest {
 
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findByEventType(procurementEvent.getEventType()))
         .thenReturn(Set.of(DOC_TEMPLATE1, DOC_TEMPLATE2));
@@ -122,7 +122,7 @@ class DocumentTemplateServiceTest {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
         .thenReturn(Optional.of(DOC_TEMPLATE1));
@@ -139,7 +139,7 @@ class DocumentTemplateServiceTest {
   void testGetTemplateNotFoundForEventType() throws Exception {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenThrow(new ResourceNotFoundException(ERR_MSG_TEMPLATE_NOT_FOUND_FOR_EVENT_TYPE));
 
     var ex = assertThrows(ResourceNotFoundException.class,
@@ -153,7 +153,7 @@ class DocumentTemplateServiceTest {
     var documentKey = DocumentKey.fromString(TEMPLATE_RESOURCE1_ID);
     var procurementEvent = ProcurementEvent.builder().eventType("RFI").build();
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId())).thenReturn(Optional.empty());
 
@@ -173,7 +173,7 @@ class DocumentTemplateServiceTest {
     var draftProformaOutputStream = new ByteArrayOutputStream();
     draftProformaOutputStream.write(DRAFT_PROFORMA_CONTENT);
 
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_ID, null))
         .thenReturn(procurementEvent);
     when(retryableTendersDBDelegate.findById(DOC_TEMPLATE1.getId()))
         .thenReturn(Optional.of(DOC_TEMPLATE1));

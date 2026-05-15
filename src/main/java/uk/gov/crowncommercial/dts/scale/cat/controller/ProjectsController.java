@@ -197,6 +197,7 @@ public class ProjectsController extends AbstractRestController {
   @GetMapping(value = "/download")
   public void downloadFile(HttpServletResponse response,
                            @RequestParam("fileType") String fileType) throws IOException {
+    // 1314: apply filter to download the file
     var downloadProjectsData = procurementProjectService.downloadProjectsData(fileType);
     setHeaderAndContentTypeBasedOnFileType(fileType, response);
     IOUtils.copy(downloadProjectsData, response.getOutputStream());

@@ -2,6 +2,7 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.Resource;
@@ -46,7 +47,7 @@ public class DocumentTemplateService {
    */
   public Collection<DocumentSummary> getTemplatesByEventType(final Integer procId,
       final String eventId) {
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     return getTemplates(retryableTendersDBDelegate.findByEventType(event.getEventType()),
         String.format(FMT_TEMPLATE_DESCRIPTION, event.getEventType()));
   }
@@ -60,7 +61,7 @@ public class DocumentTemplateService {
    */
   public Collection<DocumentSummary> getTemplatesByAgreementAndLot(final Integer procId,
       final String eventId) {
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     return getTemplates(
         retryableTendersDBDelegate
             .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(
@@ -79,7 +80,7 @@ public class DocumentTemplateService {
    */
   public Collection<DocumentSummary> getTemplatesByEventStage(final Integer procId,
       final String eventId, final String eventStage) {
-    validationService.validateProjectAndEventIds(procId, eventId);
+    validationService.validateProjectAndEventIds(procId, eventId, null);
     return getTemplates(retryableTendersDBDelegate.findByEventStage(eventStage),
         SCORING_TEMPLATE_DESCRIPTION);
   }
@@ -119,7 +120,7 @@ public class DocumentTemplateService {
   public DocumentAttachment getTemplate(final Integer procId, final String eventId,
       final DocumentKey documentKey) {
 
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var templateResource =
         documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -140,13 +141,31 @@ public class DocumentTemplateService {
   public DocumentAttachment getDraftDocument(final Integer procId, final String eventId,
       final DocumentKey documentKey, final boolean isStageTwoEvent) {
 
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
     var draftDocument = docGenService.generateDocument(event, documentTemplate, isStageTwoEvent, Boolean.FALSE);
     var fileName = getFileName(event, documentKey);
 
     return DocumentAttachment.builder().data(draftDocument.toByteArray())
         .contentType(Constants.MEDIA_TYPE_ODT).fileName(fileName).build();
+  }
+
+  /**
+  * Dedicated multi-stage draft generation engine.
+  * (including loops for Attachment 4), and passes back a complete collection of attachments.
+  * @param procId
+  * @param eventId
+  * @param documentKey
+  * @return
+  */
+  public List<DocumentAttachment> getDraftDocumentsForMultiStage(final Integer procId,
+                                                                 final String eventId,
+                                                                 final DocumentKey documentKey,
+                                                                 final boolean isLastStage) {
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
+    var documentTemplate = findDocumentTemplate(event, documentKey);
+
+    return docGenService.generateDocumentForMultiStage(event, documentTemplate, isLastStage);
   }
 
   private String getFileName(ProcurementEvent event, DocumentKey documentKey) {
