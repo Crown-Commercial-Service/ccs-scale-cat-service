@@ -5,17 +5,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudEProcurement;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
-import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.ContactInformation;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.SupplierDetail;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.DMPService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 
@@ -24,9 +26,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -36,17 +36,20 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Slf4j
 @Validated
 public class GCloudAssessmentsController extends AbstractRestController {
+
     private static final String CSV_GENERIC_HEADERS = "Framework name,Search ended,Search criteria\n";
     private static final String CSV_STATIC_NAME = "G-Cloud 13";
     private static final String CSV_RESULTS_HEADERS = "\nSupplier name,Service name,Service description,Service page URL\n";
+    private static final String CSV_RESULTS_DOS_HEADERS = "\nCompany registration number,Company registered name,Company registered address,DUNS number,Company website URL,Contact name,Contact Email,Contact phone number\n";
     private static final String CSV_DATE_FORMAT = "EEEE dd MMMM y h:m zzz";
-    private static final String GCLOUD_E_PROCUREMENT_PATH = "/gcloud/eprocurement";
 
     private final GCloudAssessmentService assessmentService;
-
     private final AssessmentService coreAssessmentService;
-
     private final AgreementsService agreementsService;
+    private final DMPService dmpService;
+
+    @Value("${config.api-key:dummy}")
+    private String serviceApiKey;
 
     /**
      * Creates a new Gcloud assessment that the user will score suppliers based on requirements for an event within a lot.
@@ -112,6 +115,59 @@ public class GCloudAssessmentsController extends AbstractRestController {
     }
 
     /**
+     * Gets a list of GCloud Assessment Summaries for a user
+     */
+    @GetMapping("/gcloud/summaries/{external-tool-id}")
+    @TrackExecutionTime
+    public List<GCloudAssessmentSummary> getGcloudAssessmentSummariesWithExternalToolId(final JwtAuthenticationToken authentication,
+                                                                                        final @PathVariable("external-tool-id") String externalToolId) {
+        List<GCloudAssessmentSummary> model = new ArrayList<>();
+
+        // First get the principal from the token and use it to fetch a list of all GCloud assessments for the user
+        String principal = getPrincipalFromJwt(authentication);
+        List<AssessmentSummary> userAssessments = coreAssessmentService.getAssessmentsForUser(principal, Integer.parseInt(externalToolId));
+
+        if (userAssessments != null && !userAssessments.isEmpty()) {
+            // Now for each assessment we've found we need to build the GCloudAssessmentSummary model and add it to our results
+            userAssessments.stream().forEach(result -> {
+                GCloudAssessmentSummary summaryModel = assessmentService.getGcloudAssessmentSummary(result.getAssessmentId());
+
+                if (summaryModel != null) {
+                    model.add(summaryModel);
+                }
+            });
+        }
+
+        // Results should now have been built up, so return our list
+        return model;
+    }
+
+    /**
+     * Gets a list of GCloud Assessment Summaries by apikey
+     */
+    @GetMapping("/gcloud/summaries/{external-tool-id}/apiKey")
+    @TrackExecutionTime
+    public ResponseEntity<List<GCloudAssessmentSummary>> getGcloudAssessmentSummariesWithExternalToolIdByApiKey(
+            final @PathVariable("external-tool-id") String externalToolId,
+            @RequestParam final String apiKey) {
+        log.info("getGcloudAssessmentSummariesWithExternalToolIdByApiKey()");
+        if (!serviceApiKey.equals(apiKey)) {
+            ResponseEntity.badRequest().build();
+        }
+        List<GCloudAssessmentSummary> model = new ArrayList<>();
+        List<AssessmentSummary> userAssessments = coreAssessmentService.getAssessmentsByExternalToolId(Integer.parseInt(externalToolId));
+        if (userAssessments != null && !userAssessments.isEmpty()) {
+            userAssessments.forEach(result -> {
+                GCloudAssessmentSummary summaryModel = assessmentService.getGcloudAssessmentSummary(result.getAssessmentId());
+                if (summaryModel != null) {
+                    model.add(summaryModel);
+                }
+            });
+        }
+        return ResponseEntity.ok(model);
+    }
+
+    /**
      * Exports the results of a requested GCloud Assessment
      */
     @GetMapping(produces="text/csv", path="/{assessment-id}/export/gcloud")
@@ -171,7 +227,82 @@ public class GCloudAssessmentsController extends AbstractRestController {
                     writer.flush();
                 }
             } catch (Exception ex) {
-                log.error("Error exporting CSV for Gcloud Assessment", ex);
+                log.error("Error exporting gcloud CSV for Gcloud Assessment", ex);
+            }
+        }
+    }
+
+    /**
+     * Exports the results of a requested Dos Assessment
+     */
+    @GetMapping(produces="text/csv", path="/{assessment-id}/export/dos")
+    @TrackExecutionTime
+    public void exportDosAssessment(final @PathVariable("assessment-id") Integer assessmentId, @RequestParam(name = "framework-id", required = false) final String frameworkId, final JwtAuthenticationToken authentication, HttpServletResponse response) {
+        var principal = getPrincipalFromJwt(authentication);
+        GCloudAssessment assessmentModel = assessmentService.getGcloudAssessment(assessmentId);
+        if (assessmentModel != null) {
+            // We have the model, but before we do anything with it we need to fetch the correct framework name
+            String frameworkName = CSV_STATIC_NAME;
+            if (frameworkId != null && !frameworkId.isEmpty()) {
+                AgreementDetail agreementModel = agreementsService.getAgreementDetails(frameworkId);
+                if (agreementModel != null && agreementModel.getName() != null && !agreementModel.getName().isEmpty()) {
+                    frameworkName = agreementModel.getName();
+                }
+            }
+            try {
+                response.setContentType("text/csv");
+                response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                response.setHeader("Content-Disposition", "attachment; filename=dos-assessment-export.csv");
+                try (Writer writer = new OutputStreamWriter(response.getOutputStream(), StandardCharsets.UTF_8)) {
+                    SimpleDateFormat dateFormat = new SimpleDateFormat(CSV_DATE_FORMAT);
+                    String exportTime = dateFormat.format(new Date());
+                    String sanitisedResultsSummary = StringUtils.normalizeSpace(Jsoup.parse(assessmentModel.getResultsSummary()).text());
+                    if (sanitisedResultsSummary.contains(",") || sanitisedResultsSummary.contains("\"") || sanitisedResultsSummary.contains("'")) {
+                        sanitisedResultsSummary = sanitisedResultsSummary.replace("\"", "\"\"");
+                    }
+                    writer.write(CSV_GENERIC_HEADERS);
+                    writer.write(frameworkName + "," + exportTime + ",\"" + sanitisedResultsSummary + "\"\n");
+                    writer.write(CSV_RESULTS_DOS_HEADERS);
+                    if (!assessmentModel.getResults().isEmpty()) {
+                        for (GCloudResult result : assessmentModel.getResults()) {
+                            // 1150: Search & Save - Supplier list output fields
+                           final var supplier = Optional.ofNullable(result.getSupplier())
+                                   .map(Supplier::getId)
+                                   .map(dmpService::getSupplierDetails)
+                                   .map(SupplierDetail::getSuppliers)
+                                   .orElse(null);
+                            /* writer.write(StringEscapeUtils.escapeCsv(result.getSupplier().getName()) + ",");
+                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceName()) + ",");
+                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceDescription()) + ",");
+                            writer.write(StringEscapeUtils.escapeCsv(result.getServiceLink().toString())); */
+                            if (Objects.isNull(supplier)) {
+                                writer.write(",,,,,,,,");
+                            } else {
+                                writer.write(StringEscapeUtils.escapeCsv(supplier.getCompaniesHouseNumber()) + ",");
+                                writer.write(StringEscapeUtils.escapeCsv(supplier.getRegisteredName()) + ",");
+                                final Optional<ContactInformation> contactInformation = supplier.getContactInformation().stream().findFirst();
+                                if (contactInformation.isPresent()) {
+                                    writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getFullAddress()) + ",");
+                                } else {
+                                    writer.write(",");
+                                }
+                                writer.write(StringEscapeUtils.escapeCsv(supplier.getDunsNumber()) + ",");
+                                if (contactInformation.isPresent()) {
+                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getUrl()).orElse("")) + ",");
+                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getContactName()).orElse("")) + ",");
+                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getEmail()).orElse("")) + ",");
+                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getPhoneNumber()).orElse("")) + ",");
+                                } else {
+                                    writer.write(",,,,");
+                                }
+                            }
+                            writer.write("\n");
+                        }
+                    }
+                    writer.flush();
+                }
+            } catch (Exception ex) {
+                log.error("Error exporting DOS CSV for Dos Assessment", ex);
             }
         }
     }
@@ -186,40 +317,5 @@ public class GCloudAssessmentsController extends AbstractRestController {
         log.info("deleteGcloudAssessment invoked on behalf of principal: {}", principal);
 
         assessmentService.deleteGcloudAssessment(assessmentId);
-    }
-
-    /**
-     * Add Gcloud e-procurement details.
-     */
-    @PostMapping(GCLOUD_E_PROCUREMENT_PATH)
-    @TrackExecutionTime
-    public Integer addGcloudEProcurementDetails(
-            @RequestBody final GCloudEProcurement gCloudEProcurement,
-            final JwtAuthenticationToken authentication) {
-
-        var principal = getPrincipalFromJwt(authentication);
-        log.info("addGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
-
-        Integer results = 0;
-        try {
-            results = assessmentService.createGcloudEProcurement(gCloudEProcurement, principal);
-        } catch (Exception ex) {
-          log.error("Failed to e-procurement details into the cas db.", ex);
-        }
-
-        return results;
-    }
-
-    /**
-     * Retrieve Gcloud e-procurement details.
-     */
-    @GetMapping(GCLOUD_E_PROCUREMENT_PATH)
-    @TrackExecutionTime
-    public GCloudEProcurement getGcloudEProcurementDetails(final JwtAuthenticationToken authentication) {
-
-        var principal = getPrincipalFromJwt(authentication);
-        log.info("getGcloudEProcurementDetails invoked on behalf of principal: {}", principal);
-
-        return assessmentService.getGcloudEProcurement(principal);
     }
 }

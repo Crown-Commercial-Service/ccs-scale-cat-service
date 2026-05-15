@@ -1,6 +1,5 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.search;
 
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
@@ -8,9 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.elasticsearch.annotations.Document;
-import org.springframework.data.elasticsearch.annotations.Field;
-
-import java.time.Instant;
 
 @Data
 @Builder
@@ -33,10 +29,20 @@ public class ProcurementEventSearch {
     String budgetRange;
     @JsonProperty("agreement")
     String agreement;
+    @JsonProperty("agreementId")
+    String agreementId;
     @JsonProperty("lot")
     String lot;
+    @JsonProperty("lotName")
+    String lotName;
     @JsonProperty("lotDescription")
     String lotDescription;
+    @JsonProperty("eventId")
+    String eventId;
+    @JsonProperty("eventName")
+    String eventName;
+    @JsonProperty("eventType")
+    String eventType;
 
     @JsonProperty("status")
     String status;
@@ -46,6 +52,4 @@ public class ProcurementEventSearch {
     String description;
     @JsonProperty("lastUpdated")
     Long lastUpdated;
-
-
 }

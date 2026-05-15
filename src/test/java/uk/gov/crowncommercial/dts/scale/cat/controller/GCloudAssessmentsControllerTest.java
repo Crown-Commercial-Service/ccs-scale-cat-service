@@ -15,16 +15,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
-import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudEProcurement;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.DMPService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
 
 import static org.mockito.Mockito.*;
@@ -65,6 +63,9 @@ public class GCloudAssessmentsControllerTest {
     
     @MockitoBean
     private LockProvider lockProvider;
+
+    @MockitoBean
+    private DMPService dmpService;
 
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validJwtReqPostProcessor;
 
@@ -137,66 +138,5 @@ public class GCloudAssessmentsControllerTest {
         verify(assessmentService, times(1)).deleteGcloudAssessment(ASSESSMENT_ID);
     }
 
-    @Test
-    void getGcloudEProcurementDetailsReturns200_WhenRecordExists() throws Exception {
-        when(assessmentService.getGcloudEProcurement(anyString())).thenReturn(givenValidGCloudEProcurement());
 
-        mockMvc.perform(get(GCLOUD_E_PROCUREMENT_PATH)
-                .with(validJwtReqPostProcessor))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.projectName").value("Test Project"));
-    }
-
-    @Test
-    void  getGcloudEProcurementDetailsReturns401_WhenNotAuthenticated() throws Exception {
-        // No .with(jwt()) post-processor used here
-        mockMvc.perform(get(GCLOUD_E_PROCUREMENT_PATH))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void addGcloudEProcurementDetailsReturns200_WhenDataIsValid() throws Exception {
-        when(assessmentService.createGcloudEProcurement(any(), anyString())).thenReturn(1);
-
-        mockMvc.perform(post(GCLOUD_E_PROCUREMENT_PATH)
-                        .with(validJwtReqPostProcessor)
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(givenValidGCloudEProcurement())))
-                .andExpect(status().isOk())
-                .andExpect(content().string("1"));
-    }
-
-    @Test
-    void addGcloudEProcurementDetailsReturns400_WhenJsonIsMalformed() throws Exception {
-        String malformedJson = "{ \"assessmentId\": \"NOT_A_NUMBER\" }";
-
-        mockMvc.perform(post(GCLOUD_E_PROCUREMENT_PATH)
-                        .with(validJwtReqPostProcessor)
-                        .contentType(APPLICATION_JSON)
-                        .content(malformedJson))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void addDetails_ReturnsZero_WhenServiceThrowsException() throws Exception {
-
-        when(assessmentService.createGcloudEProcurement(any(), anyString()))
-                .thenThrow(new RuntimeException("Database down"));
-
-        mockMvc.perform(post(GCLOUD_E_PROCUREMENT_PATH)
-                        .with(validJwtReqPostProcessor)
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(givenValidGCloudEProcurement())))
-                .andExpect(status().isOk()) // It remains 200 because of the try-catch block
-                .andExpect(content().string("0"));
-    }
-
-    private GCloudEProcurement givenValidGCloudEProcurement() {
-        return GCloudEProcurement.builder()
-                .assessmentId(1)
-                .projectName("Test Project")
-                .contractStartDate(LocalDate.now())
-                .estimatedContractValue(BigDecimal.TEN)
-                .build();
-    }
 }

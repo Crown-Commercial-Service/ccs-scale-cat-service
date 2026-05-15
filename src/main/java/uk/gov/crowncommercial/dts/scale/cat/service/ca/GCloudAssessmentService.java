@@ -10,7 +10,6 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.AuthorisationFailureExcept
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSummary;
-import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudEProcurement;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
@@ -41,7 +40,7 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
     private static final String ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID = "External Tool Id [%s] is not valid for Gcloud Assessment operations";
     private static final String TOOL_NAME_GCLOUD = "GCloud 13 Search";
-    private static final String ERR_MSG_FMT_E_PROCUREMENT_DETAILS_MISSING = "No e-procurement details found for [%s]";
+    private static final String TOOL_NAME_DOS7 = "DOS7 Search";
 
     private static final String TIMEZONE_NAME = "Europe/London";
 
@@ -89,6 +88,8 @@ public class GCloudAssessmentService {
                 resultEntity.setAssessmentId(saveResult);
                 resultEntity.setServiceName(result.getServiceName());
                 resultEntity.setSupplierName(result.getSupplier().getName());
+                // 1150: Save supplier id to the database.
+                resultEntity.setSupplierId(result.getSupplier().getId());
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
@@ -155,6 +156,8 @@ public class GCloudAssessmentService {
                 resultEntity.setAssessmentId(assessmentId);
                 resultEntity.setServiceName(result.getServiceName());
                 resultEntity.setSupplierName(result.getSupplier().getName());
+                // 1150: Save supplier id to the database.
+                resultEntity.setSupplierId(result.getSupplier().getId());
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
@@ -226,6 +229,8 @@ public class GCloudAssessmentService {
 
             Supplier supplierModel = new Supplier();
             supplierModel.setName(result.getSupplierName());
+            // 1150: set supplier id.
+            supplierModel.setId(result.getSupplierId());
             resultModel.setSupplier(supplierModel);
 
             resultsList.add(resultModel);
@@ -296,76 +301,13 @@ public class GCloudAssessmentService {
         if (optionalTool.isPresent()) {
             AssessmentTool matchingTool = optionalTool.get();
 
-            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)) {
+            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)
+            || Objects.equals(matchingTool.getName(), TOOL_NAME_DOS7)) {
                 // Looks like a tool exists for this ID, and it's the Gcloud tool, so this is valid
                 isValid = true;
             }
         }
 
         return isValid;
-    }
-
-    @Transactional
-    public Integer createGcloudEProcurement(final GCloudEProcurement gCloudEProcurement, final String principal) {
-
-        log.debug("Creating GCloud e procurement");
-
-        var conclaveUser = conclaveService.getUserProfile(principal).orElseThrow(
-                () -> new ResourceNotFoundException(format(ERR_MSG_FMT_CONCLAVE_USER_MISSING, principal)));
-
-
-        GCloudEProcurementEntity gCloudEProcurementEntity = new GCloudEProcurementEntity();
-
-        gCloudEProcurementEntity.setAssessmentId(gCloudEProcurement.getAssessmentId());
-        gCloudEProcurementEntity.setProjectId(gCloudEProcurement.getProjectId());
-        gCloudEProcurementEntity.setEventId(gCloudEProcurement.getEventId());
-        gCloudEProcurementEntity.setProjectName(gCloudEProcurement.getProjectName());
-        gCloudEProcurementEntity.setSummaryOfWork(gCloudEProcurement.getSummaryOfWork());
-        gCloudEProcurementEntity.setContractStartDate(gCloudEProcurement.getContractStartDate());
-        gCloudEProcurementEntity.setEstimatedContractValue(gCloudEProcurement.getEstimatedContractValue());
-        gCloudEProcurementEntity.setContractDurationDays(gCloudEProcurement.contractDurationDays);
-        gCloudEProcurementEntity.setContractDurationMonths(gCloudEProcurement.contractDurationMonths);
-        gCloudEProcurementEntity.setContractDurationYears(gCloudEProcurement.contractDurationYears);
-        gCloudEProcurementEntity.setIncumbentSupplier(gCloudEProcurement.getIncumbentSupplier());
-        gCloudEProcurementEntity.setContractScope(gCloudEProcurement.getContractScope());
-        gCloudEProcurementEntity.setAdditionalSupplierDetails(gCloudEProcurement.getAdditionalSupplierDetails());
-        gCloudEProcurementEntity.setCreatedBy(principal);
-        gCloudEProcurementEntity.setUpdatedBy(principal);
-
-        // Save our assessment entity
-        Integer saveResult = retryableTendersDBDelegate.save(gCloudEProcurementEntity).getId();
-
-        if (saveResult > 0) {
-            log.debug("Successfully saved e-procurement details. assessmentId: {}", gCloudEProcurement.getAssessmentId());
-        }
-
-        return saveResult;
-    }
-
-    @Transactional
-    public GCloudEProcurement getGcloudEProcurement(final String principal) {
-
-        GCloudEProcurementEntity gCloudEProcurementEntity =
-                retryableTendersDBDelegate.findByAssessmentIdAndCreatedBy(principal);
-
-        if(gCloudEProcurementEntity == null) {
-            throw new ResourceNotFoundException(format(ERR_MSG_FMT_E_PROCUREMENT_DETAILS_MISSING, principal));
-        }
-
-        return GCloudEProcurement.builder()
-                .assessmentId(gCloudEProcurementEntity.getAssessmentId())
-                .projectId(gCloudEProcurementEntity.getProjectId())
-                .eventId(gCloudEProcurementEntity.getEventId())
-                .projectName(gCloudEProcurementEntity.getProjectName())
-                .summaryOfWork(gCloudEProcurementEntity.getSummaryOfWork())
-                .contractStartDate(gCloudEProcurementEntity.getContractStartDate())
-                .estimatedContractValue(gCloudEProcurementEntity.getEstimatedContractValue())
-                .contractDurationYears(gCloudEProcurementEntity.getContractDurationYears())
-                .contractDurationMonths(gCloudEProcurementEntity.getContractDurationMonths())
-                .contractDurationDays(gCloudEProcurementEntity.getContractDurationDays())
-                .incumbentSupplier(gCloudEProcurementEntity.getIncumbentSupplier())
-                .contractScope(gCloudEProcurementEntity.getContractScope())
-                .additionalSupplierDetails(gCloudEProcurementEntity.getAdditionalSupplierDetails())
-                .build();
     }
 }

@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -12,22 +13,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.retry.ExhaustedRetryException;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.BuyerUserDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ContractDetails;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.JourneyEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProjectUserMapping;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.SupplierSelection;
+import uk.gov.crowncommercial.dts.scale.cat.mapper.ProcurementEventMapper;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.search.ProcurementEventSearch;
 import uk.gov.crowncommercial.dts.scale.cat.repo.projection.AssessmentProjection;
 import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
+import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 
@@ -40,6 +38,8 @@ public class RetryableTendersDBDelegate {
 
   private final ProcurementProjectRepo procurementProjectRepo;
   private final ProcurementEventRepo procurementEventRepo;
+  private final ProcurementStageEventRepo procurementStageEventRepo;
+  private final StageDataRepo stageDataRepo;
   private final OrganisationMappingRepo organisationMappingRepo;
   private final JourneyRepo journeyRepo;
   private final DocumentTemplateRepo documentTemplateRepo;
@@ -59,17 +59,13 @@ public class RetryableTendersDBDelegate {
   private final BuyerUserDetailsRepo buyerUserDetailsRepo;
   private final ContractDetailsRepo contractDetailsRepo;
   private final QuestionAndAnswerRepo questionAndAnswerRepo;
-  private final GCloudEProcurementRepo gCloudEProcurementRepo;
-
+  private final MiQuestionAnswerRepo miQuestionAnswerRepo;
+  private final SearchProjectRepo searchProjectRepo;
+  private final ProcurementEventMapper procurementEventMapper;
 
   @TendersRetryable
   public ProcurementProject save(final ProcurementProject procurementProject) {
     return procurementProjectRepo.saveAndFlush(procurementProject);
-  }
-
-  @TendersRetryable
-  public ProcurementEvent save(final ProcurementEvent procurementevent) {
-    return procurementEventRepo.save(procurementevent);
   }
 
   @TendersRetryable
@@ -89,21 +85,101 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public ProcurementEvent save(final ProcurementEvent procurementevent) {
+    return procurementEventRepo.save(procurementevent);
+  }
+
+  @TendersRetryable
   public Optional<ProcurementEvent> findProcurementEventById(final Integer id) {
     return procurementEventRepo.findById(id);
   }
 
   @TendersRetryable
-  public Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-      final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
-    return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
-        eventIdKey, ocdsAuthorityName, ocidPrefix);
+  public Optional<ProcurementEvent> findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
+    return procurementEventRepo.findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
+  }
+
+  @TendersRetryable
+  @Transactional
+  public boolean saveEventPayloadByIdAndAuthorityAndPrefix(Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix, JsonNode payload) {
+    int updated = procurementEventRepo.updateTemplatePayload(eventIdKey, ocdsAuthorityName, ocidPrefix, payload.toString());
+    return updated > 0;
   }
 
   @TendersRetryable
   @Transactional
   public void deleteProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final String ocdsAuthorityName, final String ocidPrefix) {
-    procurementEventRepo.deleteByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
+      procurementEventRepo.deleteByIdAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, ocdsAuthorityName, ocidPrefix);
+  }
+
+  @TendersRetryable
+  public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
+    return procurementEventRepo.findByProjectId(projectId);
+  }
+
+  @TendersRetryable
+  public ProcurementStageEvent save(final ProcurementStageEvent procurementevent) {
+      final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(procurementevent.getEventID(), procurementevent.getStageNumber());
+
+      Optional<ProcurementStageEvent> existing =
+          procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
+              eventIdOfFirstStage, procurementevent.getStageNumber(), procurementevent.getOcdsAuthorityName(), procurementevent.getOcidPrefix());
+
+      procurementevent.setId(existing.isEmpty() ? procurementevent.getId() : existing.get().getId());
+      procurementevent.setStageNumber(procurementevent.getStageNumber());
+
+      return procurementStageEventRepo.save(procurementevent);
+  }
+
+  @TendersRetryable
+  public Optional<ProcurementEvent> findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
+      Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
+
+      if (!result.isPresent()) {
+          return Optional.empty();
+      }
+
+      final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(result.get().getEventID(), result.get().getStageNumber());
+
+      Optional<ProcurementStageEvent> firstStageEvent = procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
+
+      if (!firstStageEvent.isPresent()) {
+          return Optional.empty();
+      }
+
+      ProcurementEvent response = procurementEventMapper.procurementStageEventToProcurementEvent(firstStageEvent.get());
+
+      return Optional.of(response);
+  }
+
+  @TendersRetryable
+  @Transactional
+  public boolean saveEventPayloadByIdAndStageNumberAndAuthorityAndPrefix(Integer eventIdKey, Integer stageNumber, String ocdsAuthorityName, String ocidPrefix, JsonNode payload) {
+      Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
+
+      if (!result.isPresent()) {
+          return false;
+      }
+
+      final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(result.get().getEventID(), result.get().getStageNumber());
+
+      int updated = procurementStageEventRepo.updateTemplatePayload(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix, payload.toString());
+
+      return updated > 0;
+  }
+
+  @TendersRetryable
+  @Transactional
+  public void deleteProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
+      Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
+
+      if (!result.isPresent()) {
+          return;
+      }
+
+      final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(result.get().getEventID(), result.get().getStageNumber());
+
+      procurementStageEventRepo.deleteByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
   }
 
   @TendersRetryable
@@ -118,8 +194,6 @@ public class RetryableTendersDBDelegate {
           final Set<Integer> bravoIds) {
     return organisationMappingRepo.findByExternalOrganisationIdIn(bravoIds);
   }
-
-
 
   @TendersRetryable
   @Cacheable(value = "tendersCache", key = "#root.methodName + '-' + #externalOrganisationId")
@@ -171,12 +245,12 @@ public class RetryableTendersDBDelegate {
   public Set<DocumentTemplate> findByEventType(final String eventType) {
     return documentTemplateRepo.findByEventType(eventType);
   }
-  
+
   @TendersRetryable
   public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumber(final String eventType, final String commercialAgreementNumber, final String lotNumber) {
     return documentTemplateRepo.findByEventTypeAndCommercialAgreementNumberAndLotNumber(eventType, commercialAgreementNumber, lotNumber);
   }
-  
+
   @TendersRetryable
   public Set<DocumentTemplate> findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(final String eventType, final String commercialAgreementNumber, final String lotNumber, final Integer templateGroup) {
     // We need to potentially correct our Lot ID - we need to be sure it contains the legacy prefix for doc gen
@@ -193,25 +267,25 @@ public class RetryableTendersDBDelegate {
     return documentTemplateRepo
         .findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, commercialAgreementNumber, lotId, templateGroup);
   }
-  
+
   @TendersRetryable
   public Set<DocumentTemplate> findByEventStage(final String eventStage) {
     return documentTemplateRepo.findByEventStage(eventStage);
   }
-  
+
   @TendersRetryable
   public Set<DocumentTemplate> findByEventStageAndAgreementNumber(final String eventStage, final String agreementNumber) {
     return documentTemplateRepo.findByEventStageAndCommercialAgreementNumber(eventStage, agreementNumber);
   }
 
   @TendersRetryable
-  public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
-    return procurementEventRepo.findByProjectId(projectId);
+  public Set<AssessmentProjection> findAssessmentsProjectionForUserWithExternalId(final String userId, Integer externalToolId) {
+    return assessmentRepo.findAssessmentsByCreatedByAndExternalToolId(userId,externalToolId);
   }
 
   @TendersRetryable
-  public Set<AssessmentProjection> findAssessmentsProjectionForUserWithExternalId(final String userId, Integer externalToolId) {
-    return assessmentRepo.findAssessmentsByCreatedByAndExternalToolId(userId,externalToolId);
+  public Set<AssessmentProjection> findAssessmentsByExternalToolId(final Integer externalToolId) {
+    return assessmentRepo.findAssessmentsByExternalToolId(externalToolId);
   }
 
   @TendersRetryable
@@ -337,13 +411,13 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public GCloudEProcurementEntity save(final GCloudEProcurementEntity gCloudEProcurementEntity) {
-      return gCloudEProcurementRepo.save(gCloudEProcurementEntity);
+  public List<MiQuestionAnswerEntity> saveAllQuestionsAndAnswers(final List<MiQuestionAnswerEntity> miQuestionAnswerEntity) {
+      return miQuestionAnswerRepo.saveAll(miQuestionAnswerEntity);
   }
 
   @TendersRetryable
-  public GCloudEProcurementEntity findByAssessmentIdAndCreatedBy(String createdBy) {
-      return gCloudEProcurementRepo.findByCreatedBy(createdBy);
+  public List<MiQuestionAnswerEntity> findByCreatedBy(String createdBy) {
+      return miQuestionAnswerRepo.findByCreatedBy(createdBy);
   }
 
   @TendersRetryable
@@ -402,7 +476,6 @@ public class RetryableTendersDBDelegate {
     return projectUserMappingRepo.findByUserId(userId, pageable);
   }
 
-
   @TendersRetryable
   public List<ProjectUserMapping> findProjectUserMappingByUserId(final String userId,final String searchType,final String searchTerm,
                                                                  final Pageable pageable) {
@@ -451,10 +524,17 @@ public class RetryableTendersDBDelegate {
   
   @TendersRetryable
   @Transactional(readOnly = true)
-  public Set<ProcurementProject> findPublishedEventsByAgreementId(final String agreementId) {
-    return procurementProjectRepo.findPublishedEventsByAgreementId(agreementId);
+  public List<ProcurementProject> findPublishedEventsByAgreementId(final String agreementId, final Pageable pageable) {
+    return procurementProjectRepo.findPublishedEventsByAgreementId(agreementId, pageable);
   }
-  
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void searchProjectSaveAll(final List<ProcurementEventSearch> procurementEventSearches) {
+    if (procurementEventSearches != null && !procurementEventSearches.isEmpty()) {
+      searchProjectRepo.saveAll(procurementEventSearches);
+    }
+  }
+
   @TendersRetryable
   @Transactional(readOnly = true)
   public long findQuestionsCountByEventId(final Integer eventId) {
@@ -494,5 +574,92 @@ public class RetryableTendersDBDelegate {
     @CacheEvict(value = "tendersCache", key = "'findOrganisationMappingByCasOrganisationId-' + #orgId")
     public void removeMappingByCasOrgIdFromCache(String orgId) {
         // Take no action here - the method annotation deals with the action
+    }
+
+    public Optional<ProcurementStageEvent> findByIdAndStageNumber(Integer id, Integer stageNumber) {
+        return procurementStageEventRepo.findByIdAndStageNumber(id, stageNumber);
+    }
+
+    /**
+     * For multi-stage events, all of the stage description values along with all
+     * of the CoP and Award Criteria details are captured during the 1st stage.
+     *
+     * But when we rollover to subsequent stages, we create new events for each additional stage,
+     * each of which will have a NEW eventId.
+     *
+     * So before we can use the given eventId, we need to ensure it is the event associated with
+     * the first stage of multi-stage.
+     *
+     * If it is not, then we reference the 'stage_data' DB table to find the one which has a
+     * "stageNumber == 1".
+     *
+     * @param eventId       the eventId of the current stage
+     * @param stageNumber   the current stageNumber (can be null or zero, if NOT multi-stage)
+     *
+     * @return the correct eventId to use for further processing
+     */
+    public Integer findEventIdOfFirstStageForMultiStageEvent(final String eventId, final Integer stageNumber) {
+        if (null == stageNumber || 0 == stageNumber || 1 == stageNumber) {
+            // either we are NOT in multi-stage, or we are in the first stage of multi-stage;
+            // either way, the given eventId is the correct one to use
+            return extractIdFromEventId(eventId);
+        }
+
+        // we ARE in multi-stage and have been given an eventId which is not for the first stage
+        // therefore we need to see if we can find the eventId of the first stage
+
+        final Optional<StageDataEntity> stageData = stageDataRepo.findByEventId(eventId);
+
+        if (stageData.isEmpty() || null == stageData.get().getStageEvents() || stageData.get().getStageEvents().isEmpty()) {
+            // no idea, so let's go with what we have
+            return extractIdFromEventId(eventId);
+        }
+
+        final List<StageEventEntity> stageEvents = stageData.get().getStageEvents();
+
+        final StageEventEntity firstStageEvent = stageEvents.stream().filter(event -> 1 == event.getStageNumber()).findFirst().orElse(null);
+
+        if (null == firstStageEvent) {
+            // no idea, so let's go with what we have
+            return extractIdFromEventId(eventId);
+        }
+
+        String value = firstStageEvent.getEventId();
+
+        try {
+            Integer responseEventId = Integer.valueOf(value);
+            return responseEventId;
+        } catch (Exception e) {
+            return extractIdFromEventId(eventId);
+        }
+    }
+
+    /**
+     * The eventId is of the form: ocdsAuthorityName + "-" + ocidPrefix + "-" + id
+     *
+     * We only want the final 'id' part, so we extract and return that part.
+     *
+     * @param eventId    the full eventId value
+     *
+     * @return the 'id' part extracted from the given eventId
+     */
+    public Integer extractIdFromEventId(final String eventId) {
+        if (null == eventId) {
+            return null;
+        }
+
+        int startOfIdPart = eventId.lastIndexOf('-');
+
+        if (startOfIdPart > 0) {
+            String idPart = eventId.substring(startOfIdPart + 1);
+
+            try {
+                return Integer.valueOf(idPart);
+            } catch (final Exception e) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

@@ -1,16 +1,15 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.scheduler;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +17,9 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.AgreementDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationIdentifier;
+import uk.gov.crowncommercial.dts.scale.cat.model.conclave_wrapper.generated.OrganisationProfileResponseInfo;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.ProjectPublicDetail.StatusEnum;
@@ -28,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ConclaveService;
 import uk.gov.crowncommercial.dts.scale.cat.service.JaggaerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.MiService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventStatusHelper;
 import uk.gov.crowncommercial.dts.scale.cat.service.ocds.EventsHelper;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -39,47 +42,64 @@ public class ProjectsToOpenSearchScheduledTask {
 
   private final SearchProjectRepo searchProjectRepo;
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
-  private static final String DOS6_AGREEMENT_ID = "RM1043.8";
+  private static final List<String> AGREEMENT_IDS = List.of("RM1043.9", "RM1043.8");
   private final AgreementsService agreementsService;
   private final ConclaveService conclaveService;
   private final JaggaerService jaggaerService;
+  private final MiService miService;
   
   @Value("${config.oppertunities.published.batch.size: 80}")
-  private int bathcSize;
-  
-  @Transactional
+  private int batchSize;
+
   @Scheduled(cron = "${config.external.projects.sync.schedule}")
-  @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask", 
+  @SchedulerLock(name = "ProjectsToOpenSearch_scheduledTask",
   lockAtLeastFor = "PT5M", lockAtMostFor = "PT10M")
   public void saveProjectsDataToOpenSearch() {
-    log.info("Started projects data to open search scheduler process");
-    var events =
-        retryableTendersDBDelegate.findPublishedEventsByAgreementId(DOS6_AGREEMENT_ID);
-    log.info("Dos6 agreements count to update in opensearch: {}", events.size());
-    
-    var agreementDetails = agreementsService.getAgreementDetails(DOS6_AGREEMENT_ID);
-    this.reinstateIndex();
-    this.saveProjectDataAsBatches(events, agreementDetails);
-    
-    log.info("Successfully updated projects data in open search");
+    log.info("Started projects data to open search scheduler process, Time: {}", LocalDateTime.now());
+    // 1316: Process DOS6 and DOS7 events
+    reinstateIndex();
+    AGREEMENT_IDS.forEach(agreementId -> {
+        final AgreementDetail agreementDetails = agreementsService.getAgreementDetails(agreementId);
+        List<ProcurementProject> events = new ArrayList<>();
+        int index = 0;
+        int totalEvents = 0;
+        do {
+          try {
+            events.clear();
+            events = retryableTendersDBDelegate.findPublishedEventsByAgreementId(agreementId,
+                    PageRequest.of(index++, batchSize, Sort.by("project_id").ascending()));
+            if (events != null && !events.isEmpty()) {
+              log.info("AgreementId: {} Count to update in opensearch {} bathcSize {} Index {}", agreementId, events.size(), batchSize, index);
+              saveProjectDataAsBatches(agreementId, events, agreementDetails);
+            }
+          } catch (Exception e) {
+            log.error("Error processing OpenSearch for agreementId {}", agreementId, e);
+          } finally {
+            totalEvents += events == null ? 0 : events.size();
+          }
+        } while (!events.isEmpty());
+        log.info("Successfully updated projects data in open search for agreementId {} size {}", agreementId, totalEvents);
+    });
+    log.info("saveProjectsDataToOpenSearch successful, Time: {}", LocalDateTime.now());
   }
   
-  private void saveProjectDataAsBatches(Set<ProcurementProject> events,
+  private void saveProjectDataAsBatches(String agreementId, List<ProcurementProject> events,
       AgreementDetail agreementDetail) {
+    log.info("saveProjectDataAsBatches for agreementId {}", agreementId);
     var eventSearchDataList = new ArrayList<ProcurementEventSearch>();
     List<List<ProcurementProject>> batches =
-        TendersAPIModelUtils.getBatches(new ArrayList<ProcurementProject>(events), bathcSize);
+        TendersAPIModelUtils.getBatches(new ArrayList<>(events), batchSize);
     for (List<ProcurementProject> batch : batches) {
-      mapToOpenSearch(batch, eventSearchDataList, agreementDetail);
-      searchProjectRepo.saveAll(eventSearchDataList);
-      log.info("successfully updated events: "+eventSearchDataList.size());
+      mapToOpenSearch(agreementId, batch, eventSearchDataList, agreementDetail);
+      retryableTendersDBDelegate.searchProjectSaveAll(eventSearchDataList);
+      log.info("successfully updated events {} for agreementId {}", eventSearchDataList.size(), agreementId);
       eventSearchDataList.clear();
     }
   }
   
-  private List<ProcurementEventSearch> mapToOpenSearch(List<ProcurementProject> events,
+  private List<ProcurementEventSearch> mapToOpenSearch(String agreementId, List<ProcurementProject> events,
       List<ProcurementEventSearch> eventSearchDataList,  AgreementDetail agreementDetails) {
-
+    log.info("mapToOpenSearch for agreementId {}", agreementId);
     var eventSearchDataListDTO = new ArrayList<ProcurementEventSearchDTO>();
     
     for (ProcurementProject project : events) {
@@ -87,8 +107,8 @@ public class ProjectsToOpenSearchScheduledTask {
         var firstAndLastPublishedEvent = EventsHelper.getFirstAndLastPublishedEvent(project);
         var event = firstAndLastPublishedEvent.getLeft();
 
-        var lotDetails = agreementsService.getLotDetails(DOS6_AGREEMENT_ID, project.getLotNumber());
-        var organisationIdentity = conclaveService
+        final LotDetail lotDetails = agreementsService.getLotDetails(agreementId, project.getLotNumber());
+        final Optional<OrganisationProfileResponseInfo> organisationIdentity = conclaveService
             .getOrganisationIdentity(project.getOrganisationMapping().getOrganisationId());
         
         String srfxId = null;
@@ -97,26 +117,44 @@ public class ProjectsToOpenSearchScheduledTask {
         }
 
         var eventSearchDataDTO = ProcurementEventSearchDTO.builder().rfxId(firstAndLastPublishedEvent.getLeft().getExternalEventId())
-            .secondRfxId(srfxId).projectId(event.getProject().getId()).description(getSummaryOfWork(event))
-            .budgetRange(TemplateDataExtractor.getBudgetRangeData(event))
-            .buyerName(organisationIdentity.get().getIdentifier().getLegalName())
-            .projectName(event.getProject().getProjectName()).location(TemplateDataExtractor.getLocation(event))
-            .lot(event.getProject().getLotNumber()).lotDescription(lotDetails.getDescription()).lastUpdated(event.getUpdatedAt().getEpochSecond())
-            .agreement(agreementDetails.getName()).build();
+            .secondRfxId(srfxId).projectId(event.getProject().getId())
+            .description(getSummaryOfWork(event))
+            .budgetRange("RM1043.8".equalsIgnoreCase(agreementId) ? TemplateDataExtractor.getBudgetRangeData(event) : TemplateDataExtractor.getDos7BudgetRangeData(event))
+            .buyerName(organisationIdentity.map(OrganisationProfileResponseInfo::getIdentifier).map(OrganisationIdentifier::getLegalName).orElse(null))
+            .projectName(event.getProject().getProjectName())
+            .location("RM1043.8".equalsIgnoreCase(agreementId) ? TemplateDataExtractor.getLocation(event) : TemplateDataExtractor.getDos7Location(event))
+            .lot(event.getProject().getLotNumber())
+            .lotDescription(Optional.ofNullable(lotDetails).map(LotDetail::getDescription).orElse(null))
+            .lastUpdated(event.getUpdatedAt().getEpochSecond())
+            .lotName(Optional.ofNullable(lotDetails).map(LotDetail::getName).orElse(null))
+            .agreement(agreementDetails.getName())
+            .agreementId(agreementId)
+            .eventId(event.getEventID())
+            .eventName(event.getEventName())
+            .eventType(event.getEventType())
+            .build();
         
         eventSearchDataListDTO.add(eventSearchDataDTO);
       } catch (Exception e) {
-        log.error("Error while saving project details to opensearch", e);
+        log.error("Error while saving project details to opensearch, agreementId: {}", agreementId, e);
       }
     }
     populateStatus(eventSearchDataListDTO);
     populateSubStatus(eventSearchDataListDTO);
+    // Populate MI status for DOS7 project.
+    if ("RM1043.9".equalsIgnoreCase(agreementId)) {
+      populateMIStatus(eventSearchDataListDTO);
+    }
     populateSearchData(eventSearchDataListDTO, eventSearchDataList);
     return eventSearchDataList;
   }
   
   private void populateStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
-    Set<String> rfxIds = searchDataDTO.stream().map(e -> e.getRfxId()).collect(Collectors.toSet());
+    log.info("populateStatus()");
+    Set<String> rfxIds = searchDataDTO.stream().map(ProcurementEventSearchDTO::getRfxId)
+            .filter(Objects::nonNull)
+            .filter(StringUtils::isNotBlank)
+            .collect(Collectors.toSet());
     var rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
     
@@ -125,10 +163,10 @@ public class ProjectsToOpenSearchScheduledTask {
     
     for (ExportRfxResponse exportRfxResponse : rfxResponse) {
       for (ProcurementEventSearchDTO data : searchDataDTO) {
-        if (data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
+        if (data.getRfxId() != null && data.getRfxId().equals(exportRfxResponse.getRfxSetting().getRfxId())) {
           var eventStatus = EventStatusHelper.getEventStatus(exportRfxResponse.getRfxSetting());
           data.setStatus(eventStatus);
-          if (eventStatus.equals(StatusEnum.CLOSED.getValue())) {
+          if (eventStatus != null && eventStatus.equals(StatusEnum.CLOSED.getValue())) {
             data.setSubStatus(EventStatusHelper.getSubStatus(exportRfxResponse.getRfxSetting()));
           }
         }
@@ -137,8 +175,12 @@ public class ProjectsToOpenSearchScheduledTask {
   }
   
   private void populateSubStatus(List<ProcurementEventSearchDTO> searchDataDTO) {
+    log.info("populateSubStatus()");
     Set<String> rfxIds = searchDataDTO.stream()
-        .map(e -> e.getSecondRfxId()).collect(Collectors.toSet());
+        .map(ProcurementEventSearchDTO::getSecondRfxId)
+            .filter(Objects::nonNull)
+            .filter(StringUtils::isNotBlank)
+            .collect(Collectors.toSet());
     Set<ExportRfxResponse> rfxResponse =
         jaggaerService.searchRFxWithComponents(rfxIds, Set.of("supplier_Response_Counters"));
     
@@ -152,12 +194,26 @@ public class ProjectsToOpenSearchScheduledTask {
     }
   }
 
+  private void populateMIStatus(final List<ProcurementEventSearchDTO> searchDataDTO) {
+    log.info("populateMIStatus()");
+    // 1511: Set MI project status to open.
+    searchDataDTO.forEach(
+        obj -> {
+          if (!miService.findAllByProjectId(String.valueOf(obj.getProjectId())).isEmpty()) {
+            log.debug("Setup MI project status to open ProjectId {}", obj.getProjectId());
+            obj.setStatus(StatusEnum.OPEN.getValue());
+            obj.setSubStatus(null);
+          }
+        });
+  }
+
   private void populateSearchData(List<ProcurementEventSearchDTO> searchDataDTO,
       List<ProcurementEventSearch> searchDataList) {
+    log.info("populateSearchData()");
     //removed broken projects
     searchDataDTO = searchDataDTO.stream().filter(e -> e.getStatus() != null).toList();
     
-    searchDataDTO.stream().forEach(dto -> {
+    searchDataDTO.forEach(dto -> {
       ProcurementEventSearch searchData = new ProcurementEventSearch();
       BeanUtils.copyProperties(dto, searchData);
       searchDataList.add(searchData);
@@ -175,15 +231,18 @@ public class ProjectsToOpenSearchScheduledTask {
       }
     } catch (Exception e) {
       // TODO: handle exception
+      log.error("getSummaryOfWork Error", e);
     }
     return null;
   }
   
   private void reinstateIndex() {
+    log.info("reinstateIndex()");
     try {
       searchProjectRepo.deleteAll();
-      log.info("delete data in opensearch");
+      log.info("Delete data in opensearch by reinstateIndex");
     } catch (Exception e) {
+      log.error("reinstateIndex Error", e);
     }
   }
 }
@@ -201,11 +260,15 @@ class ProcurementEventSearchDTO {
   String location;
   String budgetRange;
   String agreement;
+  String agreementId;
   String lot;
+  String lotName;
   String lotDescription;
   String status;
   String subStatus;
   String description;
   Long lastUpdated;
-
+  String eventId;
+  String eventName;
+  String eventType;
 }

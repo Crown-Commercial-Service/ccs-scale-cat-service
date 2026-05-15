@@ -40,7 +40,19 @@ public class TemplateDataExtractor {
       }
     } catch (Exception e) {
     }
-    return "";
+    return null;
+  }
+
+  public static String getDos7ExpectedContractLength(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = "Group 3";
+      String questionId = "Question 6";
+      return EventsHelper.getData(criterionId, groupId, questionId,
+              event.getProcurementTemplatePayload().getCriteria());
+    } catch (Exception e) {
+    }
+    return null;
   }
   
   public static final String periodFormat(Period period) {
@@ -93,6 +105,39 @@ public class TemplateDataExtractor {
     }
     return null;
   }
+
+  public static String getDos7BudgetRangeData(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = "Group 3";
+      String questionId = Objects.nonNull(event) && event.getProject().getLotNumber().equals("4")
+              ? "Question 6" : "Question 8";
+      return EventsHelper.getData(criterionId, groupId, questionId,
+              event.getProcurementTemplatePayload().getCriteria());
+    } catch (Exception e) {
+    }
+    return null;
+  }
+
+  public static String getDos7IncumbentSupplier(final ProcurementEvent event) {
+    try {
+      String criterionId = "Criterion 3";
+      String groupId = "Group 4";
+      String questionId = "Question 8";
+      return EventsHelper.getData(criterionId, groupId, questionId,
+              event.getProcurementTemplatePayload().getCriteria());
+    } catch (Exception e) {
+    }
+    return null;
+  }
+
+  public static String getDos7CallOffProcedure(final ProcurementEvent event) {
+    try {
+      return event.getEventType();
+    } catch (Exception e) {
+    }
+    return null;
+  }
   
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
@@ -110,7 +155,7 @@ public class TemplateDataExtractor {
       }
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
   
   /**
@@ -126,9 +171,26 @@ public class TemplateDataExtractor {
       }
     } catch (Exception e) {
     }
-    return "";
+    return null;
   }
-  
+
+  public static String getDos7EmploymentStatus(final ProcurementEvent event) {
+    try {
+      if (!event.getProject().getLotNumber().equals("4")) {
+        String criterionId = "Criterion 3";
+        String groupId = "Group 3";
+        String questionId = "Question 2";
+        return EventsHelper.getData(
+                criterionId,
+                groupId,
+                questionId,
+                event.getProcurementTemplatePayload().getCriteria());
+      }
+    } catch (Exception e) {
+    }
+    return null;
+  }
+
   /**
    * TODO This method output will only work for DOS6. This should be refactor as generic one
    */
@@ -137,12 +199,30 @@ public class TemplateDataExtractor {
       String criterionId = "Criterion 3";
       String groupId = event.getProject().getLotNumber().equals("1") ? "Group 5" : "Group 4";
       String questionId = "Question 6";
-      String location = EventsHelper.getData(criterionId, groupId, questionId,
+      return EventsHelper.getData(criterionId, groupId, questionId,
           event.getProcurementTemplatePayload().getCriteria());
-      return Objects.nonNull(location) ? location : "";
     } catch (Exception e) {
     }
-    return "";
+    return null;
+  }
+
+  // TODO: Lot-4 Studio location (Optional), Participant location (Optional)
+  public static String getDos7Location(final ProcurementEvent event) {
+    try {
+      String location = null;
+      // Lot-2 has no location
+      if (Objects.nonNull(event) && (event.getProject().getLotNumber().equals("1")
+              || event.getProject().getLotNumber().equals("3"))) {
+        String criterionId = "Criterion 3";
+        String groupId = "Group 3";
+        String questionId = "Question 4";
+        location = EventsHelper.getData(criterionId, groupId, questionId,
+                event.getProcurementTemplatePayload().getCriteria());
+      }
+      return location;
+    } catch (Exception e) {
+    }
+    return null;
   }
   
   public static Set<ExportRfxResponse> removeBrokenEvents(Set<ExportRfxResponse> jaggaerData) {
