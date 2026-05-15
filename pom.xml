@@ -19,11 +19,12 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.37</swagger-parser.version>
+        <swagger-parser.version>2.1.42</swagger-parser.version>
         <guava.version>33.5.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
         <modelmapper.version>3.2.6</modelmapper.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.21.0</commons-io.version>
@@ -36,7 +37,7 @@
         <snakeyaml.version>2.6</snakeyaml.version>
         <spring-security.version>6.5.7</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
-        <rollbar.version>2.1.0</rollbar.version>
+        <rollbar.version>2.2.0</rollbar.version>
         <jsoup.version>1.22.1</jsoup.version>
         <hibernate.version>6.6.39.Final</hibernate.version>
         <junitapi.version>6.0.1</junitapi.version>
@@ -45,17 +46,17 @@
         <spring-boot.version>3.5.8</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>2.10.0</jsonpath.version>
-        <logback.version>1.5.23</logback.version>
+        <logback.version>1.5.32</logback.version>
         <feignclient.version>4.3.0</feignclient.version>
         <ehcache.version>3.11.1</ehcache.version>
         <retry.version>2.0.12</retry.version>
         <jetty-reactive.version>4.1.4</jetty-reactive.version>
-        <postgres.version>42.7.8</postgres.version>
-        <lombok.version>1.18.42</lombok.version>
+        <postgres.version>42.7.11</postgres.version>
+        <lombok.version>1.18.46</lombok.version>
         <spring.version>6.5.6</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.14.1</compiler.version>
-        <cucumber.version>7.33.0</cucumber.version>
+        <cucumber.version>7.34.3</cucumber.version>
         <h2.version>2.4.240</h2.version>
     </properties>
 
@@ -192,6 +193,11 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgres.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
         </dependency>
         <dependency>
             <groupId>io.swagger.parser.v3</groupId>
@@ -729,6 +735,11 @@
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

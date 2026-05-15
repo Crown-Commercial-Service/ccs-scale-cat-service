@@ -140,7 +140,7 @@ public class ProcurementProjectService {
   private static final String STATUS = "status";
 
   private static final String COUNT_AGGREGATION = "count_lot";
-  private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=RM1043.8&keyword=%s&page=%s&page-size=%s";
+  private static final String SEARCH_URI = "/tenders/projects/search?agreement-id=%s&keyword=%s&page=%s&page-size=%s";
 
   private final Map<String, List<ProcurementEventSearch>> projectCache = new ConcurrentHashMap<>();
   private static final String ALL_RESULTS_CACHE_KEY = "ALL_RESULTS";
@@ -363,7 +363,7 @@ public class ProcurementProjectService {
    * Get Project Team members. This is a combination of Project Team members on the project and
    * email recipients on the rfx.
    *
-   * @param projectId CCS project id
+   * @param projectId GCA project id
    * @param principal
    * @return Collection of project team members
    */
@@ -441,7 +441,7 @@ public class ProcurementProjectService {
   /**
    * Add/Update Project Team Member (owner, team members, email recipients).
    *
-   * @param projectId CCS project id
+   * @param projectId GCA project id
    * @param userId Conclave user id (email)
    * @param updateTeamMember contains details of type of update to perform
    * @param principal
@@ -1063,12 +1063,16 @@ public class ProcurementProjectService {
   /**
    * Returns a model representing publicly available project data
    */
-  public ProjectPublicSearchResult getProjectSummery(final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) {
+  public ProjectPublicSearchResult getProjectSummery(final String agreementId, final String keyword, final String lotId, int page, int pageSize, ProjectFilters projectFilters) {
 
     List<ProcurementEventSearch> allResults = getCachedResults();
 
     // Apply filters in-memory
     Stream<ProcurementEventSearch> stream = allResults.stream();
+    // 1316: filter by framework selected from cas_ui
+    if (agreementId != null && !agreementId.isEmpty()) {
+      stream = stream.filter(eventSearch -> agreementId.equalsIgnoreCase(eventSearch.getAgreementId()));
+    }
 
     if (lotId != null && !lotId.isEmpty()) {
       stream = stream.filter(p -> lotId.equalsIgnoreCase(p.getLot()));
@@ -1118,7 +1122,7 @@ public class ProcurementProjectService {
     result.setSearchCriteria(searchCriteria);
     result.setResults(convertResultsFromCache(pageResults));
     result.setTotalResults(deduplicated.size());
-    result.setLinks(generateLinks(keyword, page, pageSize, deduplicated.size()));
+    result.setLinks(generateLinks(agreementId, keyword, page, pageSize, deduplicated.size()));
 
     return result;
   }
@@ -1133,14 +1137,19 @@ public class ProcurementProjectService {
       summary.setProjectId(object.getProjectId());
       summary.setProjectName(object.getProjectName());
       summary.setAgreement(object.getAgreement());
+      summary.setAgreementId(object.getAgreementId());
       summary.setBudgetRange(object.getBudgetRange());
       summary.setDescription(object.getDescription());
       summary.setBuyerName(object.getBuyerName());
       summary.setLot(object.getLot());
-      summary.setLotName(object.getLotDescription());
+      summary.setLotName(object.getLotName());
+      summary.setLotDescription(object.getLotDescription());
       summary.setStatus(ProjectPublicSearchSummary.StatusEnum.fromValue(object.getStatus()));
       summary.setSubStatus(object.getSubStatus());
       summary.setLocation(object.getLocation());
+      summary.setEventId(object.getEventId());
+      summary.setEventName(object.getEventName());
+      summary.setEventType(object.getEventType());
       return summary;
     }).toList();
   }
@@ -1266,18 +1275,18 @@ public class ProcurementProjectService {
     return model;
   }
 
-  private Links1 generateLinks(String keyword, int page, int pageSize, int totalsize)
+  private Links1 generateLinks(final String agreementId, String keyword, int page, int pageSize, int totalsize)
   {
       int last = (int) Math.ceil((double)totalsize/pageSize);
     int next = page < last ? page + 1 : 0;
     int previous = page <= 1 ? 0 : page - 1;
     keyword = UriUtils.encode(keyword,"UTF-8");
      Links1 links1= new Links1();
-     links1.setFirst(URI.create(String.format(SEARCH_URI,keyword,1,pageSize)));
-     links1.setLast(last ==0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,last,pageSize)));
-     links1.setNext(next == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,next,pageSize)));
-     links1.setPrev(previous == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI,keyword,previous,pageSize)));
-     links1.setSelf(URI.create(String.format(SEARCH_URI,keyword,page,pageSize)));
+     links1.setFirst(URI.create(String.format(SEARCH_URI, agreementId, keyword,1,pageSize)));
+     links1.setLast(last ==0 ? URI.create("") : URI.create(String.format(SEARCH_URI, agreementId,keyword,last,pageSize)));
+     links1.setNext(next == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI, agreementId,keyword,next,pageSize)));
+     links1.setPrev(previous == 0 ? URI.create("") : URI.create(String.format(SEARCH_URI, agreementId,keyword,previous,pageSize)));
+     links1.setSelf(URI.create(String.format(SEARCH_URI, agreementId,keyword,page,pageSize)));
     return links1;
 
   }

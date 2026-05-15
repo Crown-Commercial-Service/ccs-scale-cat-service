@@ -40,6 +40,7 @@ public class GCloudAssessmentService {
     private static final String ERR_MSG_FMT_CANNOT_DELETE_ASSESSMENT = "Cannot delete completed assessment [%s]";
     private static final String ERR_MSG_FMT_INVALID_EXTERNAL_TOOL_ID = "External Tool Id [%s] is not valid for Gcloud Assessment operations";
     private static final String TOOL_NAME_GCLOUD = "GCloud 13 Search";
+    private static final String TOOL_NAME_DOS7 = "DOS7 Search";
 
     private static final String TIMEZONE_NAME = "Europe/London";
 
@@ -87,6 +88,8 @@ public class GCloudAssessmentService {
                 resultEntity.setAssessmentId(saveResult);
                 resultEntity.setServiceName(result.getServiceName());
                 resultEntity.setSupplierName(result.getSupplier().getName());
+                // 1150: Save supplier id to the database.
+                resultEntity.setSupplierId(result.getSupplier().getId());
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
@@ -153,6 +156,8 @@ public class GCloudAssessmentService {
                 resultEntity.setAssessmentId(assessmentId);
                 resultEntity.setServiceName(result.getServiceName());
                 resultEntity.setSupplierName(result.getSupplier().getName());
+                // 1150: Save supplier id to the database.
+                resultEntity.setSupplierId(result.getSupplier().getId());
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
@@ -224,6 +229,8 @@ public class GCloudAssessmentService {
 
             Supplier supplierModel = new Supplier();
             supplierModel.setName(result.getSupplierName());
+            // 1150: set supplier id.
+            supplierModel.setId(result.getSupplierId());
             resultModel.setSupplier(supplierModel);
 
             resultsList.add(resultModel);
@@ -294,7 +301,8 @@ public class GCloudAssessmentService {
         if (optionalTool.isPresent()) {
             AssessmentTool matchingTool = optionalTool.get();
 
-            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)) {
+            if (Objects.equals(matchingTool.getName(), TOOL_NAME_GCLOUD)
+            || Objects.equals(matchingTool.getName(), TOOL_NAME_DOS7)) {
                 // Looks like a tool exists for this ID, and it's the Gcloud tool, so this is valid
                 isValid = true;
             }

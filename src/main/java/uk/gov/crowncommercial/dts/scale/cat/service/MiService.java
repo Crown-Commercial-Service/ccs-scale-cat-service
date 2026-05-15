@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.MiQuestionAnswer;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.MiQuestionAnswerEntity;
+import uk.gov.crowncommercial.dts.scale.cat.repo.MiQuestionAnswerRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class MiService {
 
     private final ConclaveService conclaveService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
+    private final MiQuestionAnswerRepo miQuestionAnswerRepo;
 
     @Transactional
     public Integer createMiQuestionAndAnswer(final List<MiQuestionAnswer> miQuestionAnswers, final String principal) {
@@ -85,4 +87,9 @@ public class MiService {
                         .build())
                 .toList();
     }
+
+  @Transactional(readOnly = true)
+  public List<MiQuestionAnswerEntity> findAllByProjectId(final String projectId) {
+    return miQuestionAnswerRepo.findAllByProjectIdIgnoreCase(projectId);
+  }
 }
