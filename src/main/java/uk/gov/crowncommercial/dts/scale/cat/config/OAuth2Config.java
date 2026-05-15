@@ -47,6 +47,9 @@ public class OAuth2Config {
         .requestMatchers("/actuator/**").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*").permitAll()
         .requestMatchers(HttpMethod.GET,"/tenders/projects/*/events/*/documents/export").permitAll()
+        .requestMatchers(HttpMethod.GET,"/tenders/projects/*/events/apiKey").permitAll()
+        .requestMatchers(HttpMethod.GET,"/assessments/gcloud/summaries/*/apiKey").permitAll()
+        .requestMatchers(HttpMethod.GET,"/eprocurement/mi/*").permitAll()
         .requestMatchers("/tenders/projects/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/supplier/**").permitAll()
         .requestMatchers("/audit/**").permitAll()
@@ -58,6 +61,7 @@ public class OAuth2Config {
         .requestMatchers("/stages/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_AND_CAT_ROLES)
+        .requestMatchers("/digitalRole/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/error/**").hasAnyAuthority(
             Stream.concat(Arrays.stream(CAT_ROLES), Arrays.stream(LD_ROLES)).toArray(String[]::new))
         .anyRequest().denyAll()

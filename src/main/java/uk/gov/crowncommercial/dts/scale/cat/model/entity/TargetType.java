@@ -9,6 +9,6 @@ public enum TargetType {
   SIMPLE, DATETIME, DURATION,
 
   // Multi-value types
-  LIST, TABLE;
+  LIST, TABLE, TABLE_GROUP;
 
 }

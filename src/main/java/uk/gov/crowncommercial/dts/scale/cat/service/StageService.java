@@ -2,23 +2,24 @@ package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.logging.log4j.util.Strings;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.StageException;
-import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageType;
-import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageTypesRead;
-import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.Stages;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventRead;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventWrite;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageNameRead;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageNameWrite;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesWrite;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageDataEntity;
-import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageTypesEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageEventEntity;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageNameEntity;
 import uk.gov.crowncommercial.dts.scale.cat.repo.StageDataRepo;
-import uk.gov.crowncommercial.dts.scale.cat.repo.StageTypesRepo;
 
 /**
  *
@@ -28,23 +29,7 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.StageTypesRepo;
 @Slf4j
 public class StageService {
 
-  private final StageTypesRepo stageTypesRepo;
   private final StageDataRepo stageDataRepo;
-
-  @Cacheable(value = "stageCache", key = "#root.methodName")
-  public StageTypesRead getStageTypes() {
-    final var stageTypes = stageTypesRepo.findAll();
-    final var stageTypeRead = new StageTypesRead();
-
-    if ((null != stageTypes) && !stageTypes.isEmpty()) {
-        for (final StageTypesEntity entity : stageTypes) {
-            stageTypeRead.addStageTypesItem(
-                new StageType().id(entity.getId()).stageType(entity.getStageType()));
-        }
-    }
-
-    return stageTypeRead;
-  }
 
   public StagesRead getStagesForEventId(final String eventId) {
     if (Strings.isEmpty(eventId)) {
@@ -52,58 +37,91 @@ public class StageService {
         throw new StageException("Cannot retrieve stage data, invalid eventId");
     }
 
-    final var response = stageDataRepo.findByEventId(eventId);
+    final Optional<StageDataEntity> response = stageDataRepo.findByEventId(eventId);
 
     if (!response.isPresent()) {
         return new StagesRead()
+                .id(null)
                 .eventId(eventId)
                 .numberOfStages(0)
-                .stages(null);
+                .currentStageNumber(1)
+                .stageNames(List.of())
+                .stageEvents(List.of());
     }
 
-    final var stagesRead = new StagesRead()
-        .eventId(eventId)
-        .numberOfStages(response.get().getStageIds().size());
+    List<StageNameRead> stageNames = new ArrayList<>();
 
-    final List<Stages> listOfStages = new ArrayList<>();
+    for (StageNameEntity entry : response.get().getStageNames()) {
+        StageNameRead stageName = new StageNameRead();
+        stageName.setId(entry.getId());
+        stageName.setEventId(entry.getEventId());
+        stageName.setStageNumber(entry.getStageNumber());
+        stageName.setStageName(entry.getStageName());
 
-    for (final Integer thisStageId : response.get().getStageIds()) {
-        listOfStages.add(new Stages().id(thisStageId));
+        stageNames.add(stageName);
     }
 
-    stagesRead.stages(listOfStages);
+    List<StageEventRead> eventsList = new ArrayList<>();
 
-    return stagesRead;
+    for (StageEventEntity entry : response.get().getStageEvents()) {
+        StageEventRead stageEvent = new StageEventRead();
+        stageEvent.setId(entry.getId());
+        stageEvent.setEventId(entry.getEventId());
+        stageEvent.setStageNumber(entry.getStageNumber());
+        stageEvent.setPriorEventId(entry.getPriorEventId());
+        eventsList.add(stageEvent);
+    }
+
+    return new StagesRead()
+        .id(response.get().getId())
+        .eventId(response.get().getEventId())
+        .numberOfStages(response.get().getNumberOfStages())
+        .currentStageNumber(response.get().getCurrentStage())
+        .stageNames(stageNames)
+        .stageEvents(eventsList);
   }
 
   public boolean createOrUpdateStagesForEventId(final String eventId, final StagesWrite stagesWrite) {
-    if (Strings.isEmpty(eventId) ||
-        (null == stagesWrite) ||
-        (null == stagesWrite.getStages()) ||
-        stagesWrite.getStages().isEmpty()) {
-
+    if (Strings.isEmpty(eventId) || null == stagesWrite) {
         log.error("createOrUpdateStagesForEventId - invalid data for eventId: {}", eventId);
         throw new StageException("Cannot save stage data, invalid data for eventId: " + eventId);
     }
 
-    final List<Integer> listOfStageIds = new ArrayList<>();
-
-    for (final Stages thisStage : stagesWrite.getStages()) {
-        listOfStageIds.add(thisStage.getId());
-    }
-
     try {
-      final var existing = stageDataRepo.findByEventId(eventId);
+      List<StageNameEntity> stageNames = new ArrayList<>();
 
-      final Integer id = existing.isPresent() ? existing.get().getId() : null;
+      for (StageNameWrite entry : stagesWrite.getStageNames()) {
+          StageNameEntity stageNameEntity = new StageNameEntity();
+          stageNameEntity.setId(entry.getId());
+          stageNameEntity.setEventId(entry.getEventId());
+          stageNameEntity.setStageNumber(entry.getStageNumber());
+          stageNameEntity.setStageName(entry.getStageName());
+
+          stageNames.add(stageNameEntity);
+      }
+
+      List<StageEventEntity> stageEvents = new ArrayList<>();
+
+      for (StageEventWrite entry : stagesWrite.getStageEvents()) {
+          StageEventEntity stageEventsEntity = new StageEventEntity();
+          stageEventsEntity.setId(entry.getId());
+          stageEventsEntity.setEventId(entry.getEventId());
+          stageEventsEntity.setStageNumber(entry.getStageNumber());
+          stageEventsEntity.setPriorEventId(entry.getPriorEventId());
+
+          stageEvents.add(stageEventsEntity);
+      }
 
       stageDataRepo.save(
           StageDataEntity.builder()
-              .id(id)
-              .eventId(eventId)
-              .numberOfStages(listOfStageIds.size())
-              .stageIds(listOfStageIds)
+              .id(stagesWrite.getId())
+              .eventId(stagesWrite.getEventId())
+              .numberOfStages(stagesWrite.getNumberOfStages())
+              .currentStage(stagesWrite.getCurrentStageNumber())
+              .stageNames(stageNames)
+              .stageEvents(stageEvents)
           .build());
+
       return true;
     } catch(final Exception e) {
         log.error("createOrUpdateStagesForEventId - error", e);

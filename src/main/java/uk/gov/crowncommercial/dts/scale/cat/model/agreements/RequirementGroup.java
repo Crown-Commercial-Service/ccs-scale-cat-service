@@ -46,7 +46,12 @@ public class RequirementGroup {
 
         String id;
         String description;
+        @NonFinal
         Set<Requirement> requirements; // Should match Tenders API Question type
+
+        public void setRequirements(Set<Requirement> requirements) {
+            this.requirements = requirements;
+        }
     }
 
     NonOCDS nonOCDS;
