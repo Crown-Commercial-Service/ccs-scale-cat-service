@@ -52,7 +52,7 @@ public class QuestionAndAnswerService {
 
   public QandA createOrUpdateQuestionAndAnswer(final String profile, final Integer projectId,
       final String eventId, final QandA qAndA, final Integer qaId) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
     var user = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
@@ -78,7 +78,7 @@ public class QuestionAndAnswerService {
 
     // check the roles of supplier
     var user = conclaveService.getUserProfile(principal);
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
     var conclaveOrg = conclaveService.getOrganisationIdentity(user.get().getOrganisationId());
 
     boolean isSupplier = false;
@@ -122,8 +122,8 @@ public class QuestionAndAnswerService {
       }
     }
 
-    var covertedQandAList =
-        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+    var convertedQandAList =
+        convertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
     var agreementNo = procurementEvent.getProject().getCaNumber();
     var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
     var lotDetails = agreementsService.getLotDetails(agreementNo, procurementEvent.getProject().getLotNumber());
@@ -133,7 +133,7 @@ public class QuestionAndAnswerService {
         .agreementName(agreementDetails.getName())
         .lotId(procurementEvent.getProject().getLotNumber())
         .lotName(lotDetails.getName());
-    response.setQandA(covertedQandAList);
+    response.setQandA(convertedQandAList);
     return response;
   }
   
@@ -141,9 +141,9 @@ public class QuestionAndAnswerService {
   public QandAWithProjectDetails getQuestionAndAnswerForSupplierByEvent(final Integer projectId,
       final String eventId) {
     //Validate event
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
-    var covertedQandAList =
-        covertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
+    var convertedQandAList =
+        convertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
     var agreementNo = procurementEvent.getProject().getCaNumber();
     var agreementDetails = agreementsService.getAgreementDetails(agreementNo);
     var lotDetails =
@@ -153,7 +153,7 @@ public class QuestionAndAnswerService {
         .projectName(procurementEvent.getProject().getProjectName())
         .agreementName(agreementDetails.getName())
         .lotId(procurementEvent.getProject().getLotNumber()).lotName(lotDetails.getName());
-    response.setQandA(covertedQandAList);
+    response.setQandA(convertedQandAList);
     return response;
   }
 
@@ -167,7 +167,7 @@ public class QuestionAndAnswerService {
             ZoneId.systemDefault()));
   }
 
-  private List<QandA> covertQandAList(Set<QuestionAndAnswer> questionAndAnswerList) {
+  private List<QandA> convertQandAList(Set<QuestionAndAnswer> questionAndAnswerList) {
     return questionAndAnswerList.stream().map(this::convertQandA).collect(Collectors.toList());
   }
 
@@ -179,7 +179,7 @@ public class QuestionAndAnswerService {
    * @param profile
    */
   public void deleteQuestionAndAnswerByQaIdFromRepo(final Integer projectId, final String eventId, final Integer qaId, final String profile) {
-      var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+      var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
       var user = userService.resolveBuyerUserProfile(profile)
           .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
       String exceptionFormat = "Unexpected error on question deletion from repo for " + qaId + " and eventId " + eventId;
@@ -275,6 +275,30 @@ public class QuestionAndAnswerService {
       } catch(Exception e) {
           log.error("error: ", e);
           throw new QuestionAndAnswerServiceApplicationException(exceptionFormat);
+      }
+  }
+
+  public void deleteSpecificAnswersForGivenQuestion(final String profile, final Integer projectId, final String eventId, final String question, final List<String> answers) {
+      if (null == question || question.isBlank() || null == answers || answers.isEmpty()) {
+          return;
+      }
+
+      var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
+
+      var convertedQandAList = convertQandAList(questionAndAnswerRepo.findByEventId(procurementEvent.getId()));
+
+      if (null == convertedQandAList || convertedQandAList.isEmpty()) {
+          return;
+      }
+
+      for (QandA qanda : convertedQandAList) {
+          if (null != qanda.getQuestion() && question.equals(qanda.getQuestion())) {
+              if (null != qanda.getAnswer() && answers.contains(qanda.getAnswer())) {
+                  qanda.setAnswer(null);
+                  Integer id = null == qanda.getId() ? null : qanda.getId().intValue();
+                  createOrUpdateQuestionAndAnswer(profile, projectId, eventId, qanda, id);
+              }
+          }
       }
   }
 }

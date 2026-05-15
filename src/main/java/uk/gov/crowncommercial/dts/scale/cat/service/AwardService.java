@@ -70,7 +70,7 @@ public class AwardService {
    */
   public String createOrUpdateAwardRfx(final String principal, final Integer projectId,
       final String eventId, final AwardState awardState, final Award2AllOf award, final Integer awardId) {
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
     var buyerUser = userService.resolveBuyerUserProfile(principal)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
 
@@ -98,7 +98,7 @@ public class AwardService {
    */
   public Collection<DocumentSummary> getAwardTemplates(final Integer procId, final String eventId) {
     var documentSummaries = new HashSet<DocumentSummary>();
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     documentSummaries
         .addAll(getTemplates(retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE,event.getProject().getCaNumber()),
             AWARDED_TEMPLATE_DESCRIPTION));
@@ -123,7 +123,7 @@ public class AwardService {
   public Collection<DocumentAttachment> getAwardTemplate(final Integer procId, final String eventId,
       final DocumentsKey documentKey) {
     var documentAttachments = new HashSet<DocumentAttachment>();
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var docs = retryableTendersDBDelegate.findByEventStageAndAgreementNumber(
         documentKey.getFileType(), event.getProject().getCaNumber());
     var resources = docs.stream()
@@ -168,7 +168,7 @@ public class AwardService {
   public Collection<DocumentAttachment> getAllAwardTemplate(final Integer procId,
       final String eventId) {
     var documentAttachments = new HashSet<DocumentAttachment>();
-    var event = validationService.validateProjectAndEventIds(procId, eventId);
+    var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var award = retryableTendersDBDelegate.findByEventStageAndAgreementNumber(AWARDED_FILE_TYPE, event.getProject().getCaNumber());
     var orderform = retryableTendersDBDelegate
         .findByEventStageAndAgreementNumber(ORDER_FORM_FILE_TYPE, event.getProject().getCaNumber());
@@ -199,7 +199,7 @@ public class AwardService {
    */
   public AwardSummary getAwardOrPreAwardDetails(final Integer procId, final String eventId, final AwardState awardState) {
     // Get details of the event
-    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
     var exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(),
             new HashSet<>(Arrays.asList(OFFER_COMPONENT_FILTER)));
 

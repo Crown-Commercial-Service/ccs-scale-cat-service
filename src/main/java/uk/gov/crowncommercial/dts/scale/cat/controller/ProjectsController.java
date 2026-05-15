@@ -197,6 +197,7 @@ public class ProjectsController extends AbstractRestController {
   @GetMapping(value = "/download")
   public void downloadFile(HttpServletResponse response,
                            @RequestParam("fileType") String fileType) throws IOException {
+    // 1314: apply filter to download the file
     var downloadProjectsData = procurementProjectService.downloadProjectsData(fileType);
     setHeaderAndContentTypeBasedOnFileType(fileType, response);
     IOUtils.copy(downloadProjectsData, response.getOutputStream());
@@ -220,8 +221,8 @@ public class ProjectsController extends AbstractRestController {
       String decodedString = new String(Base64.getDecoder().decode(filters));
       projectFilters = mapper.readValue(decodedString, ProjectFilters.class);
     }
-
-    return procurementProjectService.getProjectSummery(keyword,lotId, pageNo, size, projectFilters);
+    // 1316: use agreementId for dos6/dos7 filter.
+    return procurementProjectService.getProjectSummery(agreementId, keyword,lotId, pageNo, size, projectFilters);
   }
 
   @DeleteMapping("/{proc-id}")
