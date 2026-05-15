@@ -43,7 +43,7 @@
         <junitapi.version>6.0.3</junitapi.version>
         <opensearch.version>2.0.5</opensearch.version>
         <shedlock.version>7.7.0</shedlock.version>
-        <spring-boot.version>3.5.8</spring-boot.version>
+        <spring-boot.version>3.5.14</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>3.0.0</jsonpath.version>
         <logback.version>1.5.32</logback.version>
