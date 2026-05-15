@@ -256,6 +256,23 @@ public class AssessmentService {
 
     }
 
+    @Transactional
+    public List<AssessmentSummary> getAssessmentsByExternalToolId(final Integer externalToolId) {
+        Set<AssessmentProjection> assessmentProjectionSet = retryableTendersDBDelegate.findAssessmentsByExternalToolId(externalToolId);
+        List<AssessmentSummary> resultsModel = new ArrayList<>();
+        if (!assessmentProjectionSet.isEmpty()) {
+            assessmentProjectionSet.forEach(assessmentProjection ->{
+                AssessmentSummary summaryModel = new AssessmentSummary();
+                summaryModel.setAssessmentId(assessmentProjection.getAssessmentId());
+                summaryModel.setAssessmentName(assessmentProjection.getAssessmentName());
+                summaryModel.setExternalToolId(assessmentProjection.getExternalToolId());
+                summaryModel.setStatus(AssessmentStatus.fromValue(assessmentProjection.getStatus().toLowerCase()));
+                resultsModel.add(summaryModel);
+            });
+        }
+        return resultsModel;
+    }
+
     /**
      * Get Assessment details.
      *
