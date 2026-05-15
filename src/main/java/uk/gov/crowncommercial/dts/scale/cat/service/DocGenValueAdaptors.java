@@ -32,10 +32,24 @@ public class DocGenValueAdaptors {
   private final ConclaveService conclaveService;
   private final ProcurementProjectService procurementProjectService;
   private final DocumentUploadService documentUploadService;
+  private final DigitalRoleService digitalRoleService;
 
   @Bean("DocumentValueAdaptorExternalEventID")
   public DocGenValueAdaptor documentValueAdaptorExternalEventID() {
     return (event, requestCache) -> List.of(event.getEventID());
+  }
+
+  @Bean("GetExternalEventId")
+  public DocGenValueAdaptor getExternalEventId() {
+    return (event, requestCache) -> List.of(event.getExternalReferenceId());
+  }
+
+  @Bean("DocumentValueAdaptorDigitalRoles")
+  public DocGenValueAdaptor documentValueAdaptorDigitalRoles() {
+    return (event,
+            requestCache) -> digitalRoleService
+            .findByProjectId(String.valueOf(event.getProject().getId()))
+            .stream().map(digitalRole -> digitalRole.getCount() + " x " + digitalRole.getLevel()).collect(Collectors.toList());
   }
 
   @Bean("DocumentValueAdaptorLotName")
@@ -142,6 +156,11 @@ public class DocGenValueAdaptors {
   public DocGenValueAdaptor documentValueAdaptorUploadedFileNames() {
     return (event, requestCache) -> (getUploadedDocumentNames(event, requestCache));
   }
+
+  @Bean("GetAssessmentMethodologyDocumentNames")
+  public DocGenValueAdaptor getAssessmentMethodologyDocumentNames() {
+    return (event, requestCache) -> (getAssessmentMethodologyDocumentNames(event, requestCache));
+  }
   
   private OrganisationProfileResponseInfo getProjectOrgFromConclave(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
@@ -200,7 +219,17 @@ public class DocGenValueAdaptors {
   private List<String> getUploadedDocumentNames(final ProcurementEvent event,
       final Map<String, Object> requestCache) {
     var docs = documentUploadService.findDocumentByEvent(event);
-    return docs.stream().map(f -> DocumentKey.fromString(f.getDocumentId()).getFileName()).collect(Collectors.toList());
+    return docs.stream()
+            .filter(documentUpload -> !"assessment".equals(documentUpload.getDocumentDescription()))
+            .map(f -> DocumentKey.fromString(f.getDocumentId()).getFileName()).collect(Collectors.toList());
+  }
+
+  private List<String> getAssessmentMethodologyDocumentNames(final ProcurementEvent event,
+                                                final Map<String, Object> requestCache) {
+    var docs = documentUploadService.findDocumentByEvent(event);
+    return docs.stream()
+            .filter(documentUpload -> "assessment".equals(documentUpload.getDocumentDescription()))
+            .map(f -> DocumentKey.fromString(f.getDocumentId()).getFileName()).collect(Collectors.toList());
   }
 
 

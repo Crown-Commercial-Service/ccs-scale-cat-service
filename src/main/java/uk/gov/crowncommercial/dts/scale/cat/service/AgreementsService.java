@@ -48,9 +48,13 @@ public class AgreementsService {
     String exceptionFormat = "Unexpected error retrieving " + eventType.name() + " template from AS for Lot " + lotId + " and Agreement " + agreementId;
 
     try {
-      var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+      // Option to manually revert to legacy Agreement Service flow (NCAS-795), if needed.
+      // The boolean check here is to see if dos6 is the agreement id, and if it is use the legacy AS flow.
+      String dos6AgreementId = "RM1043.8";
+      boolean legacyFlow = dos6AgreementId.equalsIgnoreCase(agreementId);
 
       if (!legacyFlow) {
+        // For non-DOS6 we should use new Q&A service flow.
         List<DataTemplate> questionAndAnswerResponse = questionAndAnswerClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), questionAndAnswerServiceApiKey);
 
         if (questionAndAnswerResponse != null) {
@@ -65,6 +69,7 @@ public class AgreementsService {
         // this is for a legacy (< dos7) project, so check the agreements service
       }
 
+      // For DOS6 we should use legacy AS flow.
       List<DataTemplate> model = agreementsClient.getEventDataTemplates(agreementId, formattedLotId, eventType.getValue(), serviceApiKey);
 
       // Return the model if possible, otherwise throw an error

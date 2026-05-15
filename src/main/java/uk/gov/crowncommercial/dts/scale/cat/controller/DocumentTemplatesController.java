@@ -6,10 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
@@ -64,13 +61,14 @@ public class DocumentTemplatesController extends AbstractRestController {
   public ResponseEntity<byte[]> getDraftProforma(@PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
       @PathVariable("templateID") final String templateId,
+      @RequestParam(defaultValue = "false") final boolean isStageTwoEvent,
       final JwtAuthenticationToken authentication) {
 
     var principal = getPrincipalFromJwt(authentication);
     log.debug("getDraftProforma invoked on behalf of principal: {}", principal);
 
     var documentKey = DocumentKey.fromString(templateId);
-    var docAttachment = documentTemplateService.getDraftDocument(procId, eventId, documentKey);
+    var docAttachment = documentTemplateService.getDraftDocument(procId, eventId, documentKey, isStageTwoEvent);
 
     return ResponseEntity.ok().contentType(docAttachment.getContentType())
         .header(HttpHeaders.CONTENT_DISPOSITION,

@@ -30,7 +30,8 @@ public class QuestionAndAnswerController extends AbstractRestController {
   @PostMapping
   @TrackExecutionTime
   public ResponseEntity<QandA> createQuestionAndAnswer(
-      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
+      @PathVariable("proc-id") final Integer procId,
+      @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final QandA questionRequest,
       final JwtAuthenticationToken authentication) {
 
@@ -46,7 +47,8 @@ public class QuestionAndAnswerController extends AbstractRestController {
   @PutMapping("/{qAndA-id}")
   @TrackExecutionTime
   public ResponseEntity<QandA> updateQuestionAndAnswer(
-      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
+      @PathVariable("proc-id") final Integer procId,
+      @PathVariable("event-id") final String eventId,
       @Valid @RequestBody final QandA questionRequest,
       @PathVariable("qAndA-id") final Integer questionId,
       final JwtAuthenticationToken authentication) {
@@ -62,8 +64,9 @@ public class QuestionAndAnswerController extends AbstractRestController {
 
   @GetMapping
   @TrackExecutionTime
-  public ResponseEntity<QandAWithProjectDetails> getQuestionAdnAnswers(
-      @PathVariable("proc-id") final Integer procId, @PathVariable("event-id") final String eventId,
+  public ResponseEntity<QandAWithProjectDetails> getQuestionAndAnswers(
+      @PathVariable("proc-id") final Integer procId,
+      @PathVariable("event-id") final String eventId,
       final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("getQuestionAdnAnswers invoked on behalf of principal: {}", principal);

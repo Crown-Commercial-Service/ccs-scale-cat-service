@@ -18,6 +18,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
+import uk.gov.crowncommercial.dts.scale.cat.service.DMPService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
@@ -43,6 +44,7 @@ public class GCloudAssessmentsControllerTest {
     private static final String SERVICE_NAME = "Physical and Environmental Security";
     private static final Integer TOOL_ID = 2;
     private static final String PRINCIPAL = "jsmith@ccs.org.uk";
+    private static final String GCLOUD_E_PROCUREMENT_PATH = ASSESSMENTS_PATH + "/gcloud/eprocurement";
 
     @MockitoBean
     private GCloudAssessmentService assessmentService;
@@ -61,6 +63,9 @@ public class GCloudAssessmentsControllerTest {
     
     @MockitoBean
     private LockProvider lockProvider;
+
+    @MockitoBean
+    private DMPService dmpService;
 
     private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor validJwtReqPostProcessor;
 
@@ -132,4 +137,6 @@ public class GCloudAssessmentsControllerTest {
 
         verify(assessmentService, times(1)).deleteGcloudAssessment(ASSESSMENT_ID);
     }
+
+
 }

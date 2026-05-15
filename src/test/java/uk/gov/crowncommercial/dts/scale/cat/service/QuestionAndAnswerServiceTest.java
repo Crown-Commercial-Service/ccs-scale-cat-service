@@ -123,7 +123,7 @@ class QuestionAndAnswerServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
 
     var questionAndAnswer = new QuestionAndAnswer();
@@ -152,7 +152,7 @@ class QuestionAndAnswerServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
 
     var questionAndAnswer = new QuestionAndAnswer();
@@ -204,7 +204,7 @@ class QuestionAndAnswerServiceTest {
     projectDetails.setId(1);
     projectDetails.setProjectName("porject name");
     projectDetails.setCaNumber("ca number");
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
         .thenReturn(ProcurementEvent.builder().id(EVENT_ID).project(projectDetails).build());
     when(questionAndAnswerRepo.findByEventId(EVENT_ID)).then(mock -> {
       return targetSet;
@@ -355,4 +355,21 @@ class QuestionAndAnswerServiceTest {
             isNull());
   }
 
+  @Test
+  void shouldDeleteQuestionFromRepo() {
+      // Mock behaviours
+      when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
+      when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
+          .thenReturn(ProcurementEvent.builder().id(EVENT_ID).build());
+
+      Integer questionId = 123;
+
+      doNothing().when(questionAndAnswerRepo).deleteById(questionId);
+
+      // Invoke
+      questionAndAnswerService.deleteQuestionAndAnswerByQaIdFromRepo(PROC_PROJECT_ID, EVENT_OCID, questionId, PRINCIPAL);
+
+      // Verify
+      verify(questionAndAnswerRepo).deleteById(questionId);
+  }
 }

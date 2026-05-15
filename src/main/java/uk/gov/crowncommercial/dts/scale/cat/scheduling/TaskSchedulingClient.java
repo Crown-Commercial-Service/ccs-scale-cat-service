@@ -58,12 +58,16 @@ public class TaskSchedulingClient {
                                 if (eventTypes != null && !eventTypes.isEmpty()) {
                                     // Now for each event type trigger a cache spool up of its data templates
                                     eventTypes.forEach(eventType -> {
-                                        var legacyFlow = false; // While new Q and A flow is broken and being fixed (NCAS-795), revert and use the legacy flow.
+                                        // Option to manually revert to legacy Agreement Service flow (NCAS-795), if needed.
+                                        // The boolean check here is to see if dos6 is the agreement id, and if it is use the legacy AS flow.
+                                        String dos6AgreementId = "RM1043.8";
+                                        boolean legacyFlow = dos6AgreementId.equalsIgnoreCase(agreementId);
 
                                         if (legacyFlow) {
+                                            // For DOS6 we should use legacy AS flow.
                                             agreementsService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
                                         } else {
-                                            // NCAS-795, should retrieve Questions and answers from new Question and answer service
+                                            // NCAS-795; For non-DOS6 we should use new Q&A service flow.
                                             questionAndAnswerService.getLotEventTypeDataTemplates(agreementId, lotSummary.getNumber(), ViewEventType.fromValue(eventType.getType()));
                                         }
                                     });
