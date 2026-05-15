@@ -145,7 +145,7 @@ class MessageServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
         .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
     lenient().when(retryableTendersDBDelegate
@@ -185,7 +185,7 @@ class MessageServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
             .thenReturn(event);
     when(jaggaerService.getMessages(RFX_ID, 1)).thenReturn(messagesResponse);
     lenient().when(retryableTendersDBDelegate
@@ -221,7 +221,7 @@ class MessageServiceTest {
 
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(Optional.of(user));
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
         .thenReturn(event);
     when(jaggaerService.getMessage("1")).thenReturn(message);
     when(jaggaerService.getDocument(FILE_ID, FILE_NAME)).thenReturn(DocumentAttachment.builder()

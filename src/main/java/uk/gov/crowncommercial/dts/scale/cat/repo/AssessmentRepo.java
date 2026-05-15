@@ -37,6 +37,24 @@ public interface AssessmentRepo extends JpaRepository<AssessmentEntity, Integer>
           "", nativeQuery = true)
   Set<AssessmentProjection> findAssessmentsByCreatedByAndExternalToolId(final String userId, final Integer externalToolId);
 
+  @Query(value = "SELECT * FROM ( (SELECT ass.assessment_id AS assessmentId , " +
+          "                          ass.assessment_name AS assessmentName ,  " +
+          "                          aTools.assessment_tool_id AS externalToolId ," +
+          "                          ass.status AS status  " +
+          "                      FROM ASSESSMENTS ass " +
+          "                         LEFT OUTER JOIN  ASSESSMENT_TOOLS aTools" +
+          "                             ON aTools.assessment_tool_id = ass.assessment_tool_id " +
+          "                       WHERE CAST (aTools.external_assessment_tool_id AS INTEGER)  = :externalToolId )" +
+          "              UNION                              " +
+          "                     ( SELECT gass.assessment_id AS assessmentId, " +
+          "                          gass.assessment_name AS assessmentName ,  " +
+          "                          gass.external_tool_id AS externalToolId ," +
+          "                          gass.status AS status  " +
+          "                     FROM gcloud_assessments gass "  +
+          "                      WHERE gass.external_tool_id =:externalToolId  )" +
+          " ) AS ASS_QUERY " +
+          "", nativeQuery = true)
+  Set<AssessmentProjection> findAssessmentsByExternalToolId(final Integer externalToolId);
 
   @Query(value = "SELECT * FROM ( (SELECT ass.assessment_id AS assessmentId , " +
           "                          ass.assessment_name AS assessmentName ,  " +

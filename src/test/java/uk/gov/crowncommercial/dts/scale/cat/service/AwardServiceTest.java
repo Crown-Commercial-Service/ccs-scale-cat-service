@@ -147,7 +147,7 @@ class AwardServiceTest {
     .externalEventId(RFX_ID).build();
     // Mock behaviours
     when(userProfileService.resolveBuyerUserProfile(PRINCIPAL)).thenReturn(JAGGAER_USER);
-    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID))
+    when(validationService.validateProjectAndEventIds(PROC_PROJECT_ID, EVENT_OCID, null))
         .thenReturn(ProcurementEvent.builder().externalReferenceId(EXTERNAL_EVENT_ID)
             .externalEventId(RFX_ID).build());
     when(jaggaerService.awardOrPreAwardRfx(procurementEvent, JAGGAER_USER_ID, EXT_ORG_ID_1+"", AwardState.AWARD)).thenReturn("Awarded");

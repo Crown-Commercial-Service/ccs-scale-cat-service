@@ -100,10 +100,10 @@ class CriteriaServiceTest {
     question.setOCDS(questionOCDS);
     question.setNonOCDS(questionNonOCDS);
 
-    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
+    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID, null)).thenReturn(event);
 
     criteriaService.putQuestionOptionDetails(question, PROJECT_ID, EVENT_OCID, CRITERION_ID,
-        GROUP_ID, QUESTION_ID);
+        GROUP_ID, QUESTION_ID, null);
 
     List<Option> options = event.getProcurementTemplatePayload().getCriteria().stream().findFirst()
         .get().getRequirementGroups().stream().findFirst().get().getOcds().getRequirements()
@@ -127,9 +127,9 @@ class CriteriaServiceTest {
     event.setProcurementTemplatePayload(
         getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
 
-    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
+    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID, null)).thenReturn(event);
 
-    var response = criteriaService.getEvalCriteria(PROJECT_ID, EVENT_OCID, false);
+    var response = criteriaService.getEvalCriteria(PROJECT_ID, EVENT_OCID, null, false);
     var criterion = response.stream().findFirst().get();
 
     assertEquals(CRITERION_ID, criterion.getId());
@@ -145,9 +145,9 @@ class CriteriaServiceTest {
     event.setProcurementTemplatePayload(
         getDataTemplate("criteria-service-test-data/criteria-buyer-multiselect.json"));
 
-    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID)).thenReturn(event);
+    when(validationService.validateProjectAndEventIds(PROJECT_ID, EVENT_OCID, null)).thenReturn(event);
 
-    var response = criteriaService.getEvalCriteria(PROJECT_ID, EVENT_OCID, true);
+    var response = criteriaService.getEvalCriteria(PROJECT_ID, EVENT_OCID, null, true);
     var criterion = response.stream().findFirst().get();
     assertEquals(CRITERION_ID, criterion.getId());
     assertEquals("Test Criterion", criterion.getTitle());
