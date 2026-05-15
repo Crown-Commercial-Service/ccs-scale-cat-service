@@ -48,7 +48,7 @@
         <jsonpath.version>3.0.0</jsonpath.version>
         <logback.version>1.5.32</logback.version>
         <feignclient.version>4.3.0</feignclient.version>
-        <ehcache.version>3.11.1</ehcache.version>
+        <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.12</retry.version>
         <jetty-reactive.version>4.1.4</jetty-reactive.version>
         <postgres.version>42.7.11</postgres.version>
