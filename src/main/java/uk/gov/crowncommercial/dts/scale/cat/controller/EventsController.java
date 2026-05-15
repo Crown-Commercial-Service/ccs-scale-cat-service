@@ -2,7 +2,9 @@ package uk.gov.crowncommercial.dts.scale.cat.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.io.IOUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -12,10 +14,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import com.fasterxml.jackson.databind.JsonNode;
 import uk.gov.crowncommercial.dts.scale.cat.exception.NotSupportedException;
 import uk.gov.crowncommercial.dts.scale.cat.interceptors.TrackExecutionTime;
 import uk.gov.crowncommercial.dts.scale.cat.model.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.assessment.SupplierScore;
+import uk.gov.crowncommercial.dts.scale.cat.model.events.ExitAwardRequest;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
@@ -25,10 +29,8 @@ import jakarta.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -47,14 +49,22 @@ public class EventsController extends AbstractRestController {
 
   private final ProcurementEventService procurementEventService;
   private final AssessmentScoreExportService scoreExportService;
+  private final QuestionAndAnswerService questionAndAnswerService;
 
   private final EventTransitionService eventTransitionService;
   private final DocGenService docGenService;
   private static final String EXPORT_BUYER_DOCUMENTS_NAME = "buyer_attachments";
+  private static final String USE_QUESTION_GROUPS = "use-question-groups";
+  private static final String QUESTION_GROUP_PREFIX = "question-group-";
+  private static final String SELECT_QUESTION_GROUP_QUESTION = "Select question group";
+  private static final String STAGE_NUMBER = "stage";
 
   private static final String EXPORT_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "responses_%s";
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
   private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
+
+  @Value("${config.api-key:dummy}")
+  private String serviceApiKey;
 
   @GetMapping
   @TrackExecutionTime
@@ -65,6 +75,18 @@ public class EventsController extends AbstractRestController {
     log.info("getEventsForProject invoked on behalf of principal: {}", principal);
 
     return procurementEventService.getEventsForProject(procId, principal);
+  }
+
+  @GetMapping("/apiKey")
+  @TrackExecutionTime
+  public ResponseEntity<List<EventSummary>> getEventsForProjectByApiKey(@PathVariable("procID") final Integer procId,
+                                                        @RequestParam("apiKey") String apiKey) {
+    log.info("getEventsForProjectByApiKey invoked on behalf of procID: {}", procId);
+    if (serviceApiKey.equals(apiKey)) {
+      return ResponseEntity.ok(procurementEventService.getEventsForProject(procId, null));
+    } else  {
+      return ResponseEntity.badRequest().build();
+    }
   }
 
   @PostMapping
@@ -113,13 +135,77 @@ public class EventsController extends AbstractRestController {
       var principal = getPrincipalFromJwt(authentication);
       log.info("getEvent invoked on behalf of principal: {}", principal);
 
-      return procurementEventService.getEvent(procId, eventId);
+      return procurementEventService.getEvent(procId, eventId, null);
+    } catch(Exception ex) {
+      log.error("Failed to get event details. error: {}", ex.getMessage());
+    }
+
+    return null;
+  }
+
+  @GetMapping("/{eventID}/stage/{stageNumber}")
+  @TrackExecutionTime
+  public EventDetail getEventWithStageNumber(
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("stageNumber") final Integer stageNumber,
+      final JwtAuthenticationToken authentication) {
+
+    try {
+      var principal = getPrincipalFromJwt(authentication);
+      log.info("getEvent invoked on behalf of principal: {}, stageNumber: {}", principal, stageNumber);
+
+      return procurementEventService.getEvent(procId, eventId, stageNumber);
+    } catch(Exception ex) {
+      log.error("Failed to get event details. error: {}", ex.getMessage());
+    }
+
+    return null;
+  }
+
+  @GetMapping("/{eventID}/stage/{stageNumber}/lite")
+  @TrackExecutionTime
+  public String getEventNoJaggaer(
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @PathVariable("stageNumber") final Integer stageNumber,
+      final JwtAuthenticationToken authentication) {
+
+    try {
+      var principal = getPrincipalFromJwt(authentication);
+      log.info("getEvent invoked on behalf of principal: {}", principal);
+
+      var event = procurementEventService.getEventNoJaggaer(procId, eventId, stageNumber);
+
+      return event.getProcurementTemplatePayloadRaw();
     } catch(Exception ex) {
       log.error("Failed to get event details. error: {}", ex.getMessage());
     }
 
     return null;
 
+  }
+
+  @PutMapping("/{eventID}/stage/{stageNumber}/lite")
+  @TrackExecutionTime
+  public String saveEventPayload(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("stageNumber") final Integer stageNumber, @RequestBody JsonNode payload, final JwtAuthenticationToken authentication) {
+      try {
+          var principal = getPrincipalFromJwt(authentication);
+          log.info("PUT event invoked by principal: {}", principal);
+
+          log.info("Received payload: {}", payload.toPrettyString());
+
+          boolean status = procurementEventService.saveEventPayload(procId, eventId, stageNumber, payload);
+
+          if (status) {
+            return "OK";
+          } else {
+            return "NOT_FOUND";
+          }
+      } catch (Exception ex) {
+          log.error("Failed to save event details. error: {}", ex.getMessage(), ex);
+          throw ex;
+      }
   }
 
   @GetMapping("/{eventID}/review")
@@ -129,7 +215,17 @@ public class EventsController extends AbstractRestController {
     log.info("getEventReview invoked on behalf of principal: {}", principal);
 
     // Fetch the event review model
-    return procurementEventService.getEventReview(procId, eventId);
+    return procurementEventService.getEventReview(procId, eventId, null);
+  }
+
+  @GetMapping("/{eventID}/review/stage/{stageNumber}")
+  @TrackExecutionTime
+  public EventDetail getEventReviewWithStageNumber(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("stageNumber") final Integer stageNumber, final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getEventReview invoked on behalf of principal: {}, stageNumber: {}", principal, stageNumber);
+
+    // Fetch the event review model
+    return procurementEventService.getEventReview(procId, eventId, stageNumber);
   }
 
   @PutMapping("/{eventID}")
@@ -289,12 +385,16 @@ public class EventsController extends AbstractRestController {
    */
   @PutMapping("/{eventID}/documents/generate")
   @TrackExecutionTime
-  public StringValueResponse generateEventDocs(@PathVariable("procID") final Integer projectId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+  public StringValueResponse generateEventDocs(
+          @PathVariable("procID") final Integer projectId,
+          @PathVariable("eventID") final String eventId,
+          @RequestParam(defaultValue = "false") boolean isLastStageEvent,
+          final JwtAuthenticationToken authentication) {
     // Firstly validate the user auth
     String principal = getPrincipalFromJwt(authentication);
 
     // Now generate the documents for this event
-    docGenService.generateAndUploadDocuments(projectId, eventId);
+    docGenService.generateAndUploadDocuments(projectId, eventId, isLastStageEvent);
 
     // Job done, return an indicator to represent this
     return new StringValueResponse("OK");
@@ -305,18 +405,33 @@ public class EventsController extends AbstractRestController {
    */
   @PutMapping("/{eventID}/publish")
   @TrackExecutionTime
-  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @RequestBody @Valid final PublishDates publishDates, final JwtAuthenticationToken authentication) {
+  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
+                                          @RequestParam(defaultValue = "false") boolean isLastStageEvent,
+                                          @RequestBody @Valid final PublishDates publishDates, final JwtAuthenticationToken authentication) {
     // Firstly validate the user auth
     String principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
 
     // Next step is generating the necessary documents for the event
-    docGenService.generateAndUploadDocuments(procId, eventId);
+    docGenService.generateAndUploadDocuments(procId, eventId, isLastStageEvent);
 
     // Documents should now be generated, so publish the event now
     procurementEventService.publishEvent(procId, eventId, publishDates, principal);
 
     // Job done, return an indicator to represent this
+    return new StringValueResponse("OK");
+  }
+
+  /**
+   * Publishes DOS7 MI project
+   */
+  @PutMapping("/{eventID}/publish/DOS7/MI")
+  @TrackExecutionTime
+  public StringValueResponse publishDOS7MIProject(@PathVariable("procID") final Integer procId,
+                                                  @PathVariable("eventID") final String eventId,
+                                                  final JwtAuthenticationToken authentication) {
+    // NCAS-1492: Publish the event now
+    procurementEventService.publishDOS7MIEvent(procId, eventId);
     return new StringValueResponse("OK");
   }
 
@@ -334,16 +449,22 @@ public class EventsController extends AbstractRestController {
   @GetMapping("/{eventID}/documents/export")
   @TrackExecutionTime
   public ResponseEntity<StreamingResponseBody> exportDocuments(
-      @PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-      HttpServletResponse response, final JwtAuthenticationToken authentication) {
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @RequestParam boolean isLastStage,
+      @RequestParam final Boolean isMultiStage,
+      @RequestParam final Integer totalNumberOfStages,
+      @RequestParam final Integer currentStage,
+      HttpServletResponse response,
+      final JwtAuthenticationToken authentication) {
 
     var principal = Objects.nonNull(authentication) ? getPrincipalFromJwt(authentication) : "";
-    
+
     log.info("Export documents invoked on behalf of principal: {}", principal);
 
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
-        procurementEventService.exportDocuments(procId, eventId, principal);
+        procurementEventService.exportDocuments(procId, eventId, isLastStage, isMultiStage, totalNumberOfStages, currentStage, principal);
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());
@@ -355,17 +476,19 @@ public class EventsController extends AbstractRestController {
           IOUtils.copy(is, zipOutputStream);
         }
       }
+
       // set zip size in response
       response.setContentLength((int) (zipEntry != null ? zipEntry.getSize() : 0));
       if (zipOutputStream != null) {
         zipOutputStream.close();
       }
     };
+
     response.setContentType("application/zip");
-    response.setHeader("Content-Disposition",
-        "attachment; filename=" + EXPORT_BUYER_DOCUMENTS_NAME + ".zip");
+    response.setHeader("Content-Disposition", "attachment; filename=" + EXPORT_BUYER_DOCUMENTS_NAME + ".zip");
     response.addHeader("Pragma", "no-cache");
     response.addHeader("Expires", "0");
+
     return ResponseEntity.ok(streamResponseBody);
   }
 
@@ -499,15 +622,235 @@ public class EventsController extends AbstractRestController {
     return new StringValueResponse("OK");
   }
 
-  @DeleteMapping("/{eventID}")
+  /**
+   * Exit award event
+   */
+  @PostMapping("/{eventID}/exit-award")
   @TrackExecutionTime
-  public StringValueResponse deleteEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {
+  public EventSummary saveExitAwardData(
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @Valid @RequestBody final ExitAwardRequest exitAwardRequest,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("saveExitAwardData invoked on behalf of principal: {}", principal);
+
+    return procurementEventService.saveExitAwardData(procId, eventId, exitAwardRequest, principal);
+  }
+
+  @DeleteMapping("/{eventID}/stageCount/{totalNumberOfStages}")
+  @TrackExecutionTime
+  public StringValueResponse deleteEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("totalNumberOfStages") final Integer totalNumberOfStages, final JwtAuthenticationToken authentication) {
     var principal = getPrincipalFromJwt(authentication);
     log.info("deleteSupplier invoked on behalf of principal: {}", principal);
 
-    procurementEventService.deleteEvent(procId, eventId, principal);
+    procurementEventService.deleteEvent(procId, eventId, totalNumberOfStages, principal);
 
     return new StringValueResponse("OK");
+  }
+
+  @GetMapping("/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}")
+  @TrackExecutionTime
+  public QuestionGroupNamesRead getUseQuestionGroups(
+      @Valid @PathVariable("procID") final Integer procId,
+      @Valid @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getUseQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == stageNumber) {
+        log.error("getQuestionGroups - no stageNumber provided: {}", principal);
+        return null;
+    }
+
+    if (null == groupType || groupType.isBlank()) {
+        log.error("getUseQuestionGroups - no groupType provided: {}", principal);
+        return null;
+    }
+
+    return readUseQuestionGroups(procId, eventId, stageNumber, groupType, principal);
+  }
+
+  @PostMapping("/{eventID}/stage/{stageNumber}/use-question-groups/{groupType}")
+  @TrackExecutionTime
+  public StringValueResponse saveUseQuestionGroups(
+      @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("saveUseQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == requestModel || null == stageNumber || null == groupType || groupType.isBlank()) {
+        log.error("saveUseQuestionGroups - invalid data provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    QuestionGroupNamesRead existingUsequestionGroups = readUseQuestionGroups(procId, eventId, stageNumber, groupType, principal);
+
+    if (null != existingUsequestionGroups && null != existingUsequestionGroups.getUseQuestionGroupsQaId()) {
+        Integer qaId = existingUsequestionGroups.getUseQuestionGroupsQaId();
+        questionAndAnswerService.deleteQuestionAndAnswerByQaIdFromRepo(procId, eventId, qaId, principal);
+    }
+
+    if (null == requestModel.getUseQuestionGroups()) {
+        log.error("saveUseQuestionGroups - no value provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    // create the new question groups
+    QandA newEntry = new QandA();
+    newEntry.setQuestion(groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + USE_QUESTION_GROUPS);
+    newEntry.setAnswer(requestModel.getUseQuestionGroups().toString());
+
+    questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
+
+    return new StringValueResponse("OK");
+  }
+
+  @GetMapping("/{eventID}/stage/{stageNumber}/question-groups/{groupType}")
+  @TrackExecutionTime
+  public QuestionGroupNamesRead getQuestionGroups(
+      @Valid @PathVariable("procID") final Integer procId,
+      @Valid @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
+    String principal = getPrincipalFromJwt(authentication);
+    log.info("getQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == stageNumber) {
+        log.error("getQuestionGroups - no stageNumber provided: {}", principal);
+        return null;
+    }
+
+    if (null == groupType || groupType.isBlank()) {
+        log.error("getQuestionGroups - no groupType provided: {}", principal);
+        return null;
+    }
+
+    return readQuestionGroups(procId, eventId, stageNumber, groupType, principal);
+  }
+
+  @PostMapping("/{eventID}/stage/{stageNumber}/question-groups/{groupType}")
+  @TrackExecutionTime
+  public StringValueResponse saveQuestionGroups(
+      @Valid @RequestBody final QuestionGroupNamesWrite requestModel,
+      @PathVariable("procID") final Integer procId,
+      @PathVariable("eventID") final String eventId,
+      @Valid @PathVariable("stageNumber") final Integer stageNumber,
+      @PathVariable("groupType") final String groupType,
+      final JwtAuthenticationToken authentication) {
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("saveQuestionGroups invoked on behalf of principal: {}", principal);
+
+    if (null == requestModel || null == stageNumber || null == groupType || groupType.isBlank()) {
+        log.error("saveQuestionGroups - invalid data provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    QuestionGroupNamesRead existingGroupNames = readQuestionGroups(procId, eventId, stageNumber, groupType, principal);
+
+    if (null != existingGroupNames && null != existingGroupNames.getQaIds() && !existingGroupNames.getQaIds().isEmpty()) {
+        for (String qaId : existingGroupNames.getQaIds()) {
+            questionAndAnswerService.deleteQuestionAndAnswerByQaIdFromRepo(procId, eventId, Integer.valueOf(qaId), principal);
+        }
+    }
+
+    if (null == requestModel.getQuestionGroups() || requestModel.getQuestionGroups().isEmpty()) {
+        log.error("saveQuestionGroups - no question groups provided: {}", principal);
+        return new StringValueResponse("ERROR");
+    }
+
+    int i = 0;
+
+    // create the new question groups
+    for (String questionGroupName : requestModel.getQuestionGroups()) {
+        QandA newEntry = new QandA();
+
+        newEntry.setQuestion(groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + QUESTION_GROUP_PREFIX + i++);
+        newEntry.setAnswer(questionGroupName);
+
+        questionAndAnswerService.createOrUpdateQuestionAndAnswer(principal, procId, eventId, newEntry, null);
+    }
+
+    if (null != existingGroupNames && null != existingGroupNames.getQuestionGroups() && !existingGroupNames.getQuestionGroups().isEmpty()) {
+        // unassign any questions which have already been assigned to this question group
+
+        List<String> questionGroupsToRemove = existingGroupNames.getQuestionGroups().stream()
+                             .filter(e -> !requestModel.getQuestionGroups().contains(e))
+                             .collect(Collectors.toList());
+
+        questionAndAnswerService.deleteSpecificAnswersForGivenQuestion(principal, procId, eventId, SELECT_QUESTION_GROUP_QUESTION, questionGroupsToRemove);
+    }
+
+    return new StringValueResponse("OK");
+  }
+
+  private QuestionGroupNamesRead readUseQuestionGroups(final Integer procId, final String eventId, final Integer stageNumber, final String groupType, String principal) {
+      QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
+
+      if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+          return null;
+      }
+
+      final String fullPrefix = groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + USE_QUESTION_GROUPS;
+
+      final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+
+      for (QandA responseData: response.getQandA()) {
+            if (responseData.getQuestion().equals(fullPrefix)) {
+                if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                    questionGroups.useQuestionGroups(Boolean.valueOf(responseData.getAnswer()));
+                    questionGroups.useQuestionGroupsQaId(responseData.getId().intValue());
+                    return questionGroups;
+                }
+            }
+      }
+
+      return null;
+  }
+
+  private QuestionGroupNamesRead readQuestionGroups(final Integer procId, final String eventId, final Integer stageNumber, final String groupType, String principal)
+  {
+      QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(procId, eventId, principal);
+
+      if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+          return null;
+      }
+
+      final String fullPrefix = groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + QUESTION_GROUP_PREFIX;
+
+      // note we use a map to ensure we can ultimately return the list in numeric order;
+      // just reading directly from the DB does not always give the order we need
+      Map<Integer, QandA> questionMap = new HashMap<>();
+
+      for (QandA question: response.getQandA()) {
+          if (question.getQuestion().startsWith(fullPrefix)) {
+              if (null != question.getAnswer() && !question.getAnswer().isBlank()) {
+                  // extract the numeric index from the question name, such as: award-criteria-question-group-3
+                  String index = question.getQuestion().substring(question.getQuestion().lastIndexOf("-") + 1);
+                  // then add this question into the map based on this index
+                  questionMap.put(Integer.valueOf(index), question);
+              }
+          }
+      }
+
+      final QuestionGroupNamesRead questionGroups = new QuestionGroupNamesRead();
+
+      for (int i=0; i < questionMap.size(); i++) {
+          QandA question = questionMap.get(i);
+          questionGroups.addQuestionGroupsItem(question.getAnswer());
+          Integer thisId = question.getId().intValue();
+          questionGroups.addQaIdsItem(thisId.toString());
+      }
+
+      return questionGroups;
   }
 
   private ZipEntry getZipEntryForSupplierResponse(SupplierAttachmentResponse supplierAttachmentResponse, ZipOutputStream zipOutputStream, ZipEntry zipEntry) throws IOException {

@@ -19,7 +19,6 @@ import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessmen
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.SupplierScores;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
-import uk.gov.crowncommercial.dts.scale.cat.repo.ProcurementProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ValidationService;
 
@@ -49,7 +48,7 @@ public class AssessmentScoreExportService {
                                          final Optional<String> principalForScores) {
 
 
-        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId);
+        ProcurementEvent event = validationService.validateProjectAndEventIds(projectId, eventId, null);
         Integer assessmentId = event.getAssessmentId();
         if (null == assessmentId) {
             throw new ResourceNotFoundException("AssessmentId not found for project " + projectId + ", eventId " + eventId);
