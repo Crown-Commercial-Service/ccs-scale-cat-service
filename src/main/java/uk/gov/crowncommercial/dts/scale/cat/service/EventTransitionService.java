@@ -67,7 +67,7 @@ public class EventTransitionService {
     } else if (ASSESMENT_COMPLETE_EVENT_TYPES.contains(
         ViewEventType.fromValue(existingEvent.getEventType()))) {
 
-        dashboardStatus = getDashboardStatus( null!=rfxResponse?rfxResponse.getRfxSetting():null,existingEvent);
+      dashboardStatus = getDashboardStatus( null!=rfxResponse?rfxResponse.getRfxSetting():null,existingEvent);
 
       if (DashboardStatus.ASSESSMENT.equals(dashboardStatus)) {
         updateDbEvent(existingEvent, principal, COMPLETE_STATUS);
@@ -98,7 +98,7 @@ public class EventTransitionService {
             .resolveBuyerUserProfile(principal)
             .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND))
             .getUserId();
-    var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    var terminatingEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
 
     if (terminatingEvent.isTendersDBOnly()) {
       updateDbEvent(terminatingEvent, principal, type.name(), cancellationReason, cancellationReasonDetail);

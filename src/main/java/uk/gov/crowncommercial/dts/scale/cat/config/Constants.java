@@ -35,7 +35,7 @@ public class Constants {
     /**
      * {procurement-event-id}-{event-type}-{document-template-filename} (ODT)
      */
-    public static final String GENERATED_DOCUMENT_FILENAME_FMT = "%s-%s-%s";
+    public static final String GENERATED_DOCUMENT_FILENAME_FMT = "%s_%s_%s";
 
     public static final int WEBCLIENT_DEFAULT_RETRIES = 3;
     public static final int WEBCLIENT_DEFAULT_DELAY = 2;
@@ -47,9 +47,9 @@ public class Constants {
     public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES = Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DA, DefineEventType.DAA, DefineEventType.PA, DefineEventType.SAS, DefineEventType.MS1, DefineEventType.MSR, DefineEventType.FC1);
     public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES = Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC, DefineEventType.MS1, DefineEventType.MSR, DefineEventType.FC1);
     public static final Set<ViewEventType> TENDER_DB_ONLY_EVENT_TYPES = Set.of(ViewEventType.FCA, ViewEventType.DAA, ViewEventType.PA, ViewEventType.SAS);
-    public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD = Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI, ViewEventType.MSR, ViewEventType.FC1);
+    public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD = Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI, ViewEventType.MS1, ViewEventType.MSR, ViewEventType.FC1);
     public static final Set<ViewEventType> TENDER_NON_DB_EVENT_TYPES = Set.of(ViewEventType.EOI, ViewEventType.RFI, ViewEventType.FC, ViewEventType.DA, ViewEventType.MS1, ViewEventType.MSR, ViewEventType.FC1);
-    public static final Set<ViewEventType> ASSESMENT_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.PA, ViewEventType.FCA, ViewEventType.DAA, ViewEventType.SAS, ViewEventType.MSR);
+    public static final Set<ViewEventType> ASSESMENT_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.PA, ViewEventType.FCA, ViewEventType.DAA, ViewEventType.SAS);
     public static final Set<ViewEventType> COMPLETE_EVENT_TYPES = Set.of(ViewEventType.RFI, ViewEventType.EOI);
     public static final Set<ViewEventType> FC_DA_NON_COMPLETE_EVENT_TYPES = Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.MS1, ViewEventType.MSR, ViewEventType.FC1);
 
@@ -94,4 +94,8 @@ public class Constants {
 
     // DUNS formatting constants
     public static final String DUNS_PREFIX = "US-DUNS-";
+
+    //Multistage
+    public static final String MULTI_STAGE_EVENT_TYPE = "MS1";
+    public static final String MULTI_STAGE_RETURN_EVENT_TYPE = "MSR";
 }

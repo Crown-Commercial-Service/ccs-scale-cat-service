@@ -19,6 +19,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.EventSummary;
 import uk.gov.crowncommercial.dts.scale.cat.service.DocGenService;
 import uk.gov.crowncommercial.dts.scale.cat.service.EventTransitionService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ProcurementEventService;
+import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
@@ -61,6 +62,9 @@ class ExceptionHandlerTests {
 
     @MockitoBean
     private LockProvider lockProvider;
+
+    @MockitoBean
+    QuestionAndAnswerService questionAndAnswerService;
 
     // IF the app has successfully started, these endpoints will return 401 Unauthorised, and therefore this suit will pass. IF the app fails to start this test suit will fail.
     @Test

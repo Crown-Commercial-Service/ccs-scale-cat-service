@@ -121,7 +121,7 @@ public class SupplierService {
   public String updateSupplierScores(final String profile, final Integer projectId,
       final String eventId, final List<ScoreAndCommentNonOCDS> scoreAndComments, boolean scoringComplete) {
     log.info("Calling updateSupplierScoreAndComment for {}", eventId);
-    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId);
+    var procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
     var buyerUser = userService.resolveBuyerUserProfile(profile)
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
     
@@ -185,7 +185,7 @@ public class SupplierService {
   public Collection<ScoreAndCommentNonOCDS> getScoresForSuppliers(final Integer procId, final String eventId) {
     // First, we need to grab the supplier information for the event from Jaggaer
     String componentFilter = "EVAL_SUPPLIER_ENVELOPE_COMMENTS==ALL;OFFERS";
-    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId);
+    ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
     ExportRfxResponse exportRfxResponse = jaggaerService.getRfxByComponent(procurementEvent.getExternalEventId(), new HashSet<>(List.of(componentFilter)));
 
     Collection<ScoreAndCommentNonOCDS> model = exportRfxResponse.getOffersList().getOffer().stream()

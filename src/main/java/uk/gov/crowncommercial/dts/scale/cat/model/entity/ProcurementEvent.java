@@ -1,20 +1,37 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
-import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.ASSESSMENT_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.DATA_TEMPLATE_EVENT_TYPES;
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.TENDER_DB_ONLY_EVENT_TYPES;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Set;
 
-import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
+import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.DefineEventType;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.ViewEventType;
 
 /**
  * JPA entity representing a mapping between a project event OCID (authority + prefix + internal ID)
@@ -23,180 +40,187 @@ import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.*;
 @Entity
 @Table(name = "procurement_events")
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
 @Slf4j
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@SuperBuilder
+@NoArgsConstructor
 @EqualsAndHashCode(exclude = {"project","capabilityAssessmentSuppliers"})
 public class ProcurementEvent {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "event_id")
+    protected Integer id;
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "event_id")
-  Integer id;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "project_id")
+    ProcurementProject project;
 
-  @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "project_id")
-  ProcurementProject project;
+    @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<SupplierSelection> capabilityAssessmentSuppliers;
 
-  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-  Set<SupplierSelection> capabilityAssessmentSuppliers;
+    @Column(name = "ocds_authority_name")
+    String ocdsAuthorityName;
 
-  @Column(name = "ocds_authority_name")
-  String ocdsAuthorityName;
+    @Column(name = "ocid_prefix")
+    String ocidPrefix;
 
-  @Column(name = "ocid_prefix")
-  String ocidPrefix;
+    @Column(name = "external_event_id")
+    String externalEventId;
 
-  @Column(name = "external_event_id")
-  String externalEventId;
+    @Column(name = "external_reference_id")
+    String externalReferenceId;
 
-  @Column(name = "external_reference_id")
-  String externalReferenceId;
+    @Column(name = "event_name")
+    String eventName;
 
-  @Column(name = "event_name")
-  String eventName;
+    @Column(name = "event_type")
+    String eventType;
 
-  @Column(name = "event_type")
-  String eventType;
+    @Column(name = "down_selected_suppliers_ind")
+    Boolean downSelectedSuppliers;
 
-  @Column(name = "down_selected_suppliers_ind")
-  Boolean downSelectedSuppliers;
+    @Column(name = "refresh_suppliers_ind")
+    Boolean refreshSuppliers;
 
+    @Column(name = "assessment_supplier_target")
+    Integer assessmentSupplierTarget;
 
-  @Column(name = "refresh_suppliers_ind")
-  private Boolean refreshSuppliers;
+    @Column(name = "assessment_id")
+    Integer assessmentId;
 
-  @Column(name = "assessment_supplier_target")
-  Integer assessmentSupplierTarget;
+    @Column(name = "tender_status")
+    String tenderStatus;
 
-  @Column(name = "assessment_id")
-  Integer assessmentId;
+    @Column(name = "publish_date")
+    Instant publishDate;
 
-  @Column(name = "tender_status")
-  String tenderStatus;
+    @Column(name = "close_date")
+    Instant closeDate;
 
-  @Column(name = "publish_date")
-  Instant publishDate;
+    @Column(name = "created_by", updatable = false)
+    String createdBy;
 
-  @Column(name = "close_date")
-  Instant closeDate;
+    @Column(name = "created_at", updatable = false)
+    Instant createdAt;
 
-  @Column(name = "created_by", updatable = false)
-  String createdBy;
+    @Column(name = "updated_by")
+    String updatedBy;
 
-  @Column(name = "created_at", updatable = false)
-  Instant createdAt;
+    @Column(name = "updated_at")
+    Instant updatedAt;
 
-  @Column(name = "updated_by")
-  String updatedBy;
+    @Column(name = "cancellation_reason")
+    String cancellationReason;
 
-  @Column(name = "updated_at")
-  Instant updatedAt;
+    @Column(name = "cancellation_reason_detail")
+    String cancellationReasonDetail;
 
-  @Column(name = "cancellation_reason")
-  String cancellationReason;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "procurement_template_payload")
+    String procurementTemplatePayload;
 
-  @Column(name = "cancellation_reason_detail")
-  String cancellationReasonDetail;
+    @Column(name="template_id")
+    Integer templateId;
 
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(name = "procurement_template_payload")
-  String procurementTemplatePayload;
+    @Column(name = "procurement_template_payload", insertable = false, updatable = false)
+    String procurementTemplatePayloadRaw;
 
-  @Column(name="template_id")
-  Integer templateId;
+    @Column(name = "supplier_selection_justification")
+    String supplierSelectionJustification;
 
-  @Column(name = "procurement_template_payload", insertable = false, updatable = false)
-  String procurementTemplatePayloadRaw;
+    @Column(name = "buyer_exited")
+    Boolean buyerExited;
 
-  @Column(name = "supplier_selection_justification")
-  String supplierSelectionJustification;
+    @Column(name = "supplier_awarded")
+    String supplierAwarded;
 
-  @Column(name = "buyer_exited")
-  Boolean buyerExited;
+    @Column(name = "contract_start_date")
+    Instant contractStartDate;
 
-  @Column(name = "supplier_awarded")
-  String supplierAwarded;
+    @Column(name = "contract_value")
+    String contractValue;
 
-  @Column(name = "contract_start_date")
-  Instant contractStartDate;
+    @Column(name = "award_url")
+    String awardUrl;
 
-  @Column(name = "contract_value")
-  String contractValue;
+    @ToString.Exclude
+    @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<DocumentUpload> documentUploads;
 
-  @Column(name = "award_url")
-  String awardUrl;
-
-  @ToString.Exclude
-  @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL,
-      orphanRemoval = true)
-  Set<DocumentUpload> documentUploads;
-
-  public String getEventID() {
-    return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
-  }
-
-  public DataTemplate getProcurementTemplatePayload() {
-    DataTemplate templateModel = null;
-
-    if (procurementTemplatePayload != null) {
-      try {
-        ObjectMapper objectMapper = new ObjectMapper();
-        templateModel = objectMapper.readValue(procurementTemplatePayload, DataTemplate.class);
-      }
-      catch (Exception ex) {
-        log.error("Error converting JSON to DataTemplate", ex);
-      }
+    public Integer getId() {
+        return id;
     }
 
-    return templateModel;
-  }
-
-  public void setProcurementTemplatePayload(DataTemplate templateModel) {
-    String json = null;
-
-    if (templateModel != null) {
-      try {
-        ObjectMapper objectMapper = new ObjectMapper();
-        json = objectMapper.writeValueAsString(templateModel);
-      }
-      catch (Exception ex) {
-        log.error("Error converting DataTemplate to JSON", ex);
-      }
+    public String getEventID() {
+      return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
     }
 
-    procurementTemplatePayload = json;
-  }
+    public DataTemplate getProcurementTemplatePayload() {
+      DataTemplate templateModel = null;
 
-  /**
-   * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
-   *
-   * @return true if it is, false otherwise
-   */
-  public boolean isAssessment() {
-    return ASSESSMENT_EVENT_TYPES.stream().map(DefineEventType::name)
-        .anyMatch(aet -> aet.equals(getEventType()));
-  }
+      if (procurementTemplatePayload != null) {
+        try {
+          ObjectMapper objectMapper = new ObjectMapper();
+          templateModel = objectMapper.readValue(procurementTemplatePayload, DataTemplate.class);
+        }
+        catch (Exception ex) {
+          log.error("Error converting JSON to DataTemplate", ex);
+        }
+      }
 
-  /**
-   * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
-   *
-   * @return true if it is, false otherwise
-   */
-  public boolean isDataTemplateEvent() {
-    return DATA_TEMPLATE_EVENT_TYPES.stream().map(DefineEventType::name)
-        .anyMatch(aet -> aet.equals(getEventType()));
-  }
+      return templateModel;
+    }
 
-  /**
-   * Is the event only persisted in Tenders DB (e.g. FCA, DAA)?
-   *
-   * @return true if it is, false otherwise
-   */
-  public boolean isTendersDBOnly() {
-    return TENDER_DB_ONLY_EVENT_TYPES.stream().map(ViewEventType::name)
-        .anyMatch(aet -> aet.equals(getEventType()));
-  }
+    public void setProcurementTemplatePayload(DataTemplate templateModel) {
+      String json = null;
+
+      if (templateModel != null) {
+        try {
+          ObjectMapper objectMapper = new ObjectMapper();
+          json = objectMapper.writeValueAsString(templateModel);
+        }
+        catch (Exception ex) {
+          log.error("Error converting DataTemplate to JSON", ex);
+        }
+      }
+
+      procurementTemplatePayload = json;
+    }
+
+    public String getThisProcurementTemplatePayload() {
+        return procurementTemplatePayload;
+    }
+
+    public void setThisProcurementTemplatePayload(final String procurementTemplatePayload) {
+        this.procurementTemplatePayload = procurementTemplatePayload;
+    }
+
+    /**
+     * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
+     *
+     * @return true if it is, false otherwise
+     */
+    public boolean isAssessment() {
+      return ASSESSMENT_EVENT_TYPES.stream().map(DefineEventType::name)
+          .anyMatch(aet -> aet.equals(getEventType()));
+    }
+
+    /**
+     * Is the event an Assessment Event (e.g. FC, FCA, DAA)?
+     *
+     * @return true if it is, false otherwise
+     */
+    public boolean isDataTemplateEvent() {
+      return DATA_TEMPLATE_EVENT_TYPES.stream().map(DefineEventType::name)
+          .anyMatch(aet -> aet.equals(getEventType()));
+    }
+
+    /**
+     * Is the event only persisted in Tenders DB (e.g. FCA, DAA)?
+     *
+     * @return true if it is, false otherwise
+     */
+    public boolean isTendersDBOnly() {
+      return TENDER_DB_ONLY_EVENT_TYPES.stream().map(ViewEventType::name)
+          .anyMatch(aet -> aet.equals(getEventType()));
+    }
 }
