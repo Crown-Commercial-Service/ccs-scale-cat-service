@@ -40,7 +40,7 @@
         <rollbar.version>2.2.0</rollbar.version>
         <jsoup.version>1.22.1</jsoup.version>
         <hibernate.version>6.6.40.Final</hibernate.version>
-        <junitapi.version>6.0.1</junitapi.version>
+        <junitapi.version>6.0.3</junitapi.version>
         <opensearch.version>2.0.3</opensearch.version>
         <shedlock.version>7.7.0</shedlock.version>
         <spring-boot.version>3.5.8</spring-boot.version>
