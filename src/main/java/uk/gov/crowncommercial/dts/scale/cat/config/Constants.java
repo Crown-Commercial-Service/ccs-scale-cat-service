@@ -45,6 +45,7 @@ public class Constants {
 
     // Event types definition
     public static final Set<DefineEventType> ASSESSMENT_EVENT_TYPES = Set.of(DefineEventType.FC, DefineEventType.FCA, DefineEventType.DA, DefineEventType.DAA, DefineEventType.PA, DefineEventType.SAS, DefineEventType.MS1, DefineEventType.MSR, DefineEventType.FC1);
+    public static final Set<DefineEventType> MULTI_STAGE_EVENT_TYPES = Set.of(DefineEventType.MSR);
     public static final Set<DefineEventType> DATA_TEMPLATE_EVENT_TYPES = Set.of(DefineEventType.RFI, DefineEventType.EOI, DefineEventType.FC, DefineEventType.MS1, DefineEventType.MSR, DefineEventType.FC1);
     public static final Set<ViewEventType> TENDER_DB_ONLY_EVENT_TYPES = Set.of(ViewEventType.FCA, ViewEventType.DAA, ViewEventType.PA, ViewEventType.SAS);
     public static final Set<ViewEventType> NOT_ALLOWED_EVENTS_AFTER_AWARD = Set.of(ViewEventType.FC, ViewEventType.DA, ViewEventType.EOI, ViewEventType.RFI, ViewEventType.MS1, ViewEventType.MSR, ViewEventType.FC1);
