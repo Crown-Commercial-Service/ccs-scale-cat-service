@@ -30,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
@@ -113,7 +114,7 @@ public class DocGenService {
     private static final String VALUE = "value";
     private static final String SELECT = "select";
     private static final String CURRENT_STAGE_ANCHOR_TAG = "«current_stage»";
-    private static final String ATTACHMENT_4_OUTPUT_FILE_NAME = "DOS 7 MultiStage L1 Bid Pack - Attachment 4 Responses to Stage %d assessment criteria.odt";
+    private static final String ATTACHMENT_4_OUTPUT_FILE_NAME = "DOS 7 MultiStage L1 Bid Pack - Attachment %d Responses to Stage %d assessment criteria.odt";
 
     private final ApplicationContext applicationContext;
     private final ValidationService validationService;
@@ -784,94 +785,147 @@ public class DocGenService {
     @SneakyThrows
     @Transactional
     public List<DocumentAttachment> generateDocumentForMultiStage(final ProcurementEvent procurementEvent,
-                                                                  final DocumentTemplate documentTemplate,
-                                                                  final boolean isLastStage) {
+                                                                  final DocumentTemplate documentTemplate) {
 
-        List<DocumentAttachment> generationResults = new ArrayList<>();
         String templateUrl = documentTemplate.getTemplateUrl();
 
-        Integer targetStage = extractStageNumber(templateUrl);
-        if (targetStage == null || targetStage == 0) {
-            log.error("Multi stage Resource file name is malformed: {}", templateUrl);
-            throw new ResourceNotFoundException("Multi stage Resource file name is malformed.");
-        }
-
-        if (targetStage == 4 && !isLastStage) {
-            log.debug("Skipping Attachment 4 generation because isLastStage is false");
-            return Collections.emptyList();
+        Integer targetTemplateBase = extractStageNumber(templateUrl);
+        if (targetTemplateBase == null || targetTemplateBase == 0) {
+            log.error("Multi-stage resource file name is malformed: {}", templateUrl);
+            throw new ResourceNotFoundException("Multi-stage resource file name is malformed.");
         }
 
         StagesRead stageInfo = stageService.getStagesForEventId(procurementEvent.getEventID());
-        if (stageInfo == null || stageInfo.getNumberOfStages() <= 0)
+        if (stageInfo == null || stageInfo.getNumberOfStages() <= 0) {
             return Collections.emptyList();
-
-        final int totalStages = stageInfo.getNumberOfStages();
-
-        // If it's targetStage 4 but NOT the last stage, fall back to a single iteration
-        int startLoop = (targetStage == 4 && isLastStage) ? 2 : targetStage;
-        int endLoop = (targetStage == 4 && isLastStage) ? totalStages : targetStage;
-
-        for (int currentStageNum = startLoop; currentStageNum <= endLoop; currentStageNum++) {
-
-            Resource templateResource = documentTemplateResourceService.getResource(templateUrl);
-            if (templateResource == null) continue;
-
-            final TextDocument textODT = TextDocument.loadDocument(templateResource.getInputStream());
-            final ConcurrentHashMap<String, Object> requestCache = new ConcurrentHashMap<>();
-
-            // Top header replace anchor tag for attachment 4 and on word
-            if (targetStage == 4) {
-                tableGroupGenerator
-                        .replacePlaceholderText(textODT, CURRENT_STAGE_ANCHOR_TAG, String.valueOf(currentStageNum));
-            }
-
-            final int activeStage = currentStageNum;
-
-            documentTemplate.getDocumentTemplateSources().forEach(templateSource -> {
-                try {
-                    if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
-                        List<Map<String, Object>> stageDataList = new ArrayList<>();
-
-                        if (targetStage == 1 || targetStage == 2) {
-                            fillStageJsonWithMergedJson(totalStages, procurementEvent.getId(), stageDataList);
-                        } else if (targetStage == 3) {
-                            fillStageSpecificJson(procurementEvent.getId(), 1, totalStages, stageDataList);
-                        } else if (targetStage == 4) {
-                            // The loop assignment above guarantees this condition only triggers safely
-                            String priorEventId = stageInfo.getStageEvents().getFirst().getPriorEventId();
-                            Integer legacyEventId = extractEventId(priorEventId);
-                            fillStageSpecificJson(legacyEventId != null ? legacyEventId : procurementEvent.getId(), activeStage, totalStages, stageDataList);
-                        }
-
-                        if (!stageDataList.isEmpty()) {
-                            String mergedJson = mergeStageJsonPayloads(stageDataList);
-                            tableGroupGenerator.fillMultiStageTableData(mergedJson, templateSource, textODT);
-                        }
-                    } else {
-                        List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
-                        replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null);
-                    }
-                } catch (Exception ex) {
-                    log.error("Unable to replace placeholder '{}' for event '{}' inside multi-stage",
-                            templateSource.getId(), procurementEvent.getEventID(), ex);
-                }
-            });
-
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            textODT.save(outputStream);
-
-            String outputFileName = (targetStage == 4 && isLastStage)
-                    ? String.format(ATTACHMENT_4_OUTPUT_FILE_NAME, currentStageNum)
-                    : getFileName(procurementEvent, templateUrl);
-
-            generationResults.add(DocumentAttachment.builder()
-                    .fileName(outputFileName)
-                    .data(outputStream.toByteArray())
-                    .contentType(MediaType.parseMediaType(Constants.MEDIA_TYPE_ODT.toString()))
-                    .build());
         }
 
+        final int totalStages = stageInfo.getNumberOfStages();
+        final int currentRuntimeStage = stageInfo.getCurrentStageNumber();
+
+        if (targetTemplateBase == 3 && currentRuntimeStage != 1) {
+            log.debug("Skipping Attachment 3 generation because current runtime stage is {}", currentRuntimeStage);
+            return Collections.emptyList();
+        }
+
+        if (targetTemplateBase == 4 && currentRuntimeStage < 2) {
+            log.debug("Skipping Attachment 4 generation because current runtime stage {} has not reached Stage 2", currentRuntimeStage);
+            return Collections.emptyList();
+        }
+
+        int resolvedStageNum;
+        if (targetTemplateBase == 4) {
+            resolvedStageNum = currentRuntimeStage;
+        } else {
+            resolvedStageNum = targetTemplateBase;
+        }
+
+        final int activeStage = resolvedStageNum;
+
+        Resource templateResource = documentTemplateResourceService.getResource(templateUrl);
+        if (templateResource == null) {
+            log.error("Unable to locate template resource at URL: {}", templateUrl);
+            return Collections.emptyList();
+        }
+
+        final TextDocument textODT = TextDocument.loadDocument(templateResource.getInputStream());
+        final ConcurrentHashMap<String, Object> requestCache = new ConcurrentHashMap<>();
+
+        if (targetTemplateBase == 4) {
+            tableGroupGenerator.replacePlaceholderText(textODT, CURRENT_STAGE_ANCHOR_TAG, String.valueOf(activeStage));
+        }
+
+        documentTemplate.getDocumentTemplateSources().forEach(templateSource -> {
+            try {
+                if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
+                    List<Map<String, Object>> stageDataList = new ArrayList<>();
+
+                    if (targetTemplateBase == 1 || targetTemplateBase == 2) {
+                        fillStageJsonWithMergedJson(totalStages, procurementEvent.getId(), stageDataList);
+                    } else if (targetTemplateBase == 3) {
+                        fillStageSpecificJson(procurementEvent.getId(), 1, totalStages, stageDataList);
+                    } else if (targetTemplateBase == 4) {
+                        String priorEventId = getParentEventId(stageInfo.getStageEvents().getFirst().getPriorEventId());
+                        Integer legacyEventId = extractEventId(priorEventId);
+
+                        fillStageSpecificJson(legacyEventId != null ? legacyEventId : procurementEvent.getId(), activeStage, totalStages, stageDataList);
+                    }
+
+                    if (!stageDataList.isEmpty()) {
+                        String mergedJson = mergeStageJsonPayloads(stageDataList);
+                        tableGroupGenerator.fillMultiStageTableData(mergedJson, templateSource, textODT);
+                    }
+                } else {
+                    List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
+                    replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null);
+                }
+            } catch (Exception ex) {
+                log.error("Unable to replace placeholder '{}' for event '{}' inside multi-stage",
+                        templateSource.getId(), procurementEvent.getEventID(), ex);
+            }
+        });
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        textODT.save(outputStream);
+
+        String outputFileName;
+        if (targetTemplateBase == 4) {
+            int computedAttachmentNum = activeStage + 2;
+            outputFileName = String.format(ATTACHMENT_4_OUTPUT_FILE_NAME, computedAttachmentNum, activeStage);
+        } else {
+            outputFileName = getFileName(procurementEvent, templateUrl);
+        }
+
+        List<DocumentAttachment> generationResults = new ArrayList<>();
+        generationResults.add(DocumentAttachment.builder()
+                .fileName(outputFileName)
+                .data(outputStream.toByteArray())
+                .contentType(MediaType.parseMediaType(Constants.MEDIA_TYPE_ODT.toString()))
+                .build());
+
         return generationResults;
+    }
+
+    /**
+     * Travel from the bottom to up, to find the root eventId
+     */
+    private String getParentEventId(final String initialPriorEventId) {
+
+        if (initialPriorEventId == null || initialPriorEventId.isBlank()) {
+            return null;
+        }
+
+        String currentPriorEventId = initialPriorEventId;
+        String lastValidPriorEventId = initialPriorEventId;
+
+        try {
+            // Keep climbing the event tree until the stage service returns a null/empty priorEventId
+            while (currentPriorEventId != null && !currentPriorEventId.isBlank()) {
+                var stages = stageService.getStagesForEventId(currentPriorEventId);
+
+                // To prevent NoSuchElementException
+                if (stages == null || stages.getStageEvents() == null || stages.getStageEvents().isEmpty()) {
+                    break;
+                }
+
+                String nextPriorEventId = stages.getStageEvents().getFirst().getPriorEventId();
+
+                if (nextPriorEventId == null || nextPriorEventId.isBlank()) {
+                    // We reached the absolute root. Stop here.
+                    break;
+                }
+
+                // Move up the tree
+                lastValidPriorEventId = nextPriorEventId;
+                currentPriorEventId = nextPriorEventId;
+            }
+        } catch (Exception ex) {
+            log.warn("Traversing the parent event chain for ID [{}] was interrupted due to an error. "
+                    + "Falling back to the last known valid parent ID: [{}]", initialPriorEventId,
+                    lastValidPriorEventId, ex);
+        }
+
+        return lastValidPriorEventId;
     }
 
     private void fillStageJsonWithMergedJson(int totalStages,
@@ -890,20 +944,40 @@ public class DocGenService {
                                        int totalStage,
                                        List<Map<String, Object>> stageDataList) {
 
-        Optional<ProcurementStageEvent> stageEventOpt = retryableTendersDBDelegate
-                .findByIdAndStageNumber(eventId, currentStage);
+        Optional<ProcurementStageEvent> stageEventOpt = getProcurementStageEvent(eventId, currentStage);
 
-        stageEventOpt.ifPresent(stageEvent -> {
-            String payload = stageEvent.getProcurementTemplatePayloadRaw();
-            if (StringUtils.hasText(payload)) {
-                Map<String, Object> data = new HashMap<>();
-                data.put(PAYLOAD_TAG, payload);
-                data.put(STAGE_NUMBER_TAG, stageEvent.getStageNumber());
-                data.put(TOTAL_STAGES_TAG, totalStage);
-                data.put(STAGE_DESCRIPTION_TAG, stageEvent.getStageDescription());
-                stageDataList.add(data);
-            }
+        ProcurementStageEvent stageEvent = stageEventOpt.orElseThrow(() -> {
+            log.error("Procurement stage event record not found for Event ID [{}] at Stage [{}]",
+                    eventId, currentStage);
+            return new ResourceNotFoundException(
+                    String.format("Procurement stage event metadata missing for Event ID [%d] and Stage [%d]",
+                            eventId, currentStage)
+            );
         });
+
+        String payload = stageEvent.getProcurementTemplatePayloadRaw();
+        if (!StringUtils.hasText(payload)) {
+            log.error("Procurement template payload raw content is empty or null for Event ID [{}] at Stage [{}]",
+                    eventId, currentStage);
+            throw new ResourceNotFoundException(
+                    String.format("Required template payload data is blank or missing for Event ID [%d] at Stage [%d]",
+                            eventId, currentStage)
+            );
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put(PAYLOAD_TAG, payload);
+        data.put(STAGE_NUMBER_TAG, stageEvent.getStageNumber());
+        data.put(TOTAL_STAGES_TAG, totalStage);
+        data.put(STAGE_DESCRIPTION_TAG, stageEvent.getStageDescription());
+
+        stageDataList.add(data);
+    }
+
+    private Optional<ProcurementStageEvent> getProcurementStageEvent(int eventId,
+                                                                     int currentStage) {
+        return retryableTendersDBDelegate
+                .findByIdAndStageNumber(eventId, currentStage);
     }
 
     @SneakyThrows

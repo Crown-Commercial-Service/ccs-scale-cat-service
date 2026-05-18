@@ -1508,14 +1508,14 @@ public class ProcurementEventService implements EventService {
 
         if (TenderStatus.ACTIVE != status) {
             // Get documents from S3
-           event.getDocumentUploads().forEach(doc -> {
+/*           event.getDocumentUploads().forEach(doc -> {
                 var documentKey = DocumentKey.fromString(doc.getDocumentId());
                 var attachment = DocumentAttachment.builder()
                         .data(documentUploadService.retrieveDocument(doc, principal))
                         .fileName(documentKey.getFileName())
                         .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
                 attachments.add(attachment);
-            });
+            });*/
             // Get draft documents
             Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
             if (isMultiStage) {
@@ -1525,7 +1525,7 @@ public class ProcurementEventService implements EventService {
                     // Route directly to the new multi-stage template service wrapper for attachment 4
                     // create n number of files on the fly - depending on total number of stages
                     List<DocumentAttachment> multiFiles = dTemplateService
-                            .getDraftDocumentsForMultiStage(procId, eventId, docKey, isLastStage);
+                            .getDraftDocumentsForMultiStage(procId, eventId, docKey);
                     attachments.addAll(multiFiles);
                 }
             } else {
