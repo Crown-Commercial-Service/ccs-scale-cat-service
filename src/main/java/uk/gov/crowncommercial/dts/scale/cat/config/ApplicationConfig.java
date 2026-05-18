@@ -1,11 +1,12 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import java.time.Clock;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 
 /**
@@ -27,8 +28,8 @@ public class ApplicationConfig {
 
   @Bean
   public VCAPServices vcapServices() throws Exception {
-    var envVCAPServices = environment.getProperty("VCAP_SERVICES");
+    String envVCAPServices = environment.getProperty("VCAP_SERVICES");
+
     return objectMapper.readValue(envVCAPServices, VCAPServices.class);
   }
-
 }
