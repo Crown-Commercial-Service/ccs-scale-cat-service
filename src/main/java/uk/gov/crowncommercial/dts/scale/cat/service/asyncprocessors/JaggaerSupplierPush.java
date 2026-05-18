@@ -42,7 +42,7 @@ public class JaggaerSupplierPush implements AsyncConsumer<JaggaerSupplierEventDa
         if (null == suppliers && null != data.getExistingEventId()) {
             existingEvent = dbDelegate.findProcurementEventById(data.getExistingEventId()).orElse(null);
             if (null != existingEvent) {
-                suppliers = eventService.getSuppliers(project, existingEvent, data.getEventType(), data.getTwoStageEvent());
+                suppliers = eventService.getSuppliers(project, existingEvent, data.getEventType());
             }
         }
 

@@ -1303,7 +1303,7 @@ class ProcurementEventServiceTest {
     assertEquals(ASSESSMENT_SUPPLIER_TARGET,
         eventDetail.getNonOCDS().getAssessmentSupplierTarget());
 
-    assertEquals(DashboardStatus.ASSESSMENT, eventDetail.getNonOCDS().getDashboardStatus());
+    assertEquals(DashboardStatus.IN_PROGRESS, eventDetail.getNonOCDS().getDashboardStatus());
     verify(criteriaService, never()).getEvalCriteria(anyInt(), anyString(), anyInt(), anyBoolean());
   }
 
@@ -1899,7 +1899,7 @@ class ProcurementEventServiceTest {
     var eventSummary = response.stream().findFirst().get();
     assertEquals("NAME", eventSummary.getTitle());
     assertEquals(ViewEventType.FCA, eventSummary.getEventType());
-    assertEquals(DashboardStatus.ASSESSMENT, eventSummary.getDashboardStatus());
+    assertEquals(DashboardStatus.IN_PROGRESS, eventSummary.getDashboardStatus());
   }
 
   @Test

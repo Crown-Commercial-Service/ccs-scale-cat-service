@@ -30,7 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.*;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStore;
 import uk.gov.crowncommercial.dts.scale.cat.processors.SupplierStoreFactory;
-import uk.gov.crowncommercial.dts.scale.cat.processors.TwoStageEventService;
+import uk.gov.crowncommercial.dts.scale.cat.processors.MultiStageEventService;
 import uk.gov.crowncommercial.dts.scale.cat.processors.async.AsyncExecutor;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.asyncprocessors.JaggaerSupplierEventData;
@@ -135,8 +135,9 @@ public class ProcurementEventService implements EventService {
         log.debug("Complete Event {}", eventId);
 
         ProcurementEvent eventModel = validationService.validateProjectAndEventIds(projectId, eventId, null);
+
         if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(eventModel.getEventType()))) {
-            new TwoStageEventService().markComplete(retryableTendersDBDelegate, eventModel);
+            MultiStageEventService.markComplete(retryableTendersDBDelegate, eventModel);
         } else {
             eventTransitionService.completeExistingEvent(eventModel, principal);
         }
@@ -158,7 +159,7 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public EventSummary createEvent(final Integer projectId, final CreateEvent createEvent,
                                     Boolean downSelectedSuppliers, final String principal) {
-        boolean twoStageEvent = false;
+        boolean multiStageEvent = false;
         boolean scheduleSupplierSync = false;
 
         // Get project from tenders DB to obtain Jaggaer project id
@@ -168,22 +169,21 @@ public class ProcurementEventService implements EventService {
         // check any valid events existed before
         Optional<ProcurementEvent> existingEventOptional = CollectionUtils.isNotEmpty(project.getProcurementEvents()) ? getExistingValidEvents(project.getProcurementEvents()) : Optional.empty();
 
-
         if (!existingEventOptional.isPresent()) {
             log.info("No events exists for this project");
         } else {
-            TwoStageEventService twoStageEventService = new TwoStageEventService();
             // complete the event and copy suppliers
             var existingEvent = existingEventOptional.get();
-            twoStageEvent = twoStageEventService.isTwoStageEvent(createEvent, existingEvent);
-            if (!twoStageEvent) {
+            multiStageEvent = MultiStageEventService.isMultiStageEvent(createEvent, existingEvent);
+
+            if (!multiStageEvent) {
                 if (FC_DA_NON_COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEvent.getEventType()))) {
-                    twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
+                    MultiStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
                 } else {
                     eventTransitionService.completeExistingEvent(existingEvent, principal);
                 }
             } else {
-                twoStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
+                MultiStageEventService.markComplete(retryableTendersDBDelegate, existingEvent);
             }
         }
 
@@ -195,62 +195,64 @@ public class ProcurementEventService implements EventService {
 
         downSelectedSuppliers = requireNonNullElse(downSelectedSuppliers, Boolean.FALSE);
 
-        var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ? createEventOCDS.getTitle()
-                : getDefaultEventTitle(project.getProjectName(), eventTypeValue);
+        var eventName = StringUtils.hasText(createEventOCDS.getTitle()) ?
+                createEventOCDS.getTitle() :
+                getDefaultEventTitle(project.getProjectName(), eventTypeValue);
 
         var eventBuilder = ProcurementEvent.builder();
+
         //setting true by default, need to revisit
         eventBuilder.refreshSuppliers(true);
+
         // Optional return values
         Integer returnAssessmentId = null;
         String rfxReferenceCode = null;
         ExportRfxResponse exportRfxResponse = null;
 
-        if (createEventNonOCDS.getEventType() != null
-                && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
-
+        if (createEventNonOCDS.getEventType() != null && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
             // Either create a new assessment or validate and link to existing one
             if (createEvent.getNonOCDS().getAssessmentId() == null) {
-                var newAssessmentId = assessmentService.createEmptyAssessment(project.getCaNumber(),
-                        project.getLotNumber(), createEventNonOCDS.getEventType(), principal);
+                var newAssessmentId = assessmentService.createEmptyAssessment(project.getCaNumber(), project.getLotNumber(), createEventNonOCDS.getEventType(), principal);
                 eventBuilder.assessmentId(newAssessmentId);
 
-                var validatedAssessment = assessmentService.getAssessment(
-                        newAssessmentId, Boolean.FALSE, Optional.empty());
+                var validatedAssessment = assessmentService.getAssessment(newAssessmentId, Boolean.FALSE, Optional.empty());
 
                 setRefreshSuppliersForEvent(eventBuilder, validatedAssessment);
 
                 returnAssessmentId = newAssessmentId;
                 log.debug("Created new empty assessment: {}", newAssessmentId);
             } else {
-                var validatedAssessment = assessmentService.getAssessment(
-                        createEvent.getNonOCDS().getAssessmentId(), Boolean.FALSE, Optional.empty());
+                var validatedAssessment = assessmentService.getAssessment(createEvent.getNonOCDS().getAssessmentId(), Boolean.FALSE, Optional.empty());
+
                 eventBuilder.assessmentId(validatedAssessment.getAssessmentId());
+
                 setRefreshSuppliersForEvent(eventBuilder, validatedAssessment);
+
                 returnAssessmentId = validatedAssessment.getAssessmentId();
-                log.debug("Linking existing assessment: {} to new event",
-                        validatedAssessment.getAssessmentId());
+
+                log.debug("Linking existing assessment: {} to new event", validatedAssessment.getAssessmentId());
             }
         }
 
         if (!TENDER_DB_ONLY_EVENT_TYPES.contains(ViewEventType.fromValue(eventTypeValue))) {
-//      List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
             scheduleSupplierSync = true;
+
             var createUpdateRfx = createRfxRequest(project, eventName, principal, null);
 
-            var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(),
-                    createUpdateRfx.getOperationCode());
+            var createRfxResponse = jaggaerService.createUpdateRfx(createUpdateRfx.getRfx(), createUpdateRfx.getOperationCode());
 
-            if (createRfxResponse.getReturnCode() != 0
-                    || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
+            if (createRfxResponse.getReturnCode() != 0 || !Constants.OK_MSG.equals(createRfxResponse.getReturnMessage())) {
                 log.error(createRfxResponse.toString());
-                throw new JaggaerApplicationException(createRfxResponse.getReturnCode(),
-                        createRfxResponse.getReturnMessage());
+                throw new JaggaerApplicationException(createRfxResponse.getReturnCode(), createRfxResponse.getReturnMessage());
             }
+
             log.info("Created Jaggaer (Rfx) event: {}", createRfxResponse);
+
             rfxReferenceCode = createRfxResponse.getRfxReferenceCode();
+
             eventBuilder.externalEventId(createRfxResponse.getRfxId())
-                    .externalReferenceId(createRfxResponse.getRfxReferenceCode());
+                       .externalReferenceId(createRfxResponse.getRfxReferenceCode());
+
             exportRfxResponse = getSingleRfx(createRfxResponse.getRfxId());
         }
 
@@ -267,9 +269,11 @@ public class ProcurementEventService implements EventService {
             tenderStatus = rfxStatus != null && rfxStatus.get(eventTypeValue) != null
                     ? rfxStatus.get(eventTypeValue).getValue()
                     : null;
+
             if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
                 eventBuilder.publishDate(exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
             }
+
             if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
                 eventBuilder.closeDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
             }
@@ -288,37 +292,31 @@ public class ProcurementEventService implements EventService {
             setRefreshSuppliersForEvent(eventBuilder, project.getProcurementEvents());
         }
 
-
         Integer existingEventId = existingEventOptional.isPresent() ? existingEventOptional.get().getId() : null;
 
-
-        if(!Objects.isNull(existingEventId)  ){
-
+        if(!Objects.isNull(existingEventId)) {
             if(COMPLETE_EVENT_TYPES.contains(ViewEventType.fromValue(existingEventOptional.get().getEventType()))){
                 eventBuilder.refreshSuppliers(true);
             }else{
                 eventBuilder.refreshSuppliers(false);
             }
-
         }
-
 
         var event = eventBuilder.build();
         ProcurementEvent procurementEvent;
 
         // If event is an AssessmentType - add suppliers to Tenders DB (as no event exists in Jaggaer)
-        if (!twoStageEvent && createEventNonOCDS.getEventType() != null
-                && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
-            procurementEvent = addSuppliersToTendersDB(event,
-                    supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true,
-                    principal);
+        if (!multiStageEvent && createEventNonOCDS.getEventType() != null && ASSESSMENT_EVENT_TYPES.contains(createEventNonOCDS.getEventType())) {
+            procurementEvent = addSuppliersToTendersDB(event, supplierService.getSuppliersForLot(project.getCaNumber(), project.getLotNumber()), true, principal);
         } else {
             procurementEvent = retryableTendersDBDelegate.save(event);
         }
 
         if (scheduleSupplierSync) {
-            JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, twoStageEvent, true);
-            List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue, twoStageEvent);
+            JaggaerSupplierEventData eventData = new JaggaerSupplierEventData(project.getId(), procurementEvent.getId(), eventTypeValue, existingEventId, multiStageEvent, true);
+
+            List<Supplier> suppliers = getSuppliers(project, existingEventOptional.orElse(null), eventTypeValue);
+
             if (null != suppliers && suppliers.size() > 0) {
                 if (suppliers.size() > experimentalFlags.getAsyncJaggaerSupplierCountThreshold()) {
                     asyncExecutor.submit(principal, JaggaerSupplierPush.class, eventData, "ProcurementEvent", String.valueOf(procurementEvent.getId()));
@@ -337,20 +335,20 @@ public class ProcurementEventService implements EventService {
         if (legacyFlow) {
             // For DOS6 we should use legacy AS flow.
             return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-            Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
-            TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
-        } else {
-            // NCAS-795; For non-DOS6 we should use new Q&A service flow.
-            if(questionAndAnswerService.createQuestion(eventTypeValue,
-                    procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
-                log.debug("Question has been created successfully into the QuestionAndAnswer service");
-                return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
-                        Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
-                        TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
-            }
-
-            return null;
+                Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+                TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
         }
+
+        // NCAS-795; For non-DOS6 we should use new Q&A service flow.
+        if(questionAndAnswerService.createQuestion(eventTypeValue, procurementEvent.getEventID(), project.getCaNumber(), project.getLotNumber())) {
+            log.debug("Question has been created successfully into the QuestionAndAnswer service");
+
+            return tendersAPIModelUtils.buildEventSummary(procurementEvent.getEventID(), eventName,
+                       Optional.ofNullable(rfxReferenceCode), ViewEventType.fromValue(eventTypeValue),
+                       TenderStatus.PLANNING, EVENT_STAGE, Optional.ofNullable(returnAssessmentId));
+        }
+
+        return null;
     }
 
     private void setRefreshSuppliersForEvent(ProcurementEvent.ProcurementEventBuilder eventBuilder, Set<ProcurementEvent> procurementEvents) {
@@ -379,26 +377,23 @@ public class ProcurementEventService implements EventService {
         }
     }
 
-    public List<Supplier> getSuppliers(ProcurementProject project, ProcurementEvent existingEvent,
-                                       String eventTypeValue, boolean twoStageEvent) {
+    public List<Supplier> getSuppliers(ProcurementProject project, ProcurementEvent existingEvent, String eventTypeValue) {
 
         if (null != existingEvent) {
-          //  if (existingEvent.isTendersDBOnly() || twoStageEvent) {
-                SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
-                return supplierStore.getSuppliers(existingEvent);
-          //  }
+            SupplierStore supplierStore = supplierStoreFactory.getStore(existingEvent);
+            return supplierStore.getSuppliers(existingEvent);
         }
 
-                //Get suppliers, which is needed for notifications and messaging once event is created
-            var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
-                    .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
-                    .collect(Collectors.toSet());
+        //Get suppliers, which is needed for notifications and messaging once event is created
+        var lotSuppliersOrgIds = agreementsService.getLotSuppliers(project.getCaNumber(), project.getLotNumber())
+                .stream().map(lotSupplier -> lotSupplier.getOrganization().getId())
+                .collect(Collectors.toSet());
 
-            return retryableTendersDBDelegate
-                    .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
-                        var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
-                        return Supplier.builder().companyData(companyData).build();
-                    }).collect(Collectors.toList());
+        return retryableTendersDBDelegate
+                .findOrganisationMappingByCasOrganisationIdIn(lotSuppliersOrgIds).stream().map(org -> {
+                    var companyData = CompanyData.builder().id(org.getExternalOrganisationId()).build();
+                    return Supplier.builder().companyData(companyData).build();
+                }).collect(Collectors.toList());
     }
 
     private ProcurementEvent getExistingValidEventForProject(final Integer projectId) {
@@ -674,13 +669,10 @@ public class ProcurementEventService implements EventService {
             returnAssessmentId = assessmentService.createEmptyAssessment(event.getProject().getCaNumber(),
                     event.getProject().getLotNumber(), updateEvent.getEventType(), principal);
 
-
             var validatedAssessment = assessmentService.getAssessment(
                     returnAssessmentId, Boolean.FALSE, Optional.empty());
 
             setRefreshSuppliersForEvent(event, validatedAssessment);
-
-
         } else if (updateEvent.getAssessmentId() != null) {
             // Return the existing (validated) assessmentId
             returnAssessmentId = updateEvent.getAssessmentId();
@@ -772,7 +764,6 @@ public class ProcurementEventService implements EventService {
      * @return
      */
     public EventSuppliers getSuppliers(final Integer procId, final String eventId) {
-
         log.debug("Get suppliers for event '{}'", eventId);
 
         var event = validationService.validateProjectAndEventIds(procId, eventId, null);
@@ -780,14 +771,6 @@ public class ProcurementEventService implements EventService {
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
         return supplierStore.getSuppliers(event, null);
-
-//    if (event.isTendersDBOnly()) {
-//      log.debug("Event {} is retrieved from Tenders DB only {}", event.getId(),
-//          event.getEventType());
-//      return getSuppliersFromTendersDB(event);
-//    }
-//    log.debug("Event {} is retrieved from Jaggaer {}", event.getId(), event.getEventType());
-//    return getSuppliersFromJaggaer(event);
     }
 
     /**
@@ -855,23 +838,6 @@ public class ProcurementEventService implements EventService {
         SupplierStore supplierStore = supplierStoreFactory.getStore(event);
 
         supplierStore.deleteSupplier(event, organisationId, principal);
-//
-//    // Determine Jaggaer supplier id
-//    var om = retryableTendersDBDelegate.findOrganisationMappingByOrganisationId(organisationId)
-//        .orElseThrow(() -> new IllegalArgumentException(
-//            String.format(ERR_MSG_FMT_SUPPLIER_NOT_FOUND, organisationId)));
-//
-//    /*
-//     * If Event is a Tenders DB only type, suppliers are stored in the Tenders DB only, otherwise
-//     * they are stored in Jaggaer.
-//     */
-//    if (event.isTendersDBOnly()) {
-//      log.debug("Event {} is persisted in Tenders DB only {}", event.getId(), event.getEventType());
-//      deleteSupplierFromTendersDB(event, om, principal);
-//    } else {
-//      log.debug("Event {} is persisted in Jaggaer {}", event.getId(), event.getEventType());
-//      deleteSupplierFromJaggaer(event, om);
-//    }
     }
 
     private String getDefaultEventTitle(final String projectName, final String eventType) {
@@ -1055,7 +1021,6 @@ public class ProcurementEventService implements EventService {
         documentUploadService.deleteDocument(documentUpload);
     }
 
-
     /**
      * Publish an Rfx in Jaggaer
      *
@@ -1087,6 +1052,7 @@ public class ProcurementEventService implements EventService {
         retrieveAndUploadDocuments(principal, procurementEvent);
         validationService.validatePublishDates(publishDates);
         jaggaerService.publishRfx(procurementEvent, publishDates, jaggaerUserId);
+
         // after publish get rfx details and update tender status, publish date and close date
         updateStatusAndDates(principal, procurementEvent);
     }
@@ -1193,12 +1159,12 @@ public class ProcurementEventService implements EventService {
     }
 
 
-    public void updateStatusAndDates(
-            final String principal, final ProcurementEvent procurementEvent) {
+    public void updateStatusAndDates(final String principal, final ProcurementEvent procurementEvent) {
 
         var exportRfxResponse = getSingleRfx(procurementEvent.getExternalEventId());
 
         var tenderStatus = TenderStatus.PLANNING.getValue();
+
         if (exportRfxResponse.getRfxSetting() != null) {
             var rfxStatus =
                     jaggaerAPIConfig
@@ -1213,10 +1179,12 @@ public class ProcurementEventService implements EventService {
 
         procurementEvent.setUpdatedAt(Instant.now());
         procurementEvent.setUpdatedBy(principal);
+
         if (exportRfxResponse.getRfxSetting().getPublishDate() != null) {
             procurementEvent.setPublishDate(
                     exportRfxResponse.getRfxSetting().getPublishDate().toInstant());
         }
+
         if (exportRfxResponse.getRfxSetting().getCloseDate() != null) {
             procurementEvent.setCloseDate(exportRfxResponse.getRfxSetting().getCloseDate().toInstant());
         } else {
@@ -1246,9 +1214,9 @@ public class ProcurementEventService implements EventService {
         return events.stream().map(event -> {
             TenderStatus statusCode = null;
             RfxSetting rfxSetting = null;
+
             if (event.getExternalEventId() == null) {
-                var assessment = assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE,
-                        Optional.empty());
+                var assessment = assessmentService.getAssessment(event.getAssessmentId(), Boolean.FALSE, Optional.empty());
                 statusCode = TenderStatus.fromValue(assessment.getStatus().toString().toLowerCase());
             } else {
                 rfxSetting = externalIdRfxResponseMap.get(event.getExternalEventId());
@@ -1257,6 +1225,7 @@ public class ProcurementEventService implements EventService {
                             .get(rfxSetting.getStatusCode());
                 }
             }
+
             var eventSummary = tendersAPIModelUtils.buildEventSummary(event.getEventID(),
                     event.getEventName(), Optional.ofNullable(event.getExternalReferenceId()),
                     ViewEventType.fromValue(event.getEventType()), statusCode, EVENT_STAGE,
@@ -1268,32 +1237,38 @@ public class ProcurementEventService implements EventService {
             if (Objects.nonNull(eventSummary)) {
                 eventSummary.setDashboardStatus(getDashboardStatus(rfxSetting, event));
                 eventSummary.setLastUpdated(TendersAPIModelUtils.getOffsetDateTimeFromInstant(event.getUpdatedAt()));
-                
+
                 // Set cancellation reasons if they exist
                 if (event.getCancellationReason() != null) {
                     eventSummary.setCancellationReason(event.getCancellationReason());
                 }
+
                 if (event.getCancellationReasonDetail() != null) {
                     eventSummary.setCancellationReasonDetail(event.getCancellationReasonDetail());
                 }
-                
+
                 // Set buyerExited flag and award data if they exist (for UI to show award entry link)
                 if (event.getBuyerExited() != null) {
                     eventSummary.setBuyerExited(event.getBuyerExited());
                 }
+
                 if (event.getSupplierAwarded() != null) {
                     eventSummary.setSupplierAwarded(event.getSupplierAwarded());
                 }
+
                 if (event.getContractStartDate() != null) {
                     eventSummary.setContractStartDate(TendersAPIModelUtils.getOffsetDateTimeFromInstant(event.getContractStartDate()));
                 }
+
                 if (event.getContractValue() != null) {
                     eventSummary.setContractValue(event.getContractValue());
                 }
+
                 if (event.getAwardUrl() != null) {
                     eventSummary.setAwardUrl(event.getAwardUrl());
                 }
             }
+
             updateTenderPeriod(event, rfxSetting, eventSummary);
             return eventSummary;
         }).collect(Collectors.toList());
@@ -1379,7 +1354,6 @@ public class ProcurementEventService implements EventService {
 
     private void updateTenderPeriod(ProcurementEvent event, RfxSetting rfxSetting, EventSummary eventSummary) {
         if (Objects.nonNull(rfxSetting)) {
-
             eventSummary.setTenderPeriod(getTenderPeriod(getInstantFromDate(rfxSetting.getPublishDate()), (eventSummary.getDashboardStatus().equals(DashboardStatus.CLOSED) && null != event.getCloseDate()) ? event.getCloseDate() : getInstantFromDate(rfxSetting.getCloseDate())));
 
             // there may be possibility where close date is not available from jaggaer
@@ -1391,8 +1365,6 @@ public class ProcurementEventService implements EventService {
                     (event.getPublishDate() == null) ? null : event.getPublishDate(),
                     (event.getCloseDate() == null) ? null : event.getCloseDate()));
         }
-
-
     }
 
     /**
@@ -1404,7 +1376,8 @@ public class ProcurementEventService implements EventService {
      * @return
      */
     private ProcurementEvent addSuppliersToTendersDB(final ProcurementEvent event,
-                                                     final Set<OrganisationMapping> supplierOrgMappings, final boolean overwrite,
+                                                     final Set<OrganisationMapping> supplierOrgMappings,
+                                                     final boolean overwrite,
                                                      final String principal) {
         Hibernate.initialize(event.getCapabilityAssessmentSuppliers());
 
@@ -1413,11 +1386,15 @@ public class ProcurementEventService implements EventService {
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
         }
 
-
         Set<SupplierSelection> supplierSelectionSet = supplierOrgMappings.stream().map(org -> {
-            return SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
-                    .createdAt(Instant.now()).createdBy(principal).build();
+            return SupplierSelection.builder()
+                    .organisationMapping(org)
+                    .procurementEvent(event)
+                    .createdAt(Instant.now())
+                    .createdBy(principal)
+                .build();
         }).collect(Collectors.toSet());
+
         if (Objects.nonNull(event.getCapabilityAssessmentSuppliers())) {
             event.getCapabilityAssessmentSuppliers().addAll(supplierSelectionSet);
         } else {
@@ -1495,8 +1472,8 @@ public class ProcurementEventService implements EventService {
 
             return organizationReference1;
         }
-        throw new ResourceNotFoundException(
-                String.format("Supplier not found with the given id {}", supplierId));
+
+        throw new ResourceNotFoundException(String.format("Supplier not found with the given id {}", supplierId));
     }
 
     DocumentUpload findDocumentUploadInEvent(final ProcurementEvent event, final String documentId) {
@@ -1754,7 +1731,6 @@ public class ProcurementEventService implements EventService {
     }
 
     public DocumentAttachment downloadAttachment(final Integer attachmentId, final String fileName) {
-
         var docAttachment = jaggaerService.getDocument(attachmentId, fileName);
         return DocumentAttachment.builder().fileName(fileName)
                 .contentType(docAttachment.getContentType()).data(docAttachment.getData()).build();
@@ -1768,14 +1744,12 @@ public class ProcurementEventService implements EventService {
     }
 
     private List<AttachmentInfo> getAttachmentInfoForParameter(final Parameter parameter) {
-
         return parameter.getValues().getValue().stream()
                 .map(value -> AttachmentInfo.builder().parameterId(parameter.getParameterId())
                         .attachmentId(value.getId()).attachmentName(value.getValue())
                         .secureToken(value.getSecureToken()).build())
                 .collect(Collectors.toList());
     }
-
 
     private ExportRfxResponse getSingleRfx(final String externalEventId) {
         return jaggaerService.searchRFx(Set.of(externalEventId)).stream().findFirst().orElseThrow(
@@ -1791,9 +1765,6 @@ public class ProcurementEventService implements EventService {
         return exportRfxResponse;
     }
 
-
-
-
     /**
      * Sign Contract
      *
@@ -1802,19 +1773,24 @@ public class ProcurementEventService implements EventService {
      * @param principal
      */
     @Transactional
-    public void signProcurement(final Integer procId, final String eventId, final Contract request,
-                                final String principal) {
+    public void signProcurement(final Integer procId, final String eventId, final Contract request, final String principal) {
         var user = userProfileService.resolveBuyerUserProfile(principal)
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
+
         var event = validationService.validateProjectAndEventIds(procId, eventId, null);
+
         awardService.getAwardOrPreAwardDetails(procId, eventId, AwardState.AWARD);
+
         event.setTenderStatus(COMPLETE_STATUS);
         event.setUpdatedBy(principal);
         event.setUpdatedAt(Instant.now());
+
         retryableTendersDBDelegate.save(event);
+
         var contractDetails =
                 ContractDetails.builder().awardId(request.getAwardID()).contractStatus(request.getStatus())
                         .createdBy(user.getEmail()).createdAt(Instant.now()).event(event).build();
+
         retryableTendersDBDelegate.save(contractDetails);
     }
 
@@ -1830,31 +1806,29 @@ public class ProcurementEventService implements EventService {
                 .orElseThrow(() -> new AuthorisationFailureException(ERR_MSG_JAGGAER_USER_NOT_FOUND));
         var event = validationService.validateProjectAndEventIds(procId, eventId, null);
 
-        // Check if event has completed status
-        var eventStatus = event.getTenderStatus();
-        if (!COMPLETE_STATUS.equals(eventStatus)) {
+        if (!COMPLETE_STATUS.equals(event.getTenderStatus())) {
             return null;
         }
 
         // Check for contract exists before proceeding
         var awardDetails = retryableTendersDBDelegate.findByEventId(event.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(CONTRACT_DETAILS_NOT_FOUND));
+
         return new Contract().id(awardDetails.getContractId()).awardID(awardDetails.getAwardId())
                 .dateSigned(awardDetails.getCreatedAt())
                 .status(awardDetails.getContractStatus());
     }
 
-
     private void retrieveAndUploadDocuments(String principal, ProcurementEvent procurementEvent) {
         List<RetrieveDocumentCallable> retrieveDocumentCallableList = procurementEvent.getDocumentUploads().stream().filter(du -> VirusCheckStatus.SAFE == du.getExternalStatus()).map(documentUpload -> new RetrieveDocumentCallable(documentUploadService, documentUpload, principal)).toList();
         List<Future<Map<DocumentUpload, ByteArrayMultipartFile>>> retriveDocumentfutures = null;
+
         try {
             retriveDocumentfutures = executorService.invokeAll(retrieveDocumentCallableList);
         } catch (InterruptedException e) {
             // TODO : Handle this and propagate your response properly
             throw new RuntimeException(e);
         }
-
 
         List<DocumentUploadCallable> documentUploadCallableList = new ArrayList<>();
 
@@ -1874,19 +1848,18 @@ public class ProcurementEventService implements EventService {
         });
 
         try {
-
             jaggerUploadExecutorService.invokeAll(documentUploadCallableList);
-
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
-    
+
     public void startEvaluation(final String profile, final Integer procId, final String eventId) {
       var procurementEvent = validationService.validateProjectAndEventIds(procId, eventId, null);
+
       var buyerUser = userProfileService.resolveBuyerUserProfile(profile)
           .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND));
+
       jaggaerService.startEvaluation(procurementEvent, buyerUser.getUserId());
     }
-
 }
