@@ -186,7 +186,7 @@ public class TendersAPIModelUtils {
           && Constants.TENDER_DB_ONLY_EVENT_TYPES.contains(
               ViewEventType.fromValue(procurementEvent.getEventType()))) {
         // NCAS-1117: SAS Event status should be IN_PROGRESS
-        return DashboardStatus.IN_PROGRESS;
+        return DashboardStatus.ASSESSMENT;
       } else // TODO: Event types: EOI,RFI,FC OR DA etc
       if (null!=procurementEvent.getEventType()
           && Constants.TENDER_NON_DB_EVENT_TYPES.contains(
