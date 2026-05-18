@@ -30,7 +30,6 @@ import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
-import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
