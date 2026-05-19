@@ -984,7 +984,6 @@ public class DocGenService {
 
         if (stageDataList == null || stageDataList.isEmpty()) return "";
 
-        // Use the first entry as Foundation
         Map<String, Object> stage1Data = stageDataList.getFirst();
         ObjectNode baseRoot = (ObjectNode) objectMapper.readTree((String) stage1Data.get(PAYLOAD_TAG));
         ArrayNode baseCriteria = (ArrayNode) baseRoot.get(CRITERIA);
@@ -1000,56 +999,78 @@ public class DocGenService {
 
         if (targetRequirementGroups == null) return objectMapper.writeValueAsString(baseRoot);
 
-        // Initial indices for IDs and Order
-        int nextCopSuffix = 1;
-        int nextAcSuffix = 1;
         int nextOrder = 1;
 
-        // Process ALL stages (including the first one) to ensure they all get the same treatment
-        for (int i = 0; i < stageDataList.size(); i++) {
-            Map<String, Object> currentData = stageDataList.get(i);
+        for (Map<String, Object> currentData : stageDataList) {
             String payload = (String) currentData.get(PAYLOAD_TAG);
             int stageNum = (Integer) currentData.get(STAGE_NUMBER_TAG);
             int totalStages = (Integer) currentData.get(TOTAL_STAGES_TAG);
             String stageDesc = (String) currentData.get(STAGE_DESCRIPTION_TAG);
 
-            // Unique IDs for each stage's groups
-            String newCopId = "Group 1." + (nextCopSuffix++);
-            String newAcId = "Group 2." + (nextAcSuffix++);
+            JsonNode rootNode = objectMapper.readTree(payload);
+            JsonNode criteriaArray = rootNode.path(CRITERIA);
 
-            // Rename and Inject metadata for both COP and AC groups
-            appendRenameAndInject(payload, "Group 1", newCopId, targetRequirementGroups, stageNum, totalStages, stageDesc, nextOrder++);
-            appendRenameAndInject(payload, "Group 2", newAcId, targetRequirementGroups, stageNum, totalStages, stageDesc, nextOrder++);
+            if (criteriaArray.isArray()) {
+                for (JsonNode criterion : criteriaArray) {
+                    if (CRITERION2.equals(criterion.path(ID).asText())) {
+                        JsonNode sourceGroups = criterion.path(REQUIREMENT_GROUPS);
+
+                        if (sourceGroups.isArray()) {
+                            for (JsonNode group : sourceGroups) {
+                                String originalGroupId = group.path(OCDS).path(ID).asText();
+                                JsonNode requirementsArray = group.path(OCDS).path(REQUIREMENTS);
+
+                                if (!requirementsArray.isArray() || requirementsArray.isEmpty()) {
+                                    continue;
+                                }
+
+                                if (originalGroupId.equals("Group 1") || originalGroupId.equals("Group 2")) {
+                                    JsonNode firstRequirementOptions = requirementsArray.get(0).path(NON_OCDS).path(OPTIONS);
+                                    if (firstRequirementOptions.isArray() && !firstRequirementOptions.isEmpty()) {
+                                        String questionTextValue = firstRequirementOptions.get(0).path(VALUE).asText();
+
+                                        if (!StringUtils.hasText(questionTextValue)) {
+                                            continue;
+                                        }
+                                    } else {
+                                        continue;
+                                    }
+                                }
+
+                                ObjectNode clonedGroup = group.deepCopy();
+                                String stageAdjustedId = null;
+
+                                if (originalGroupId.equals("Group 1") || originalGroupId.startsWith("Group 1.")) {
+                                    stageAdjustedId = originalGroupId.equals("Group 1")
+                                            ? "Group 1." + stageNum
+                                            : originalGroupId;
+                                }
+                                else if (originalGroupId.equals("Group 2") || originalGroupId.startsWith("Group 2.")) {
+                                    stageAdjustedId = originalGroupId.equals("Group 2")
+                                            ? "Group 2." + stageNum
+                                            : originalGroupId;
+                                }
+
+                                if (stageAdjustedId != null) {
+                                    ((ObjectNode) clonedGroup.path(OCDS)).put(ID, stageAdjustedId);
+                                    ((ObjectNode) clonedGroup.path(NON_OCDS)).put(ORDER, nextOrder++);
+
+                                    ArrayNode reqs = clonedGroup.path(OCDS).withArray(REQUIREMENTS);
+                                    addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
+                                    addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
+                                    addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
+
+                                    targetRequirementGroups.add(clonedGroup);
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
         }
 
         return objectMapper.writeValueAsString(baseRoot);
-    }
-
-    private void appendRenameAndInject(String sourceJson, String sourceId, String newId,
-                                       ArrayNode targetArray, int currentNum, int total,
-                                       String stageDesc, int newOrder) {
-        try {
-            String jsonPath = String.format(MULTI_STAGE_JSON_PATH, sourceId);
-            List<Map<String, Object>> result = JsonPath.read(sourceJson, jsonPath);
-
-            if (result != null && !result.isEmpty()) {
-                ObjectNode groupNode = objectMapper.valueToTree(result.getFirst());
-
-                ((ObjectNode) groupNode.path(OCDS)).put(ID, newId);
-                ((ObjectNode) groupNode.path(NON_OCDS)).put(ORDER, newOrder);
-
-                ObjectNode ocdsPart = (ObjectNode) groupNode.path(OCDS);
-                ArrayNode reqs = ocdsPart.withArray(REQUIREMENTS);
-
-                addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(currentNum));
-                addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(total));
-                addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
-
-                targetArray.add(groupNode);
-            }
-        } catch (Exception e) {
-            log.error("Failed to append group {} as {} for stage {}", sourceId, newId, currentNum, e);
-        }
     }
 
     private void addVirtualRequirement(ArrayNode requirements, String title, String value) {

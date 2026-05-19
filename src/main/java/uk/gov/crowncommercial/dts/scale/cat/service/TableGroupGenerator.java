@@ -740,21 +740,24 @@ public class TableGroupGenerator {
     }
 
     private boolean hasRealAnswers(Map<String, Object> rg) {
+
         try {
             List<Map<String, Object>> requirements = (List<Map<String, Object>>) ((Map)rg.get("OCDS")).get("requirements");
 
             return requirements.stream().anyMatch(r -> {
                 String rid = (String) ((Map)r.get("OCDS")).get("id");
 
-                // Do not count stage metadata as a "Real Answer"
                 if (Arrays.asList(CURRENT_STAGE, TOTAL_STAGES, STAGE_DESCRIPTION).contains(rid)) {
+                    return false;
+                }
+
+                if (rid == null || !rid.startsWith("Question 1")) {
                     return false;
                 }
 
                 Map<String, Object> nonOcds = (Map<String, Object>) r.get("nonOCDS");
                 List<Map<String, Object>> options = (List<Map<String, Object>>) nonOcds.get("options");
 
-                // A "Real Answer" is where select is true and value is not blank
                 return options != null && options.stream().anyMatch(o ->
                         Boolean.TRUE.equals(o.get("select")) &&
                                 o.get("value") != null &&
