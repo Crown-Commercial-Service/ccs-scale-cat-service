@@ -63,9 +63,6 @@ spring:
     multipart:
       max-file-size: 300MB
       max-request-size: 300MB
-  http:
-    converters:
-      preferred-json-mapper: jackson2
 
 # Error pathing config
 server:
