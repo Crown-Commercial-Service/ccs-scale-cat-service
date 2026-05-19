@@ -160,12 +160,11 @@ public class DocumentTemplateService {
   */
   public List<DocumentAttachment> getDraftDocumentsForMultiStage(final Integer procId,
                                                                  final String eventId,
-                                                                 final DocumentKey documentKey,
-                                                                 final boolean isLastStage) {
+                                                                 final DocumentKey documentKey) {
     var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
 
-    return docGenService.generateDocumentForMultiStage(event, documentTemplate, isLastStage);
+    return docGenService.generateDocumentForMultiStage(event, documentTemplate);
   }
 
   private String getFileName(ProcurementEvent event, DocumentKey documentKey) {
