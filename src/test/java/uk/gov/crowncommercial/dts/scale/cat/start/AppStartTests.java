@@ -4,13 +4,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.opensearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.AWSS3Service;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.OpensearchService;
+import uk.gov.crowncommercial.dts.scale.cat.config.paas.VCAPServices;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.service.*;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentScoreExportService;
@@ -129,6 +132,15 @@ public class AppStartTests {
 
     @MockitoBean
     SearchProjectRepo searchProjectRepo;
+
+    @MockitoBean
+    VCAPServices vcapServices;
+
+    @MockitoBean
+    AWSS3Service awss3Service;
+
+    @MockitoBean
+    OpensearchService opensearchService;
 
     @Test
     public void testAppStarts() {

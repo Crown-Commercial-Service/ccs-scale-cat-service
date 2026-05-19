@@ -8,7 +8,7 @@ import java.util.Optional;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ValidationException;
-import org.springframework.boot.web.servlet.error.ErrorController;
+import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -168,7 +168,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     var logErrorMsg =
         String.format("Error invoking upstream service [%s], received status: [%d], body: [%s]",
-            invokedService, exception.getRawStatusCode(), exception.getResponseBodyAsString());
+            invokedService, exception.getStatusCode().value(), exception.getResponseBodyAsString());
 
     log.error(logErrorMsg, exception);
 
