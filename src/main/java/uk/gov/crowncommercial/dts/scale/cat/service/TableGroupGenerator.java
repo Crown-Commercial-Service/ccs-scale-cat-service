@@ -30,6 +30,7 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
@@ -682,58 +683,176 @@ public class TableGroupGenerator {
      * stage details are injected on the fly programmatically
      *
      */
-    public void fillMultiStageTableData(String eventData,
-                                        DocumentTemplateSource templateSource,
-                                        TextDocument textODT) {
-        if (!StringUtils.hasText(eventData)) return;
+    @SuppressWarnings("unchecked")
+    public void fillMultiStageTableData(final String eventData,
+                                        final DocumentTemplateSource templateSource,
+                                        final TextDocument textODT) {
 
-        String tableName = templateSource.getTableName();
-        List<FieldMapping> mappings = getCombinedMappings(tableName);
-        String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
+        if (!StringUtils.hasText(eventData)) {
+            log.warn("Failed to insert template data as eventData is empty.");
+            return;
+        }
 
-        List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
-        if (requirementGroups.isEmpty()) return;
+        final String tableName = templateSource.getTableName();
+        final List<FieldMapping> mappings = getCombinedMappings(tableName);
+        final String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
 
-        Table prototype = textODT.getTableByName(tableName);
-        if (prototype == null) return;
-        TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
+        final List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
+        if (requirementGroups.isEmpty()) {
+            log.warn("Failed to insert template data as requirementGroups is empty.");
+            return;
+        }
 
-        // Look for real answers
-        LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
-        for (Map<String, Object> rg : requirementGroups) {
-            if (hasRealAnswers(rg)) { // The Gatekeeper
-                String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
+        final Table prototype = textODT.getTableByName(tableName);
+        if (prototype == null) {
+            log.warn("Failed to insert template data as Table prototype is null.");
+            return;
+        }
+        final TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
+
+        final LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
+        for (final Map<String, Object> rg : requirementGroups) {
+            if (hasRealAnswers(rg)) {
+                final String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
                 stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
             }
         }
 
         if (stageBuckets.isEmpty()) {
             prototype.remove();
+            log.warn("stageBuckets is empty.");
             return;
         }
+
+        final Pattern tokenCleanupPattern = Pattern.compile("«[^»]*»|«[^”]*”");
 
         TableTableElement lastTableElem = prototype.getOdfElement();
         int stageCount = 1;
 
-        for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
-            List<Map<String, Object>> stageGroups = entry.getValue();
+        for (final Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
+            final List<Map<String, Object>> stageGroups = entry.getValue();
+            if (stageGroups.isEmpty()) {
+                continue;
+            }
 
-            Map<String, Object> firstGroup = stageGroups.getFirst();
-            String stageNum = entry.getKey();
-            String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
-            String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
-            String groupTitle = extractSelectedGroupName(firstGroup);
+            final Map<String, Object> firstGroup = stageGroups.getFirst();
+            final String stageNum = entry.getKey();
+            final String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
+            final String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
+            final String groupTitle = extractSelectedGroupName(firstGroup);
 
-            Table currentTable;
+            final Table currentTable;
             if (stageCount == 1) {
                 currentTable = prototype;
                 insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
             } else {
-                TextPElement lastAddedElem = insertHeadersAfterElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
+                final TextPElement lastAddedElem = insertHeadersAfterElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
                 currentTable = cloneTableAfterParagraph(textODT, snapshot, lastAddedElem, tableName + "_Stage_" + stageNum);
             }
 
-            fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
+            final int anchorIdx = findRowContaining(currentTable, anchorPlaceholder);
+            if (anchorIdx >= 0) {
+                final Map<String, String> titleToPlaceholder = new HashMap<>();
+                for (final FieldMapping m : mappings) {
+                    titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
+                }
+
+                String questionPlaceholderTag = mappings.stream().map(FieldMapping::getPlaceholder)
+                        .filter(ph -> ph != null && (ph.contains("question") || ph.contains("quest")))
+                        .findFirst().orElse("«cop_question»");
+
+                final List<Integer> blockIdxs = findTemplateBlockRowIndexes(currentTable, anchorIdx);
+                final List<Row> templateRows = blockIdxs.stream().map(currentTable::getRowByIndex).toList();
+                final int numberColIdx = findNumberColumnIndex(currentTable);
+                int counter = 1;
+
+                for (final Map<String, Object> rgMap : stageGroups) {
+                    final List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, titleToPlaceholder.values());
+
+                    for (final Map<String, String> rowMap : rows) {
+
+                        final Map<String, Object> ocds = (Map<String, Object>) rgMap.get("OCDS");
+                        if (ocds != null) {
+                            final List<Map<String, Object>> requirements = (List<Map<String, Object>>) ocds.get("requirements");
+                            if (requirements != null) {
+
+                                requirements.stream()
+                                        .filter(Objects::nonNull)
+                                        .map(req -> (Map<String, Object>) req.get("OCDS"))
+                                        .filter(reqOcds -> reqOcds != null && "Enter your question".equalsIgnoreCase((String) reqOcds.get("title")))
+                                        .findFirst()
+                                        .ifPresent(reqOcds -> {
+                                            // Backtrace safely to parents avoiding out of bound indexes
+                                            requirements.stream()
+                                                    .filter(r -> r != null && reqOcds.equals(r.get("OCDS")))
+                                                    .findFirst()
+                                                    .ifPresent(matchedReq -> {
+                                                        final Map<String, Object> nonOcds = (Map<String, Object>) matchedReq.get("nonOCDS");
+                                                        final List<Map<String, Object>> options = nonOcds == null ? null : (List<Map<String, Object>>) nonOcds.get("options");
+
+                                                        if (options != null && !options.isEmpty()) {
+                                                            final Object textValueObj = options.getFirst().get("value");
+                                                            if (textValueObj != null && StringUtils.hasText(textValueObj.toString())) {
+                                                                rowMap.put(questionPlaceholderTag, textValueObj.toString().trim());
+                                                            }
+                                                        }
+                                                    });
+                                        });
+                            }
+                        }
+
+                        final List<Row> newlyAddedBlockRows = new ArrayList<>(templateRows.size());
+
+                        // Duplicate the cohesive layout row block parameters
+                        for (final Row templateRow : templateRows) {
+                            newlyAddedBlockRows.add(appendClonedRow(currentTable, templateRow));
+                        }
+
+                        // Update string structures concurrently using secure, non-backtracking passes
+                        for (final Row newRow : newlyAddedBlockRows) {
+                            final int cols = newRow.getTable().getColumnCount();
+                            for (int c = 0; c < cols; c++) {
+                                final Cell cell = newRow.getCellByIndex(c);
+                                try {
+                                    final String txt = cell.getOdfElement().getTextContent();
+                                    if (txt == null || !txt.contains(TOKEN_L) || !txt.contains(TOKEN_R)) {
+                                        continue;
+                                    }
+
+                                    String out = txt;
+                                    for (final Map.Entry<String, String> edge : rowMap.entrySet()) {
+                                        final String replacement = edge.getValue() == null ? "" : edge.getValue();
+                                        out = out.replace(edge.getKey(), replacement);
+                                    }
+
+                                    // Secure cleanup pass guarding against ReDoS vulnerabilities
+                                    if (out.contains(TOKEN_L) && out.contains(TOKEN_R)) {
+                                        out = tokenCleanupPattern.matcher(out).replaceAll("");
+                                    }
+
+                                    if (!out.equals(txt)) {
+                                        cell.removeTextContent();
+                                        cell.setStringValue(out);
+                                    }
+                                } catch (Exception ex) {
+                                    log.debug("Gracefully skipped rendering variance in column grid segment {}", c);
+                                }
+                            }
+
+                            if (numberColIdx >= 0) {
+                                setCellTextIfNotCovered(newRow, numberColIdx, String.valueOf(counter));
+                            }
+                        }
+                        counter++;
+                    }
+                }
+
+                // Delete raw anchor placeholders from bottom to prevent index shifting
+                for (int i = blockIdxs.size() - 1; i >= 0; i--) {
+                    currentTable.removeRowsByIndex(blockIdxs.get(i), 1);
+                }
+            }
+
             lastTableElem = currentTable.getOdfElement();
             stageCount++;
         }
