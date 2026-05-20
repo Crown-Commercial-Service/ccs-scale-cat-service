@@ -9,10 +9,13 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.odftoolkit.odfdom.dom.element.table.TableCoveredTableCellElement;
+import org.odftoolkit.odfdom.dom.element.table.TableTableCellElement;
 import org.odftoolkit.odfdom.dom.element.table.TableTableElement;
+import org.odftoolkit.odfdom.dom.element.table.TableTableRowElement;
 import org.odftoolkit.odfdom.dom.element.text.TextPElement;
 import org.odftoolkit.odfdom.pkg.OdfElement;
 import org.odftoolkit.odfdom.pkg.OdfFileDom;
+import org.odftoolkit.odfdom.type.Color;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
@@ -30,6 +33,7 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
@@ -49,6 +53,9 @@ public class TableGroupGenerator {
     private static final String TOTAL_STAGES = "TOTAL_STAGES";
     private static final String TEXT_FONT_NAME = "Arial";
     private static final double TEXT_FONT_SIZE = 12.0;
+    private static final String TOKEN_CLEAN_PATTERN_REGEX = "«[^»]*»|«[^”]*”";
+    private static final String COP_QUESTION_ANCHOR_TAG = "«cop_question»";
+    private static final String QUESTION_TITLE = "Enter your question";
 
     private final ObjectMapper objectMapper;
 
@@ -682,79 +689,279 @@ public class TableGroupGenerator {
      * stage details are injected on the fly programmatically
      *
      */
-    public void fillMultiStageTableData(String eventData,
-                                        DocumentTemplateSource templateSource,
-                                        TextDocument textODT) {
-        if (!StringUtils.hasText(eventData)) return;
+    public void fillMultiStageTableData(final String eventData,
+                                        final DocumentTemplateSource templateSource,
+                                        final TextDocument textODT) {
 
-        String tableName = templateSource.getTableName();
-        List<FieldMapping> mappings = getCombinedMappings(tableName);
-        String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
-
-        List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
-        if (requirementGroups.isEmpty()) return;
-
-        Table prototype = textODT.getTableByName(tableName);
-        if (prototype == null) return;
-        TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
-
-        // Look for real answers
-        LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
-        for (Map<String, Object> rg : requirementGroups) {
-            if (hasRealAnswers(rg)) { // The Gatekeeper
-                String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
-                stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
-            }
-        }
-
-        if (stageBuckets.isEmpty()) {
-            prototype.remove();
+        if (!StringUtils.hasText(eventData)) {
+            log.warn("Unable to fill multi stage table data as eventData is empty");
             return;
         }
 
+        final String tableName = templateSource.getTableName();
+        final List<FieldMapping> mappings = getCombinedMappings(tableName);
+        final String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
+
+        final List<Map<String, Object>> requirementGroups =
+                readRequirementGroups(eventData, templateSource.getSourcePath());
+
+        if (requirementGroups.isEmpty()) {
+            log.warn("Unable to fill multi stage table data as requirementGroups is empty");
+            return;
+        }
+
+        final Table prototype = textODT.getTableByName(tableName);
+        if (prototype == null) {
+            log.warn("Unable to fill multi stage table data as prototype is null");
+            return;
+        }
+        final TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
+
+        final LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = bucketGroupsByStage(requirementGroups);
+        if (stageBuckets.isEmpty()) {
+            prototype.remove();
+            log.warn("Unable to fill multi stage table data as stageBuckets is empty");
+            return;
+        }
+
+        final Pattern tokenCleanupPattern = Pattern.compile(TOKEN_CLEAN_PATTERN_REGEX);
         TableTableElement lastTableElem = prototype.getOdfElement();
         int stageCount = 1;
 
-        for (Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
-            List<Map<String, Object>> stageGroups = entry.getValue();
+        for (final Map.Entry<String, List<Map<String, Object>>> entry : stageBuckets.entrySet()) {
+            final List<Map<String, Object>> stageGroups = entry.getValue();
+            if (stageGroups.isEmpty()) continue;
 
-            Map<String, Object> firstGroup = stageGroups.getFirst();
-            String stageNum = entry.getKey();
-            String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
-            String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
-            String groupTitle = extractSelectedGroupName(firstGroup);
+            final Table currentTable = createOrResolveStageTable(textODT,
+                    snapshot, lastTableElem, tableName, entry.getKey(), stageGroups, stageCount == 1);
 
-            Table currentTable;
-            if (stageCount == 1) {
-                currentTable = prototype;
-                insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
-            } else {
-                TextPElement lastAddedElem = insertHeadersAfterElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages, groupTitle);
-                currentTable = cloneTableAfterParagraph(textODT, snapshot, lastAddedElem, tableName + "_Stage_" + stageNum);
+            final int anchorIdx = findRowContaining(currentTable, anchorPlaceholder);
+            if (anchorIdx >= 0) {
+                renderStageTableRows(currentTable, stageGroups, mappings, anchorIdx, tokenCleanupPattern);
             }
 
-            fillOneTableStandard(currentTable, stageGroups, anchorPlaceholder, mappings);
             lastTableElem = currentTable.getOdfElement();
             stageCount++;
         }
     }
 
+    /**
+     * Groups active requirement records by their respective stages.
+     */
+    private LinkedHashMap<String, List<Map<String, Object>>> bucketGroupsByStage(final List<Map<String, Object>> groups) {
+        final LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = new LinkedHashMap<>();
+        for (final Map<String, Object> rg : groups) {
+            if (hasRealAnswers(rg)) {
+                final String stageNum = extractMetadataValue(rg, CURRENT_STAGE);
+                stageBuckets.computeIfAbsent(stageNum, k -> new ArrayList<>()).add(rg);
+            }
+        }
+        return stageBuckets;
+    }
+
+    /**
+     * Initializes headers and registers standalone table clones on the canvas.
+     */
+    private Table createOrResolveStageTable(final TextDocument textODT,
+                                            final TableTableElement snapshot,
+                                            final TableTableElement lastTableElem,
+                                            final String tableName,
+                                            final String stageNum,
+                                            final List<Map<String, Object>> stageGroups,
+                                            final boolean isFirstStage) {
+
+        final Map<String, Object> firstGroup = stageGroups.getFirst();
+        final String stageDesc = extractMetadataValue(firstGroup, STAGE_DESCRIPTION);
+        final String totalStages = extractMetadataValue(firstGroup, TOTAL_STAGES);
+
+        if (isFirstStage) {
+            insertHeadersAboveElement(textODT, snapshot, lastTableElem, stageDesc, stageNum, totalStages);
+            return textODT.getTableByName(tableName);
+        } else {
+            final TextPElement lastAddedElem = insertHeadersAfterElement(textODT, snapshot, lastTableElem,
+                    stageDesc, stageNum, totalStages);
+            return cloneTableAfterParagraph(textODT, snapshot, lastAddedElem, tableName + "_Stage_" + stageNum);
+        }
+    }
+
+    /**
+     * Handles layout generation loops across active stage records.
+     */
+    private void renderStageTableRows(final Table currentTable,
+                                      final List<Map<String, Object>> stageGroups,
+                                      final List<FieldMapping> mappings,
+                                      final int anchorIdx,
+                                      final Pattern cleanupPattern) {
+
+        final Map<String, String> titleToPlaceholder = new HashMap<>();
+        for (final FieldMapping m : mappings) titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
+
+        final String questionPlaceholderTag = mappings.stream()
+                .map(FieldMapping::getPlaceholder)
+                .filter(ph -> ph != null && (ph.contains("question") || ph.contains("quest")))
+                .findFirst().orElse(COP_QUESTION_ANCHOR_TAG);
+
+        final List<Integer> blockIdxs = findTemplateBlockRowIndexes(currentTable, anchorIdx);
+        final List<Row> templateRows = blockIdxs.stream().map(currentTable::getRowByIndex).toList();
+        final int numberColIdx = findNumberColumnIndex(currentTable);
+
+        int counter = 1;
+        String lastProcessedGroupTitle = null;
+
+        for (final Map<String, Object> rgMap : stageGroups) {
+            final List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, titleToPlaceholder.values());
+
+            for (final Map<String, String> rowMap : rows) {
+                injectPrimaryQuestionTextValue(rgMap, rowMap, questionPlaceholderTag);
+
+                final String currentGroupItemTitle = extractSelectedGroupName(rgMap);
+                if (StringUtils.hasText(currentGroupItemTitle) && !currentGroupItemTitle.equals(lastProcessedGroupTitle)) {
+                    injectInlineHeaderBannerRow(currentTable, templateRows, currentGroupItemTitle);
+                    lastProcessedGroupTitle = currentGroupItemTitle;
+                    counter = 1;
+                }
+
+                final List<Row> newlyAddedBlockRows = new ArrayList<>(templateRows.size());
+                for (final Row templateRow : templateRows) {
+                    newlyAddedBlockRows.add(appendClonedRow(currentTable, templateRow));
+                }
+
+                for (final Row newRow : newlyAddedBlockRows) {
+                    renderBlockMatrixRowCells(newRow, rowMap, cleanupPattern);
+                    if (numberColIdx >= 0) setCellTextIfNotCovered(newRow, numberColIdx, String.valueOf(counter));
+                }
+                counter++;
+            }
+        }
+
+        for (int i = blockIdxs.size() - 1; i >= 0; i--) {
+            currentTable.removeRowsByIndex(blockIdxs.get(i), 1);
+        }
+    }
+
+    /**
+     * Intercepts and extracts nested question options data cleanly.
+     */
+    @SuppressWarnings("unchecked")
+    private void injectPrimaryQuestionTextValue(final Map<String, Object> rgMap,
+                                                final Map<String, String> rowMap,
+                                                final String placeholderTag) {
+
+        final Map<String, Object> ocds = (Map<String, Object>) rgMap.get("OCDS");
+        if (ocds == null) return;
+        final List<Map<String, Object>> requirements = (List<Map<String, Object>>) ocds.get("requirements");
+        if (requirements == null) return;
+
+        requirements.stream()
+                .filter(Objects::nonNull)
+                .map(req -> (Map<String, Object>) req.get("OCDS"))
+                .filter(reqOcds -> reqOcds != null
+                        && QUESTION_TITLE.equalsIgnoreCase((String) reqOcds.get("title")))
+                .findFirst()
+                .ifPresent(reqOcds -> requirements.stream()
+                        .filter(r -> r != null && reqOcds.equals(r.get("OCDS")))
+                        .findFirst()
+                        .ifPresent(matchedReq -> {
+                            final Map<String, Object> nonOcds = (Map<String, Object>) matchedReq.get("nonOCDS");
+                            final List<Map<String, Object>> options = nonOcds == null ? null
+                                    : (List<Map<String, Object>>) nonOcds.get("options");
+                            if (options != null && !options.isEmpty()) {
+                                final Object val = options.getFirst().get("value");
+                                if (val != null && StringUtils.hasText(val.toString())) {
+                                    rowMap.put(placeholderTag, val.toString().trim());
+                                }
+                            }
+                        }));
+    }
+
+    /**
+     * Programmatically forces cell splitting structures to create full-width merged rows.
+     */
+    private void injectInlineHeaderBannerRow(final Table currentTable,
+                                             final List<Row> templateRows,
+                                             final String titleText) {
+
+        try {
+            if (templateRows.isEmpty()) return;
+            final int totalColumns = currentTable.getColumnCount();
+
+            Row groupHeaderBannerRow = appendClonedRow(currentTable, templateRows.getFirst());
+            TableTableRowElement bannerRowElem = groupHeaderBannerRow.getOdfElement();
+
+            while (bannerRowElem.hasChildNodes()) {
+                bannerRowElem.removeChild(bannerRowElem.getFirstChild());
+            }
+
+            OdfFileDom ownerDom = (OdfFileDom) bannerRowElem.getOwnerDocument();
+            TableTableCellElement spanningCellNode = new TableTableCellElement(ownerDom);
+            spanningCellNode.setTableNumberColumnsSpannedAttribute(totalColumns);
+            bannerRowElem.appendChild(spanningCellNode);
+
+            Cell simpleBannerCell = Cell.getInstance(spanningCellNode);
+            if (simpleBannerCell != null) {
+                simpleBannerCell.removeTextContent();
+                simpleBannerCell.setStringValue(titleText.trim());
+                simpleBannerCell.getFont().setSize(TEXT_FONT_SIZE);
+                simpleBannerCell.getFont().setFamilyName(TEXT_FONT_NAME);
+                simpleBannerCell.setCellBackgroundColor(new Color("#F3F4F6"));
+            }
+        } catch (Exception ex) {
+            log.debug("Skipped inline table header banner row generation variance pass.", ex);
+        }
+    }
+
+    /**
+     * Iterates cell margins to map placeholder text data variables safely.
+     */
+    private void renderBlockMatrixRowCells(final Row newRow,
+                                           final Map<String, String> rowMap,
+                                           final Pattern cleanupPattern) {
+
+        final int cols = newRow.getTable().getColumnCount();
+        for (int c = 0; c < cols; c++) {
+            final Cell cell = newRow.getCellByIndex(c);
+            try {
+                final String txt = cell.getOdfElement().getTextContent();
+                if (txt == null || !txt.contains(TOKEN_L) || !txt.contains(TOKEN_R)) continue;
+
+                String out = txt;
+                for (final Map.Entry<String, String> edge : rowMap.entrySet()) {
+                    out = out.replace(edge.getKey(), edge.getValue() == null ? "" : edge.getValue());
+                }
+
+                if (out.contains(TOKEN_L) && out.contains(TOKEN_R)) {
+                    out = cleanupPattern.matcher(out).replaceAll("");
+                }
+
+                if (!out.equals(txt)) {
+                    cell.removeTextContent();
+                    cell.setStringValue(out);
+                }
+            } catch (Exception ex) {
+                log.debug("Gracefully skipped rendering variance in column grid segment {}", c);
+            }
+        }
+    }
+
     private boolean hasRealAnswers(Map<String, Object> rg) {
+
         try {
             List<Map<String, Object>> requirements = (List<Map<String, Object>>) ((Map)rg.get("OCDS")).get("requirements");
 
             return requirements.stream().anyMatch(r -> {
                 String rid = (String) ((Map)r.get("OCDS")).get("id");
 
-                // Do not count stage metadata as a "Real Answer"
                 if (Arrays.asList(CURRENT_STAGE, TOTAL_STAGES, STAGE_DESCRIPTION).contains(rid)) {
+                    return false;
+                }
+
+                if (rid == null || !rid.startsWith("Question 1")) {
                     return false;
                 }
 
                 Map<String, Object> nonOcds = (Map<String, Object>) r.get("nonOCDS");
                 List<Map<String, Object>> options = (List<Map<String, Object>>) nonOcds.get("options");
 
-                // A "Real Answer" is where select is true and value is not blank
                 return options != null && options.stream().anyMatch(o ->
                         Boolean.TRUE.equals(o.get("select")) &&
                                 o.get("value") != null &&
@@ -771,8 +978,7 @@ public class TableGroupGenerator {
                                            OdfElement elem,
                                            String stageDesc,
                                            String stageNum,
-                                           String totalStages,
-                                           String groupTitle) {
+                                           String totalStages) {
 
         OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
         Node parent = elem.getParentNode();
@@ -792,11 +998,6 @@ public class TableGroupGenerator {
         TextPElement midSpacer = new TextPElement(dom);
         midSpacer.setTextContent("");
 
-        // Group Title
-        TextPElement pGroup = new TextPElement(dom);
-        pGroup.setTextContent((StringUtils.hasText(groupTitle) ? groupTitle : PLACEHOLDER_UNKNOWN));
-        applyHeaderStyle(pGroup);
-
         // Bottom Spacer (Separates Group Title from Question Table)
         TextPElement bottomSpacer = new TextPElement(dom);
         bottomSpacer.setTextContent("");
@@ -806,7 +1007,6 @@ public class TableGroupGenerator {
         parent.insertBefore(beforeDescTableSpacer, elem);
         parent.insertBefore(descTable.getOdfElement(), elem);
         parent.insertBefore(midSpacer, elem);
-        parent.insertBefore(pGroup, elem);
         parent.insertBefore(bottomSpacer, elem);
 
     }
@@ -816,8 +1016,7 @@ public class TableGroupGenerator {
                                                    OdfElement elem,
                                                    String stageDesc,
                                                    String stageNum,
-                                                   String totalStages,
-                                                   String groupTitle) {
+                                                   String totalStages) {
 
         OdfFileDom dom = (OdfFileDom) elem.getOwnerDocument();
         Node parent = elem.getParentNode();
@@ -842,17 +1041,12 @@ public class TableGroupGenerator {
         TextPElement midSpacer = new TextPElement(dom);
         midSpacer.setTextContent("");
 
-        // Group Title
-        TextPElement pGroup = new TextPElement(dom);
-        pGroup.setTextContent((StringUtils.hasText(groupTitle) ? groupTitle : PLACEHOLDER_UNKNOWN));
-        applyHeaderStyle(pGroup);
-
         // Bottom Spacer
         TextPElement bottomSpacer = new TextPElement(dom);
         bottomSpacer.setTextContent("");
 
         List<Node> nodes = Arrays.asList(topSpacer, p1, beforeDescTableSpacer,
-                descTable.getOdfElement(), midSpacer, pGroup, bottomSpacer);
+                descTable.getOdfElement(), midSpacer, bottomSpacer);
 
         if (next != null) {
             for (Node n : nodes) parent.insertBefore(n, next);
@@ -893,34 +1087,6 @@ public class TableGroupGenerator {
             Paragraph para = Paragraph.getInstanceof(p);
             para.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
         } catch (Exception ignored) {}
-    }
-
-    private void fillOneTableStandard(Table table,
-                                      List<Map<String, Object>> groups,
-                                      String anchor,
-                                      List<FieldMapping> mappings) {
-        int anchorIdx = findRowContaining(table, anchor);
-        if (anchorIdx < 0) return;
-        Map<String, String> titleToPlaceholder = new HashMap<>();
-        for (FieldMapping m : mappings) titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
-
-        List<Integer> blockIdxs = findTemplateBlockRowIndexes(table, anchorIdx);
-        List<Row> templateRows = blockIdxs.stream().map(table::getRowByIndex).toList();
-
-        int numberColIdx = findNumberColumnIndex(table);
-        int counter = 1;
-        for (Map<String, Object> rgMap : groups) {
-            List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, titleToPlaceholder.values());
-            for (Map<String, String> rowMap : rows) {
-                for (Row templateRow : templateRows) {
-                    Row newRow = appendClonedRow(table, templateRow);
-                    replacePlaceholdersInRow(newRow, rowMap);
-                    if (numberColIdx >= 0) setCellTextIfNotCovered(newRow, numberColIdx, String.valueOf(counter));
-                }
-                counter++;
-            }
-        }
-        for (int i = blockIdxs.size() - 1; i >= 0; i--) table.removeRowsByIndex(blockIdxs.get(i), 1);
     }
 
     private String extractMetadataValue(Map<String, Object> rgMap, String metadataId) {
