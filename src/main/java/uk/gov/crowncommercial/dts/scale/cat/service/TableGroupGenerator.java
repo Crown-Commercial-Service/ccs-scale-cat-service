@@ -53,6 +53,9 @@ public class TableGroupGenerator {
     private static final String TOTAL_STAGES = "TOTAL_STAGES";
     private static final String TEXT_FONT_NAME = "Arial";
     private static final double TEXT_FONT_SIZE = 12.0;
+    private static final String TOKEN_CLEAN_PATTERN_REGEX = "«[^»]*»|«[^”]*”";
+    private static final String COP_QUESTION_ANCHOR_TAG = "«cop_question»";
+    private static final String QUESTION_TITLE = "Enter your question";
 
     private final ObjectMapper objectMapper;
 
@@ -686,31 +689,42 @@ public class TableGroupGenerator {
      * stage details are injected on the fly programmatically
      *
      */
-    @SuppressWarnings("unchecked")
     public void fillMultiStageTableData(final String eventData,
                                         final DocumentTemplateSource templateSource,
                                         final TextDocument textODT) {
 
-        if (!StringUtils.hasText(eventData)) return;
+        if (!StringUtils.hasText(eventData)) {
+            log.warn("Unable to fill multi stage table data as eventData is empty");
+            return;
+        }
 
         final String tableName = templateSource.getTableName();
         final List<FieldMapping> mappings = getCombinedMappings(tableName);
         final String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
 
-        final List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
-        if (requirementGroups.isEmpty()) return;
+        final List<Map<String, Object>> requirementGroups =
+                readRequirementGroups(eventData, templateSource.getSourcePath());
+
+        if (requirementGroups.isEmpty()) {
+            log.warn("Unable to fill multi stage table data as requirementGroups is empty");
+            return;
+        }
 
         final Table prototype = textODT.getTableByName(tableName);
-        if (prototype == null) return;
+        if (prototype == null) {
+            log.warn("Unable to fill multi stage table data as prototype is null");
+            return;
+        }
         final TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
 
         final LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = bucketGroupsByStage(requirementGroups);
         if (stageBuckets.isEmpty()) {
             prototype.remove();
+            log.warn("Unable to fill multi stage table data as stageBuckets is empty");
             return;
         }
 
-        final Pattern tokenCleanupPattern = Pattern.compile("«[^»]*»|«[^”]*”");
+        final Pattern tokenCleanupPattern = Pattern.compile(TOKEN_CLEAN_PATTERN_REGEX);
         TableTableElement lastTableElem = prototype.getOdfElement();
         int stageCount = 1;
 
@@ -773,15 +787,19 @@ public class TableGroupGenerator {
     /**
      * Handles layout generation loops across active stage records.
      */
-    private void renderStageTableRows(final Table currentTable, final List<Map<String, Object>> stageGroups,
-                                      final List<FieldMapping> mappings, final int anchorIdx, final Pattern cleanupPattern) {
+    private void renderStageTableRows(final Table currentTable,
+                                      final List<Map<String, Object>> stageGroups,
+                                      final List<FieldMapping> mappings,
+                                      final int anchorIdx,
+                                      final Pattern cleanupPattern) {
+
         final Map<String, String> titleToPlaceholder = new HashMap<>();
         for (final FieldMapping m : mappings) titleToPlaceholder.put(norm(m.getTitle()), m.getPlaceholder());
 
         final String questionPlaceholderTag = mappings.stream()
                 .map(FieldMapping::getPlaceholder)
                 .filter(ph -> ph != null && (ph.contains("question") || ph.contains("quest")))
-                .findFirst().orElse("«cop_question»");
+                .findFirst().orElse(COP_QUESTION_ANCHOR_TAG);
 
         final List<Integer> blockIdxs = findTemplateBlockRowIndexes(currentTable, anchorIdx);
         final List<Row> templateRows = blockIdxs.stream().map(currentTable::getRowByIndex).toList();
@@ -800,8 +818,6 @@ public class TableGroupGenerator {
                 if (StringUtils.hasText(currentGroupItemTitle) && !currentGroupItemTitle.equals(lastProcessedGroupTitle)) {
                     injectInlineHeaderBannerRow(currentTable, templateRows, currentGroupItemTitle);
                     lastProcessedGroupTitle = currentGroupItemTitle;
-
-                    // FIXED: Reset the structural index counter back to 1 every time a new sub-group banner splits the rows!
                     counter = 1;
                 }
 
@@ -824,44 +840,6 @@ public class TableGroupGenerator {
     }
 
     /**
-     * Traverses stage structures to discover active group headers.
-     */
-    @SuppressWarnings("unchecked")
-    private String resolveMasterStageGroupTitle(final List<Map<String, Object>> stageGroups) {
-
-        for (final Map<String, Object> rg : stageGroups) {
-            final Map<String, Object> ocds = (Map<String, Object>) rg.get("OCDS");
-            if (ocds == null) continue;
-            final List<Map<String, Object>> requirements = (List<Map<String, Object>>) ocds.get("requirements");
-            if (requirements == null) continue;
-
-            String title = requirements.stream()
-                    .filter(Objects::nonNull)
-                    .filter(req -> {
-                        final Map<String, Object> rOcds = (Map<String, Object>) req.get("OCDS");
-                        return rOcds != null && "Select group name".equalsIgnoreCase((String) rOcds.get("title"));
-                    })
-                    .map(req -> {
-                        final Map<String, Object> nonOcds = (Map<String, Object>) req.get("nonOCDS");
-                        final List<Map<String, Object>> options = nonOcds == null ? null :
-                                (List<Map<String, Object>>) nonOcds.get("options");
-                        if (options != null) {
-                            return options.stream()
-                                    .filter(opt -> opt != null && Boolean.TRUE.equals(opt.get("select")))
-                                    .map(opt -> opt.get("value"))
-                                    .filter(Objects::nonNull)
-                                    .map(Object::toString)
-                                    .findFirst().orElse(null);
-                        }
-                        return null;
-                    })
-                    .filter(StringUtils::hasText).findFirst().orElse(null);
-            if (StringUtils.hasText(title)) return title;
-        }
-        return null;
-    }
-
-    /**
      * Intercepts and extracts nested question options data cleanly.
      */
     @SuppressWarnings("unchecked")
@@ -878,23 +856,22 @@ public class TableGroupGenerator {
                 .filter(Objects::nonNull)
                 .map(req -> (Map<String, Object>) req.get("OCDS"))
                 .filter(reqOcds -> reqOcds != null
-                        && "Enter your question".equalsIgnoreCase((String) reqOcds.get("title")))
+                        && QUESTION_TITLE.equalsIgnoreCase((String) reqOcds.get("title")))
                 .findFirst()
-                .ifPresent(reqOcds -> {
-                    requirements.stream()
-                            .filter(r -> r != null && reqOcds.equals(r.get("OCDS")))
-                            .findFirst()
-                            .ifPresent(matchedReq -> {
-                                final Map<String, Object> nonOcds = (Map<String, Object>) matchedReq.get("nonOCDS");
-                                final List<Map<String, Object>> options = nonOcds == null ? null : (List<Map<String, Object>>) nonOcds.get("options");
-                                if (options != null && !options.isEmpty()) {
-                                    final Object val = options.getFirst().get("value");
-                                    if (val != null && StringUtils.hasText(val.toString())) {
-                                        rowMap.put(placeholderTag, val.toString().trim());
-                                    }
+                .ifPresent(reqOcds -> requirements.stream()
+                        .filter(r -> r != null && reqOcds.equals(r.get("OCDS")))
+                        .findFirst()
+                        .ifPresent(matchedReq -> {
+                            final Map<String, Object> nonOcds = (Map<String, Object>) matchedReq.get("nonOCDS");
+                            final List<Map<String, Object>> options = nonOcds == null ? null
+                                    : (List<Map<String, Object>>) nonOcds.get("options");
+                            if (options != null && !options.isEmpty()) {
+                                final Object val = options.getFirst().get("value");
+                                if (val != null && StringUtils.hasText(val.toString())) {
+                                    rowMap.put(placeholderTag, val.toString().trim());
                                 }
-                            });
-                });
+                            }
+                        }));
     }
 
     /**
@@ -924,7 +901,8 @@ public class TableGroupGenerator {
             if (simpleBannerCell != null) {
                 simpleBannerCell.removeTextContent();
                 simpleBannerCell.setStringValue(titleText.trim());
-                simpleBannerCell.getFont().setSize(11);
+                simpleBannerCell.getFont().setSize(TEXT_FONT_SIZE);
+                simpleBannerCell.getFont().setFamilyName(TEXT_FONT_NAME);
                 simpleBannerCell.setCellBackgroundColor(new Color("#F3F4F6"));
             }
         } catch (Exception ex) {

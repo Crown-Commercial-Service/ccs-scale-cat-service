@@ -982,7 +982,10 @@ public class DocGenService {
     @SneakyThrows
     public String mergeStageJsonPayloads(List<Map<String, Object>> stageDataList) {
 
-        if (stageDataList == null || stageDataList.isEmpty()) return "";
+        if (stageDataList == null || stageDataList.isEmpty()) {
+            log.error("Unable to merge stage json");
+            return "";
+        }
 
         Map<String, Object> stage1Data = stageDataList.getFirst();
         ObjectNode baseRoot = (ObjectNode) objectMapper.readTree((String) stage1Data.get(PAYLOAD_TAG));
