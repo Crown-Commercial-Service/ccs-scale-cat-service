@@ -13,6 +13,7 @@ import org.odftoolkit.odfdom.dom.element.table.TableTableCellElement;
 import org.odftoolkit.odfdom.dom.element.table.TableTableElement;
 import org.odftoolkit.odfdom.dom.element.table.TableTableRowElement;
 import org.odftoolkit.odfdom.dom.element.text.TextPElement;
+import org.odftoolkit.odfdom.dom.style.props.OdfTableCellProperties;
 import org.odftoolkit.odfdom.pkg.OdfElement;
 import org.odftoolkit.odfdom.pkg.OdfFileDom;
 import org.odftoolkit.odfdom.type.Color;
@@ -20,6 +21,7 @@ import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
+import org.odftoolkit.simple.style.Border;
 import org.odftoolkit.simple.style.Font;
 import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
@@ -344,7 +346,7 @@ public class TableGroupGenerator {
         replaceFirstTextOccurrence(textODT, groupNamePlaceholder, first.displayName);
         fillOneTable(prototype, first.requirementGroups, rowAnchorPlaceholder, mappings);
 
-        TableTableElement lastTableElem = (TableTableElement) prototype.getOdfElement();
+        TableTableElement lastTableElem = prototype.getOdfElement();
         int cloneIndex = 2;
 
         while (iterator.hasNext()) {
@@ -901,9 +903,21 @@ public class TableGroupGenerator {
             if (simpleBannerCell != null) {
                 simpleBannerCell.removeTextContent();
                 simpleBannerCell.setStringValue(titleText.trim());
-                simpleBannerCell.getFont().setSize(TEXT_FONT_SIZE);
-                simpleBannerCell.getFont().setFamilyName(TEXT_FONT_NAME);
-                simpleBannerCell.setCellBackgroundColor(new Color("#F3F4F6"));
+                simpleBannerCell.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
+                simpleBannerCell.getOdfElement().setProperty(OdfTableCellProperties.PaddingTop, "5pt");
+                simpleBannerCell.getOdfElement().setProperty(OdfTableCellProperties.PaddingBottom, "5pt");
+                simpleBannerCell.getOdfElement().setProperty(OdfTableCellProperties.PaddingLeft, "2pt");
+
+                /*
+                Border invisibleWhiteBorder = new Border(Color.WHITE, 1.0,
+                        StyleTypeDefinitions.SupportedLinearMeasure.PT
+                );
+                simpleBannerCell.setBorders(StyleTypeDefinitions.CellBordersType.LEFT, invisibleWhiteBorder);
+                simpleBannerCell.setBorders(StyleTypeDefinitions.CellBordersType.RIGHT, invisibleWhiteBorder);
+
+                 */
+
+                simpleBannerCell.setVerticalAlignment(StyleTypeDefinitions.VerticalAlignmentType.MIDDLE);
             }
         } catch (Exception ex) {
             log.debug("Skipped inline table header banner row generation variance pass.", ex);
