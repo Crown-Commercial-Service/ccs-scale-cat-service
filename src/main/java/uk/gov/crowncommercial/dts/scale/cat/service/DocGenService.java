@@ -67,6 +67,7 @@ public class DocGenService {
     public static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
     public static final DateTimeFormatter ONLY_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     public static final String PERIOD_FMT = "%d years, %d months, %d days";
+    public static final String PERIOD_FMT_WITHOUT_DAY = "%d years, %d months";
     public static final String DOCUMENT_DESC_JOINER = " pro forma for tender: ";
     public static final String DB_PLACEHOLDER_PROJECTS = "project";
     public static final String DB_PLACEHOLDER_METHOD_PREFIX = "get";
@@ -425,8 +426,8 @@ public class DocGenService {
                                 int years = Integer.parseInt(parts[0]);
                                 int months = Integer.parseInt(parts[1]);
                                 int days = Integer.parseInt(parts[2]);
-
-                                formattedPeriod = String.format(PERIOD_FMT, years, months, days);
+                                if(days == 0) formattedPeriod = String.format(PERIOD_FMT_WITHOUT_DAY, years, months);
+                                else formattedPeriod = String.format(PERIOD_FMT, years, months, days);
                             } catch (Exception ex) {
                                 // The value wasn't a Period, so just log the error and then move on allowing this to use the default fallback
                                 log.error("Unable to parse value as a Period for document generation. Value: '{}'", dataReplacement.getFirst(), ex);
