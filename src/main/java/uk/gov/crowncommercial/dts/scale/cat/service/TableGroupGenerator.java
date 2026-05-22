@@ -948,8 +948,10 @@ public class TableGroupGenerator {
                 }
 
                 if (!out.equals(txt)) {
+                    // COP and AC table row text
                     cell.removeTextContent();
                     cell.setStringValue(out);
+                    cell.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.REGULAR, TEXT_FONT_SIZE));
                 }
             } catch (Exception ex) {
                 log.debug("Gracefully skipped rendering variance in column grid segment {}", c);
