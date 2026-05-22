@@ -1022,50 +1022,51 @@ public class DocGenService {
                         if (sourceGroups.isArray()) {
                             for (JsonNode group : sourceGroups) {
                                 String originalGroupId = group.path(OCDS).path(ID).asText();
+
+                                if ("Group 0".equals(originalGroupId)) {
+                                    continue;
+                                }
+
                                 JsonNode requirementsArray = group.path(OCDS).path(REQUIREMENTS);
 
                                 if (!requirementsArray.isArray() || requirementsArray.isEmpty()) {
                                     continue;
                                 }
 
-                                if (originalGroupId.equals("Group 1") || originalGroupId.equals("Group 2")) {
-                                    JsonNode firstRequirementOptions = requirementsArray.get(0).path(NON_OCDS).path(OPTIONS);
-                                    if (firstRequirementOptions.isArray() && !firstRequirementOptions.isEmpty()) {
-                                        String questionTextValue = firstRequirementOptions.get(0).path(VALUE).asText();
-
-                                        if (!StringUtils.hasText(questionTextValue)) {
-                                            continue;
+                                boolean hasValidData = false;
+                                for (JsonNode req : requirementsArray) {
+                                    String reqId = req.path(OCDS).path(ID).asText();
+                                    if ("Question 1".equals(reqId) || reqId.startsWith("Question 1-")) {
+                                        JsonNode options = req.path(NON_OCDS).path(OPTIONS);
+                                        if (options.isArray() && !options.isEmpty()) {
+                                            String questionTextValue = options.get(0).path(VALUE).asText();
+                                            if (StringUtils.hasText(questionTextValue)) {
+                                                hasValidData = true;
+                                            }
                                         }
-                                    } else {
-                                        continue;
+                                        break;
                                     }
                                 }
 
+                                if (!hasValidData) {
+                                    continue;
+                                }
+
                                 ObjectNode clonedGroup = group.deepCopy();
-                                String stageAdjustedId = null;
 
-                                if (originalGroupId.equals("Group 1") || originalGroupId.startsWith("Group 1.")) {
-                                    stageAdjustedId = originalGroupId.equals("Group 1")
-                                            ? "Group 1." + stageNum
-                                            : originalGroupId;
-                                }
-                                else if (originalGroupId.equals("Group 2") || originalGroupId.startsWith("Group 2.")) {
-                                    stageAdjustedId = originalGroupId.equals("Group 2")
-                                            ? "Group 2." + stageNum
-                                            : originalGroupId;
-                                }
+                                String stageAdjustedId = originalGroupId.contains(".")
+                                        ? originalGroupId
+                                        : originalGroupId + "." + stageNum;
 
-                                if (stageAdjustedId != null) {
-                                    ((ObjectNode) clonedGroup.path(OCDS)).put(ID, stageAdjustedId);
-                                    ((ObjectNode) clonedGroup.path(NON_OCDS)).put(ORDER, nextOrder++);
+                                ((ObjectNode) clonedGroup.path(OCDS)).put(ID, stageAdjustedId);
+                                ((ObjectNode) clonedGroup.path(NON_OCDS)).put(ORDER, nextOrder++);
 
-                                    ArrayNode reqs = clonedGroup.path(OCDS).withArray(REQUIREMENTS);
-                                    addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
-                                    addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
-                                    addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
+                                ArrayNode reqs = clonedGroup.path(OCDS).withArray(REQUIREMENTS);
+                                addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
+                                addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
+                                addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
 
-                                    targetRequirementGroups.add(clonedGroup);
-                                }
+                                targetRequirementGroups.add(clonedGroup);
                             }
                         }
                         break;
