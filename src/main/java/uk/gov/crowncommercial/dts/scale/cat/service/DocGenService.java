@@ -872,20 +872,24 @@ public class DocGenService {
             tableGroupGenerator.replacePlaceholderText(textODT, CURRENT_STAGE_ANCHOR_TAG, String.valueOf(activeStage));
         }
 
+        final Integer rootEventId = retryableTendersDBDelegate
+                .findProcurementEventsByProjectId(procurementEvent.getProject().getId())
+                .stream()
+                .min(Comparator.comparing(ProcurementEvent::getId))
+                .map(ProcurementEvent::getId)
+                .orElse(procurementEvent.getId());
+
         documentTemplate.getDocumentTemplateSources().forEach(templateSource -> {
             try {
                 if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
                     List<Map<String, Object>> stageDataList = new ArrayList<>();
 
                     if (targetTemplateBase == 1 || targetTemplateBase == 2) {
-                        fillStageJsonWithMergedJson(totalStages, procurementEvent.getId(), stageDataList);
+                        fillStageJsonWithMergedJson(totalStages, rootEventId, stageDataList);
                     } else if (targetTemplateBase == 3) {
-                        fillStageSpecificJson(procurementEvent.getId(), 1, totalStages, stageDataList);
+                        fillStageSpecificJson(rootEventId, 1, totalStages, stageDataList);
                     } else if (targetTemplateBase == 4) {
-                        String priorEventId = getParentEventId(stageInfo.getStageEvents().getFirst().getPriorEventId());
-                        Integer legacyEventId = extractEventId(priorEventId);
-
-                        fillStageSpecificJson(legacyEventId != null ? legacyEventId : procurementEvent.getId(), activeStage, totalStages, stageDataList);
+                        fillStageSpecificJson(rootEventId, activeStage, totalStages, stageDataList);
                     }
 
                     if (!stageDataList.isEmpty()) {
@@ -908,7 +912,10 @@ public class DocGenService {
         String outputFileName;
         if (targetTemplateBase == 4) {
             int computedAttachmentNum = activeStage + 2;
-            outputFileName = String.format(ATTACHMENT_4_OUTPUT_FILE_NAME, computedAttachmentNum, activeStage);
+            String rawAttachmentName = String.format(ATTACHMENT_4_OUTPUT_FILE_NAME, computedAttachmentNum, activeStage);
+
+            // Change file name so Jaggaer accept it. (getFileName to prepend the Project and Event IDs for Jaggaer)
+            outputFileName = getFileName(procurementEvent, rawAttachmentName);
         } else {
             outputFileName = getFileName(procurementEvent, templateUrl);
         }
@@ -921,48 +928,6 @@ public class DocGenService {
                 .build());
 
         return generationResults;
-    }
-
-    /**
-     * Travel from the bottom to up, to find the root eventId
-     */
-    private String getParentEventId(final String initialPriorEventId) {
-
-        if (initialPriorEventId == null || initialPriorEventId.isBlank()) {
-            return null;
-        }
-
-        String currentPriorEventId = initialPriorEventId;
-        String lastValidPriorEventId = initialPriorEventId;
-
-        try {
-            // Keep climbing the event tree until the stage service returns a null/empty priorEventId
-            while (currentPriorEventId != null && !currentPriorEventId.isBlank()) {
-                var stages = stageService.getStagesForEventId(currentPriorEventId);
-
-                // To prevent NoSuchElementException
-                if (stages == null || stages.getStageEvents() == null || stages.getStageEvents().isEmpty()) {
-                    break;
-                }
-
-                String nextPriorEventId = stages.getStageEvents().getFirst().getPriorEventId();
-
-                if (nextPriorEventId == null || nextPriorEventId.isBlank()) {
-                    // We reached the absolute root. Stop here.
-                    break;
-                }
-
-                // Move up the tree
-                lastValidPriorEventId = nextPriorEventId;
-                currentPriorEventId = nextPriorEventId;
-            }
-        } catch (Exception ex) {
-            log.warn("Traversing the parent event chain for ID [{}] was interrupted due to an error. "
-                    + "Falling back to the last known valid parent ID: [{}]", initialPriorEventId,
-                    lastValidPriorEventId, ex);
-        }
-
-        return lastValidPriorEventId;
     }
 
     private void fillStageJsonWithMergedJson(int totalStages,
@@ -1144,22 +1109,6 @@ public class DocGenService {
         } catch (Exception ex) {
             log.error("Failed to extract stage number from filename: {}", filename, ex);
         }
-        return null;
-    }
-
-    private Integer extractEventId(String eventId) {
-
-        Pattern p = Pattern.compile("-(\\d+)$");
-        Matcher matcher = p.matcher(eventId.trim());
-        if (matcher.find()) {
-            try {
-                return Integer.parseInt(matcher.group(1));
-            } catch (NumberFormatException ex) {
-                log.error("Failed to extract event number from String eventId: {}", eventId, ex);
-                return null;
-            }
-        }
-
         return null;
     }
 
