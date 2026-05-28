@@ -98,7 +98,6 @@ public class DocGenService {
     private static final String STAGE_DESCRIPTION_TITLE = "STAGE_DESCRIPTION";
     private static final String OCDS = "OCDS";
     private static final String NON_OCDS = "nonOCDS";
-    private static final String MULTI_STAGE_JSON_PATH = "$.criteria[?(@.id == 'Criterion 2')].requirementGroups[?(@.OCDS.id == '%s')]";
     private static final String ID = "id";
     private static final String PAYLOAD_TAG = "payload";
     private static final String STAGE_NUMBER_TAG = "stageNumber";
@@ -114,6 +113,7 @@ public class DocGenService {
     private static final String VALUE = "value";
     private static final String SELECT = "select";
     private static final String CURRENT_STAGE_ANCHOR_TAG = "«current_stage»";
+    private static final String CURRENT_ATTACHMENT_NUMBER_ANCHOR_TAG = "«current_attachment»";
     private static final String ATTACHMENT_4_OUTPUT_FILE_NAME = "DOS 7 MultiStage L1 Bid Pack - Attachment %d Responses to Stage %d assessment criteria.odt";
 
     private final ApplicationContext applicationContext;
@@ -868,8 +868,13 @@ public class DocGenService {
         final TextDocument textODT = TextDocument.loadDocument(templateResource.getInputStream());
         final ConcurrentHashMap<String, Object> requestCache = new ConcurrentHashMap<>();
 
+        int computedAttachmentNum = activeStage + 2;
         if (targetTemplateBase == 4) {
+            // Add current stage on the top of attachment 4 ... n file and add it on footer
             tableGroupGenerator.replacePlaceholderText(textODT, CURRENT_STAGE_ANCHOR_TAG, String.valueOf(activeStage));
+            // Add footer attachment number
+            tableGroupGenerator.replacePlaceholderText(textODT,
+                    CURRENT_ATTACHMENT_NUMBER_ANCHOR_TAG, String.valueOf(computedAttachmentNum));
         }
 
         final Integer rootEventId = retryableTendersDBDelegate
@@ -911,7 +916,6 @@ public class DocGenService {
 
         String outputFileName;
         if (targetTemplateBase == 4) {
-            int computedAttachmentNum = activeStage + 2;
             String rawAttachmentName = String.format(ATTACHMENT_4_OUTPUT_FILE_NAME, computedAttachmentNum, activeStage);
 
             // Change file name so Jaggaer accept it. (getFileName to prepend the Project and Event IDs for Jaggaer)

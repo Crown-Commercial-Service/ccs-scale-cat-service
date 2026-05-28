@@ -25,6 +25,7 @@ import org.odftoolkit.simple.style.Border;
 import org.odftoolkit.simple.style.Font;
 import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
+import org.odftoolkit.simple.table.CellRange;
 import org.odftoolkit.simple.table.Row;
 import org.odftoolkit.simple.table.Table;
 import org.odftoolkit.simple.text.Paragraph;
@@ -541,7 +542,7 @@ public class TableGroupGenerator {
         for (int c = 0; c < cols; c++) {
             String txt = header.getCellByIndex(c).getStringValue();
 
-            if (txt != null && txt.trim().equals("#")) {
+            if (txt != null && (txt.trim().equals("#") || txt.trim().equals("1"))) {
                 return c;
             }
         }
@@ -704,25 +705,28 @@ public class TableGroupGenerator {
         final List<FieldMapping> mappings = getCombinedMappings(tableName);
         final String anchorPlaceholder = FieldMapping.getAnchorPlaceholder(tableName);
 
-        final List<Map<String, Object>> requirementGroups =
-                readRequirementGroups(eventData, templateSource.getSourcePath());
-
-        if (requirementGroups.isEmpty()) {
-            log.warn("Unable to fill multi stage table data as requirementGroups is empty");
-            return;
-        }
-
         final Table prototype = textODT.getTableByName(tableName);
         if (prototype == null) {
             log.warn("Unable to fill multi stage table data as prototype is null");
             return;
         }
+
+        final List<Map<String, Object>> requirementGroups =
+                readRequirementGroups(eventData, templateSource.getSourcePath());
+
+        if (requirementGroups.isEmpty()) {
+            insertNotSpecifiedText(prototype);
+            prototype.remove();
+            log.warn("Removed empty multi-stage table as requirementGroups is empty");
+            return;
+        }
+
         final TableTableElement snapshot = (TableTableElement) prototype.getOdfElement().cloneNode(true);
 
         final LinkedHashMap<String, List<Map<String, Object>>> stageBuckets = bucketGroupsByStage(requirementGroups);
         if (stageBuckets.isEmpty()) {
             prototype.remove();
-            log.warn("Unable to fill multi stage table data as stageBuckets is empty");
+            log.warn("Removed empty multi-stage table as stageBuckets is empty");
             return;
         }
 
@@ -888,18 +892,12 @@ public class TableGroupGenerator {
             final int totalColumns = currentTable.getColumnCount();
 
             Row groupHeaderBannerRow = appendClonedRow(currentTable, templateRows.getFirst());
-            TableTableRowElement bannerRowElem = groupHeaderBannerRow.getOdfElement();
+            int rowIndex = groupHeaderBannerRow.getRowIndex();
 
-            while (bannerRowElem.hasChildNodes()) {
-                bannerRowElem.removeChild(bannerRowElem.getFirstChild());
-            }
+            CellRange range = currentTable.getCellRangeByPosition(0, rowIndex, totalColumns - 1, rowIndex);
+            range.merge();
+            Cell simpleBannerCell = groupHeaderBannerRow.getCellByIndex(0);
 
-            OdfFileDom ownerDom = (OdfFileDom) bannerRowElem.getOwnerDocument();
-            TableTableCellElement spanningCellNode = new TableTableCellElement(ownerDom);
-            spanningCellNode.setTableNumberColumnsSpannedAttribute(totalColumns);
-            bannerRowElem.appendChild(spanningCellNode);
-
-            Cell simpleBannerCell = Cell.getInstance(spanningCellNode);
             if (simpleBannerCell != null) {
                 simpleBannerCell.removeTextContent();
                 simpleBannerCell.setStringValue(titleText.trim());
@@ -908,17 +906,9 @@ public class TableGroupGenerator {
                 simpleBannerCell.getOdfElement().setProperty(OdfTableCellProperties.PaddingBottom, "5pt");
                 simpleBannerCell.getOdfElement().setProperty(OdfTableCellProperties.PaddingLeft, "2pt");
 
-                /*
-                Border invisibleWhiteBorder = new Border(Color.WHITE, 1.0,
-                        StyleTypeDefinitions.SupportedLinearMeasure.PT
-                );
-                simpleBannerCell.setBorders(StyleTypeDefinitions.CellBordersType.LEFT, invisibleWhiteBorder);
-                simpleBannerCell.setBorders(StyleTypeDefinitions.CellBordersType.RIGHT, invisibleWhiteBorder);
-
-                 */
-
                 simpleBannerCell.setVerticalAlignment(StyleTypeDefinitions.VerticalAlignmentType.MIDDLE);
             }
+
         } catch (Exception ex) {
             log.debug("Skipped inline table header banner row generation variance pass.", ex);
         }
@@ -1126,6 +1116,26 @@ public class TableGroupGenerator {
     public void replacePlaceholderText(TextDocument doc, String placeholder, String value) {
         if (doc == null || !StringUtils.hasText(placeholder)) return;
         replaceAllTextOccurrences(doc, placeholder, value != null ? value : PLACEHOLDER_UNKNOWN);
+    }
+
+    private void insertNotSpecifiedText(Table table) {
+        try {
+            TableTableElement tableElem = table.getOdfElement();
+            Node parent = tableElem.getParentNode();
+            OdfFileDom dom = (OdfFileDom) tableElem.getOwnerDocument();
+
+            TextPElement p = new TextPElement(dom);
+            p.setTextContent(PLACEHOLDER_UNKNOWN);
+
+            try {
+                Paragraph para = Paragraph.getInstanceof(p);
+                para.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.REGULAR, TEXT_FONT_SIZE));
+            } catch (Exception ignored) {}
+
+            parent.insertBefore(p, tableElem);
+        } catch (Exception ex) {
+            log.warn("Failed to insert Not Specified text replacement", ex);
+        }
     }
 
 }
