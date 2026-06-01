@@ -147,7 +147,6 @@ public class DocGenService {
                 Set<DocumentTemplate> docTemplates = retryableTendersDBDelegate.findByEventTypeAndCommercialAgreementNumberAndLotNumberAndTemplateGroup(eventType, caNumber, lotNum, templateId);
 
                 if (docTemplates != null && !docTemplates.isEmpty()) {
-                    Set<DocumentTemplate> filteredDocTemplates = filterTemplates(isLastStageEvent, docTemplates);
 
                     // Determine if this event is running on the Multi-Stage architecture
                     boolean isMultiStage = false;
@@ -159,6 +158,9 @@ public class DocGenService {
                     } catch (Exception ex) {
                         log.debug("Event {} does not have multi-stage data. Falling back to standard rendering.", procurementEvent.getEventID());
                     }
+
+                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates
+                            : filterTemplates(isLastStageEvent, docTemplates);
 
                     // Iterate and process templates using the correct generator
                     for (DocumentTemplate template : filteredDocTemplates) {
