@@ -1540,7 +1540,8 @@ public class ProcurementEventService implements EventService {
         } else {
             // Get documents from Jaggaer
             List<Attachment> sellerAttachments = exportRfxResponse.getSellerAttachmentsList().getAttachment();
-            List<Attachment> filteredAttachments = filterAttachments(isLastStage, sellerAttachments);
+            List<Attachment> filteredAttachments =
+                    isMultiStage ? sellerAttachments : filterAttachments(isLastStage, sellerAttachments);
             Stream
                     .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
                             filteredAttachments.stream())
