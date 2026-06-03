@@ -63,7 +63,7 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
   private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
 
-  @Value("${config.api-key}")
+  @Value("${config.api.secret-key}")
   private String serviceApiKey;
 
   @GetMapping
