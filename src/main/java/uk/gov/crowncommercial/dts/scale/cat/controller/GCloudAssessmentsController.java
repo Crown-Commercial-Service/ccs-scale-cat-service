@@ -48,7 +48,7 @@ public class GCloudAssessmentsController extends AbstractRestController {
     private final AgreementsService agreementsService;
     private final DMPService dmpService;
 
-    @Value("${config.api-key:dummy}")
+    @Value("${config.api-key}")
     private String serviceApiKey;
 
     /**
@@ -151,6 +151,8 @@ public class GCloudAssessmentsController extends AbstractRestController {
             final @PathVariable("external-tool-id") String externalToolId,
             @RequestParam final String apiKey) {
         log.info("getGcloudAssessmentSummariesWithExternalToolIdByApiKey()");
+        log.info("Service api key configuration: {}", serviceApiKey);
+        log.info("Service api key in request: {}", apiKey);
         if (!serviceApiKey.equals(apiKey)) {
             ResponseEntity.badRequest().build();
         }

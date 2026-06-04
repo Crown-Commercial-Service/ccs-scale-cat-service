@@ -63,7 +63,7 @@ public class EventsController extends AbstractRestController {
   private static final String EXPORT_SINGLE_SUPPLIER_RESPONSE_DOCUMENTS_NAME = "response_%s_%s";
   private static final String ERR_MSG_FMT_LOT_NOT_IDENTIFIED = "Procurement Event cannot be created before a Lot is identified for this assessment";
 
-  @Value("${config.api-key:dummy}")
+  @Value("${config.api-key}")
   private String serviceApiKey;
 
   @GetMapping
@@ -80,8 +80,10 @@ public class EventsController extends AbstractRestController {
   @GetMapping("/apiKey")
   @TrackExecutionTime
   public ResponseEntity<List<EventSummary>> getEventsForProjectByApiKey(@PathVariable("procID") final Integer procId,
-                                                        @RequestParam("apiKey") String apiKey) {
+                                                        @RequestParam("apiKey") final String apiKey) {
     log.info("getEventsForProjectByApiKey invoked on behalf of procID: {}", procId);
+    log.info("Service api key configuration: {}", serviceApiKey);
+    log.info("Service api key in request: {}", apiKey);
     if (serviceApiKey.equals(apiKey)) {
       return ResponseEntity.ok(procurementEventService.getEventsForProject(procId, null));
     } else  {
