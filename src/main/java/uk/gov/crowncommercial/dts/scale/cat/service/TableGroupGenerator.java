@@ -217,7 +217,7 @@ public class TableGroupGenerator {
         // One output row per requirement group
         Map<String, String> row = new LinkedHashMap<>();
         for (String placeholder : placeholders) {
-            row.put(placeholder, "");
+            row.put(placeholder, PLACEHOLDER_UNKNOWN);
         }
 
         for (Map<String, Object> req : requirements) {
@@ -255,11 +255,12 @@ public class TableGroupGenerator {
         for (Map<String, Object> option : options) {
             if (Boolean.TRUE.equals(option.get("select"))) {
                 Object value = option.get("value");
-                return value == null ? "" : value.toString();
+                String strValue = value == null ? "" : value.toString().trim();
+                return strValue.isEmpty() ? PLACEHOLDER_UNKNOWN : strValue;
             }
         }
 
-        return "";
+        return PLACEHOLDER_UNKNOWN;
     }
 
     private void fillOneTable(Table table,
@@ -875,6 +876,8 @@ public class TableGroupGenerator {
                                 final Object val = options.getFirst().get("value");
                                 if (val != null && StringUtils.hasText(val.toString())) {
                                     rowMap.put(placeholderTag, val.toString().trim());
+                                } else {
+                                    rowMap.put(placeholderTag, PLACEHOLDER_UNKNOWN);
                                 }
                             }
                         }));
