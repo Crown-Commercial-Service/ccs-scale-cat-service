@@ -516,7 +516,8 @@ public class DocGenService {
                 return String.join(DELIMITER, dataReplacement);
             } else if (dataReplacement.size() == 1) {
                 // There's only one entry, so return it directly
-                return dataReplacement.getFirst();
+                String singleValue = dataReplacement.getFirst();
+                return org.apache.commons.lang3.StringUtils.isBlank(singleValue) ? PLACEHOLDER_UNKNOWN : singleValue;
             } else {
                 // There's no entries, so return a default placeholder
                 return PLACEHOLDER_UNKNOWN;
