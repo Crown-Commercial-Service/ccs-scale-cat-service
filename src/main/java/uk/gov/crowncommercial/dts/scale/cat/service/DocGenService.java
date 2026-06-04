@@ -879,7 +879,7 @@ public class DocGenService {
                     CURRENT_ATTACHMENT_NUMBER_ANCHOR_TAG, String.valueOf(computedAttachmentNum));
         }
 
-        final Integer rootEventId = retryableTendersDBDelegate
+        final Integer rootEventId = (stageInfo.getStageEvents().isEmpty()) ? extractEventId(stageInfo.getEventId()) : retryableTendersDBDelegate
                 .findProcurementEventsByProjectId(procurementEvent.getProject().getId())
                 .stream()
                 .min(Comparator.comparing(ProcurementEvent::getId))
@@ -1115,6 +1115,22 @@ public class DocGenService {
         } catch (Exception ex) {
             log.error("Failed to extract stage number from filename: {}", filename, ex);
         }
+        return null;
+    }
+
+    private Integer extractEventId(String eventId) {
+
+        Pattern p = Pattern.compile("-(\\d+)$");
+        Matcher matcher = p.matcher(eventId.trim());
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException ex) {
+                log.error("Failed to extract event number from String eventId: {}", eventId, ex);
+                return null;
+            }
+        }
+
         return null;
     }
 
