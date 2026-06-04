@@ -111,7 +111,7 @@ config:
       opensearch:
         batch:
           size: 80    
-  api-key: 99VoSLVSxS7pM8p4qZ86VaAHPHgcNkCCaxKkfmVx
+  api-key: 60f7d2f1-f824-4cbf-9043-52bd51313db5
   external:
     agreementsService:
       timeoutDuration: 10
