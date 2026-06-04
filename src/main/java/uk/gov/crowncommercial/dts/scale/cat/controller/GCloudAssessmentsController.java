@@ -151,7 +151,8 @@ public class GCloudAssessmentsController extends AbstractRestController {
             final @PathVariable("external-tool-id") String externalToolId,
             @RequestParam final String apiKey) {
         log.info("getGcloudAssessmentSummariesWithExternalToolIdByApiKey()");
-        log.debug("serviceApiKey = {}", serviceApiKey);
+        log.info("Service api key configuration: {}", serviceApiKey);
+        log.info("Service api key in request: {}", apiKey);
         if (!serviceApiKey.equals(apiKey)) {
             ResponseEntity.badRequest().build();
         }

@@ -80,9 +80,10 @@ public class EventsController extends AbstractRestController {
   @GetMapping("/apiKey")
   @TrackExecutionTime
   public ResponseEntity<List<EventSummary>> getEventsForProjectByApiKey(@PathVariable("procID") final Integer procId,
-                                                        @RequestParam("apiKey") String apiKey) {
+                                                        @RequestParam("apiKey") final String apiKey) {
     log.info("getEventsForProjectByApiKey invoked on behalf of procID: {}", procId);
-    log.debug("serviceApiKey = {}", serviceApiKey);
+    log.info("Service api key configuration: {}", serviceApiKey);
+    log.info("Service api key in request: {}", apiKey);
     if (serviceApiKey.equals(apiKey)) {
       return ResponseEntity.ok(procurementEventService.getEventsForProject(procId, null));
     } else  {
