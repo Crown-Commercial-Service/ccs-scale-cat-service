@@ -111,7 +111,8 @@ config:
       opensearch:
         batch:
           size: 80    
-
+  api:
+    secret-key: 99VoSLVSxS7pM8p4qZ86VaAHPHgcNkCCaxKkfmVx
   external:
     agreementsService:
       timeoutDuration: 10
