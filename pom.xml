@@ -50,7 +50,7 @@
         <feignclient.version>4.3.2</feignclient.version>
         <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.12</retry.version>
-        <jetty-reactive.version>4.1.4</jetty-reactive.version>
+        <jetty-reactive.version>4.1.5</jetty-reactive.version>
         <postgres.version>42.7.11</postgres.version>
         <lombok.version>1.18.46</lombok.version>
         <spring.version>6.5.10</spring.version>
