@@ -880,8 +880,9 @@ public class DocGenService {
                     CURRENT_ATTACHMENT_NUMBER_ANCHOR_TAG, String.valueOf(computedAttachmentNum));
         }
 
-        final Integer rootEventId = (stageInfo.getStageEvents().isEmpty()) ? extractEventId(stageInfo.getEventId()) : retryableTendersDBDelegate
-                .findProcurementEventsByProjectId(procurementEvent.getProject().getId())
+        final Integer rootEventId = (stageInfo.getStageEvents().isEmpty()) ? extractEventId(stageInfo.getEventId())
+                : retryableTendersDBDelegate
+                .findMultistageProcurementEventsByProjectId(procurementEvent.getProject().getId())
                 .stream()
                 .min(Comparator.comparing(ProcurementEvent::getId))
                 .map(ProcurementEvent::getId)
