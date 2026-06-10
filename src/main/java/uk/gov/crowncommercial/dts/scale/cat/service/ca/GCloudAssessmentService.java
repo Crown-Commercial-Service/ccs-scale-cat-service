@@ -76,6 +76,7 @@ public class GCloudAssessmentService {
         assessmentEntity.setResultsSummary(assessment.getResultsSummary());
         assessmentEntity.setTimestamps(createTimestamps(principal));
         assessmentEntity.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
+        assessmentEntity.setSearchCriteriaSummary(assessment.getSearchCriteriaSummary());
 
         // Save our assessment entity
         Integer saveResult = retryableTendersDBDelegate.save(assessmentEntity).getId();
