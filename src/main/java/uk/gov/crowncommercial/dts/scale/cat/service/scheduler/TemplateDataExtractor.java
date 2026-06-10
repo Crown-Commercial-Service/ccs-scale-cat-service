@@ -124,9 +124,9 @@ public class TemplateDataExtractor {
       String criterionId = "Criterion 3";
       String groupId = "Group 4";
       String questionId = "Question 8";
-      if (Objects.nonNull(event) && event.getProject().getLotNumber().equals("2")) {
+      /*if (Objects.nonNull(event) && event.getProject().getLotNumber().equals("2")) {
         questionId = "Question 7";
-      } else if (Objects.nonNull(event) && event.getProject().getLotNumber().equals("4")) {
+      } else*/ if (Objects.nonNull(event) && event.getProject().getLotNumber().equals("4")) {
         questionId = "Question 11";
       }
       return EventsHelper.getData(criterionId, groupId, questionId,
