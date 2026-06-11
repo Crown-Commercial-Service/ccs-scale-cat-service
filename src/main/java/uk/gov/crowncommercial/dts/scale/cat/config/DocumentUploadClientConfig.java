@@ -2,6 +2,8 @@ package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.transport.HttpClientTransportDynamic;
 import org.eclipse.jetty.io.ClientConnector;
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
  */
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class DocumentUploadClientConfig {
 
   private final DocumentUploadAPIConfig documentUploadAPIConfig;
@@ -35,6 +38,7 @@ public class DocumentUploadClientConfig {
     HttpClient httpClient = new HttpClient(new HttpClientTransportDynamic(clientConnector));
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
+    log.info("Setting up DocUpload API Client with UploadBaseUrl {}", documentUploadAPIConfig.getUploadBaseUrl());
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .baseUrl(documentUploadAPIConfig.getUploadBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
@@ -53,6 +57,7 @@ public class DocumentUploadClientConfig {
     HttpClient httpClient = new HttpClient(new HttpClientTransportDynamic(clientConnector));
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
+    log.info("Setting up DocUpload API Client with GetBaseUrl {}", documentUploadAPIConfig.getGetBaseUrl());
     return WebClient.builder().clientConnector(jettyHttpClientConnector)
         .baseUrl(documentUploadAPIConfig.getGetBaseUrl())
         .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
