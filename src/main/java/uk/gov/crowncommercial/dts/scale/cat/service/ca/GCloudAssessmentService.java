@@ -205,6 +205,7 @@ public class GCloudAssessmentService {
             model.dimensionRequirements = assessmentModel.getDimensionRequirements();
             model.assessmentName = assessmentModel.getAssessmentName();
             model.status = AssessmentStatus.fromValue(assessmentModel.getStatus().toString().toLowerCase());
+            model.searchCriteriaSummary = assessmentModel.getSearchCriteriaSummary();
 
             Timestamps timestamps = assessmentModel.getTimestamps();
             if (timestamps.getUpdatedAt() != null) {

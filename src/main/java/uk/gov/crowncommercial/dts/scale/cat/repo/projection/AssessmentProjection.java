@@ -17,5 +17,6 @@ public interface AssessmentProjection {
     @Value("#{target.status}")
     String getStatus();
 
-
+    @Value("#{target.searchCriteriaSummary}")
+    String searchCriteriaSummary();
 }

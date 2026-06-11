@@ -21,4 +21,6 @@ public class GCloudAssessmentSummary {
     public OffsetDateTime lastUpdate;
 
     public AssessmentStatus status;
+
+    public String searchCriteriaSummary;
 }
