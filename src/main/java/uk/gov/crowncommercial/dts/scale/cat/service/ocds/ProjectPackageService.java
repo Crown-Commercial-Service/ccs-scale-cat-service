@@ -81,18 +81,18 @@ public class ProjectPackageService {
 
     @SneakyThrows
     private Object getPublicationPolicy() {
-        return new URI("https://www.crowncommercial.gov.uk/agreements/publicationPolicy");
+        return new URI("https://www.gca.gov.uk/agreements/publicationPolicy");
     }
 
     @SneakyThrows
     private URI getUri(){
-        return new URI("https://www.crowncommercial.gov.uk/tenders/projects/");
+        return new URI("https://www.gca.gov.uk/tenders/projects/");
     }
 
     private RecordPackageAllOfPublisher getPublisherInfo() {
         RecordPackageAllOfPublisher publisher = new RecordPackageAllOfPublisher();
         publisher.setName("Government Commercial Agency");
-        publisher.setUri("https://www.crowncommercial.gov.uk/");
+        publisher.setUri("https://www.gca.gov.uk/");
         return publisher;
     }
 }
