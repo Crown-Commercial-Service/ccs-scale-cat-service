@@ -13,6 +13,7 @@ import uk.gov.crowncommercial.dts.scale.cat.model.assessment.GCloudAssessmentSum
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.AssessmentStatus;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Identifier1;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.Timestamps;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ca.*;
@@ -75,6 +76,7 @@ public class GCloudAssessmentService {
         assessmentEntity.setResultsSummary(assessment.getResultsSummary());
         assessmentEntity.setTimestamps(createTimestamps(principal));
         assessmentEntity.setExternalToolId(Integer.parseInt(assessment.getExternalToolId()));
+        assessmentEntity.setSearchCriteriaSummary(assessment.getSearchCriteriaSummary());
 
         // Save our assessment entity
         Integer saveResult = retryableTendersDBDelegate.save(assessmentEntity).getId();
@@ -93,6 +95,13 @@ public class GCloudAssessmentService {
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
+
+                if (null != result.getSupplier().getAdditionalIdentifiers() &&
+                    !result.getSupplier().getAdditionalIdentifiers().isEmpty() &&
+                    null != result.getSupplier().getAdditionalIdentifiers().get(0) &&
+                    null != result.getSupplier().getAdditionalIdentifiers().get(0).getId()) {
+                    resultEntity.setSupplierDunsNumber(result.getSupplier().getAdditionalIdentifiers().get(0).getId().toString());
+                }
 
                 return resultEntity;
             }).collect(Collectors.toSet());
@@ -161,6 +170,13 @@ public class GCloudAssessmentService {
                 resultEntity.setServiceDescription(result.getServiceDescription());
                 resultEntity.setServiceLink(result.getServiceLink().toString());
                 resultEntity.setTimestamps(createTimestamps(principal));
+
+                if (null != result.getSupplier().getAdditionalIdentifiers() &&
+                    !result.getSupplier().getAdditionalIdentifiers().isEmpty() &&
+                    null != result.getSupplier().getAdditionalIdentifiers().get(0) &&
+                    null != result.getSupplier().getAdditionalIdentifiers().get(0).getId()) {
+                    resultEntity.setSupplierDunsNumber(result.getSupplier().getAdditionalIdentifiers().get(0).getId().toString());
+                }
 
                 return resultEntity;
             }).collect(Collectors.toSet());
@@ -231,6 +247,7 @@ public class GCloudAssessmentService {
             supplierModel.setName(result.getSupplierName());
             // 1150: set supplier id.
             supplierModel.setId(result.getSupplierId());
+            supplierModel.addAdditionalIdentifiersItem(new Identifier1().id(result.getSupplierDunsNumber()));
             resultModel.setSupplier(supplierModel);
 
             resultsList.add(resultModel);

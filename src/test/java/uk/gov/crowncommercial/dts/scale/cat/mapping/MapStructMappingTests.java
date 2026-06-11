@@ -3,16 +3,17 @@ package uk.gov.crowncommercial.dts.scale.cat.mapping;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
 import org.mapstruct.factory.Mappers;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import uk.gov.crowncommercial.dts.scale.cat.mapper.ProcurementEventMapper;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
 
-@RunWith(SpringJUnit4ClassRunner.class)
+@ActiveProfiles("test")
+@SpringBootTest
 @ContextConfiguration(classes = { ProcurementEventMapper.class })
 public class MapStructMappingTests {
     private final ProcurementEventMapper procurementEventMapper = Mappers.getMapper(ProcurementEventMapper.class);

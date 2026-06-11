@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.Type;
-import com.vladmihalcea.hibernate.type.json.JsonType;
 import org.hibernate.type.SqlTypes;
 
 import java.sql.Timestamp;

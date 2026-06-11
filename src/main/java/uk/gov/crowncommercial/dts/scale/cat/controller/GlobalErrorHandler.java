@@ -168,7 +168,7 @@ public class GlobalErrorHandler implements ErrorController {
 
     var logErrorMsg =
         String.format("Error invoking upstream service [%s], received status: [%d], body: [%s]",
-            invokedService, exception.getRawStatusCode(), exception.getResponseBodyAsString());
+            invokedService, exception.getStatusCode().value(), exception.getResponseBodyAsString());
 
     log.error(logErrorMsg, exception);
 

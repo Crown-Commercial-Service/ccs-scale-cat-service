@@ -47,7 +47,7 @@ public class WebclientWrapper {
       final int timeoutDuration, final String uriTemplate, final Object... params) {
 
     Function<WebClientResponseException, Mono<T>> funcFallback404 =
-        ex -> ex.getRawStatusCode() == 404 ? Mono.empty() : Mono.error(ex);
+        ex -> ex.getStatusCode().value() == 404 ? Mono.empty() : Mono.error(ex);
 
     return ofNullable(webclient.get().uri(uriTemplate, params).retrieve().bodyToMono(resourceType)
         .onErrorMap(IOException.class, UncheckedIOException::new)

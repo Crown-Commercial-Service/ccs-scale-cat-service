@@ -304,6 +304,10 @@ public class ValidationService {
 
       List<RequirementGroup> groupsToRemove = new ArrayList<>();
 
+      if (null == requirementGroups) {
+          return groupsToRemove;
+      }
+
       for (final RequirementGroup entry: requirementGroups) {
           if (null == entry) {
               continue;

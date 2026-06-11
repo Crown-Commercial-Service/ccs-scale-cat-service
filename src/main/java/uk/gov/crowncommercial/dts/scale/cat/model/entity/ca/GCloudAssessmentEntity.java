@@ -42,4 +42,7 @@ public class GCloudAssessmentEntity {
 
     @Embedded
     private Timestamps timestamps;
+
+    @Column(name = "search_criteria_summary")
+    private String searchCriteriaSummary;
 }

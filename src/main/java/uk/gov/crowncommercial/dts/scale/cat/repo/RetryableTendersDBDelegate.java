@@ -29,6 +29,8 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
 
+import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.MULTI_STAGE_EVENT_TYPE;
+
 /**
  * Simple retrying delegate to JPA repos {@link ProcurementProjectRepo}
  */
@@ -116,6 +118,11 @@ public class RetryableTendersDBDelegate {
   public Set<ProcurementEvent> findProcurementEventsByProjectId(final Integer projectId) {
     return procurementEventRepo.findByProjectId(projectId);
   }
+
+    @TendersRetryable
+    public Set<ProcurementEvent> findMultistageProcurementEventsByProjectId(final Integer projectId) {
+        return procurementEventRepo.findByProjectIdAndEventType(projectId, MULTI_STAGE_EVENT_TYPE);
+    }
 
   @TendersRetryable
   public ProcurementStageEvent save(final ProcurementStageEvent procurementevent) {
