@@ -1126,6 +1126,7 @@ public class ProcurementEventService implements EventService {
 
                 // Now take that filtered list, build it into the EventSupplier models we need, and then proceed to try and add them into Jaegger
                 EventSuppliers newEventSuppliers = createNewEventSuppliers(newAgreementSuppliers);
+                newEventSuppliers.setOverwriteSuppliers(Boolean.TRUE);
                 addSuppliers(procId, eventId, newEventSuppliers, false, principal);
             } else {
                 // Tenders DB does not contain all the data we found in Jaegger - repush the data
