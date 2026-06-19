@@ -26,8 +26,6 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         var existingRfx = jaggaerService.getRfxWithSuppliers(event.getExternalEventId());
         var orgs = new ArrayList<OrganizationReference1>();
 
-
-
         if (existingRfx.getSuppliersList().getSupplier() != null) {
             Set<OrganisationMapping> orgMappings = getOrganisationMappings(existingRfx.getSuppliersList().getSupplier());
 
@@ -52,7 +50,6 @@ public class JaggaerSupplierStore extends AbstractSupplierStore {
         return new EventSuppliers().suppliers(orgs)
                 .justification(event.getSupplierSelectionJustification());
     }
-
 
     @Override
     public EventSuppliers storeSuppliers(ProcurementEvent event, EventSuppliers eventSuppliers, String principal) {
