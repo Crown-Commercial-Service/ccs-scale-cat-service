@@ -33,10 +33,8 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
     private static final String ERR_MSG_SUPPLIER_NOT_FOUND_CONCLAVE =
             "Supplier [%s] not found in Conclave";
 
-
     private final AssessmentService assessmentService;
     private final ConclaveService conclaveService;
-
 
     @Override
     public EventSuppliers getSuppliers(ProcurementEvent event, String principal) {
@@ -52,8 +50,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
             event.setSupplierSelectionJustification(eventSuppliers.getJustification());
         }
 
-        log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
-                event.getEventType());
+        log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(), event.getEventType());
 
         if(event.isTendersDBOnly()) {
             var assessment =
@@ -75,8 +72,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
     public List<Supplier> storeSuppliers(ProcurementEvent event, List<Supplier> suppliers, boolean overWrite, String principal) {
         Set<OrganisationMapping> supplierOrgMappings = getOrganisationMappings(suppliers);
 
-        log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(),
-                event.getEventType());
+        log.debug("Event {} is persisted in Tenders DB only {}", event.getEventID(), event.getEventType());
 
         if(event.isTendersDBOnly()) {
             var assessment =
@@ -100,11 +96,7 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         if (overwrite && event.getCapabilityAssessmentSuppliers() != null) {
             event.getCapabilityAssessmentSuppliers()
                     .removeIf(supplierSelection -> supplierSelection.getId() != null);
-
-
-        
         }
-
 
         Set<SupplierSelection> supplierSelectionSet=supplierOrgMappings.stream().map(org-> {return SupplierSelection.builder().organisationMapping(org).procurementEvent(event)
                 .createdAt(Instant.now()).createdBy(principal).build();}).collect(Collectors.toSet());
@@ -164,5 +156,4 @@ public class DatabaseSupplierStore extends AbstractSupplierStore {
         return new EventSuppliers().suppliers(suppliers)
                 .justification(event.getSupplierSelectionJustification());
     }
-
 }

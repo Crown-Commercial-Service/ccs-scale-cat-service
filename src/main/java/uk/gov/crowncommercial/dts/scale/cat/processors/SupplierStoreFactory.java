@@ -19,8 +19,7 @@ import java.util.stream.Collectors;
 public class SupplierStoreFactory {
 
     private List<String> SPLIT_AGREEMENTS = Arrays.asList("RM1043.8", "RM1043.9");
-
-    private List<String> SPLIT_EVENTS = Arrays.asList("FC", "MS1");
+    private List<String> SPLIT_EVENTS = Arrays.asList("FC", "MS1", "MSR");
 
     private final JaggaerSupplierStore jaggaerSupplierStore;
     private final DatabaseSupplierStore databaseSupplierStore;
@@ -29,17 +28,20 @@ public class SupplierStoreFactory {
     public SupplierStore getStore(ProcurementEvent event) {
         if (event.isTendersDBOnly()) {
             return databaseSupplierStore;
-        } else {
-            if(SPLIT_EVENTS.contains(event.getEventType())) {
-                ProcurementProject project = event.getProject();
-                if (null != project) {
-                    String agreementNumber = project.getCaNumber().toUpperCase();
-                    if (null != agreementNumber && SPLIT_AGREEMENTS.contains(agreementNumber)) {
-                        return dos6SupplierStore;
-                    }
+        }
+
+        if(SPLIT_EVENTS.contains(event.getEventType())) {
+            ProcurementProject project = event.getProject();
+
+            if (null != project) {
+                String agreementNumber = project.getCaNumber().toUpperCase();
+
+                if (null != agreementNumber && SPLIT_AGREEMENTS.contains(agreementNumber)) {
+                    return dos6SupplierStore;
                 }
             }
-            return jaggaerSupplierStore;
         }
+
+        return jaggaerSupplierStore;
     }
 }

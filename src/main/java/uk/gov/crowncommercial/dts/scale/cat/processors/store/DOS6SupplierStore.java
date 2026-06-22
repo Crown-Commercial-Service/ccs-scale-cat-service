@@ -22,52 +22,58 @@ public class DOS6SupplierStore implements SupplierStore {
     private final JaggaerSupplierStore jaggaerSupplierStore;
     private final DatabaseSupplierStore databaseSupplierStore;
 
-
     private SupplierStore getSupplierStore(ProcurementEvent event, Map<String, String> options) {
-
         SupplierStore store = getSupplierStore(options);
-        if(null != store)
+
+        if (null != store) {
             return store;
+        }
 
         Instant publishDate = event.getPublishDate();
+
         if (null != publishDate && publishDate.isBefore(Instant.now())) {
             log.debug("Choosing database supplier store to manage the suppliers");
             return databaseSupplierStore;
         }
-        else {
-            log.debug("Choosing Jaggaer supplier store to manage the suppliers");
-            return jaggaerSupplierStore;
-        }
+
+        log.debug("Choosing Jaggaer supplier store to manage the suppliers");
+        return jaggaerSupplierStore;
     }
 
     private SupplierStore getSupplierStore(Map<String, String> options){
-        if(null != options){
-            String store = options.get("store");
-            if(null != store){
-                switch (store){
-                    case "jaggaer":
-                        return jaggaerSupplierStore;
-                    case "database":
-                        return databaseSupplierStore;
-                    default:
-                        return null;
-                }
-            }
+        if (null == options){
+            return null;
         }
-        return null;
+
+        String store = options.get("store");
+
+        if (null == store){
+            return null;
+        }
+
+        switch (store) {
+            case "jaggaer":
+                    return jaggaerSupplierStore;
+            case "database":
+                    return databaseSupplierStore;
+            default:
+                    return null;
+        }
     }
 
     @Override
     public EventSuppliers getSuppliers(ProcurementEvent event, String principal) {
         Instant publishDate = event.getPublishDate();
+
         if (null != publishDate && publishDate.isBefore(Instant.now())) {
             log.debug("Choosing database supplier store to retrieve the suppliers");
             EventSuppliers result = databaseSupplierStore.getSuppliers(event, principal);
+
             if(null != result.getSuppliers() && result.getSuppliers().size() > 0){
                 return result;
-            }else{
-                log.debug("No suppliers found in database, retrieve from Jaggaer");
             }
+
+            log.debug("No suppliers found in database, retrieve from Jaggaer");
         }
 
         log.debug("Choosing Jaggaer supplier store to retrieve the suppliers");
@@ -96,16 +102,17 @@ public class DOS6SupplierStore implements SupplierStore {
 
     @Override
     public List<Supplier> getSuppliers(ProcurementEvent event) {
-
         Instant publishDate = event.getPublishDate();
+
         if (null != publishDate && publishDate.isBefore(Instant.now())) {
             log.debug("Choosing database supplier store to retrieve the suppliers");
             List<Supplier> result = databaseSupplierStore.getSuppliers(event);
+
             if(null != result && result.size() > 0){
                 return result;
-            }else{
-                log.debug("No suppliers found in database, retrieve from Jaggaer");
             }
+
+            log.debug("No suppliers found in database, retrieve from Jaggaer");
         }
 
         log.debug("Choosing Jaggaer supplier store to retrieve the suppliers");
