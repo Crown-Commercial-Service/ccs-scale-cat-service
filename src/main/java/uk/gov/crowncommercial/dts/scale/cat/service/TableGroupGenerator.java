@@ -36,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
@@ -59,6 +60,7 @@ public class TableGroupGenerator {
     private static final String TOKEN_CLEAN_PATTERN_REGEX = "«[^»]*»|«[^”]*”";
     private static final String COP_QUESTION_ANCHOR_TAG = "«cop_question»";
     private static final String QUESTION_TITLE = "Enter your question";
+    private static final Pattern PATTERN = Pattern.compile("\\d+");
 
     private final ObjectMapper objectMapper;
 
@@ -78,6 +80,8 @@ public class TableGroupGenerator {
             replaceAllPlaceholdersWithUnknown(textODT, groupNamePlaceholder, fieldMappings);
             return;
         }
+
+        requirementGroups.sort(TableGroupGenerator::compareByOcdsId);
 
         LinkedHashMap<String, GroupBucket> grouped = groupRequirementGroups(requirementGroups);
 
@@ -1139,6 +1143,44 @@ public class TableGroupGenerator {
         } catch (Exception ex) {
             log.warn("Failed to insert Not Specified text replacement", ex);
         }
+    }
+
+    private static int compareByOcdsId(Map<String, Object> a, Map<String, Object> b) {
+        return compareGroupIds(ocdsId(a), ocdsId(b));
+    }
+
+    private static String ocdsId(Map<String, Object> group){
+        Map<String, Object> ocds = (Map<String, Object>) group.get("OCDS");
+        return ocds == null ? "" : Objects.toString(ocds.get("id"), "");
+    }
+
+    private static int compareGroupIds(String a, String b) {
+        List<Integer> left = extractNumbers(a);
+        List<Integer> right = extractNumbers(b);
+
+        int max = Math.max(left.size(), right.size());
+
+        for (int i = 0; i < max; i++) {
+            int x = i < left.size() ? left.get(i) : -1;
+            int y = i < right.size() ? right.get(i) : -1;
+
+            if (x != y) {
+                return Integer.compare(x, y);
+            }
+        }
+
+        return 0;
+    }
+
+    private static List<Integer> extractNumbers(String value) {
+        Matcher matcher = PATTERN.matcher(value);
+        List<Integer> result = new ArrayList<>();
+
+        while (matcher.find()) {
+            result.add(Integer.parseInt(matcher.group()));
+        }
+
+        return result;
     }
 
 }
