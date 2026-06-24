@@ -1030,6 +1030,10 @@ public class DocGenService {
                         JsonNode sourceGroups = criterion.path(REQUIREMENT_GROUPS);
 
                         if (sourceGroups.isArray()) {
+                            // THE FIX: Group the ObjectNodes into Lists by their Name so they print sequentially,
+                            // but DO NOT merge their inner requirements arrays!
+                            Map<String, List<ObjectNode>> groupedNodes = new LinkedHashMap<>();
+
                             for (JsonNode group : sourceGroups) {
                                 String originalGroupId = group.path(OCDS).path(ID).asText();
 
@@ -1044,8 +1048,13 @@ public class DocGenService {
                                 }
 
                                 boolean hasValidData = false;
+                                String groupName = originalGroupId; // Fallback to ID if no name is found
+
+                                // Scan the requirements to validate the question and extract the dropdown group name
                                 for (JsonNode req : requirementsArray) {
                                     String reqId = req.path(OCDS).path(ID).asText();
+                                    String reqTitle = req.path(OCDS).path(TITLE).asText();
+
                                     if ("Question 1".equals(reqId) || reqId.startsWith("Question 1-")) {
                                         JsonNode options = req.path(NON_OCDS).path(OPTIONS);
                                         if (options.isArray() && !options.isEmpty()) {
@@ -1054,7 +1063,16 @@ public class DocGenService {
                                                 hasValidData = true;
                                             }
                                         }
-                                        break;
+                                    }
+
+                                    if ("Select group name".equals(reqTitle)) {
+                                        JsonNode options = req.path(NON_OCDS).path(OPTIONS);
+                                        if (options.isArray() && !options.isEmpty()) {
+                                            String parsedName = options.get(0).path(VALUE).asText();
+                                            if (StringUtils.hasText(parsedName)) {
+                                                groupName = parsedName;
+                                            }
+                                        }
                                     }
                                 }
 
@@ -1062,21 +1080,31 @@ public class DocGenService {
                                     continue;
                                 }
 
-                                ObjectNode clonedGroup = group.deepCopy();
+                                // Group by Stage + GroupName (e.g. "1_Business Requirement")
+                                String mapKey = stageNum + "_" + groupName;
+                                groupedNodes.computeIfAbsent(mapKey, k -> new ArrayList<>()).add((ObjectNode) group.deepCopy());
+                            }
 
-                                String stageAdjustedId = originalGroupId.contains(".")
-                                        ? originalGroupId
-                                        : originalGroupId + "." + stageNum;
+                            // Now push them to the final array in the newly sorted order
+                            for (List<ObjectNode> groupList : groupedNodes.values()) {
+                                for (ObjectNode clonedGroup : groupList) {
+                                    String originalGroupId = clonedGroup.path(OCDS).path(ID).asText();
 
-                                ((ObjectNode) clonedGroup.path(OCDS)).put(ID, stageAdjustedId);
-                                ((ObjectNode) clonedGroup.path(NON_OCDS)).put(ORDER, nextOrder++);
+                                    String stageAdjustedId = originalGroupId.contains(".")
+                                            ? originalGroupId
+                                            : originalGroupId + "." + stageNum;
 
-                                ArrayNode reqs = clonedGroup.path(OCDS).withArray(REQUIREMENTS);
-                                addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
-                                addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
-                                addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
+                                    ((ObjectNode) clonedGroup.path(OCDS)).put(ID, stageAdjustedId);
+                                    ((ObjectNode) clonedGroup.path(NON_OCDS)).put(ORDER, nextOrder++);
 
-                                targetRequirementGroups.add(clonedGroup);
+                                    // Add the virtual requirements
+                                    ArrayNode reqs = (ArrayNode) clonedGroup.path(OCDS).path(REQUIREMENTS);
+                                    addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
+                                    addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
+                                    addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
+
+                                    targetRequirementGroups.add(clonedGroup);
+                                }
                             }
                         }
                         break;
