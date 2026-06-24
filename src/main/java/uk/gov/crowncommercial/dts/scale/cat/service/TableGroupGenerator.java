@@ -36,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
@@ -1150,40 +1151,21 @@ public class TableGroupGenerator {
                 )
         );
 
-        LinkedHashMap<String, GroupBucket> sorted =
-                sortBucketsByFirstRowOrderDescending(grouped);
-
-        grouped.clear();
-        grouped.putAll(sorted);
-    }
-
-    private static LinkedHashMap<String, GroupBucket> sortBucketsByFirstRowOrderDescending(
-            LinkedHashMap<String, GroupBucket> grouped) {
-
         List<Map.Entry<String, GroupBucket>> entries =
                 new ArrayList<>(grouped.entrySet());
 
         entries.sort((left, right) ->
                 Integer.compare(
-                        getBucketFirstRowOrder(right.getValue()),
-                        getBucketFirstRowOrder(left.getValue())
+                        getGroupNumber(right.getValue().displayName),
+                        getGroupNumber(left.getValue().displayName)
                 )
         );
 
-        LinkedHashMap<String, GroupBucket> sorted = new LinkedHashMap<>();
+        grouped.clear();
 
         for (Map.Entry<String, GroupBucket> entry : entries) {
-            sorted.put(entry.getKey(), entry.getValue());
+            grouped.put(entry.getKey(), entry.getValue());
         }
-
-        return sorted;
-    }
-
-    private static int getBucketFirstRowOrder(GroupBucket bucket) {
-        return bucket.requirementGroups.stream()
-                .mapToInt(TableGroupGenerator::getLowestRequirementOrder)
-                .min()
-                .orElse(Integer.MIN_VALUE);
     }
 
     private static int getLowestRequirementOrder(Map<String, Object> requirementGroup) {
@@ -1235,5 +1217,22 @@ public class TableGroupGenerator {
 
         return defaultValue;
     }
+
+    private static int getGroupNumber(String displayName) {
+        if (!StringUtils.hasText(displayName)) {
+            return Integer.MIN_VALUE;
+        }
+
+        Matcher matcher = Pattern.compile("\\d+").matcher(displayName);
+
+        int lastNumber = Integer.MIN_VALUE;
+
+        while (matcher.find()) {
+            lastNumber = Integer.parseInt(matcher.group());
+        }
+
+        return lastNumber;
+    }
+
 
 }
