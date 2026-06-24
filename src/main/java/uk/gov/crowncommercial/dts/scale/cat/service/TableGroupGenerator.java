@@ -81,6 +81,8 @@ public class TableGroupGenerator {
 
         LinkedHashMap<String, GroupBucket> grouped = groupRequirementGroups(requirementGroups);
 
+        sortGroupedTableData(grouped);
+
         buildTableGroup(grouped, textODT, tableName, anchorPlaceholder, groupNamePlaceholder, fieldMappings);
     }
 
@@ -1139,6 +1141,99 @@ public class TableGroupGenerator {
         } catch (Exception ex) {
             log.warn("Failed to insert Not Specified text replacement", ex);
         }
+    }
+
+    private static void sortGroupedTableData(LinkedHashMap<String, GroupBucket> grouped) {
+        grouped.values().forEach(bucket ->
+                bucket.requirementGroups.sort(
+                        Comparator.comparingInt(TableGroupGenerator::getLowestRequirementOrder)
+                )
+        );
+
+        LinkedHashMap<String, GroupBucket> sorted =
+                sortBucketsByFirstRowOrderDescending(grouped);
+
+        grouped.clear();
+        grouped.putAll(sorted);
+    }
+
+    private static LinkedHashMap<String, GroupBucket> sortBucketsByFirstRowOrderDescending(
+            LinkedHashMap<String, GroupBucket> grouped) {
+
+        List<Map.Entry<String, GroupBucket>> entries =
+                new ArrayList<>(grouped.entrySet());
+
+        entries.sort((left, right) ->
+                Integer.compare(
+                        getBucketFirstRowOrder(right.getValue()),
+                        getBucketFirstRowOrder(left.getValue())
+                )
+        );
+
+        LinkedHashMap<String, GroupBucket> sorted = new LinkedHashMap<>();
+
+        for (Map.Entry<String, GroupBucket> entry : entries) {
+            sorted.put(entry.getKey(), entry.getValue());
+        }
+
+        return sorted;
+    }
+
+    private static int getBucketFirstRowOrder(GroupBucket bucket) {
+        return bucket.requirementGroups.stream()
+                .mapToInt(TableGroupGenerator::getLowestRequirementOrder)
+                .min()
+                .orElse(Integer.MIN_VALUE);
+    }
+
+    private static int getLowestRequirementOrder(Map<String, Object> requirementGroup) {
+        Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
+
+        if (ocds == null) {
+            return Integer.MAX_VALUE;
+        }
+
+        Object requirementsObj = ocds.get("requirements");
+
+        if (!(requirementsObj instanceof List<?> requirements)) {
+            return Integer.MAX_VALUE;
+        }
+
+        return requirements.stream()
+                .filter(Map.class::isInstance)
+                .map(requirement -> (Map<String, Object>) requirement)
+                .mapToInt(TableGroupGenerator::getRequirementOrder)
+                .min()
+                .orElse(Integer.MAX_VALUE);
+    }
+
+    private static int getRequirementOrder(Map<String, Object> requirement) {
+        Map<String, Object> nonOCDS =
+                (Map<String, Object>) requirement.get("nonOCDS");
+
+        return getOrder(nonOCDS, Integer.MAX_VALUE);
+    }
+
+    private static int getOrder(Map<String, Object> nonOCDS, int defaultValue) {
+        if (nonOCDS == null) {
+            return defaultValue;
+        }
+
+        Object order = nonOCDS.get("order");
+
+        if (order instanceof Number number) {
+            return number.intValue();
+        }
+
+        if (order instanceof String orderText && StringUtils.hasText(orderText)) {
+            try {
+                return Integer.parseInt(orderText);
+            } catch (NumberFormatException ignored) {
+                return defaultValue;
+            }
+        }
+
+        return defaultValue;
     }
 
 }
