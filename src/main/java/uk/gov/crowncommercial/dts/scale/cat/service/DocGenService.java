@@ -1030,8 +1030,6 @@ public class DocGenService {
                         JsonNode sourceGroups = criterion.path(REQUIREMENT_GROUPS);
 
                         if (sourceGroups.isArray()) {
-                            // THE FIX: Group the ObjectNodes into Lists by their Name so they print sequentially,
-                            // but DO NOT merge their inner requirements arrays!
                             Map<String, List<ObjectNode>> groupedNodes = new LinkedHashMap<>();
 
                             for (JsonNode group : sourceGroups) {
@@ -1048,7 +1046,7 @@ public class DocGenService {
                                 }
 
                                 boolean hasValidData = false;
-                                String groupName = originalGroupId; // Fallback to ID if no name is found
+                                String groupName = originalGroupId;
 
                                 // Scan the requirements to validate the question and extract the dropdown group name
                                 for (JsonNode req : requirementsArray) {
@@ -1080,9 +1078,8 @@ public class DocGenService {
                                     continue;
                                 }
 
-                                // Group by Stage + GroupName (e.g. "1_Business Requirement")
                                 String mapKey = stageNum + "_" + groupName;
-                                groupedNodes.computeIfAbsent(mapKey, k -> new ArrayList<>()).add((ObjectNode) group.deepCopy());
+                                groupedNodes.computeIfAbsent(mapKey, k -> new ArrayList<>()).add(group.deepCopy());
                             }
 
                             // Now push them to the final array in the newly sorted order
