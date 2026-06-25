@@ -124,12 +124,18 @@ public class MessageService {
   public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
     // REM Assumption that user is buyer only
+
+    log.debug("Calling Jaggaer to get messages - (getMessagesSummary)");
     var jaggaerUserId = userProfileService
         .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
 
+    log.debug("Got jaggaer user Id");
+
     var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
         messageRequestInfo.getEventId(), null);
+
+    log.debug("Validated event");
 
     Predicate<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> directionPredicate =
         message -> (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
@@ -142,6 +148,13 @@ public class MessageService {
     var messagesResponse =
         jaggaerService.getMessages(event.getExternalReferenceId(), 1);
     var allMessages = messagesResponse.getMessageList().getMessage();
+
+    log.debug("Called Jaggaer successfully to retrieve message/messages.");
+
+    if(messagesResponse != null) {
+        log.info("Jaggaer message response, returnCode: {}, returnMessage: {}, total messages: {}",
+                messagesResponse.getReturnCode(), messagesResponse.getReturnMessage(), allMessages.size());
+    }
 
     /**
      * Make first request to jagger if total records are more than > 100 (Jaggaer returns max 100
@@ -163,6 +176,13 @@ public class MessageService {
         .filter(message -> (isEmpty(message.getReceiverList().getReceiver())
             || message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate)))
         .collect(Collectors.toList());
+
+      log.debug("Called Jaggaer successfully to retrieve message/messages. and total messages");
+
+      if(messages != null) {
+          log.info("Jaggaer total number of messages: {}",
+                  messages.size());
+      }
 
     if (messages.isEmpty()) {
       return new MessageSummary();
