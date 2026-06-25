@@ -177,6 +177,8 @@ public class MessageService {
             || message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate)))
         .collect(Collectors.toList());
 
+      log.debug("Called Jaggaer successfully to retrieve message/messages. and total messages");
+
       if(messages != null) {
           log.info("Jaggaer total number of messages: {}",
                   messages.size());
