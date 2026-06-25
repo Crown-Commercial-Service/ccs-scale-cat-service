@@ -143,6 +143,11 @@ public class MessageService {
         jaggaerService.getMessages(event.getExternalReferenceId(), 1);
     var allMessages = messagesResponse.getMessageList().getMessage();
 
+    if(messagesResponse != null) {
+        log.debug("Jaggaer message response, returnCode: {}, returnMessage: {}, total messages: {}",
+                messagesResponse.getReturnCode(), messagesResponse.getReturnMessage(), allMessages.size());
+    }
+
     /**
      * Make first request to jagger if total records are more than > 100 (Jaggaer returns max 100
      * order by date desc) and messageSort is TITLE/AUTHOR then make sub-sequent call to get total
@@ -163,6 +168,11 @@ public class MessageService {
         .filter(message -> (isEmpty(message.getReceiverList().getReceiver())
             || message.getReceiverList().getReceiver().stream().anyMatch(receiverPredicate)))
         .collect(Collectors.toList());
+
+      if(messages != null) {
+          log.debug("Jaggaer total number of messages: {}",
+                  messages.size());
+      }
 
     if (messages.isEmpty()) {
       return new MessageSummary();
