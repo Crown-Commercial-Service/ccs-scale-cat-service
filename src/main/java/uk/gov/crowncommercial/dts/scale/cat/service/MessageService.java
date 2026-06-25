@@ -149,6 +149,8 @@ public class MessageService {
         jaggaerService.getMessages(event.getExternalReferenceId(), 1);
     var allMessages = messagesResponse.getMessageList().getMessage();
 
+    log.debug("Called Jaggaer successfully to retrieve message/messages.");
+
     if(messagesResponse != null) {
         log.info("Jaggaer message response, returnCode: {}, returnMessage: {}, total messages: {}",
                 messagesResponse.getReturnCode(), messagesResponse.getReturnMessage(), allMessages.size());
