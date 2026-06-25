@@ -36,6 +36,7 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
@@ -80,6 +81,8 @@ public class TableGroupGenerator {
         }
 
         LinkedHashMap<String, GroupBucket> grouped = groupRequirementGroups(requirementGroups);
+
+        sortGroupedTableData(grouped);
 
         buildTableGroup(grouped, textODT, tableName, anchorPlaceholder, groupNamePlaceholder, fieldMappings);
     }
@@ -1140,5 +1143,96 @@ public class TableGroupGenerator {
             log.warn("Failed to insert Not Specified text replacement", ex);
         }
     }
+
+    private static void sortGroupedTableData(LinkedHashMap<String, GroupBucket> grouped) {
+        grouped.values().forEach(bucket ->
+                bucket.requirementGroups.sort(
+                        Comparator.comparingInt(TableGroupGenerator::getLowestRequirementOrder)
+                )
+        );
+
+        List<Map.Entry<String, GroupBucket>> entries =
+                new ArrayList<>(grouped.entrySet());
+
+        entries.sort((left, right) ->
+                Integer.compare(
+                        getGroupNumber(right.getValue().displayName),
+                        getGroupNumber(left.getValue().displayName)
+                )
+        );
+
+        grouped.clear();
+
+        for (Map.Entry<String, GroupBucket> entry : entries) {
+            grouped.put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static int getLowestRequirementOrder(Map<String, Object> requirementGroup) {
+        Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
+
+        if (ocds == null) {
+            return Integer.MAX_VALUE;
+        }
+
+        Object requirementsObj = ocds.get("requirements");
+
+        if (!(requirementsObj instanceof List<?> requirements)) {
+            return Integer.MAX_VALUE;
+        }
+
+        return requirements.stream()
+                .filter(Map.class::isInstance)
+                .map(requirement -> (Map<String, Object>) requirement)
+                .mapToInt(TableGroupGenerator::getRequirementOrder)
+                .min()
+                .orElse(Integer.MAX_VALUE);
+    }
+
+    private static int getRequirementOrder(Map<String, Object> requirement) {
+        Map<String, Object> nonOCDS =
+                (Map<String, Object>) requirement.get("nonOCDS");
+
+        return getOrder(nonOCDS, Integer.MAX_VALUE);
+    }
+
+    private static int getOrder(Map<String, Object> nonOCDS, int defaultValue) {
+        if (nonOCDS == null) {
+            return defaultValue;
+        }
+
+        Object order = nonOCDS.get("order");
+
+        if (order instanceof Number number) {
+            return number.intValue();
+        }
+
+        if (order instanceof String orderText && StringUtils.hasText(orderText)) {
+            try {
+                return Integer.parseInt(orderText);
+            } catch (NumberFormatException ignored) {
+                return defaultValue;
+            }
+        }
+
+        return defaultValue;
+    }
+
+    private static int getGroupNumber(String displayName) {
+        if (!StringUtils.hasText(displayName)) {
+            return Integer.MIN_VALUE;
+        }
+
+        Matcher matcher = Pattern.compile("\\d+").matcher(displayName);
+
+        int lastNumber = Integer.MIN_VALUE;
+
+        while (matcher.find()) {
+            lastNumber = Integer.parseInt(matcher.group());
+        }
+
+        return lastNumber;
+    }
+
 
 }
