@@ -124,12 +124,18 @@ public class MessageService {
   public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
     // REM Assumption that user is buyer only
+
+    log.debug("Calling Jaggaer to get messages - (getMessagesSummary)");
     var jaggaerUserId = userProfileService
         .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
 
+    log.debug("Got jaggaer user Id");
+
     var event = validationService.validateProjectAndEventIds(messageRequestInfo.getProcId(),
         messageRequestInfo.getEventId(), null);
+
+    log.debug("Validated event");
 
     Predicate<uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Message> directionPredicate =
         message -> (MessageDirection.ALL.equals(messageRequestInfo.getMessageDirection())
@@ -144,7 +150,7 @@ public class MessageService {
     var allMessages = messagesResponse.getMessageList().getMessage();
 
     if(messagesResponse != null) {
-        log.debug("Jaggaer message response, returnCode: {}, returnMessage: {}, total messages: {}",
+        log.info("Jaggaer message response, returnCode: {}, returnMessage: {}, total messages: {}",
                 messagesResponse.getReturnCode(), messagesResponse.getReturnMessage(), allMessages.size());
     }
 
@@ -170,7 +176,7 @@ public class MessageService {
         .collect(Collectors.toList());
 
       if(messages != null) {
-          log.debug("Jaggaer total number of messages: {}",
+          log.info("Jaggaer total number of messages: {}",
                   messages.size());
       }
 
