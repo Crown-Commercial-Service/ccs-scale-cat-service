@@ -115,6 +115,10 @@ public class DocGenService {
     private static final String CURRENT_STAGE_ANCHOR_TAG = "«current_stage»";
     private static final String CURRENT_ATTACHMENT_NUMBER_ANCHOR_TAG = "«current_attachment»";
     private static final String ATTACHMENT_4_OUTPUT_FILE_NAME = "DOS 7 MultiStage L1 Bid Pack - Attachment %d Responses to Stage %d assessment criteria.odt";
+    private static final String GROUP_0 = "Group 0";
+    private static final String NO_GROUP_LABEL = "(no group)";
+    private static final String QUESTION_1_PREFIX = "Question 1";
+    private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
 
     private final ApplicationContext applicationContext;
     private final ValidationService validationService;
@@ -994,123 +998,233 @@ public class DocGenService {
     public String mergeStageJsonPayloads(List<Map<String, Object>> stageDataList) {
 
         if (stageDataList == null || stageDataList.isEmpty()) {
-            log.error("Unable to merge stage json");
+            log.error("Unable to merge stage json: Input list is empty");
             return "";
         }
 
-        Map<String, Object> stage1Data = stageDataList.getFirst();
-        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree((String) stage1Data.get(PAYLOAD_TAG));
-        ArrayNode baseCriteria = (ArrayNode) baseRoot.get(CRITERIA);
-        ArrayNode targetRequirementGroups = null;
+        String basePayload = (String) stageDataList.getFirst().get(PAYLOAD_TAG);
+        ObjectNode baseRoot = (ObjectNode) objectMapper.readTree(basePayload);
 
-        for (JsonNode criterion : baseCriteria) {
-            if (CRITERION2.equals(criterion.path(ID).asText())) {
-                targetRequirementGroups = (ArrayNode) criterion.get(REQUIREMENT_GROUPS);
-                targetRequirementGroups.removeAll();
-                break;
+        Optional<ArrayNode> targetReqGroupsOpt = getTargetRequirementGroups(baseRoot);
+        if (targetReqGroupsOpt.isEmpty()) {
+            return objectMapper.writeValueAsString(baseRoot);
+        }
+
+        ArrayNode targetRequirementGroups = targetReqGroupsOpt.get();
+        targetRequirementGroups.removeAll();
+
+        int nextOrder = 1;
+        for (Map<String, Object> stageData : stageDataList) {
+            nextOrder = processSingleStage(stageData, targetRequirementGroups, nextOrder);
+        }
+
+        return objectMapper.writeValueAsString(baseRoot);
+    }
+
+    // =========================================================================
+    // STAGE PROCESSING
+    // =========================================================================
+    private int processSingleStage(Map<String, Object> stageData, ArrayNode targetGroups, int nextOrder) throws Exception {
+
+        String payload = (String) stageData.get(PAYLOAD_TAG);
+        int stageNum = (Integer) stageData.get(STAGE_NUMBER_TAG);
+        int totalStages = (Integer) stageData.get(TOTAL_STAGES_TAG);
+        String stageDesc = (String) stageData.get(STAGE_DESCRIPTION_TAG);
+
+        JsonNode sourceGroups = getSourceGroupsForCriterion2(objectMapper.readTree(payload));
+        if (sourceGroups == null || !sourceGroups.isArray()) {
+            return nextOrder;
+        }
+
+        Map<String, String> sanitizedGroupNames = extractAndSanitizeGroupNames(sourceGroups, stageNum);
+
+        Map<String, List<ObjectNode>> groupedNodes = groupRequirementsByName(sourceGroups, sanitizedGroupNames, stageNum);
+
+        return appendGroupsToTarget(groupedNodes, targetGroups, nextOrder, stageNum, totalStages, stageDesc);
+    }
+
+    // =========================================================================
+    // SANITIZATION & HEURISTICS
+    // =========================================================================
+    private Map<String, String> extractAndSanitizeGroupNames(JsonNode sourceGroups, int stageNum) {
+
+        Map<String, String> groupNames = new HashMap<>();
+
+        for (JsonNode group : sourceGroups) {
+            String groupId = group.path(OCDS).path(ID).asText();
+            if (GROUP_0.equals(groupId)) continue;
+
+            JsonNode requirements = group.path(OCDS).path(REQUIREMENTS);
+            if (isValidArray(requirements)) {
+                groupNames.put(groupId, parseGroupName(requirements));
             }
         }
 
-        if (targetRequirementGroups == null) return objectMapper.writeValueAsString(baseRoot);
+        if (stageNum > 1) {
+            applyGhostStateSiblingHeuristic(groupNames);
+        }
 
-        int nextOrder = 1;
+        return groupNames;
+    }
 
-        for (Map<String, Object> currentData : stageDataList) {
-            String payload = (String) currentData.get(PAYLOAD_TAG);
-            int stageNum = (Integer) currentData.get(STAGE_NUMBER_TAG);
-            int totalStages = (Integer) currentData.get(TOTAL_STAGES_TAG);
-            String stageDesc = (String) currentData.get(STAGE_DESCRIPTION_TAG);
+    private void applyGhostStateSiblingHeuristic(Map<String, String> groupNames) {
 
-            JsonNode rootNode = objectMapper.readTree(payload);
-            JsonNode criteriaArray = rootNode.path(CRITERIA);
+        List<String> corruptedBaseGroups = new ArrayList<>();
 
-            if (criteriaArray.isArray()) {
-                for (JsonNode criterion : criteriaArray) {
-                    if (CRITERION2.equals(criterion.path(ID).asText())) {
-                        JsonNode sourceGroups = criterion.path(REQUIREMENT_GROUPS);
+        for (String groupId : groupNames.keySet()) {
+            if (!groupId.contains(".")) {
+                boolean hasSiblings = false;
+                boolean allSiblingsEmpty = true;
 
-                        if (sourceGroups.isArray()) {
-                            Map<String, List<ObjectNode>> groupedNodes = new LinkedHashMap<>();
-
-                            for (JsonNode group : sourceGroups) {
-                                String originalGroupId = group.path(OCDS).path(ID).asText();
-
-                                if ("Group 0".equals(originalGroupId)) {
-                                    continue;
-                                }
-
-                                JsonNode requirementsArray = group.path(OCDS).path(REQUIREMENTS);
-
-                                if (!requirementsArray.isArray() || requirementsArray.isEmpty()) {
-                                    continue;
-                                }
-
-                                boolean hasValidData = false;
-                                String groupName = originalGroupId;
-
-                                // Scan the requirements to validate the question and extract the dropdown group name
-                                for (JsonNode req : requirementsArray) {
-                                    String reqId = req.path(OCDS).path(ID).asText();
-                                    String reqTitle = req.path(OCDS).path(TITLE).asText();
-
-                                    if ("Question 1".equals(reqId) || reqId.startsWith("Question 1-")) {
-                                        JsonNode options = req.path(NON_OCDS).path(OPTIONS);
-                                        if (options.isArray() && !options.isEmpty()) {
-                                            String questionTextValue = options.get(0).path(VALUE).asText();
-                                            if (StringUtils.hasText(questionTextValue)) {
-                                                hasValidData = true;
-                                            }
-                                        }
-                                    }
-
-                                    if ("Select group name".equals(reqTitle)) {
-                                        JsonNode options = req.path(NON_OCDS).path(OPTIONS);
-                                        if (options.isArray() && !options.isEmpty()) {
-                                            String parsedName = options.get(0).path(VALUE).asText();
-                                            if (StringUtils.hasText(parsedName)) {
-                                                groupName = parsedName;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (!hasValidData) {
-                                    continue;
-                                }
-
-                                String mapKey = stageNum + "_" + groupName;
-                                groupedNodes.computeIfAbsent(mapKey, k -> new ArrayList<>()).add(group.deepCopy());
-                            }
-
-                            // Now push them to the final array in the newly sorted order
-                            for (List<ObjectNode> groupList : groupedNodes.values()) {
-                                for (ObjectNode clonedGroup : groupList) {
-                                    String originalGroupId = clonedGroup.path(OCDS).path(ID).asText();
-
-                                    String stageAdjustedId = originalGroupId.contains(".")
-                                            ? originalGroupId
-                                            : originalGroupId + "." + stageNum;
-
-                                    ((ObjectNode) clonedGroup.path(OCDS)).put(ID, stageAdjustedId);
-                                    ((ObjectNode) clonedGroup.path(NON_OCDS)).put(ORDER, nextOrder++);
-
-                                    // Add the virtual requirements
-                                    ArrayNode reqs = (ArrayNode) clonedGroup.path(OCDS).path(REQUIREMENTS);
-                                    addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
-                                    addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
-                                    addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
-
-                                    targetRequirementGroups.add(clonedGroup);
-                                }
-                            }
+                for (Map.Entry<String, String> entry : groupNames.entrySet()) {
+                    if (entry.getKey().startsWith(groupId + ".")) {
+                        hasSiblings = true;
+                        if (!NO_GROUP_LABEL.equals(entry.getValue())) {
+                            allSiblingsEmpty = false;
                         }
-                        break;
                     }
+                }
+
+                if (hasSiblings && allSiblingsEmpty) {
+                    corruptedBaseGroups.add(groupId);
                 }
             }
         }
 
-        return objectMapper.writeValueAsString(baseRoot);
+        corruptedBaseGroups.forEach(id -> groupNames.put(id, NO_GROUP_LABEL));
+    }
+
+    private String parseGroupName(JsonNode requirementsArray) {
+
+        for (JsonNode req : requirementsArray) {
+            if (SELECT_GROUP_NAME_TITLE.equals(req.path(OCDS).path(TITLE).asText())) {
+                JsonNode options = req.path(NON_OCDS).path(OPTIONS);
+                if (isValidArray(options)) {
+                    String parsedName = options.get(0).path(VALUE).asText();
+                    return (StringUtils.hasText(parsedName) && !"null".equalsIgnoreCase(parsedName))
+                            ? parsedName : NO_GROUP_LABEL;
+                }
+            }
+        }
+        return NO_GROUP_LABEL;
+    }
+
+    // =========================================================================
+    // GROUPING & MAPPING
+    // =========================================================================
+    private Map<String, List<ObjectNode>> groupRequirementsByName(JsonNode sourceGroups, Map<String, String> sanitizedNames, int stageNum) {
+
+        Map<String, List<ObjectNode>> groupedNodes = new LinkedHashMap<>();
+
+        for (JsonNode group : sourceGroups) {
+            String groupId = group.path(OCDS).path(ID).asText();
+            if (GROUP_0.equals(groupId)) continue;
+
+            JsonNode requirementsArray = group.path(OCDS).path(REQUIREMENTS);
+            if (!isValidArray(requirementsArray) || !hasValidQuestionData(requirementsArray)) {
+                continue;
+            }
+
+            String finalGroupName = sanitizedNames.getOrDefault(groupId, NO_GROUP_LABEL);
+            injectSanitizedNameIntoJson(requirementsArray, finalGroupName);
+
+            String mapKey = stageNum + "_" + finalGroupName;
+            groupedNodes.computeIfAbsent(mapKey, k -> new ArrayList<>()).add((ObjectNode) group.deepCopy());
+        }
+
+        return groupedNodes;
+    }
+
+    private int appendGroupsToTarget(Map<String, List<ObjectNode>> groupedNodes, ArrayNode targetGroups,
+                                     int nextOrder, int stageNum, int totalStages, String stageDesc) {
+
+        for (List<ObjectNode> groupList : groupedNodes.values()) {
+            for (ObjectNode clonedGroup : groupList) {
+
+                ObjectNode ocdsNode = (ObjectNode) clonedGroup.get(OCDS);
+                if (ocdsNode == null) {
+                    ocdsNode = clonedGroup.putObject(OCDS);
+                }
+
+                String originalGroupId = ocdsNode.path(ID).asText();
+                String stageAdjustedId = originalGroupId.contains(".") ? originalGroupId : originalGroupId + "." + stageNum;
+                ocdsNode.put(ID, stageAdjustedId);
+
+                ObjectNode nonOcdsNode = (ObjectNode) clonedGroup.get(NON_OCDS);
+                if (nonOcdsNode == null) {
+                    nonOcdsNode = clonedGroup.putObject(NON_OCDS);
+                }
+                nonOcdsNode.put(ORDER, nextOrder++);
+
+                ArrayNode reqs = (ArrayNode) ocdsNode.get(REQUIREMENTS);
+                if (reqs == null) {
+                    reqs = ocdsNode.putArray(REQUIREMENTS);
+                }
+
+                addVirtualRequirement(reqs, CURRENT_STAGE_TITLE, String.valueOf(stageNum));
+                addVirtualRequirement(reqs, TOTAL_STAGES_TITLE, String.valueOf(totalStages));
+                addVirtualRequirement(reqs, STAGE_DESCRIPTION_TITLE, stageDesc);
+
+                targetGroups.add(clonedGroup);
+            }
+        }
+        return nextOrder;
+    }
+
+    // =========================================================================
+    // JSON UTILITIES & VALIDATORS
+    // =========================================================================
+    private Optional<ArrayNode> getTargetRequirementGroups(JsonNode root) {
+        JsonNode criteriaArray = root.path(CRITERIA);
+        if (isValidArray(criteriaArray)) {
+            for (JsonNode criterion : criteriaArray) {
+                if (CRITERION2.equals(criterion.path(ID).asText())) {
+                    return Optional.of((ArrayNode) criterion.path(REQUIREMENT_GROUPS));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private JsonNode getSourceGroupsForCriterion2(JsonNode root) {
+        JsonNode criteriaArray = root.path(CRITERIA);
+        if (isValidArray(criteriaArray)) {
+            for (JsonNode criterion : criteriaArray) {
+                if (CRITERION2.equals(criterion.path(ID).asText())) {
+                    return criterion.path(REQUIREMENT_GROUPS);
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean hasValidQuestionData(JsonNode requirementsArray) {
+        for (JsonNode req : requirementsArray) {
+            String reqId = req.path(OCDS).path(ID).asText();
+            if (reqId.startsWith(QUESTION_1_PREFIX)) {
+                JsonNode options = req.path(NON_OCDS).path(OPTIONS);
+                if (isValidArray(options)) {
+                    String value = options.get(0).path(VALUE).asText();
+                    if (StringUtils.hasText(value)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void injectSanitizedNameIntoJson(JsonNode requirementsArray, String sanitizedName) {
+        for (JsonNode req : requirementsArray) {
+            if (SELECT_GROUP_NAME_TITLE.equals(req.path(OCDS).path(TITLE).asText())) {
+                JsonNode options = req.path(NON_OCDS).path(OPTIONS);
+                if (isValidArray(options)) {
+                    ((ObjectNode) options.get(0)).put(VALUE, sanitizedName);
+                }
+            }
+        }
+    }
+
+    private boolean isValidArray(JsonNode node) {
+        return node != null && node.isArray() && !node.isEmpty();
     }
 
     private void addVirtualRequirement(ArrayNode requirements, String title, String value) {
