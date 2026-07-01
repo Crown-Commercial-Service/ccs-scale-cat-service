@@ -10,15 +10,18 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import uk.gov.crowncommercial.dts.scale.cat.exception.StageException;
+import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventWrite;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageNameRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageNameWrite;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesWrite;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageDataEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageEventEntity;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.StageNameEntity;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.repo.StageDataRepo;
 
 /**
@@ -30,6 +33,8 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.StageDataRepo;
 public class StageService {
 
   private final StageDataRepo stageDataRepo;
+  private final ValidationService validationService;
+  private final RetryableTendersDBDelegate retryableTendersDBDelegate;
 
   public StagesRead getStagesForEventId(final String eventId) {
     if (Strings.isEmpty(eventId)) {
@@ -110,6 +115,8 @@ public class StageService {
           stageEventsEntity.setPriorEventId(entry.getPriorEventId());
 
           stageEvents.add(stageEventsEntity);
+
+          ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry);
       }
 
       stageDataRepo.save(
@@ -127,5 +134,29 @@ public class StageService {
         log.error("createOrUpdateStagesForEventId - error", e);
         throw new StageException("Unexpected error saving stages for eventId: " + eventId);
     }
+  }
+
+  private void ensureStageNameIsStoredInProcurementStageEvent(List<StageNameEntity> stageNames, StageEventWrite entry)
+  {
+      OCID eventOCID = validationService.validateEventId(entry.getEventId());
+
+      Optional<ProcurementStageEvent> procurementEventForStage = retryableTendersDBDelegate
+              .findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
+                  Integer.valueOf(eventOCID.getInternalId()), entry.getStageNumber(), eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
+
+      if (procurementEventForStage.isPresent()) {
+          for (StageNameEntity stageNameEntity : stageNames) {
+              if (stageNameEntity.getStageNumber().equals(entry.getStageNumber())) {
+
+                  if (null != stageNameEntity.getStageName() && !stageNameEntity.getStageName().isBlank()) {
+                      procurementEventForStage.get().setStageDescription(stageNameEntity.getStageName());
+
+                      retryableTendersDBDelegate.save(procurementEventForStage.get());
+                  }
+
+                  break;
+              }
+          }
+      }
   }
 }

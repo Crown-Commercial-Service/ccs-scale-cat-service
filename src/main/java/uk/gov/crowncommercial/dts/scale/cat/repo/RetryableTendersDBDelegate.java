@@ -160,6 +160,19 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
+  public Optional<ProcurementStageEvent> findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
+      Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
+
+      if (!result.isPresent()) {
+          return Optional.empty();
+      }
+
+      final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(result.get().getEventID(), result.get().getStageNumber());
+
+      return procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
+  }
+
+  @TendersRetryable
   @Transactional
   public boolean saveEventPayloadByIdAndStageNumberAndAuthorityAndPrefix(Integer eventIdKey, Integer stageNumber, String ocdsAuthorityName, String ocidPrefix, JsonNode payload) {
       Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
