@@ -1,6 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,31 +94,35 @@ public class StageService {
     }
 
     try {
-      List<StageNameEntity> stageNames = new ArrayList<>();
+        List<StageNameEntity> stageNames = Optional.ofNullable(stagesWrite.getStageNames())
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .map(this::mapToStageNameEntity)
+                .toList();
 
-      for (StageNameWrite entry : stagesWrite.getStageNames()) {
-          StageNameEntity stageNameEntity = new StageNameEntity();
-          stageNameEntity.setId(entry.getId());
-          stageNameEntity.setEventId(entry.getEventId());
-          stageNameEntity.setStageNumber(entry.getStageNumber());
-          stageNameEntity.setStageName(entry.getStageName());
+        List<StageEventWrite> eventWrites = Optional.ofNullable(stagesWrite.getStageEvents())
+                .orElseGet(Collections::emptyList);
 
-          stageNames.add(stageNameEntity);
-      }
+        List<StageEventEntity> stageEvents = eventWrites.stream()
+                .map(this::mapToStageEventEntity)
+                .toList();
 
-      List<StageEventEntity> stageEvents = new ArrayList<>();
+        if (!stageNames.isEmpty()) {
+            if (eventWrites.isEmpty()) {
+                // Handles the edge case
+                stageNames.forEach(stage -> {
+                    StageEventWrite entry = new StageEventWrite();
+                    entry.id(stage.getId());
+                    entry.eventId(stage.getEventId());
+                    entry.stageNumber(stage.getStageNumber());
+                    ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry);
+                });
 
-      for (StageEventWrite entry : stagesWrite.getStageEvents()) {
-          StageEventEntity stageEventsEntity = new StageEventEntity();
-          stageEventsEntity.setId(entry.getId());
-          stageEventsEntity.setEventId(entry.getEventId());
-          stageEventsEntity.setStageNumber(entry.getStageNumber());
-          stageEventsEntity.setPriorEventId(entry.getPriorEventId());
-
-          stageEvents.add(stageEventsEntity);
-
-          ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry);
-      }
+            } else {
+                // Standard flow
+                eventWrites.forEach(entry -> ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry));
+            }
+        }
 
       stageDataRepo.save(
           StageDataEntity.builder()
@@ -159,4 +164,22 @@ public class StageService {
           }
       }
   }
+
+    private StageNameEntity mapToStageNameEntity(StageNameWrite entry) {
+        StageNameEntity entity = new StageNameEntity();
+        entity.setId(entry.getId());
+        entity.setEventId(entry.getEventId());
+        entity.setStageNumber(entry.getStageNumber());
+        entity.setStageName(entry.getStageName());
+        return entity;
+    }
+
+    private StageEventEntity mapToStageEventEntity(StageEventWrite entry) {
+        StageEventEntity entity = new StageEventEntity();
+        entity.setId(entry.getId());
+        entity.setEventId(entry.getEventId());
+        entity.setStageNumber(entry.getStageNumber());
+        entity.setPriorEventId(entry.getPriorEventId());
+        return entity;
+    }
 }
