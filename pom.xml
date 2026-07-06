@@ -43,7 +43,7 @@
         <junitapi.version>6.1.0</junitapi.version>
         <opensearch.version>2.0.6</opensearch.version>
         <shedlock.version>7.7.0</shedlock.version>
-        <spring-boot.version>3.5.14</spring-boot.version>
+        <spring-boot.version>3.5.15</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>3.0.0</jsonpath.version>
         <logback.version>1.5.34</logback.version>
@@ -51,7 +51,7 @@
         <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.13</retry.version>
         <jetty-reactive.version>4.1.5</jetty-reactive.version>
-        <postgres.version>42.7.11</postgres.version>
+        <postgres.version>42.7.12</postgres.version>
         <lombok.version>1.18.46</lombok.version>
         <spring.version>6.5.10</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
