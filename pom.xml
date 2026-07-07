@@ -47,7 +47,7 @@
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>3.0.0</jsonpath.version>
         <logback.version>1.5.37</logback.version>
-        <feignclient.version>4.3.2</feignclient.version>
+        <feignclient.version>4.3.3</feignclient.version>
         <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.13</retry.version>
         <jetty-reactive.version>4.1.5</jetty-reactive.version>
