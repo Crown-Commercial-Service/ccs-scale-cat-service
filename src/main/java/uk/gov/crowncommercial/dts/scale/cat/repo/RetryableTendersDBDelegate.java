@@ -139,7 +139,7 @@ public class RetryableTendersDBDelegate {
   }
 
   @TendersRetryable
-  public Optional<ProcurementEvent> findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
+  public Optional<ProcurementStageEvent> findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
       Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
 
       if (!result.isPresent()) {
@@ -148,13 +148,18 @@ public class RetryableTendersDBDelegate {
 
       final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(result.get().getEventID(), result.get().getStageNumber());
 
-      Optional<ProcurementStageEvent> firstStageEvent = procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
+      return procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
+  }
 
-      if (!firstStageEvent.isPresent()) {
+  @TendersRetryable
+  public Optional<ProcurementEvent> findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
+      Optional<ProcurementStageEvent> result = findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, stageNumber, ocdsAuthorityName, ocidPrefix);
+
+      if (!result.isPresent()) {
           return Optional.empty();
       }
 
-      ProcurementEvent response = procurementEventMapper.procurementStageEventToProcurementEvent(firstStageEvent.get());
+      ProcurementEvent response = procurementEventMapper.procurementStageEventToProcurementEvent(result.get());
 
       return Optional.of(response);
   }

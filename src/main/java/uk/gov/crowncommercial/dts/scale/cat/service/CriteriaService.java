@@ -21,6 +21,7 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.DependencyMapper;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.ProcurementEventMapper;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.TimelineDependencyMapper;
+import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Party;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.Relationships;
@@ -603,5 +604,31 @@ public class CriteriaService {
             .collect(Collectors.toList());
     log.debug(LOG_TAG + "updatedOption: {}", updatedOption);
     return updatedOption;
+  }
+
+  /*
+   * This method ensures all the stage descriptions are stored within each ProcurementStageEvent instance,
+   * which helps when generating the bid-packs.
+   */
+  public void ensureStageDescriptionsAreStoredInProcurementStageEvent(final String eventId) {
+    final StagesRead stagesRead = stageService.getStagesForEventId(eventId);
+
+    if (null == stagesRead || null == stagesRead.getStageNames() || !stagesRead.getStageNames().isEmpty()) {
+        return;
+    }
+
+    for (StageNameRead entry : stagesRead.getStageNames()) {
+        OCID eventOCID = validationService.validateEventId(entry.getEventId());
+
+        Optional<ProcurementStageEvent> procurementStageEvent =
+            retryableTendersDBDelegate.findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
+                Integer.valueOf(eventOCID.getInternalId()), entry.getStageNumber(), eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
+
+        if (procurementStageEvent.isPresent()) {
+            procurementStageEvent.get().setStageDescription(entry.getStageName());
+
+            retryableTendersDBDelegate.save(procurementStageEvent.get());
+        }
+    }
   }
 }
