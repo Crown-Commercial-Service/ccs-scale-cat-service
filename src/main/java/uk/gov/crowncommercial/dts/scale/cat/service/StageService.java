@@ -107,21 +107,9 @@ public class StageService {
                 .map(this::mapToStageEventEntity)
                 .toList();
 
-        if (!stageNames.isEmpty()) {
-            if (eventWrites.isEmpty()) {
-                // Handles the edge case
-                stageNames.forEach(stage -> {
-                    StageEventWrite entry = new StageEventWrite();
-                    entry.id(stage.getId());
-                    entry.eventId(stage.getEventId());
-                    entry.stageNumber(stage.getStageNumber());
-                    ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry);
-                });
-
-            } else {
-                // Standard flow
-                eventWrites.forEach(entry -> ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry));
-            }
+        if (!stageNames.isEmpty()
+                && !eventWrites.isEmpty()) {
+            eventWrites.forEach(entry -> ensureStageNameIsStoredInProcurementStageEvent(stageNames, entry));
         }
 
       stageDataRepo.save(

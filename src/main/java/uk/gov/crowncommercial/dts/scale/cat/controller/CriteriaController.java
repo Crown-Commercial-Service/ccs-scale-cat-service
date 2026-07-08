@@ -148,7 +148,6 @@ public class CriteriaController extends AbstractRestController {
   @PutMapping("/update-stage-descriptions")
   @TrackExecutionTime
   public void ensureStageDescriptionsAreStoredInProcurementStageEvent(
-      @RequestBody final Object dummy,
       @PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId,
       final JwtAuthenticationToken authentication) {
@@ -156,6 +155,7 @@ public class CriteriaController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("ensureStageDescriptionsAreStoredInProcurementStageEvent invoked on behalf of principal: {}", principal);
 
+    log.debug("Updating stage description for the multi stage event. projectId: {}, eventId: {}", procId, eventId);
     criteriaService.ensureStageDescriptionsAreStoredInProcurementStageEvent(eventId);
   }
 }

@@ -613,7 +613,7 @@ public class CriteriaService {
   public void ensureStageDescriptionsAreStoredInProcurementStageEvent(final String eventId) {
     final StagesRead stagesRead = stageService.getStagesForEventId(eventId);
 
-    if (null == stagesRead || null == stagesRead.getStageNames() || !stagesRead.getStageNames().isEmpty()) {
+    if (null == stagesRead || null == stagesRead.getStageNames() || stagesRead.getStageNames().isEmpty()) {
         return;
     }
 
