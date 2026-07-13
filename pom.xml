@@ -31,7 +31,7 @@
         <aws-java-sdk-s3.version>2.46.21</aws-java-sdk-s3.version>
         <tika-core.version>3.3.1</tika-core.version>
         <java-cfenv-boot.version>3.5.1</java-cfenv-boot.version>
-        <notifications-java-client.version>6.0.0-RELEASE</notifications-java-client.version>
+        <notifications-java-client.version>6.0.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.5.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.6</snakeyaml.version>
