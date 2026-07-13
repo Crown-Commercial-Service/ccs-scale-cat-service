@@ -31,11 +31,11 @@
         <aws-java-sdk-s3.version>2.46.21</aws-java-sdk-s3.version>
         <tika-core.version>3.3.1</tika-core.version>
         <java-cfenv-boot.version>3.5.1</java-cfenv-boot.version>
-        <notifications-java-client.version>6.0.0-RELEASE</notifications-java-client.version>
+        <notifications-java-client.version>6.0.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.5.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.6</snakeyaml.version>
-        <spring-security.version>6.5.10</spring-security.version>
+        <spring-security.version>6.5.11</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.3.0</rollbar.version>
         <jsoup.version>1.22.2</jsoup.version>
