@@ -9,19 +9,15 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.odftoolkit.odfdom.dom.element.table.TableCoveredTableCellElement;
-import org.odftoolkit.odfdom.dom.element.table.TableTableCellElement;
 import org.odftoolkit.odfdom.dom.element.table.TableTableElement;
-import org.odftoolkit.odfdom.dom.element.table.TableTableRowElement;
 import org.odftoolkit.odfdom.dom.element.text.TextPElement;
 import org.odftoolkit.odfdom.dom.style.props.OdfTableCellProperties;
 import org.odftoolkit.odfdom.pkg.OdfElement;
 import org.odftoolkit.odfdom.pkg.OdfFileDom;
-import org.odftoolkit.odfdom.type.Color;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.InvalidNavigationException;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
-import org.odftoolkit.simple.style.Border;
 import org.odftoolkit.simple.style.Font;
 import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
@@ -36,7 +32,6 @@ import uk.gov.crowncommercial.dts.scale.cat.mapper.FieldMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.DocumentTemplateSource;
 
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
@@ -1156,8 +1151,8 @@ public class TableGroupGenerator {
 
         entries.sort((left, right) ->
                 Integer.compare(
-                        getGroupNumber(right.getValue().displayName),
-                        getGroupNumber(left.getValue().displayName)
+                        getBucketFirstRowOrder(right.getValue()),
+                        getBucketFirstRowOrder(left.getValue())
                 )
         );
 
@@ -1168,19 +1163,22 @@ public class TableGroupGenerator {
         }
     }
 
+    private static int getBucketFirstRowOrder(GroupBucket bucket) {
+        return bucket.requirementGroups.stream()
+                .mapToInt(TableGroupGenerator::getLowestRequirementOrder)
+                .min()
+                .orElse(Integer.MIN_VALUE);
+    }
+
     private static int getLowestRequirementOrder(Map<String, Object> requirementGroup) {
         Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
-
         if (ocds == null) {
             return Integer.MAX_VALUE;
         }
-
         Object requirementsObj = ocds.get("requirements");
-
         if (!(requirementsObj instanceof List<?> requirements)) {
             return Integer.MAX_VALUE;
         }
-
         return requirements.stream()
                 .filter(Map.class::isInstance)
                 .map(requirement -> (Map<String, Object>) requirement)
@@ -1190,9 +1188,7 @@ public class TableGroupGenerator {
     }
 
     private static int getRequirementOrder(Map<String, Object> requirement) {
-        Map<String, Object> nonOCDS =
-                (Map<String, Object>) requirement.get("nonOCDS");
-
+        Map<String, Object> nonOCDS = (Map<String, Object>) requirement.get("nonOCDS");
         return getOrder(nonOCDS, Integer.MAX_VALUE);
     }
 
@@ -1200,13 +1196,10 @@ public class TableGroupGenerator {
         if (nonOCDS == null) {
             return defaultValue;
         }
-
         Object order = nonOCDS.get("order");
-
         if (order instanceof Number number) {
             return number.intValue();
         }
-
         if (order instanceof String orderText && StringUtils.hasText(orderText)) {
             try {
                 return Integer.parseInt(orderText);
@@ -1214,25 +1207,7 @@ public class TableGroupGenerator {
                 return defaultValue;
             }
         }
-
         return defaultValue;
     }
-
-    private static int getGroupNumber(String displayName) {
-        if (!StringUtils.hasText(displayName)) {
-            return Integer.MIN_VALUE;
-        }
-
-        Matcher matcher = Pattern.compile("\\d+").matcher(displayName);
-
-        int lastNumber = Integer.MIN_VALUE;
-
-        while (matcher.find()) {
-            lastNumber = Integer.parseInt(matcher.group());
-        }
-
-        return lastNumber;
-    }
-
 
 }

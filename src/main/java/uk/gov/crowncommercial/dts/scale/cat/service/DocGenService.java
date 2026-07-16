@@ -13,12 +13,16 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.odftoolkit.odfdom.dom.element.text.TextPElement;
 import org.odftoolkit.simple.TextDocument;
 import org.odftoolkit.simple.common.navigation.TextNavigation;
 import org.odftoolkit.simple.common.navigation.TextSelection;
+import org.odftoolkit.simple.style.Font;
+import org.odftoolkit.simple.style.StyleTypeDefinitions;
 import org.odftoolkit.simple.table.Cell;
 import org.odftoolkit.simple.table.Row;
 import org.odftoolkit.simple.table.Table;
+import org.odftoolkit.simple.text.Paragraph;
 import org.odftoolkit.simple.text.list.ListItem;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
@@ -26,6 +30,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+import org.w3c.dom.Node;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.exception.DocGenValueException;
 import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
@@ -115,10 +120,13 @@ public class DocGenService {
     private static final String CURRENT_STAGE_ANCHOR_TAG = "«current_stage»";
     private static final String CURRENT_ATTACHMENT_NUMBER_ANCHOR_TAG = "«current_attachment»";
     private static final String ATTACHMENT_4_OUTPUT_FILE_NAME = "DOS 7 MultiStage L1 Bid Pack - Attachment %d Responses to Stage %d assessment criteria.odt";
+    private static final String LIST_FONT_NAME = "Arial";
+    private static final double LIST_FONT_SIZE = 12.0;
     private static final String GROUP_0 = "Group 0";
     private static final String NO_GROUP_LABEL = "(no group)";
     private static final String QUESTION_1_PREFIX = "Question 1";
     private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
+
 
     private final ApplicationContext applicationContext;
     private final ValidationService validationService;
@@ -686,7 +694,29 @@ public class DocGenService {
                     }
 
                     list.addItems(dataReplacement.toArray(new String[0]));
+                    applyListFont(list);
                 }
+            }
+        }
+    }
+
+    private void applyListFont(final org.odftoolkit.simple.text.list.List list) {
+        if (list.getItems() == null || list.getItems().isEmpty()) {
+            return;
+        }
+        Font font = new Font(LIST_FONT_NAME, StyleTypeDefinitions.FontStyle.REGULAR, LIST_FONT_SIZE);
+        for (ListItem item : list.getItems()) {
+            try {
+                Node child = item.getOdfElement().getFirstChild();
+                while (child != null) {
+                    if (child instanceof TextPElement paragraphElement) {
+                        Paragraph paragraph = Paragraph.getInstanceof(paragraphElement);
+                        paragraph.setFont(font);
+                    }
+                    child = child.getNextSibling();
+                }
+            } catch (Exception ex) {
+                log.debug("Unable to apply font to generated list item", ex);
             }
         }
     }

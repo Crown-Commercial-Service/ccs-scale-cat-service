@@ -19,7 +19,7 @@
         <java.version>23</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
-        <swagger-parser.version>2.1.44</swagger-parser.version>
+        <swagger-parser.version>2.1.45</swagger-parser.version>
         <guava.version>33.6.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
@@ -28,35 +28,35 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.22.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.46.15</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.47.5</aws-java-sdk-s3.version>
         <tika-core.version>3.3.1</tika-core.version>
         <java-cfenv-boot.version>3.5.1</java-cfenv-boot.version>
-        <notifications-java-client.version>6.0.0-RELEASE</notifications-java-client.version>
+        <notifications-java-client.version>6.0.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.5.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.6</snakeyaml.version>
-        <spring-security.version>6.5.10</spring-security.version>
+        <spring-security.version>6.5.11</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
         <rollbar.version>2.3.0</rollbar.version>
         <jsoup.version>1.22.2</jsoup.version>
-        <hibernate.version>6.6.51.Final</hibernate.version>
-        <junitapi.version>6.1.0</junitapi.version>
+        <hibernate.version>6.6.53.Final</hibernate.version>
+        <junitapi.version>6.1.2</junitapi.version>
         <opensearch.version>2.0.6</opensearch.version>
         <shedlock.version>7.7.0</shedlock.version>
-        <spring-boot.version>3.5.14</spring-boot.version>
+        <spring-boot.version>3.5.15</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>3.0.0</jsonpath.version>
-        <logback.version>1.5.34</logback.version>
-        <feignclient.version>4.3.2</feignclient.version>
+        <logback.version>1.5.38</logback.version>
+        <feignclient.version>4.3.3</feignclient.version>
         <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.13</retry.version>
         <jetty-reactive.version>4.1.5</jetty-reactive.version>
-        <postgres.version>42.7.11</postgres.version>
+        <postgres.version>42.7.13</postgres.version>
         <lombok.version>1.18.46</lombok.version>
         <spring.version>6.5.10</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.15.0</compiler.version>
-        <cucumber.version>7.34.3</cucumber.version>
+        <cucumber.version>7.34.4</cucumber.version>
         <h2.version>2.4.240</h2.version>
     </properties>
 

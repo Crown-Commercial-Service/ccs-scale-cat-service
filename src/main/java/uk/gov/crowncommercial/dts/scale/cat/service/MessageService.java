@@ -124,6 +124,7 @@ public class MessageService {
   public MessageSummary getMessagesSummary(final MessageRequestInfo messageRequestInfo) {
 
     // REM Assumption that user is buyer only
+
     var jaggaerUserId = userProfileService
         .resolveBuyerUserProfile(messageRequestInfo.getPrincipal())
         .orElseThrow(() -> new AuthorisationFailureException(JAGGAER_USER_NOT_FOUND)).getUserId();
