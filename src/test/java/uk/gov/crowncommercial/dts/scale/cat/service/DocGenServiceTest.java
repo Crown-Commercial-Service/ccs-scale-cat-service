@@ -268,6 +268,186 @@ class DocGenServiceTest {
         assertThat(foundStageDesc).as("STAGE_DESCRIPTION virtual tag was injected correctly").isTrue();
     }
 
+    @Test
+    void mergeStageJsonPayloadsSkipsGroupZeroEntirely() throws Exception {
+
+        // "Group 0" is hardcoded to be skipped in the logic
+        String payload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [{ 
+                  "OCDS": { "id": "Group 0", "requirements": [{ 
+                    "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{ "value": "Valid", "select": true }] } 
+                  }] }
+                }]
+              }]
+            }
+            """;
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(payload, 1, "Stage 1", 1));
+
+        String result = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        JsonNode root = objectMapper.readTree(result);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        // Group 0 should be actively ignored
+        assertThat(requirementGroups.isEmpty()).isTrue();
+    }
+
+    @Test
+    void mergeStageJsonPayloads_SuccessfullyGroupsByDropdownNameAndInjectsVirtualTagsOnce() throws Exception {
+
+        // Arrange: A JSON payload with two fragmented groups
+        String complexPayload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [
+                  { 
+                    "OCDS": { "id": "Group 2.1", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Q1 Text"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Business Requirement"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Q2 Text"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Pricing"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.3", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Q3 Text"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Business Requirement"}] } }
+                    ]}
+                  }
+                ]
+              }]
+            }
+            """;
+
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(complexPayload, 1, "Alpha Phase", 1));
+
+        String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        assertNotNull(resultJson);
+        JsonNode root = objectMapper.readTree(resultJson);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertEquals(3, requirementGroups.size(), "Should keep 3 groups but sort them sequentially by name.");
+
+        assertEquals("Group 2.1", requirementGroups.get(0).at("/OCDS/id").asText());
+        assertEquals("Group 2.3", requirementGroups.get(1).at("/OCDS/id").asText(), "Group 2.3 should be moved to sit next to Group 2.1");
+
+        assertEquals("Group 2.2", requirementGroups.get(2).at("/OCDS/id").asText());
+
+        // Verify Virtual Tags were safely added to the end of each cloned array
+        JsonNode group1Reqs = requirementGroups.get(0).at("/OCDS/requirements");
+        assertEquals(5, group1Reqs.size(), "Should have 2 original questions + 3 virtual tags");
+        assertEquals("CURRENT_STAGE", group1Reqs.get(2).at("/OCDS/id").asText());
+    }
+
+    @Test
+    void mergeStageJsonPayloadsAppliesSiblingHeuristicClearsGhostState() throws Exception {
+
+        // Arrange: Simulating the exact frontend bug.
+        // The base group (Group 2) has a ghost state of "Business Requirement",
+        // but its sibling clones (Group 2.1 and Group 2.2) were cleared to "(no group)" by the user.
+        String ghostStatePayload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [
+                  { 
+                    "OCDS": { "id": "Group 2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Base Question"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Business Requirement"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.1", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Clone Q1"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "(no group)"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Clone Q2"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "(no group)"}] } }
+                    ]}
+                  }
+                ]
+              }]
+            }
+            """;
+
+        // Must be Stage 2 or higher for the sibling heuristic to activate
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(ghostStatePayload, 2, "Beta Phase", 2));
+
+        String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        JsonNode root = objectMapper.readTree(resultJson);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertEquals(3, requirementGroups.size(), "Should retain 3 distinct groups");
+
+        // Verify the Heuristic successfully scanned the clones and wiped the ghost state from the parent!
+        for (JsonNode group : requirementGroups) {
+            JsonNode mergedReqs = group.at("/OCDS/requirements");
+            for (JsonNode req : mergedReqs) {
+                if ("Select group name".equals(req.at("/OCDS/title").asText())) {
+                    String sanitizedValue = req.at("/nonOCDS/options/0/value").asText();
+                    assertEquals("(no group)", sanitizedValue, "The ghost state group name MUST be overwritten with (no group) on all groups");
+                }
+            }
+        }
+    }
+
+    @Test
+    void mergeStageJsonPayloadsInterceptsBlankMapsToNoGroup() throws Exception {
+
+        String blankDropdownPayload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [
+                  { 
+                    "OCDS": { "id": "Group 2.1", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Valid Q1"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": ""}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Valid Q2"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "null"}] } }
+                    ]}
+                  }
+                ]
+              }]
+            }
+            """;
+
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(blankDropdownPayload, 1, "Alpha Phase", 1));
+
+        String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        JsonNode root = objectMapper.readTree(resultJson);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertEquals(2, requirementGroups.size(), "Should retain 2 distinct groups");
+
+        for (JsonNode group : requirementGroups) {
+            JsonNode mergedReqs = group.at("/OCDS/requirements");
+            for (JsonNode req : mergedReqs) {
+                if ("Select group name".equals(req.at("/OCDS/title").asText())) {
+                    String sanitizedValue = req.at("/nonOCDS/options/0/value").asText();
+                    assertEquals("(no group)", sanitizedValue, "Blank and null values must be explicitly mapped to '(no group)'");
+                }
+            }
+        }
+    }
 
     private Map<String, Object> createStageMap(String payload, int num, String desc, int total) {
         Map<String, Object> map = new HashMap<>();
