@@ -1,11 +1,7 @@
 package uk.gov.crowncommercial.dts.scale.cat.repo;
 
-import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -15,8 +11,6 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.databind.JsonNode;
-import lombok.RequiredArgsConstructor;
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.config.TendersRetryable;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.ProcurementEventMapper;
@@ -28,6 +22,11 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.readonly.CalculationBaseRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.search.SearchProjectRepo;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.repo.specification.ProjectSearchSpecification;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static uk.gov.crowncommercial.dts.scale.cat.config.Constants.MULTI_STAGE_EVENT_TYPE;
 
@@ -140,6 +139,19 @@ public class RetryableTendersDBDelegate {
 
   @TendersRetryable
   public Optional<ProcurementEvent> findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
+      Optional<ProcurementStageEvent> result = findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdKey, stageNumber, ocdsAuthorityName, ocidPrefix);
+
+      if (!result.isPresent()) {
+          return Optional.empty();
+      }
+
+      ProcurementEvent response = procurementEventMapper.procurementStageEventToProcurementEvent(result.get());
+
+      return Optional.of(response);
+  }
+
+  @TendersRetryable
+  public Optional<ProcurementStageEvent> findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(final Integer eventIdKey, final Integer stageNumber, final String ocdsAuthorityName, final String ocidPrefix) {
       Optional<ProcurementStageEvent> result = procurementStageEventRepo.findByIdAndStageNumber(eventIdKey, stageNumber);
 
       if (!result.isPresent()) {
@@ -148,15 +160,7 @@ public class RetryableTendersDBDelegate {
 
       final Integer eventIdOfFirstStage = findEventIdOfFirstStageForMultiStageEvent(result.get().getEventID(), result.get().getStageNumber());
 
-      Optional<ProcurementStageEvent> firstStageEvent = procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
-
-      if (!firstStageEvent.isPresent()) {
-          return Optional.empty();
-      }
-
-      ProcurementEvent response = procurementEventMapper.procurementStageEventToProcurementEvent(firstStageEvent.get());
-
-      return Optional.of(response);
+      return procurementStageEventRepo.findProcurementEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(eventIdOfFirstStage, stageNumber, ocdsAuthorityName, ocidPrefix);
   }
 
   @TendersRetryable
