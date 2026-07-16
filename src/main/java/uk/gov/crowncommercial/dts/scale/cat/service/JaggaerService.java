@@ -415,7 +415,6 @@ public class JaggaerService {
     final var start = pageSize > 1 ? pageSize + 1 : 1;
     final var filters = "objectReferenceCode==" + externalEventId;
 
-    log.info("Message endpoint: {}", messagesUrl);
     log.info("Start calling Jaggaer API to get messages, Event Id: {}", externalEventId);
     final var messagesResponse = ofNullable(jaggaerWebClient.get().uri(messagesUrl, filters, MESSAGE_PARAMS, start)
             .retrieve().bodyToMono(MessagesResponse.class)
