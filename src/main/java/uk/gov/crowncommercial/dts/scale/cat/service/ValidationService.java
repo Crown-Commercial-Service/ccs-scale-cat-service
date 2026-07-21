@@ -54,6 +54,7 @@ public class ValidationService {
   private static final String COP_GROUP_ID = "Group 1";
   private static final String AWARD_CRITERIA_GROUP_ID = "Group 2";
   private static final String ASSESSMENT_CRITERIA_CRITERION_ID = "Criterion 2";
+  private static final int MAX_ASSESSMENT_QUESTIONS = 20;
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AssessmentService assessmentService;
@@ -230,9 +231,15 @@ public class ValidationService {
                     updated = true;
                 }
 
-                count++;
-
-            } while (null != awardCriteriaStageRequirementGroup || null != copStageRequirementGroup);
+                // we used to be able to exit if awardCriteriaStageRequirementGroup and copStageRequirementGroup were both null,
+                // however since we can now also delete answers, we may now have 'missing' groups (ie no match on a
+                // given group index (eg 1.4 or 2.2)).  Therefore we could have additional data available after any
+                // 'missing' group, so we need to check up to the maximum possible number of questions.
+                if (null != awardCriteriaStageRequirementGroup || null != copStageRequirementGroup) {
+                    // but only count the questions we actually have
+                    count++;
+                }
+            } while (count <= MAX_ASSESSMENT_QUESTIONS);
         }
 
         if (updated) {
