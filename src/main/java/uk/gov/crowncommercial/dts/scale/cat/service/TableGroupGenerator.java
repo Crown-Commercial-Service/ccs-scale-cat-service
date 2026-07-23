@@ -46,6 +46,8 @@ public class TableGroupGenerator {
     private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
     private static final String COND_OF_PART = "COND_OF_PART";
     private static final String AWARD_CRITERIA = "AWARD_CRITERIA";
+    private static final String COND_OF_PART_DESCRIPTION = "Conditions of participation";
+    private static final String AWARD_CRITERIA_DESCRIPTION = "Award criteria";
     private static final String STAGE_DESCRIPTION_HEADER_TAG = "Stage description";
     private static final String CURRENT_STAGE = "CURRENT_STAGE";
     private static final String STAGE_DESCRIPTION = "STAGE_DESCRIPTION";
@@ -69,6 +71,7 @@ public class TableGroupGenerator {
         String groupNamePlaceholder = FieldMapping.getTableGroupName(tableName);
 
         List<Map<String, Object>> requirementGroups = readRequirementGroups(eventData, templateSource.getSourcePath());
+        requirementGroups = filterRequirementGroupsForTable(requirementGroups, tableName);
 
         if (requirementGroups.isEmpty()) {
             replaceAllPlaceholdersWithUnknown(textODT, groupNamePlaceholder, fieldMappings);
@@ -104,22 +107,44 @@ public class TableGroupGenerator {
         }
     }
 
+    private List<Map<String, Object>> filterRequirementGroupsForTable(List<Map<String, Object>> requirementGroups,
+                                                                      String tableName) {
+        if (!StringUtils.hasText(tableName)) {
+            return requirementGroups;
+        }
+
+        String expectedDescription = switch (tableName.toUpperCase(Locale.UK)) {
+            case COND_OF_PART -> COND_OF_PART_DESCRIPTION;
+            case AWARD_CRITERIA -> AWARD_CRITERIA_DESCRIPTION;
+            default -> null;
+        };
+
+        if (!StringUtils.hasText(expectedDescription)) {
+            return requirementGroups;
+        }
+
+        return requirementGroups.stream()
+                .filter(requirementGroup -> expectedDescription.equalsIgnoreCase(extractGroupDescription(requirementGroup)))
+                .toList();
+    }
+
     private LinkedHashMap<String, GroupBucket> groupRequirementGroups(List<Map<String, Object>> requirementGroups) {
         LinkedHashMap<String, GroupBucket> grouped = new LinkedHashMap<>();
-        int unnamedCounter = 0;
 
         for (Map<String, Object> rgMap : requirementGroups) {
             String selectedGroupName = extractSelectedGroupName(rgMap);
+            int groupOrder = getRequirementGroupOrder(rgMap);
+            boolean hasGroupOrder = hasRequirementGroupOrder(rgMap);
 
             String key;
             String displayName;
 
-            if (StringUtils.hasText(selectedGroupName)) {
+            if (StringUtils.hasText(selectedGroupName) && (!hasGroupOrder || groupOrder > 0)) {
                 key = "named::" + norm(selectedGroupName);
                 displayName = selectedGroupName.trim();
             } else {
-                key = "unnamed::" + (++unnamedCounter);
-                displayName = extractDisplayNameForUnnamedGroup(rgMap);
+                key = "unnamed";
+                displayName = "";
             }
 
             GroupBucket bucket = grouped.computeIfAbsent(key, k -> new GroupBucket(displayName));
@@ -1149,12 +1174,9 @@ public class TableGroupGenerator {
         List<Map.Entry<String, GroupBucket>> entries =
                 new ArrayList<>(grouped.entrySet());
 
-        entries.sort((left, right) ->
-                Integer.compare(
-                        getBucketFirstRowOrder(right.getValue()),
-                        getBucketFirstRowOrder(left.getValue())
-                )
-        );
+        entries.sort(Comparator
+                .<Map.Entry<String, GroupBucket>>comparingInt(entry -> getSortableGroupOrder(entry.getValue()))
+                .thenComparingInt(entry -> getSortableFirstRowOrder(entry.getValue())));
 
         grouped.clear();
 
@@ -1168,6 +1190,85 @@ public class TableGroupGenerator {
                 .mapToInt(TableGroupGenerator::getLowestRequirementOrder)
                 .min()
                 .orElse(Integer.MIN_VALUE);
+    }
+
+    private static int getBucketGroupOrder(GroupBucket bucket) {
+        return bucket.requirementGroups.stream()
+                .mapToInt(TableGroupGenerator::getRequirementGroupOrder)
+                .max()
+                .orElse(0);
+    }
+
+    private static int getSortableGroupOrder(GroupBucket bucket) {
+        int groupOrder = getBucketGroupOrder(bucket);
+        return groupOrder == 0 ? Integer.MAX_VALUE : groupOrder;
+    }
+
+    private static int getSortableFirstRowOrder(GroupBucket bucket) {
+        int firstRowOrder = getBucketFirstRowOrder(bucket);
+
+        if (getBucketGroupOrder(bucket) == 0 && firstRowOrder != Integer.MIN_VALUE) {
+            return -firstRowOrder;
+        }
+
+        return firstRowOrder;
+    }
+
+    private static int getRequirementGroupOrder(Map<String, Object> requirementGroup) {
+        Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
+        if (ocds == null) {
+            return 0;
+        }
+        Object requirementsObj = ocds.get("requirements");
+        if (!(requirementsObj instanceof List<?> requirements)) {
+            return 0;
+        }
+        return requirements.stream()
+                .filter(Map.class::isInstance)
+                .map(requirement -> (Map<String, Object>) requirement)
+                .filter(TableGroupGenerator::isSelectGroupNameRequirement)
+                .mapToInt(TableGroupGenerator::getSelectRequirementGroupOrder)
+                .findFirst()
+                .orElseGet(() -> getHighestRequirementGroupOrder(requirements));
+    }
+
+    private static boolean isSelectGroupNameRequirement(Map<String, Object> requirement) {
+        Map<String, Object> ocds = (Map<String, Object>) requirement.get("OCDS");
+        Object title = ocds == null ? null : ocds.get("title");
+        return title != null && SELECT_GROUP_NAME_TITLE.equalsIgnoreCase(title.toString());
+    }
+
+    private static int getSelectRequirementGroupOrder(Map<String, Object> requirement) {
+        Map<String, Object> nonOCDS = (Map<String, Object>) requirement.get("nonOCDS");
+        return getOrder(nonOCDS, "groupOrder", 0);
+    }
+
+    private static boolean hasRequirementGroupOrder(Map<String, Object> requirementGroup) {
+        Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
+        if (ocds == null) {
+            return false;
+        }
+        Object requirementsObj = ocds.get("requirements");
+        if (!(requirementsObj instanceof List<?> requirements)) {
+            return false;
+        }
+        return requirements.stream()
+                .filter(Map.class::isInstance)
+                .map(requirement -> (Map<String, Object>) requirement)
+                .filter(TableGroupGenerator::isSelectGroupNameRequirement)
+                .map(requirement -> (Map<String, Object>) requirement.get("nonOCDS"))
+                .filter(Objects::nonNull)
+                .anyMatch(nonOCDS -> nonOCDS.containsKey("groupOrder"));
+    }
+
+    private static int getHighestRequirementGroupOrder(List<?> requirements) {
+        return requirements.stream()
+                .filter(Map.class::isInstance)
+                .map(requirement -> (Map<String, Object>) requirement)
+                .map(requirement -> (Map<String, Object>) requirement.get("nonOCDS"))
+                .mapToInt(nonOCDS -> getOrder(nonOCDS, "groupOrder", 0))
+                .max()
+                .orElse(0);
     }
 
     private static int getLowestRequirementOrder(Map<String, Object> requirementGroup) {
@@ -1189,14 +1290,14 @@ public class TableGroupGenerator {
 
     private static int getRequirementOrder(Map<String, Object> requirement) {
         Map<String, Object> nonOCDS = (Map<String, Object>) requirement.get("nonOCDS");
-        return getOrder(nonOCDS, Integer.MAX_VALUE);
+        return getOrder(nonOCDS, "order", Integer.MAX_VALUE);
     }
 
-    private static int getOrder(Map<String, Object> nonOCDS, int defaultValue) {
+    private static int getOrder(Map<String, Object> nonOCDS, String fieldName, int defaultValue) {
         if (nonOCDS == null) {
             return defaultValue;
         }
-        Object order = nonOCDS.get("order");
+        Object order = nonOCDS.get(fieldName);
         if (order instanceof Number number) {
             return number.intValue();
         }
