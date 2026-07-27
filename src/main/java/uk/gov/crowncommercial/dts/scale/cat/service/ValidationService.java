@@ -55,6 +55,7 @@ public class ValidationService {
   private static final String AWARD_CRITERIA_GROUP_ID = "Group 2";
   private static final String ASSESSMENT_CRITERIA_CRITERION_ID = "Criterion 2";
   private static final int MAX_ASSESSMENT_QUESTIONS = 20;
+  private static final int MAX_QUESTION_ITERATIONS = 250;
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AssessmentService assessmentService;
@@ -214,17 +215,18 @@ public class ValidationService {
 
             RequirementGroup awardCriteriaStageRequirementGroup = null;
             RequirementGroup copStageRequirementGroup = null;
-            int count = 1;
+            int questionCount = 1;
+            int iterationCount = 1;
 
             do {
-                awardCriteriaStageRequirementGroup = extractStageRequirementGroup(AWARD_CRITERIA_GROUP_ID + "." + count, procurementStageEventDataTemplate);
+                awardCriteriaStageRequirementGroup = extractStageRequirementGroup(AWARD_CRITERIA_GROUP_ID + "." + iterationCount, procurementStageEventDataTemplate);
 
                 if (null != awardCriteriaStageRequirementGroup) {
                     criterion2RequirementGroups.add(awardCriteriaStageRequirementGroup);
                     updated = true;
                 }
 
-                copStageRequirementGroup = extractStageRequirementGroup(COP_GROUP_ID + "." + count, procurementStageEventDataTemplate);
+                copStageRequirementGroup = extractStageRequirementGroup(COP_GROUP_ID + "." + iterationCount, procurementStageEventDataTemplate);
 
                 if (null != copStageRequirementGroup) {
                     criterion2RequirementGroups.add(copStageRequirementGroup);
@@ -237,9 +239,12 @@ public class ValidationService {
                 // 'missing' group, so we need to check up to the maximum possible number of questions.
                 if (null != awardCriteriaStageRequirementGroup || null != copStageRequirementGroup) {
                     // but only count the questions we actually have
-                    count++;
+                    questionCount++;
                 }
-            } while (count <= MAX_ASSESSMENT_QUESTIONS);
+
+                iterationCount++;
+
+            } while (questionCount <= MAX_ASSESSMENT_QUESTIONS && iterationCount < MAX_QUESTION_ITERATIONS);
         }
 
         if (updated) {

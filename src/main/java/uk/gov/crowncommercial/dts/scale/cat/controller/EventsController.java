@@ -765,7 +765,7 @@ public class EventsController extends AbstractRestController {
     }
 
     if (null == requestModel.getQuestionGroups() || requestModel.getQuestionGroups().isEmpty()) {
-        log.error("saveQuestionGroups - no question groups provided: {}", principal);
+        log.debug("saveQuestionGroups - no question groups provided: {}", principal);
         return new StringValueResponse("ERROR");
     }
 
