@@ -241,6 +241,9 @@ public class ValidationService {
                     // but only count the questions we actually have
                     questionCount++;
                 }
+
+                iterationCount++;
+
             } while (questionCount <= MAX_ASSESSMENT_QUESTIONS && iterationCount < MAX_QUESTION_ITERATIONS);
         }
 
