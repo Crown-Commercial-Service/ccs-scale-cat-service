@@ -37,6 +37,8 @@ import uk.gov.crowncommercial.dts.scale.cat.exception.ResourceNotFoundException;
 import uk.gov.crowncommercial.dts.scale.cat.model.DocumentAttachment;
 import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StagesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.*;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.utils.ByteArrayMultipartFile;
 
@@ -126,6 +128,8 @@ public class DocGenService {
     private static final String NO_GROUP_LABEL = "(no group)";
     private static final String QUESTION_1_PREFIX = "Question 1";
     private static final String SELECT_GROUP_NAME_TITLE = "Select group name";
+    private static final String AWARD_CRITERIA_QUESTION_GROUP = "award-criteria";
+    private static final String CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP = "CoP";
 
 
     private final ApplicationContext applicationContext;
@@ -136,6 +140,7 @@ public class DocGenService {
     private final DocumentTemplateResourceService documentTemplateResourceService;
     private final TableGroupGenerator tableGroupGenerator;
     private final StageService stageService;
+    private final QuestionAndAnswerService questionAndAnswerService;
 
     private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
     private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 =
@@ -1015,6 +1020,9 @@ public class DocGenService {
         data.put(TOTAL_STAGES_TAG, totalStage);
         data.put(STAGE_DESCRIPTION_TAG, stageEvent.getStageDescription());
 
+        data.put("projectId", stageEvent.getProject().getId());
+        data.put("eventId", stageEvent.getEventID());
+
         stageDataList.add(data);
     }
 
@@ -1061,12 +1069,15 @@ public class DocGenService {
         int totalStages = (Integer) stageData.get(TOTAL_STAGES_TAG);
         String stageDesc = (String) stageData.get(STAGE_DESCRIPTION_TAG);
 
+        Integer projectId = (Integer) stageData.get("projectId");
+        String eventId = (String) stageData.get("eventId");
+
         JsonNode sourceGroups = getSourceGroupsForCriterion2(objectMapper.readTree(payload));
         if (sourceGroups == null || !sourceGroups.isArray()) {
             return nextOrder;
         }
 
-        Map<String, String> sanitizedGroupNames = extractAndSanitizeGroupNames(sourceGroups, stageNum);
+        Map<String, String> sanitizedGroupNames = extractAndSanitizeGroupNames(sourceGroups, stageNum, projectId, eventId);
 
         Map<String, List<ObjectNode>> groupedNodes = groupRequirementsByName(sourceGroups, sanitizedGroupNames, stageNum);
 
@@ -1076,9 +1087,16 @@ public class DocGenService {
     // =========================================================================
     // SANITIZATION & HEURISTICS
     // =========================================================================
-    private Map<String, String> extractAndSanitizeGroupNames(JsonNode sourceGroups, int stageNum) {
+    private Map<String, String> extractAndSanitizeGroupNames(JsonNode sourceGroups, int stageNum, Integer projectId, String eventId) {
 
         Map<String, String> groupNames = new HashMap<>();
+
+        // Fetch valid group names from the Q&A Database (Bypassing the JSON entirely)
+        List<String> copGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
+        List<String> awardGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
+
+        int copIndex = 0;
+        int awardIndex = 0;
 
         for (JsonNode group : sourceGroups) {
             String groupId = group.path(OCDS).path(ID).asText();
@@ -1086,7 +1104,18 @@ public class DocGenService {
 
             JsonNode requirements = group.path(OCDS).path(REQUIREMENTS);
             if (isValidArray(requirements)) {
-                groupNames.put(groupId, parseGroupName(requirements));
+                String jsonGroupName = parseGroupName(requirements);
+                String finalGroupName = NO_GROUP_LABEL;
+
+                // Validate it against the database for this stage!
+                // If it exists in the DB, it's legitimate. If it doesn't, it's a ghost from a previous stage!
+                if (groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
+                    finalGroupName = jsonGroupName;
+                } else if (groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
+                    finalGroupName = jsonGroupName;
+                }
+
+                groupNames.put(groupId, finalGroupName);
             }
         }
 
@@ -1305,4 +1334,43 @@ public class DocGenService {
         return null;
     }
 
+    /**
+     * Due to the bug in the json, which causing issue when
+     * user enter stage 1 group name for cop and ac, and add question under that group,
+     * and no group been added from UI for other stages but current code copy and add stage 1
+     * group name to all other stages for COP. Currently the way UI pull data from question_and_answer
+     * table from cas_db, bidpack should pull the same way data and inject it to our custom json we are creating
+     * on the fly to generate bidpack.
+     */
+    private List<String> fetchGroupNamesFromQuestionAndAnswerTable(Integer projectId, String eventId, int stageNum, String groupType) {
+
+        QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(projectId, eventId);
+        if (response == null || response.getQandA() == null || response.getQandA().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Build the prefix format used in the Q&A table
+        String fullPrefix = groupType + "-stage-" + stageNum + "-question-group-";
+
+        Map<Integer, String> orderedGroups = new TreeMap<>();
+        for (QandA responseData : response.getQandA()) {
+            if (responseData.getQuestion() != null && responseData.getQuestion().startsWith(fullPrefix)) {
+                if (responseData.getAnswer() != null && !responseData.getAnswer().isBlank()) {
+                    try {
+                        String numberStr = responseData.getQuestion().substring(fullPrefix.length());
+                        Integer order = Integer.parseInt(numberStr);
+                        orderedGroups.put(order, responseData.getAnswer());
+                    } catch (NumberFormatException e) {
+                        log.warn("Failed to parse group order from Q&A question: {}", responseData.getQuestion());
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(orderedGroups.values());
+    }
+
+    private boolean containsIgnoreCase(List<String> validDbNames, String jsonName) {
+        if (jsonName == null || NO_GROUP_LABEL.equals(jsonName)) return false;
+        return validDbNames.stream().anyMatch(dbName -> dbName.equalsIgnoreCase(jsonName));
+    }
 }
