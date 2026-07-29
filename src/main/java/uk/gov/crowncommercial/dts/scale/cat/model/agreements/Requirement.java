@@ -56,6 +56,8 @@ public class Requirement {
     Boolean multiAnswer;
     Integer order;
     Integer length;
+    @NonFinal
+    Integer groupOrder;
     @JsonProperty("inheritance")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @NonFinal
@@ -78,6 +80,10 @@ public class Requirement {
     public void setAnswered(Boolean answered){
       //TODO - Whether this should be automatically populated based on the options;
       this.answered = answered;
+    }
+
+    public void setGroupOrder(Integer groupOrder) {
+        this.groupOrder = groupOrder;
     }
 
     /**

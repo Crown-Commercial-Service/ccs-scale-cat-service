@@ -158,4 +158,18 @@ public class CriteriaController extends AbstractRestController {
     log.debug("Updating stage description for the multi stage event. projectId: {}, eventId: {}", procId, eventId);
     criteriaService.ensureStageDescriptionsAreStoredInProcurementStageEvent(eventId);
   }
+
+  @PutMapping("/add-group-order-fields")
+  @TrackExecutionTime
+  public void createGroupOrderFieldsInTheJsonTemplatePayloadForBidPack(
+      @PathVariable("proc-id") final Integer procId,
+      @PathVariable("event-id") final String eventId,
+      final JwtAuthenticationToken authentication) {
+
+    var principal = getPrincipalFromJwt(authentication);
+    log.info("createGroupOrderFieldsInTheJsonTemplatePayloadForBidPack invoked on behalf of principal: {}", principal);
+
+    log.debug("create groupOrder fields for the multi stage event. projectId: {}, eventId: {}", procId, eventId);
+    criteriaService.createGroupOrderFieldsInTheJsonTemplatePayloadForBidPack(procId, eventId, principal);
+  }
 }

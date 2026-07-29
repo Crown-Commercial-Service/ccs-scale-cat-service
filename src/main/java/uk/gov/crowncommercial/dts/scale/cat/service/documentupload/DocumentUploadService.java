@@ -226,7 +226,7 @@ public class DocumentUploadService {
             apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
             unprocessedDocUpload.getExternalDocumentId());
 
-        documentStatusResponse.ifPresentOrElse(documentStatus -> {
+        documentStatusResponse.ifPresent(documentStatus -> {
 
           if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
             copyDocumentFromRemoteS3(unprocessedDocUpload, documentStatus);
@@ -244,8 +244,7 @@ public class DocumentUploadService {
           }
           documentUploadRepo.save(unprocessedDocUpload);
 
-        }, () -> log.error("Unable to get status from doc upload service for document ID: [{}]",
-            unprocessedDocUpload.getDocumentId()));
+        });
       }
     });
   }
