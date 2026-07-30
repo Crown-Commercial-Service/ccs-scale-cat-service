@@ -58,7 +58,27 @@
         <compiler.version>3.15.0</compiler.version>
         <cucumber.version>7.34.4</cucumber.version>
         <h2.version>2.4.240</h2.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <commons-beanutils.version>1.11.0</commons-beanutils.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Force upgrade to fix CVE-2025-48924 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <!-- Force upgrade to fix CVE-2025-48734 -->
+            <dependency>
+                <groupId>commons-beanutils</groupId>
+                <artifactId>commons-beanutils</artifactId>
+                <version>${commons-beanutils.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -270,6 +290,10 @@
                 <exclusion>
                     <artifactId>slf4j-reload4j</artifactId>
                     <groupId>org.slf4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
