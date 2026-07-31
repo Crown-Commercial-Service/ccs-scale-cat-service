@@ -132,7 +132,6 @@ public class RetryableTendersDBDelegate {
               eventIdOfFirstStage, procurementevent.getStageNumber(), procurementevent.getOcdsAuthorityName(), procurementevent.getOcidPrefix());
 
       procurementevent.setId(existing.isEmpty() ? procurementevent.getId() : existing.get().getId());
-      procurementevent.setStageNumber(procurementevent.getStageNumber());
 
       return procurementStageEventRepo.save(procurementevent);
   }

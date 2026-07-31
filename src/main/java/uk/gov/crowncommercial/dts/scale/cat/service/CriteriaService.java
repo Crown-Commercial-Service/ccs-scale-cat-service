@@ -6,6 +6,7 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig.ENDPOINT;
 
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.jena.atlas.logging.Log;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -36,8 +37,11 @@ import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.DataType;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.EvalCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Period1;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Question;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroup;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroupNamesRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroupNonOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionGroupOCDS;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.QuestionNonOCDS;
@@ -78,10 +82,23 @@ public class CriteriaService {
 
   static final String LOG_TAG = "12322912 - ";
   static final String ERR_MSG_DATA_TEMPLATE_NOT_FOUND = "Data template not found";
+
   private static final String END_DATE = "##END_DATE##";
   private static final String MONETARY_QUESTION_TYPE = "Monetary";
   private static final String KEYVAL_PAIR_QUESTION_TYPE = "KeyValuePair";
   private static final String TERMS_ACRONYMS_QUESTION_ID = "Question 1";
+
+  private static final String COP_GROUP_TYPE = "CoP";
+  private static final String AWARD_CRITERIA_GROUP_TYPE = "award-criteria";
+
+  private static final String ASSESSMENT_CRITERIA_CRITERION_ID = "Criterion 2";
+  private static final String COP_GROUP_ID = "Group 1";
+  private static final String AWARD_CRITERIA_GROUP_ID = "Group 2";
+  private static final String GROUP_ORDER_FIELD = "groupOrder";
+  private static final String USE_QUESTION_GROUPS = "use-question-groups";
+  private static final String QUESTION_GROUP_PREFIX = "question-group-";
+  private static final String STAGE_NUMBER = "stage";
+  private static final int DEFAULT_GROUP_ORDER = 0;
 
   private final AgreementsService agreementsService;
   private final ValidationService validationService;
@@ -630,5 +647,280 @@ public class CriteriaService {
             retryableTendersDBDelegate.save(procurementStageEvent.get());
         }
     }
+  }
+
+  /**
+   * Add GroupOrder fields in the JSON template payload, as required by the bid-pack logic.
+   *
+   * @param projectId
+   * @param eventId
+   * @param principal
+   */
+  public void createGroupOrderFieldsInTheJsonTemplatePayloadForBidPack(final Integer projectId, final String eventId, final String principal) {
+
+    final OCID eventOCID = validationService.validateEventId(eventId);
+
+    final StagesRead stagesRead = stageService.getStagesForEventId(eventId);
+
+    if (null == stagesRead || 0 == stagesRead.getNumberOfStages()) {
+        // we are not in multi-stage
+
+        // grab the event data
+        ProcurementEvent procurementEvent = retryableTendersDBDelegate
+            .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
+            .orElse(null);
+
+        if (null == procurementEvent) {
+            return;
+        }
+
+        DataTemplate dataTemplate = null == procurementEvent ? null : procurementEvent.getProcurementTemplatePayload();
+
+        if (null == dataTemplate || null == dataTemplate.getCriteria()) {
+            return;
+        }
+
+        boolean updated = updateDataTemplate(projectId, eventId, principal, dataTemplate, 0);
+
+        if (updated) {
+            procurementEvent.setProcurementTemplatePayload(dataTemplate);
+
+            retryableTendersDBDelegate.save(procurementEvent);
+        }
+
+        return;
+    }
+
+    //
+    // we are in multi-stage
+    //
+
+    for (int currentStageNumber = 1; currentStageNumber <= stagesRead.getNumberOfStages(); currentStageNumber++) {
+        // grab the stage-specific data
+        ProcurementStageEvent procurementEventForStage = retryableTendersDBDelegate
+            .findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(Integer.valueOf(eventOCID.getInternalId()), currentStageNumber, eventOCID.getAuthority(), eventOCID.getPublisherPrefix())
+            .orElse(null);
+
+        if (null == procurementEventForStage) {
+            continue;
+        }
+
+        DataTemplate dataTemplate = null == procurementEventForStage ? null : procurementEventForStage.getProcurementTemplatePayload();
+
+        if (null == dataTemplate || null == dataTemplate.getCriteria()) {
+            continue;
+        }
+
+        boolean updated = updateDataTemplate(projectId, eventId, principal, dataTemplate, currentStageNumber);
+
+        if (updated) {
+            procurementEventForStage.setStageNumber(currentStageNumber);
+            procurementEventForStage.setProcurementTemplatePayload(dataTemplate);
+
+            retryableTendersDBDelegate.save(procurementEventForStage);
+        }
+    }
+  }
+
+  private boolean updateDataTemplate(final Integer projectId, final String eventId, final String principal, DataTemplate dataTemplate, int currentStageNumber) {
+      final List<String> copGroupNamesListForStage = getQuestionGroupsForGroupTypeAndStageNumber(projectId, eventId, principal, COP_GROUP_TYPE, currentStageNumber);
+      final List<String> awardCriteriaGroupNamesListForStage = getQuestionGroupsForGroupTypeAndStageNumber(projectId, eventId, principal, AWARD_CRITERIA_GROUP_TYPE, currentStageNumber);
+
+      boolean updated = false;
+
+      if (null == copGroupNamesListForStage && null == awardCriteriaGroupNamesListForStage) {
+          return updated;
+      }
+
+      for (final TemplateCriteria criteria: dataTemplate.getCriteria()) {
+          // we are only interested in 'Criterion 2'
+          if (null == criteria || null == criteria.getRequirementGroups() || !ASSESSMENT_CRITERIA_CRITERION_ID.equals(criteria.getId())) {
+              continue;
+          }
+
+          for (final RequirementGroup requirementGroup: criteria.getRequirementGroups()) {
+              if (null == requirementGroup || null == requirementGroup.getOcds() || null == requirementGroup.getOcds().getRequirements()) {
+                  continue;
+              }
+
+              // we are only interested in CoP and Award Criteria groups
+              if (!COP_GROUP_ID.equals(requirementGroup.getOcds().getId()) &&
+                  !AWARD_CRITERIA_GROUP_ID.equals(requirementGroup.getOcds().getId()) &&
+                  !requirementGroup.getOcds().getId().startsWith(COP_GROUP_ID + ".") &&
+                  !requirementGroup.getOcds().getId().startsWith(AWARD_CRITERIA_GROUP_ID + ".")) {
+                  continue;
+              }
+
+              final Set<Requirement> requirements = requirementGroup.getOcds().getRequirements();
+
+              if (null == requirements || requirements.isEmpty()) {
+                  continue;
+              }
+
+              if (COP_GROUP_ID.equals(requirementGroup.getOcds().getId()) ||
+                  requirementGroup.getOcds().getId().startsWith(COP_GROUP_ID + ".")) {
+                      if (addGroupOrderFieldsForThisGroup(copGroupNamesListForStage, requirements)) {
+                          updated = true;
+                      }
+              }
+
+              if (AWARD_CRITERIA_GROUP_ID.equals(requirementGroup.getOcds().getId()) ||
+                  requirementGroup.getOcds().getId().startsWith(AWARD_CRITERIA_GROUP_ID + ".")) {
+                      if (addGroupOrderFieldsForThisGroup(awardCriteriaGroupNamesListForStage, requirements)) {
+                          updated = true;
+                      }
+              }
+
+              //
+              // once we have added groupOrder fields for all of the defined question groups,
+              // we need to set any remaining ones to zero, as required by the bid-pack logic
+              //
+              if (addDefaultGroupOrderFieldsForThisGroup(requirements)) {
+                  updated = true;
+              }
+          }
+      }
+
+      return updated;
+  }
+
+  private boolean addGroupOrderFieldsForThisGroup(final List<String> groupNamesList, final Set<Requirement> requirements) {
+      boolean updated = false;
+
+      if (null == groupNamesList || groupNamesList.isEmpty()) {
+          return updated;
+      }
+
+      int groupOrder = 1;
+
+      //
+      // add groupOrder fields for all defined question groups
+      //
+
+      for (final String groupNameToFind: groupNamesList) {
+          for (final Requirement requirement : requirements) {
+              final String title = requirement.getOcds().getTitle();
+
+              if (!"Select group name".equalsIgnoreCase(title)) {
+                  continue;
+              }
+
+              final List<Option> options = requirement.getNonOCDS().getOptions();
+
+              if (null == options || options.isEmpty()) {
+                  continue;
+              }
+
+              String onlyOptionValue = null;
+              int optionValueCount = 0;
+
+              for (final Option option : options) {
+                  final Boolean selected = option.getSelect();
+                  String value = option.getValue();
+
+                  if (Boolean.TRUE.equals(selected) && null != value && !value.isBlank()) {
+                      value = value.trim();
+                  }
+
+                  if (null != value && !value.isBlank()) {
+                      onlyOptionValue = value.trim();
+                      optionValueCount++;
+                  }
+              }
+
+              final String thisGroupNameValue = optionValueCount == 1 ? onlyOptionValue : null;
+
+              if (null == thisGroupNameValue || !thisGroupNameValue.equals(groupNameToFind)) {
+                  continue;
+              }
+
+              requirement.getNonOCDS().setGroupOrder(groupOrder);
+              updated = true;
+          }
+
+          groupOrder++;
+      }
+
+      return updated;
+  }
+
+  private boolean addDefaultGroupOrderFieldsForThisGroup(final Set<Requirement> requirements) {
+      //
+      // once we have added groupOrder fields for all of the defined question groups,
+      // we need to set any remaining ones to zero, as required by the bid-pack logic
+      //
+
+      boolean updated = false;
+
+      for (final Requirement requirement : requirements) {
+          final String title = requirement.getOcds().getTitle();
+
+          if (!"Select group name".equalsIgnoreCase(title)) {
+              continue;    // we do not have the correct block
+          }
+
+          final Integer groupOrder = requirement.getNonOCDS().getGroupOrder();
+
+          if (null != groupOrder) {
+              continue;    // we have already added a groupOrder field
+          }
+
+          // we have not previously added a groupOrder field, so create a new entry and set the value to zero
+          requirement.getNonOCDS().setGroupOrder(DEFAULT_GROUP_ORDER);
+          updated = true;
+      }
+
+      return updated;
+  }
+
+  private List<String> getQuestionGroupsForGroupTypeAndStageNumber(final Integer projectId, final String eventId, final String principal, final String groupType, final Integer stageNumber) {
+      final QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerByEvent(projectId, eventId, principal);
+
+      if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+          return null;
+      }
+
+      final String useQuestionGroupFullPrefix = groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + USE_QUESTION_GROUPS;
+
+      boolean usesQuestionGroups = false;
+
+      for (QandA responseData: response.getQandA()) {
+            if (responseData.getQuestion().equals(useQuestionGroupFullPrefix)) {
+                if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                    usesQuestionGroups = Boolean.valueOf(responseData.getAnswer());
+                    break;
+                }
+            }
+      }
+
+      if (!usesQuestionGroups) {
+          return null;
+      }
+
+      final String questionGroupFullPrefix = groupType + "-" + STAGE_NUMBER + "-" + stageNumber + "-" + QUESTION_GROUP_PREFIX;
+
+      // note we use a map to ensure we can ultimately return the list in numeric order;
+      // just reading directly from the DB does not always give the order we need
+      Map<Integer, QandA> questionMap = new HashMap<>();
+
+      for (QandA question: response.getQandA()) {
+          if (question.getQuestion().startsWith(questionGroupFullPrefix)) {
+              if (null != question.getAnswer() && !question.getAnswer().isBlank()) {
+                  // extract the numeric index from the question name, such as: award-criteria-question-group-3
+                  String index = question.getQuestion().substring(question.getQuestion().lastIndexOf("-") + 1);
+                  // then add this question into the map based on this index
+                  questionMap.put(Integer.valueOf(index), question);
+              }
+          }
+      }
+
+      final List<String> questionGroups = new ArrayList<>();
+
+      for (int i=0; i < questionMap.size(); i++) {
+          QandA question = questionMap.get(i);
+          questionGroups.add(question.getAnswer());
+      }
+
+      return questionGroups;
   }
 }

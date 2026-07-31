@@ -66,6 +66,7 @@ public class ValidationService {
    *
    * @param projectId
    * @param eventId
+   * @param stageNumber
    * @return procurement event entity
    */
   public ProcurementEvent validateProjectAndEventIds(final Integer projectId, final String eventId, final Integer stageNumber) {
