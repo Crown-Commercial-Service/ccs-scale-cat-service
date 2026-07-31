@@ -834,8 +834,6 @@ public class CriteriaService {
                   continue;
               }
 
-              final Integer existingGroupOrder = requirement.getNonOCDS().getGroupOrder();
-
               requirement.getNonOCDS().setGroupOrder(groupOrder);
               updated = true;
           }
