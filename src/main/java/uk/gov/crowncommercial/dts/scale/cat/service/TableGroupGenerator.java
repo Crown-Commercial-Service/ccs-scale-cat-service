@@ -57,6 +57,7 @@ public class TableGroupGenerator {
     private static final String TOKEN_CLEAN_PATTERN_REGEX = "«[^»]*»|«[^”]*”";
     private static final String COP_QUESTION_ANCHOR_TAG = "«cop_question»";
     private static final String QUESTION_TITLE = "Enter your question";
+    private static final String UNNAMED_GROUP_KEY = "unnamed";
 
     private final ObjectMapper objectMapper;
 
@@ -133,18 +134,17 @@ public class TableGroupGenerator {
 
         for (Map<String, Object> rgMap : requirementGroups) {
             String selectedGroupName = extractSelectedGroupName(rgMap);
-            int groupOrder = getRequirementGroupOrder(rgMap);
-            boolean hasGroupOrder = hasRequirementGroupOrder(rgMap);
+            Integer groupOrder = getRequirementGroupOrder(rgMap);
 
             String key;
             String displayName;
 
-            if (StringUtils.hasText(selectedGroupName) && (!hasGroupOrder || groupOrder > 0)) {
+            if (StringUtils.hasText(selectedGroupName) && groupOrder != null && groupOrder > 0) {
                 key = "named::" + norm(selectedGroupName);
                 displayName = selectedGroupName.trim();
             } else {
-                key = "unnamed";
-                displayName = "";
+                key = UNNAMED_GROUP_KEY;
+                displayName = "(no group)";
             }
 
             GroupBucket bucket = grouped.computeIfAbsent(key, k -> new GroupBucket(displayName));
@@ -152,16 +152,6 @@ public class TableGroupGenerator {
         }
 
         return grouped;
-    }
-
-    private String extractDisplayNameForUnnamedGroup(Map<String, Object> rgMap) {
-        String description = extractGroupDescription(rgMap);
-
-        if (StringUtils.hasText(description)) {
-            return description.trim();
-        }
-
-        return PLACEHOLDER_UNKNOWN;
     }
 
     @SuppressWarnings("unchecked")
@@ -657,6 +647,7 @@ public class TableGroupGenerator {
 
             TextPElement heading = new TextPElement(doc.getContentDom());
             heading.setTextContent(groupName == null ? "" : groupName);
+            applyGroupHeadingStyle(heading);
 
             Node afterBlank = blankBefore.getNextSibling();
             if (afterBlank != null) {
@@ -684,6 +675,15 @@ public class TableGroupGenerator {
             } catch (Exception ignored) {
                 return null;
             }
+        }
+    }
+
+    private static void applyGroupHeadingStyle(TextPElement heading){
+        try {
+            Paragraph paragraph = Paragraph.getInstanceof(heading);
+            paragraph.setFont(new Font(TEXT_FONT_NAME, StyleTypeDefinitions.FontStyle.BOLD, TEXT_FONT_SIZE));
+        } catch (Exception ex) {
+           log.debug("Failed to apply group header style", ex);
         }
     }
 
@@ -1108,8 +1108,8 @@ public class TableGroupGenerator {
 
         } catch (Exception ignored) {}
 
-            table.getColumnByIndex(0).setWidth(55.0);
-            table.getColumnByIndex(1).setWidth(110.0);
+        table.getColumnByIndex(0).setWidth(55.0);
+        table.getColumnByIndex(1).setWidth(110.0);
 
         return table;
     }
@@ -1125,7 +1125,7 @@ public class TableGroupGenerator {
         try {
             List<Map<String, Object>> reqs = (List<Map<String, Object>>) ((Map)rgMap.get("OCDS")).get("requirements");
             return reqs.stream().filter(r ->
-                    metadataId.equals(((Map)r.get("OCDS")).get("id")))
+                            metadataId.equals(((Map)r.get("OCDS")).get("id")))
                     .map(this::readSelectedOptionValue)
                     .findFirst()
                     .orElse("");
@@ -1175,7 +1175,8 @@ public class TableGroupGenerator {
                 new ArrayList<>(grouped.entrySet());
 
         entries.sort(Comparator
-                .<Map.Entry<String, GroupBucket>>comparingInt(entry -> getSortableGroupOrder(entry.getValue()))
+                .<Map.Entry<String, GroupBucket>>comparingInt(entry -> getUnnamedGroupSortOrder(entry.getKey()))
+                .thenComparingInt(entry -> getSortableGroupOrder(entry.getValue()))
                 .thenComparingInt(entry -> getSortableFirstRowOrder(entry.getValue())));
 
         grouped.clear();
@@ -1185,6 +1186,10 @@ public class TableGroupGenerator {
         }
     }
 
+    private static int getUnnamedGroupSortOrder(String groupKey) {
+        return UNNAMED_GROUP_KEY.equals(groupKey) ? 1 : 0;
+    }
+
     private static int getBucketFirstRowOrder(GroupBucket bucket) {
         return bucket.requirementGroups.stream()
                 .mapToInt(TableGroupGenerator::getLowestRequirementOrder)
@@ -1192,44 +1197,51 @@ public class TableGroupGenerator {
                 .orElse(Integer.MIN_VALUE);
     }
 
-    private static int getBucketGroupOrder(GroupBucket bucket) {
+    private static Integer getBucketGroupOrder(GroupBucket bucket) {
         return bucket.requirementGroups.stream()
-                .mapToInt(TableGroupGenerator::getRequirementGroupOrder)
-                .max()
-                .orElse(0);
+                .map(TableGroupGenerator::getRequirementGroupOrder)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(null);
     }
 
     private static int getSortableGroupOrder(GroupBucket bucket) {
-        int groupOrder = getBucketGroupOrder(bucket);
-        return groupOrder == 0 ? Integer.MAX_VALUE : groupOrder;
+        Integer groupOrder = getBucketGroupOrder(bucket);
+        return groupOrder == null ? Integer.MAX_VALUE : groupOrder;
     }
 
     private static int getSortableFirstRowOrder(GroupBucket bucket) {
         int firstRowOrder = getBucketFirstRowOrder(bucket);
 
-        if (getBucketGroupOrder(bucket) == 0 && firstRowOrder != Integer.MIN_VALUE) {
+        if (getBucketGroupOrder(bucket) == null && firstRowOrder != Integer.MIN_VALUE) {
             return -firstRowOrder;
         }
 
         return firstRowOrder;
     }
 
-    private static int getRequirementGroupOrder(Map<String, Object> requirementGroup) {
+    private static Integer getRequirementGroupOrder(Map<String, Object> requirementGroup) {
         Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
         if (ocds == null) {
-            return 0;
+            return null;
         }
         Object requirementsObj = ocds.get("requirements");
         if (!(requirementsObj instanceof List<?> requirements)) {
-            return 0;
+            return null;
         }
-        return requirements.stream()
-                .filter(Map.class::isInstance)
-                .map(requirement -> (Map<String, Object>) requirement)
-                .filter(TableGroupGenerator::isSelectGroupNameRequirement)
-                .mapToInt(TableGroupGenerator::getSelectRequirementGroupOrder)
-                .findFirst()
-                .orElseGet(() -> getHighestRequirementGroupOrder(requirements));
+
+        for (Object requirementObj : requirements) {
+            if (!(requirementObj instanceof Map<?, ?> requirement)) {
+                continue;
+            }
+
+            Map<String, Object> requirementMap = (Map<String, Object>) requirement;
+            if (isSelectGroupNameRequirement(requirementMap)) {
+                return getSelectRequirementGroupOrder(requirementMap);
+            }
+        }
+
+        return getHighestRequirementGroupOrder(requirements);
     }
 
     private static boolean isSelectGroupNameRequirement(Map<String, Object> requirement) {
@@ -1238,37 +1250,20 @@ public class TableGroupGenerator {
         return title != null && SELECT_GROUP_NAME_TITLE.equalsIgnoreCase(title.toString());
     }
 
-    private static int getSelectRequirementGroupOrder(Map<String, Object> requirement) {
+    private static Integer getSelectRequirementGroupOrder(Map<String, Object> requirement) {
         Map<String, Object> nonOCDS = (Map<String, Object>) requirement.get("nonOCDS");
-        return getOrder(nonOCDS, "groupOrder", 0);
+        return getNullableOrder(nonOCDS, "groupOrder");
     }
 
-    private static boolean hasRequirementGroupOrder(Map<String, Object> requirementGroup) {
-        Map<String, Object> ocds = (Map<String, Object>) requirementGroup.get("OCDS");
-        if (ocds == null) {
-            return false;
-        }
-        Object requirementsObj = ocds.get("requirements");
-        if (!(requirementsObj instanceof List<?> requirements)) {
-            return false;
-        }
+    private static Integer getHighestRequirementGroupOrder(List<?> requirements) {
         return requirements.stream()
                 .filter(Map.class::isInstance)
                 .map(requirement -> (Map<String, Object>) requirement)
-                .filter(TableGroupGenerator::isSelectGroupNameRequirement)
                 .map(requirement -> (Map<String, Object>) requirement.get("nonOCDS"))
+                .map(nonOCDS -> getNullableOrder(nonOCDS, "groupOrder"))
                 .filter(Objects::nonNull)
-                .anyMatch(nonOCDS -> nonOCDS.containsKey("groupOrder"));
-    }
-
-    private static int getHighestRequirementGroupOrder(List<?> requirements) {
-        return requirements.stream()
-                .filter(Map.class::isInstance)
-                .map(requirement -> (Map<String, Object>) requirement)
-                .map(requirement -> (Map<String, Object>) requirement.get("nonOCDS"))
-                .mapToInt(nonOCDS -> getOrder(nonOCDS, "groupOrder", 0))
-                .max()
-                .orElse(0);
+                .max(Integer::compareTo)
+                .orElse(null);
     }
 
     private static int getLowestRequirementOrder(Map<String, Object> requirementGroup) {
@@ -1291,6 +1286,24 @@ public class TableGroupGenerator {
     private static int getRequirementOrder(Map<String, Object> requirement) {
         Map<String, Object> nonOCDS = (Map<String, Object>) requirement.get("nonOCDS");
         return getOrder(nonOCDS, "order", Integer.MAX_VALUE);
+    }
+
+    private static Integer getNullableOrder(Map<String, Object> nonOCDS, String fieldName) {
+        if (nonOCDS == null) {
+            return null;
+        }
+        Object order = nonOCDS.get(fieldName);
+        if (order instanceof Number number) {
+            return number.intValue();
+        }
+        if (order instanceof String orderText && StringUtils.hasText(orderText)) {
+            try {
+                return Integer.parseInt(orderText);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private static int getOrder(Map<String, Object> nonOCDS, String fieldName, int defaultValue) {
