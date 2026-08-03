@@ -313,7 +313,6 @@ public class TableGroupGenerator {
                 final String currentGroupItemTitle = extractSelectedGroupName(rgMap);
 
                 if (StringUtils.hasText(currentGroupItemTitle) && !currentGroupItemTitle.equals(lastProcessedGroupTitle)) {
-                    // TODO - BM - injectInlineHeaderBannerRow(table, templateRows, currentGroupItemTitle);
                     lastProcessedGroupTitle = currentGroupItemTitle;
                     counter = 1;
                 }
