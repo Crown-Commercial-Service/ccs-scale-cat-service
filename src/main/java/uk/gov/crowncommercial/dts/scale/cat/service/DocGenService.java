@@ -1072,11 +1072,25 @@ public class DocGenService {
         Integer projectId = (Integer) stageData.get("projectId");
         String eventId = (String) stageData.get("eventId");
 
-        JsonNode sourceGroups = getSourceGroupsForCriterion2(objectMapper.readTree(payload));
-        if (sourceGroups == null || !sourceGroups.isArray()) {
+        JsonNode sourceGroupsNode = getSourceGroupsForCriterion2(objectMapper.readTree(payload));
+        if (sourceGroupsNode == null || !sourceGroupsNode.isArray()) {
             return nextOrder;
         }
+        // Convert the ArrayNode into a List so we can easily sort it
+        List<JsonNode> sourceGroups = new ArrayList<>();
+        sourceGroupsNode.forEach(sourceGroups::add);
 
+        // Sort by groupOrder (primary) and nonOCDS.order (secondary)
+        sourceGroups.sort((g1, g2) -> {
+            int go1 = getGroupOrder(g1);
+            int go2 = getGroupOrder(g2);
+
+            if (go1 != go2) {
+                return Integer.compare(go1, go2);
+            }
+            // If they are in the same group (or both have no group), fallback to original order
+            return Integer.compare(getNonOcdsOrder(g1), getNonOcdsOrder(g2));
+        });
         Map<String, String> sanitizedGroupNames = extractAndSanitizeGroupNames(sourceGroups, stageNum, projectId, eventId);
 
         Map<String, List<ObjectNode>> groupedNodes = groupRequirementsByName(sourceGroups, sanitizedGroupNames, stageNum);
@@ -1084,19 +1098,46 @@ public class DocGenService {
         return appendGroupsToTarget(groupedNodes, targetGroups, nextOrder, stageNum, totalStages, stageDesc);
     }
 
+    // Helper methods added to safely extract and sort by groupOrder and order
+    private int getGroupOrder(JsonNode group) {
+        JsonNode requirements = group.path(OCDS).path(REQUIREMENTS);
+
+        if (requirements.isArray()) {
+            // Loop through the questions to find the dropdown that holds the groupOrder
+            for (JsonNode req : requirements) {
+                if (SELECT_GROUP_NAME_TITLE.equals(req.path(OCDS).path(TITLE).asText())) {
+                    JsonNode groupOrderNode = req.path(NON_OCDS).path("groupOrder");
+
+                    if (!groupOrderNode.isMissingNode() && !groupOrderNode.isNull()) {
+                        int val = groupOrderNode.asInt(0);
+                        // If explicitly equals 0, push it to the back
+                        return val == 0 ? Integer.MAX_VALUE : val;
+                    }
+                }
+            }
+        }
+        // If not found, missing, or null, push to the end
+        return Integer.MAX_VALUE;
+    }
+
+    private int getNonOcdsOrder(JsonNode group) {
+        JsonNode orderNode = group.path(NON_OCDS).path(ORDER);
+        if (orderNode.isMissingNode() || orderNode.isNull()) {
+            return Integer.MAX_VALUE;
+        }
+        return orderNode.asInt(Integer.MAX_VALUE);
+    }
+
     // =========================================================================
     // SANITIZATION & HEURISTICS
     // =========================================================================
-    private Map<String, String> extractAndSanitizeGroupNames(JsonNode sourceGroups, int stageNum, Integer projectId, String eventId) {
+    private Map<String, String> extractAndSanitizeGroupNames(List<JsonNode> sourceGroups, int stageNum, Integer projectId, String eventId) {
 
         Map<String, String> groupNames = new HashMap<>();
 
         // Fetch valid group names from the Q&A Database (Bypassing the JSON entirely)
         List<String> copGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
         List<String> awardGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
-
-        int copIndex = 0;
-        int awardIndex = 0;
 
         for (JsonNode group : sourceGroups) {
             String groupId = group.path(OCDS).path(ID).asText();
@@ -1171,7 +1212,7 @@ public class DocGenService {
     // =========================================================================
     // GROUPING & MAPPING
     // =========================================================================
-    private Map<String, List<ObjectNode>> groupRequirementsByName(JsonNode sourceGroups, Map<String, String> sanitizedNames, int stageNum) {
+    private Map<String, List<ObjectNode>> groupRequirementsByName(List<JsonNode> sourceGroups, Map<String, String> sanitizedNames, int stageNum) {
 
         Map<String, List<ObjectNode>> groupedNodes = new LinkedHashMap<>();
 
