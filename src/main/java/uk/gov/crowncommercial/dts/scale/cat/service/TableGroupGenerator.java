@@ -302,6 +302,7 @@ public class TableGroupGenerator {
             templateRows.add(table.getRowByIndex(idx));
         }
 
+        String lastProcessedGroupTitle = null;
         int numberColIdx = findNumberColumnIndex(table);
         int counter = 1;
 
@@ -309,6 +310,13 @@ public class TableGroupGenerator {
             List<Map<String, String>> rows = extractRowsGeneric(rgMap, titleToPlaceholder, placeholders);
 
             for (Map<String, String> rowMap : rows) {
+                final String currentGroupItemTitle = extractSelectedGroupName(rgMap);
+
+                if (StringUtils.hasText(currentGroupItemTitle) && !currentGroupItemTitle.equals(lastProcessedGroupTitle)) {
+                    lastProcessedGroupTitle = currentGroupItemTitle;
+                    counter = 1;
+                }
+
                 List<Row> createdBlockRows = new ArrayList<>(templateRows.size());
 
                 for (Row templateRow : templateRows) {
