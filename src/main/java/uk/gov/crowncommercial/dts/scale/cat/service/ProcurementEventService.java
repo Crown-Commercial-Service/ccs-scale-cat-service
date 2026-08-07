@@ -1505,51 +1505,65 @@ public class ProcurementEventService implements EventService {
         var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
                 .get(exportRfxResponse.getRfxSetting().getStatusCode());
         var attachments = new ArrayList<DocumentAttachment>();
-
-        if (TenderStatus.ACTIVE != status) {
-            // Get documents from S3
-           event.getDocumentUploads().forEach(doc -> {
-                var documentKey = DocumentKey.fromString(doc.getDocumentId());
-                var attachment = DocumentAttachment.builder()
-                        .data(documentUploadService.retrieveDocument(doc, principal))
-                        .fileName(documentKey.getFileName())
-                        .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
-                attachments.add(attachment);
-            });
-            // Get draft documents
-            Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
-            if (isMultiStage) {
-                for (DocumentSummary summary : templates) {
-                    DocumentKey docKey = DocumentKey.fromString(summary.getId());
-
-                    // Route directly to the new multi-stage template service wrapper for attachment 4
-                    // create n number of files on the fly - depending on total number of stages
-                    List<DocumentAttachment> multiFiles = dTemplateService
-                            .getDraftDocumentsForMultiStage(procId, eventId, docKey);
-                    attachments.addAll(multiFiles);
-                }
-            } else {
-                // --- Old flow ---
-                Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
-                filterTemplates.forEach(template -> {
-                    attachments.add(dTemplateService.getDraftDocument(procId, eventId,
-                            DocumentKey.fromString(template.getId()), isLastStage));
+        try {
+            if (TenderStatus.ACTIVE != status) {
+                // Get documents from S3
+                log.debug("Getting documents from S3 for the eventId: {}", eventId);
+                event.getDocumentUploads().forEach(doc -> {
+                    var documentKey = DocumentKey.fromString(doc.getDocumentId());
+                    var attachment = DocumentAttachment.builder()
+                            .data(documentUploadService.retrieveDocument(doc, principal))
+                            .fileName(documentKey.getFileName())
+                            .contentType(MediaType.parseMediaType(doc.getMimetype())).build();
+                    attachments.add(attachment);
                 });
-            }
 
-        } else {
-            // Get documents from Jaggaer
-            List<Attachment> sellerAttachments = exportRfxResponse.getSellerAttachmentsList().getAttachment();
-            List<Attachment> filteredAttachments =
-                    isMultiStage ? sellerAttachments : filterAttachments(isLastStage, sellerAttachments);
-            Stream
-                    .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
-                            filteredAttachments.stream())
-                    .forEach(doc -> attachments.add(DocumentAttachment
-                            .builder().fileName(doc.getFileName()).data(jaggaerService
-                                    .getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
-                            .build()));
+                log.debug("Got documents from S3 for the eventId: {}, number of documents: {}", eventId, attachments.size());
+                // Get draft documents
+                Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
+                if (isMultiStage) {
+                    log.debug("Multi-stage, let's process and add all documents for the eventId: {}", eventId);
+                    for (DocumentSummary summary : templates) {
+                        DocumentKey docKey = DocumentKey.fromString(summary.getId());
+
+                        // Route directly to the new multi-stage template service wrapper for attachment 4
+                        // create n number of files on the fly - depending on total number of stages
+                        List<DocumentAttachment> multiFiles = dTemplateService
+                                .getDraftDocumentsForMultiStage(procId, eventId, docKey);
+                        attachments.addAll(multiFiles);
+                    }
+
+                    log.debug("Multi-stage processed all documents for the eventId: {}, number of documents: {}", eventId, attachments.size());
+                } else {
+                    // --- Old flow ---
+                    log.debug("Single-stage or Two-stage, let's process and add all documents for the eventId: {}", eventId);
+                    Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
+                    filterTemplates.forEach(template -> {
+                        attachments.add(dTemplateService.getDraftDocument(procId, eventId,
+                                DocumentKey.fromString(template.getId()), isLastStage));
+                    });
+                }
+                log.debug("Single-stage or Two-stage, processed all documents for the eventId: {}, number of documents: {}", eventId, attachments.size());
+            } else {
+                // Get documents from Jaggaer
+                log.debug("Event already published, let's get all documents from Jaggaer for the eventId: {}", eventId);
+                List<Attachment> sellerAttachments = exportRfxResponse.getSellerAttachmentsList().getAttachment();
+                List<Attachment> filteredAttachments =
+                        isMultiStage ? sellerAttachments : filterAttachments(isLastStage, sellerAttachments);
+                Stream
+                        .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
+                                filteredAttachments.stream())
+                        .forEach(doc -> attachments.add(DocumentAttachment
+                                .builder().fileName(doc.getFileName()).data(jaggaerService
+                                        .getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
+                                .build()));
+
+                log.debug("Event already published, processed all documents from Jaggaer for the eventId: {}, number of documents: {}", eventId, attachments.size());
+            }
+        } catch (Exception ex) {
+            log.error("Failed to export document for the evntId: {}. Full log: {}", eventId, ex.getStackTrace());
         }
+
         return attachments;
     }
 
