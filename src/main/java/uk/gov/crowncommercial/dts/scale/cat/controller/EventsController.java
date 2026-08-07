@@ -470,6 +470,7 @@ public class EventsController extends AbstractRestController {
 
     if(exportDocuments == null || exportDocuments.isEmpty()) {
         log.error("Document export failed either on S3 or from DocGenService or Jaggaer, check log for ProcurementEventService for more details");
+        return ResponseEntity.notFound().build();
     }
 
     StreamingResponseBody streamResponseBody = out -> {
