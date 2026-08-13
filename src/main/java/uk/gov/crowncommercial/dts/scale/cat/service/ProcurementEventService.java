@@ -947,15 +947,22 @@ public class ProcurementEventService implements EventService {
 
         final var fileName = multipartFile.getOriginalFilename();
         final var extension = FilenameUtils.getExtension(fileName);
+        log.info("Upload document validation started: procId={}, eventId={}, fileName={}, extension={}, contentType={}, size={}, audience={}",
+                procId, eventId, fileName, extension, multipartFile.getContentType(),
+                multipartFile.getSize(), audience);
 
         // Validate file extension
         if (!documentConfig.getAllowedExtentions().contains(extension.toLowerCase())) {
+            log.warn("Rejecting document upload due to unsupported extension: procId={}, eventId={}, fileName={}, extension={}, allowedExtensions={}",
+                    procId, eventId, fileName, extension, documentConfig.getAllowedExtentions());
             throw new IllegalArgumentException("File is not one of the allowed types: "
                     + documentConfig.getAllowedExtentions().toString());
         }
 
         // Validate file size
         if (multipartFile.getSize() > documentConfig.getMaxSize()) {
+            log.warn("Rejecting document upload due to file size: procId={}, eventId={}, fileName={}, size={}, maxSize={}",
+                    procId, eventId, fileName, multipartFile.getSize(), documentConfig.getMaxSize());
             throw new IllegalArgumentException("File is too large: " + multipartFile.getSize()
                     + " bytes. Maximum allowed upload size is: " + documentConfig.getMaxSize() + " bytes");
         }
@@ -966,12 +973,18 @@ public class ProcurementEventService implements EventService {
         var totalEventFileSize =
                 event.getDocumentUploads().stream().map(DocumentUpload::getSize).reduce(0L, Long::sum);
         if (Long.sum(totalEventFileSize, multipartFile.getSize()) > documentConfig.getMaxTotalSize()) {
+            log.warn("Rejecting document upload due to event total size: procId={}, eventId={}, fileName={}, currentTotalSize={}, uploadSize={}, maxTotalSize={}, uploadCount={}",
+                    procId, eventId, fileName, totalEventFileSize, multipartFile.getSize(),
+                    documentConfig.getMaxTotalSize(), event.getDocumentUploads().size());
             throw new IllegalArgumentException(
                     "Uploading file will exceed the maximum allowed total limit of "
                             + documentConfig.getMaxTotalSize() + " bytes for event " + eventId
                             + " (current total size is " + totalEventFileSize + " bytes, across "
                             + event.getDocumentUploads().size() + " files)");
         }
+        log.info("Upload document validation passed: procId={}, eventId={}, fileName={}, currentTotalSize={}, uploadSize={}, newTotalSize={}, uploadCount={}",
+                procId, eventId, fileName, totalEventFileSize, multipartFile.getSize(),
+                Long.sum(totalEventFileSize, multipartFile.getSize()), event.getDocumentUploads().size());
 
         return tendersAPIModelUtils.buildDocumentSummary(documentUploadService.uploadDocument(event,
                 multipartFile, audience, fileDescription, principal));

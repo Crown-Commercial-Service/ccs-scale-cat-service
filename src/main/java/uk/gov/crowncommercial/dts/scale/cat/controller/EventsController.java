@@ -340,6 +340,10 @@ public class EventsController extends AbstractRestController {
     var principal = getPrincipalFromJwt(authentication);
     log.info("uploadDocument invoked on behalf of principal: {}", principal);
 
+    log.info("uploadDocument request details: procId={}, eventId={}, fileName={}, contentType={}, size={}, audience={}, hasDescription={}",
+            procId, eventId, multipartFile.getOriginalFilename(), multipartFile.getContentType(),
+            multipartFile.getSize(), audience, description != null && !description.isBlank());
+
     // passed in as string to allow for lower case
     var audienceType = DocumentAudienceType.valueOf(audience.toUpperCase());
     return procurementEventService.uploadDocument(procId, eventId, multipartFile, audienceType,

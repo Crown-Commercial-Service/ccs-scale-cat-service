@@ -93,38 +93,139 @@ public class DocumentUploadService {
    * @return
    */
   public DocumentUpload uploadDocument(final ProcurementEvent event,
-      final MultipartFile multipartFile, final DocumentAudienceType audience,
-      final String documentDescription, final String principal) {
+                                       final MultipartFile multipartFile, final DocumentAudienceType audience,
+                                       final String documentDescription, final String principal) {
 
-    var mimetype = TIKA.detect(multipartFile.getOriginalFilename());
-    final MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
-    parts.add("typeValidation[]", mimetype);
-    parts.add("sizeValidation", multipartFile.getSize() + 1000);
-    parts.add("documentFile", multipartFile.getResource());
+    final String originalFilename = multipartFile.getOriginalFilename();
+    final long fileSize = multipartFile.getSize();
 
-    final var documentStatus = ofNullable(
-        docUploadSvcUploadWebclient.post().uri(apiConfig.getPostDocument().get(KEY_URI_TEMPLATE))
-            .contentType(MediaType.MULTIPART_FORM_DATA).body(BodyInserters.fromMultipartData(parts))
-            .retrieve().bodyToMono(DocumentStatus.class)
-            .retryWhen(Retry
-                .fixedDelay(Constants.WEBCLIENT_DEFAULT_RETRIES,
-                    Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
-                .filter(DocumentUploadService::isWebClientRequestException))
-            .block()).orElseThrow(() -> new DocumentUploadApplicationException(""));
+    log.info(
+            "Starting document upload. filename={}, size={}, audience={}",
+            originalFilename, fileSize, audience);
 
-    // Create document ID based on hash of the external ID
-    var docKey = new DocumentKey(Math.abs(documentStatus.getId().hashCode()),
-        multipartFile.getOriginalFilename(), audience);
+    try {
+      var mimetype = TIKA.detect(originalFilename);
 
-    var documentUpload = DocumentUpload.builder().procurementEvent(event)
-        .documentId(docKey.getDocumentId()).externalDocumentId(documentStatus.getId())
-        .externalStatus(VirusCheckStatus.PROCESSING).audience(audience)
-        .size(multipartFile.getSize()).documentDescription(documentDescription)
-        .mimetype(mimetype).timestamps(Timestamps.createTimestamps(principal)).build();
-    event.getDocumentUploads().add(documentUpload);
-    procurementEventRepo.save(event);
+      log.debug(
+              "Detected document mimetype. filename={}, mimetype={}",
+              originalFilename, mimetype);
 
-    return documentUpload;
+      final MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+      parts.add("typeValidation[]", mimetype);
+      parts.add("sizeValidation", fileSize + 1000);
+      parts.add("documentFile", multipartFile.getResource());
+
+      log.debug(
+              "Prepared multipart request. filename={}, mimetype={}, actualSize={}, sizeValidation={}",
+              originalFilename, mimetype, fileSize, fileSize + 1000);
+
+      final var uri = apiConfig.getPostDocument().get(KEY_URI_TEMPLATE);
+
+      log.info(
+              "Calling document upload service. filename={}, uri={}",
+              originalFilename, uri);
+
+      final var documentStatus = ofNullable(
+              docUploadSvcUploadWebclient.post()
+                      .uri(uri)
+                      .contentType(MediaType.MULTIPART_FORM_DATA)
+                      .body(BodyInserters.fromMultipartData(parts))
+                      .retrieve()
+                      .bodyToMono(DocumentStatus.class)
+                      .retryWhen(
+                              Retry.fixedDelay(
+                                              Constants.WEBCLIENT_DEFAULT_RETRIES,
+                                              Duration.ofSeconds(Constants.WEBCLIENT_DEFAULT_DELAY))
+                                      .filter(DocumentUploadService::isWebClientRequestException)
+                                      .doBeforeRetry(retrySignal ->
+                                              log.warn(
+                                                      "Retrying document upload. filename={}, retryAttempt={}, failure={}",
+                                                      originalFilename,
+                                                      retrySignal.totalRetries() + 1,
+                                                      retrySignal.failure() != null
+                                                              ? retrySignal.failure().toString()
+                                                              : "unknown")))
+                      .block())
+              .orElseThrow(() -> {
+                log.error(
+                        "Document upload service returned null/empty response. filename={}",
+                        originalFilename);
+                return new DocumentUploadApplicationException(
+                        "Document upload service returned an empty response");
+              });
+
+      log.info(
+              "Document uploaded to external service. filename={}, externalDocumentId={}",
+              originalFilename, documentStatus.getId());
+
+      if (documentStatus.getId() == null) {
+        log.error(
+                "Document upload response contains null document ID. filename={}, status={}",
+                originalFilename, documentStatus);
+
+        throw new DocumentUploadApplicationException(
+                "Document upload service returned a null document ID");
+      }
+
+      // Create document ID based on hash of the external ID
+      var docKey = new DocumentKey(
+              Math.abs(documentStatus.getId().hashCode()),
+              originalFilename,
+              audience);
+
+      log.debug(
+              "Created document key. filename={}, externalDocumentId={}, documentId={}",
+              originalFilename,
+              documentStatus.getId(),
+              docKey.getDocumentId());
+
+      var documentUpload = DocumentUpload.builder()
+              .procurementEvent(event)
+              .documentId(docKey.getDocumentId())
+              .externalDocumentId(documentStatus.getId())
+              .externalStatus(VirusCheckStatus.PROCESSING)
+              .audience(audience)
+              .size(fileSize)
+              .documentDescription(documentDescription)
+              .mimetype(mimetype)
+              .timestamps(Timestamps.createTimestamps(principal))
+              .build();
+
+      log.debug(
+              "Adding document upload to procurement event. filename={}, documentId={}, externalDocumentId={}",
+              originalFilename,
+              documentUpload.getDocumentId(),
+              documentUpload.getExternalDocumentId());
+
+      event.getDocumentUploads().add(documentUpload);
+
+      log.debug(
+              "Saving procurement event after document upload. filename={}, documentId={}",
+              originalFilename,
+              documentUpload.getDocumentId());
+
+      procurementEventRepo.save(event);
+
+      log.info(
+              "Document upload completed successfully. filename={}, documentId={}, externalDocumentId={}",
+              originalFilename,
+              documentUpload.getDocumentId(),
+              documentUpload.getExternalDocumentId());
+
+      return documentUpload;
+
+    } catch (Exception ex) {
+      log.error(
+              "Document upload failed. filename={}, size={}, audience={}, exceptionType={}, message={}",
+              originalFilename,
+              fileSize,
+              audience,
+              ex.getClass().getSimpleName(),
+              ex.getMessage(),
+              ex);
+
+      throw ex;
+    }
   }
 
   /**
