@@ -309,45 +309,157 @@ public class DocumentUploadService {
    * @param principal
    */
   void processDocuments(final Collection<DocumentUpload> unprocessedDocuments,
-      final String principal) {
+                        final String principal) {
+
+    log.info("Starting processDocuments. documentCount={}",
+            unprocessedDocuments != null ? unprocessedDocuments.size() : 0);
+
     unprocessedDocuments.forEach(unprocessedDocUpload -> {
+
+      log.info(
+              "Processing document. documentId={}, externalDocumentId={}, currentStatus={}",
+              unprocessedDocUpload.getDocumentId(),
+              unprocessedDocUpload.getExternalDocumentId(),
+              unprocessedDocUpload.getExternalStatus());
 
       // Ensure processing of each document takes place only once
       // TODO: Replace with Blocking queue + timeout to avoid deadlocks
       synchronized (unprocessedDocUpload) {
+
         // Pre-check that the document hasn't just been processed by separate thread
         if (unprocessedDocUpload.getExternalStatus() != VirusCheckStatus.PROCESSING) {
-          log.debug("Document [{}] already processed - skipping",
-              unprocessedDocUpload.getDocumentId());
+          log.debug(
+                  "Document already processed - skipping. documentId={}, status={}",
+                  unprocessedDocUpload.getDocumentId(),
+                  unprocessedDocUpload.getExternalStatus());
           return;
         }
 
-        var documentStatusResponse = webclientWrapper.getOptionalResource(DocumentStatus.class,
-            docUploadSvcGetWebclient, apiConfig.getTimeoutDuration(),
-            apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
-            unprocessedDocUpload.getExternalDocumentId());
+        try {
+          log.info(
+                  "Calling Document Upload Service for document status. documentId={}, externalDocumentId={}",
+                  unprocessedDocUpload.getDocumentId(),
+                  unprocessedDocUpload.getExternalDocumentId());
 
-        documentStatusResponse.ifPresent(documentStatus -> {
+          var documentStatusResponse = webclientWrapper.getOptionalResource(
+                  DocumentStatus.class,
+                  docUploadSvcGetWebclient,
+                  apiConfig.getTimeoutDuration(),
+                  apiConfig.getGetDocumentRecord().get(KEY_URI_TEMPLATE),
+                  unprocessedDocUpload.getExternalDocumentId());
 
-          if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
-            copyDocumentFromRemoteS3(unprocessedDocUpload, documentStatus);
-            unprocessedDocUpload.setExternalStatus(VirusCheckStatus.SAFE);
-            unprocessedDocUpload.setTimestamps(
-                Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
-          } else if (Objects.equals(apiConfig.getDocumentStateUnsafe(),
-              documentStatus.getState())) {
-            unprocessedDocUpload.setExternalStatus(VirusCheckStatus.UNSAFE);
-            unprocessedDocUpload.setTimestamps(
-                Timestamps.updateTimestamps(unprocessedDocUpload.getTimestamps(), principal));
-            log.debug("Unsafe document identified, ID: [{}], event: [{}]",
-                unprocessedDocUpload.getId(),
-                unprocessedDocUpload.getProcurementEvent().getEventID());
+          if (documentStatusResponse.isEmpty()) {
+            log.warn(
+                    "Document Upload Service returned no status. documentId={}, externalDocumentId={}",
+                    unprocessedDocUpload.getDocumentId(),
+                    unprocessedDocUpload.getExternalDocumentId());
           }
-          documentUploadRepo.save(unprocessedDocUpload);
 
-        });
+          documentStatusResponse.ifPresent(documentStatus -> {
+
+            log.info(
+                    "Document status received. documentId={}, externalDocumentId={}, state={}",
+                    unprocessedDocUpload.getDocumentId(),
+                    unprocessedDocUpload.getExternalDocumentId(),
+                    documentStatus.getState());
+
+            if (Objects.equals(apiConfig.getDocumentStateSafe(), documentStatus.getState())) {
+
+              log.info(
+                      "Document is SAFE. Attempting S3 copy. documentId={}, sourceBucket={}, sourceKey={}, targetBucket={}",
+                      unprocessedDocUpload.getDocumentId(),
+                      apiConfig.getS3Bucket(),
+                      documentStatus.getDocumentFile() != null
+                              ? documentStatus.getDocumentFile().getUrl()
+                              : null,
+                      tendersS3Service.getCredentials().getBucketName());
+
+              try {
+                copyDocumentFromRemoteS3(unprocessedDocUpload, documentStatus);
+
+                log.info(
+                        "S3 copy completed successfully. documentId={}",
+                        unprocessedDocUpload.getDocumentId());
+
+              } catch (SdkException e) {
+                log.error(
+                        "AWS S3 operation failed while processing document. "
+                                + "documentId={}, externalDocumentId={}, sourceBucket={}, sourceKey={}, "
+                                + "targetBucket={}, exceptionType={}, message={}",
+                        unprocessedDocUpload.getDocumentId(),
+                        unprocessedDocUpload.getExternalDocumentId(),
+                        apiConfig.getS3Bucket(),
+                        documentStatus.getDocumentFile() != null
+                                ? documentStatus.getDocumentFile().getUrl()
+                                : null,
+                        tendersS3Service.getCredentials().getBucketName(),
+                        e.getClass().getSimpleName(),
+                        e.getMessage(),
+                        e);
+
+                throw e;
+              }
+
+              unprocessedDocUpload.setExternalStatus(VirusCheckStatus.SAFE);
+              unprocessedDocUpload.setTimestamps(
+                      Timestamps.updateTimestamps(
+                              unprocessedDocUpload.getTimestamps(), principal));
+
+            } else if (Objects.equals(
+                    apiConfig.getDocumentStateUnsafe(), documentStatus.getState())) {
+
+              log.warn(
+                      "Unsafe document identified. documentId={}, entityId={}, eventId={}",
+                      unprocessedDocUpload.getDocumentId(),
+                      unprocessedDocUpload.getId(),
+                      unprocessedDocUpload.getProcurementEvent().getEventID());
+
+              unprocessedDocUpload.setExternalStatus(VirusCheckStatus.UNSAFE);
+              unprocessedDocUpload.setTimestamps(
+                      Timestamps.updateTimestamps(
+                              unprocessedDocUpload.getTimestamps(), principal));
+
+            } else {
+              log.info(
+                      "Document is still processing or has an unrecognised state. documentId={}, state={}",
+                      unprocessedDocUpload.getDocumentId(),
+                      documentStatus.getState());
+            }
+
+            log.debug(
+                    "Saving document status. documentId={}, status={}",
+                    unprocessedDocUpload.getDocumentId(),
+                    unprocessedDocUpload.getExternalStatus());
+
+            documentUploadRepo.save(unprocessedDocUpload);
+          });
+
+        } catch (SdkException e) {
+          log.error(
+                  "AWS SDK exception in processDocuments. documentId={}, externalDocumentId={}, "
+                          + "exceptionType={}, message={}",
+                  unprocessedDocUpload.getDocumentId(),
+                  unprocessedDocUpload.getExternalDocumentId(),
+                  e.getClass().getSimpleName(),
+                  e.getMessage(),
+                  e);
+          throw e;
+
+        } catch (Exception e) {
+          log.error(
+                  "Unexpected exception in processDocuments. documentId={}, externalDocumentId={}, "
+                          + "exceptionType={}, message={}",
+                  unprocessedDocUpload.getDocumentId(),
+                  unprocessedDocUpload.getExternalDocumentId(),
+                  e.getClass().getSimpleName(),
+                  e.getMessage(),
+                  e);
+          throw e;
+        }
       }
     });
+
+    log.info("Completed processDocuments.");
   }
 
   private void copyDocumentFromRemoteS3(final DocumentUpload unprocessedDocUpload,
