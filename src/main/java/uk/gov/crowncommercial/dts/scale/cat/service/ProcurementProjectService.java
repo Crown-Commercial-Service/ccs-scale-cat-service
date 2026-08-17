@@ -940,8 +940,7 @@ public class ProcurementProjectService {
 
     // If we have gotten this far it couldn't find an event
     log.warn("Could not find current event for project " + project.getId());
-
-    return null;
+    throw new UnhandledEdgeCaseException("Could not find current event for project " + project.getId());
   }
 
 
