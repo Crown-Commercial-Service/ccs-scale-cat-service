@@ -62,7 +62,8 @@ import uk.gov.crowncommercial.dts.scale.cat.service.WebclientWrapper;
 @Slf4j
 public class DocumentUploadService {
 
-  static final String TENDERS_S3_OBJECT_KEY_FORMAT = "/%s/%s/%s";
+  static final String TENDERS_S3_OBJECT_KEY_FORMAT = "%s/%s/%s";
+  static final String LEGACY_TENDERS_S3_OBJECT_KEY_FORMAT = "/%s";
   static final Tika TIKA = new Tika();
   static final long DEFAULT_SIZE_VALIDATION = 1000;
 
@@ -239,11 +240,10 @@ public class DocumentUploadService {
 
     // Document should only exist in Tenders S3 if safe
     if (documentUpload.getExternalStatus() == VirusCheckStatus.SAFE) {
-      tendersS3Client.deleteObject(DeleteObjectRequest.builder()
-          .bucket(tendersS3Service.getCredentials().getBucketName())
-          .key(tendersS3ObjectKey(event.getProject().getId(), event.getEventID(),
-              documentUpload.getDocumentId()))
-          .build());
+      var tendersS3ObjectKey = tendersS3ObjectKey(event.getProject().getId(), event.getEventID(),
+          documentUpload.getDocumentId());
+      deleteTendersS3Object(tendersS3ObjectKey);
+      deleteLegacyTendersS3Object(tendersS3ObjectKey);
     }
     documentUploadRepo.delete(documentUpload);
     event.getDocumentUploads().remove(documentUpload);
@@ -499,14 +499,15 @@ public class DocumentUploadService {
   private InputStream getFromTendersS3Stream(final String tendersS3ObjectKey, final String documentId, final String principal)
           throws IOException {
     try {
-      var getObjectRequest = GetObjectRequest.builder()
-          .bucket(tendersS3Service.getCredentials().getBucketName())
-          .key(tendersS3ObjectKey)
-          .build();
-      
-      var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
-      return tendersS3Object;
+      return getTendersS3Object(tendersS3ObjectKey);
     } catch (NoSuchKeyException e) {
+      var legacyTendersS3ObjectKey = legacyTendersS3ObjectKey(tendersS3ObjectKey);
+      try {
+        return getTendersS3Object(legacyTendersS3ObjectKey);
+      } catch (SdkException legacyException) {
+        e.addSuppressed(legacyException);
+      }
+
       var objectData = processFailedS3DocumentsStream(tendersS3ObjectKey, documentId, principal);
       if (Objects.isNull(objectData))
         throw e;
@@ -535,12 +536,7 @@ public class DocumentUploadService {
       docStatus = documentUploadRepo.save(docStatus);
       this.processDocuments(Set.of(docStatus), principal);
       
-      var getObjectRequest = GetObjectRequest.builder()
-          .bucket(tendersS3Service.getCredentials().getBucketName())
-          .key(tendersS3ObjectKey)
-          .build();
-      
-      var tendersS3Object = tendersS3Client.getObject(getObjectRequest);
+      var tendersS3Object = getTendersS3Object(tendersS3ObjectKey);
       log.debug("Document processed successfully and found in s3 bucket");
       return tendersS3Object;
     }
@@ -551,6 +547,35 @@ public class DocumentUploadService {
   private String tendersS3ObjectKey(final Integer projectId, final String eventId,
       final String documentId) {
     return String.format(TENDERS_S3_OBJECT_KEY_FORMAT, projectId, eventId, documentId);
+  }
+
+  private String legacyTendersS3ObjectKey(final String tendersS3ObjectKey) {
+    return String.format(LEGACY_TENDERS_S3_OBJECT_KEY_FORMAT, tendersS3ObjectKey);
+  }
+
+  private InputStream getTendersS3Object(final String tendersS3ObjectKey) {
+    var getObjectRequest = GetObjectRequest.builder()
+        .bucket(tendersS3Service.getCredentials().getBucketName())
+        .key(tendersS3ObjectKey)
+        .build();
+
+    return tendersS3Client.getObject(getObjectRequest);
+  }
+
+  private void deleteTendersS3Object(final String tendersS3ObjectKey) {
+    tendersS3Client.deleteObject(DeleteObjectRequest.builder()
+        .bucket(tendersS3Service.getCredentials().getBucketName())
+        .key(tendersS3ObjectKey)
+        .build());
+  }
+
+  private void deleteLegacyTendersS3Object(final String tendersS3ObjectKey) {
+    try {
+      deleteTendersS3Object(legacyTendersS3ObjectKey(tendersS3ObjectKey));
+    } catch (SdkException e) {
+      log.warn("Unable to delete legacy Tenders S3 object. key={}, exceptionType={}, message={}",
+          legacyTendersS3ObjectKey(tendersS3ObjectKey), e.getClass().getSimpleName(), e.getMessage());
+    }
   }
   
   public List<DocumentUpload> findDocumentByEvent(ProcurementEvent event) {
