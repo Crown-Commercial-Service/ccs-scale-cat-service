@@ -233,4 +233,51 @@ class DigitalRoleControllerTest {
         .perform(delete(String.format("/digitalRole/%s", id)).with(validJwtReqPostProcessor))
         .andExpect(status().isNotFound());
   }
+
+    @Test
+    void testDeleteByProjectIdAndEventIdSuccessReturnsNoContent() throws Exception {
+
+        final String projectId = "12345";
+        final String eventId = "ocds-pfhb7i-25306";
+
+        when(digitalRoleService.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId))
+                .thenReturn(3L);
+
+        mockMvc
+                .perform(
+                        delete(String.format("/digitalRole/%s/%s", projectId, eventId))
+                                .with(validJwtReqPostProcessor))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void testDeleteByProjectIdAndEventIdNoRecordsFoundReturnsNotFound() throws Exception {
+
+        final String projectId = "99999";
+        final String eventId = "non-existent-event";
+
+        when(digitalRoleService.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId))
+                .thenReturn(0L);
+        mockMvc
+                .perform(
+                        delete(String.format("/digitalRole/%s/%s", projectId, eventId))
+                                .with(validJwtReqPostProcessor))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testDeleteByProjectIdAndEventIdServiceThrowsExceptionReturnsInternalServerError() throws Exception {
+
+        final String projectId = "12345";
+        final String eventId = "ocds-pfhb7i-25306";
+
+        when(digitalRoleService.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId))
+                .thenThrow(new RuntimeException("Database error"));
+
+        mockMvc
+                .perform(
+                        delete(String.format("/digitalRole/%s/%s", projectId, eventId))
+                                .with(validJwtReqPostProcessor))
+                .andExpect(status().isInternalServerError());
+    }
 }
