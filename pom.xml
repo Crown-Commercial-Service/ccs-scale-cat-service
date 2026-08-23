@@ -56,7 +56,7 @@
         <spring.version>6.5.10</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.15.0</compiler.version>
-        <cucumber.version>7.34.4</cucumber.version>
+        <cucumber.version>7.34.7</cucumber.version>
         <h2.version>2.4.240</h2.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
