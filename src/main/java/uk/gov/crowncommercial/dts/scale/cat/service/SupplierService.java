@@ -194,8 +194,8 @@ public class SupplierService {
                             .findOrganisationMappingByExternalOrganisationId(e.getSupplierId())
                             .orElseThrow(() -> new ResourceNotFoundException(ORG_MAPPING_NOT_FOUND))
                             .getCasOrganisationId())
-                    .score(e.getTechPoints()).comment(
-                            extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
+                    .score(null != e.getLastUpdateDate() ? e.getTechPoints() : null)
+                    .comment(extractComment(e.getSupplierId(), exportRfxResponse.getEvaluationCommentList())))
             .toList();
 
     return model;
