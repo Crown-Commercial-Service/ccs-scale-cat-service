@@ -337,6 +337,15 @@ public class EventsController extends AbstractRestController {
       @RequestParam(value = "description", required = false) final String description,
       final JwtAuthenticationToken authentication) {
 
+    log.info(
+        "uploadDocument request bound. procId={}, eventId={}, audience={}, description={}, filePresent={}, fileEmpty={}, fileName={}, fileContentType={}, fileSize={}, authenticationPresent={}, authorities={}",
+        procId, eventId, audience, description, multipartFile != null,
+        multipartFile == null || multipartFile.isEmpty(),
+        multipartFile != null ? multipartFile.getOriginalFilename() : null,
+        multipartFile != null ? multipartFile.getContentType() : null,
+        multipartFile != null ? multipartFile.getSize() : null,
+        authentication != null, authentication != null ? authentication.getAuthorities() : null);
+
     var principal = getPrincipalFromJwt(authentication);
     log.info("uploadDocument invoked on behalf of principal: {}", principal);
 
