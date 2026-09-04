@@ -33,7 +33,7 @@ public class DocumentUploadRequestLoggingFilter extends OncePerRequestFilter {
     }
 
     log.info(
-        "Document upload request reached Tenders API. method={}, uri={}, contentType={}, contentLength={}, authorizationHeader={}",
+        "Document file upload request reached Tenders API. method={}, uri={}, contentType={}, contentLength={}, authorizationHeader={}",
         request.getMethod(), request.getRequestURI(), request.getContentType(), request.getContentLengthLong(),
         describeAuthorizationHeader(request.getHeader(HttpHeaders.AUTHORIZATION)));
 
