@@ -131,7 +131,6 @@ public class DocGenService {
     private static final String AWARD_CRITERIA_QUESTION_GROUP = "award-criteria";
     private static final String CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP = "CoP";
 
-
     private final ApplicationContext applicationContext;
     private final ValidationService validationService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -141,10 +140,6 @@ public class DocGenService {
     private final TableGroupGenerator tableGroupGenerator;
     private final StageService stageService;
     private final QuestionAndAnswerService questionAndAnswerService;
-
-    private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
-    private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 =
-            template -> template.getTemplateUrl().contains(ATTACHMENT_4);
 
     /**
      * Trigger the generation and upload of all documents for a given event
@@ -176,11 +171,8 @@ public class DocGenService {
                         log.debug("Event {} does not have multi-stage data. Falling back to standard rendering.", procurementEvent.getEventID());
                     }
 
-                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates
-                            : filterTemplates(isLastStageEvent, docTemplates);
-
                     // Iterate and process templates using the correct generator
-                    for (DocumentTemplate template : filteredDocTemplates) {
+                    for (DocumentTemplate template : docTemplates) {
                         if (isMultiStage) {
                             // MULTI-STAGE GENERATOR ROUTE
                             try {
@@ -201,8 +193,7 @@ public class DocGenService {
                                     }
                                 }
                             } catch (Exception ex) {
-                                log.error("Error generating/uploading multi-stage document for event ID '{}'",
-                                        procurementEvent.getEventID(), ex);
+                                log.error("Error generating/uploading multi-stage document for event ID '{}'", procurementEvent.getEventID(), ex);
                             }
                         } else {
                             // LEGACY SINGLE-STAGE AND TWO-STAGE GENERATOR ROUTE
@@ -216,13 +207,6 @@ public class DocGenService {
                 }
             }
         }
-    }
-
-    private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent,
-                                                  Set<DocumentTemplate> templates) {
-        return templates.stream()
-                .filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
-                .collect(Collectors.toSet());
     }
 
     /**

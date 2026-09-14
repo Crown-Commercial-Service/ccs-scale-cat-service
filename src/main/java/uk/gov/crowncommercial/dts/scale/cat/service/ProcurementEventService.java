@@ -90,11 +90,6 @@ public class ProcurementEventService implements EventService {
     public static final String CONTRACT_DETAILS_NOT_FOUND = "Contract details not found";
     private static final String ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
             "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
-    private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
-    private static final Predicate<DocumentSummary> IS_TEMPLATE_4 =
-            template -> template.getFileName().contains(ATTACHMENT_4);
-    private static final Predicate<Attachment> IS_ATTACHMENT_4 =
-            template -> template.getFileName().contains(ATTACHMENT_4);
 
     private final UserProfileService userProfileService;
     private final CriteriaService criteriaService;
@@ -1500,15 +1495,19 @@ public class ProcurementEventService implements EventService {
                                                     final Integer currentStage,
                                                     final String principal) {
         log.debug("Export all Documents from Event {}", eventId);
+
         var event = validationService.validateProjectAndEventIds(procId, eventId, null);
+
         var exportRfxResponse = jaggaerService.getRfxWithWithBuyerAndSellerAttachments(event.getExternalEventId());
-        var status = jaggaerAPIConfig.getRfxStatusToTenderStatus()
-                .get(exportRfxResponse.getRfxSetting().getStatusCode());
+        var status = jaggaerAPIConfig.getRfxStatusToTenderStatus().get(exportRfxResponse.getRfxSetting().getStatusCode());
+
         var attachments = new ArrayList<DocumentAttachment>();
+
         try {
             if (TenderStatus.ACTIVE != status) {
                 // Get documents from S3
                 log.debug("Getting documents from S3 for the eventId: {}", eventId);
+
                 event.getDocumentUploads().forEach(doc -> {
                     var documentKey = DocumentKey.fromString(doc.getDocumentId());
                     var attachment = DocumentAttachment.builder()
@@ -1519,17 +1518,19 @@ public class ProcurementEventService implements EventService {
                 });
 
                 log.debug("Got documents from S3 for the eventId: {}, number of documents: {}", eventId, attachments.size());
+
                 // Get draft documents
                 Collection<DocumentSummary> templates = dTemplateService.getTemplatesByAgreementAndLot(procId, eventId);
+
                 if (isMultiStage) {
                     log.debug("Multi-stage, let's process and add all documents for the eventId: {}", eventId);
+
                     for (DocumentSummary summary : templates) {
                         DocumentKey docKey = DocumentKey.fromString(summary.getId());
 
                         // Route directly to the new multi-stage template service wrapper for attachment 4
                         // create n number of files on the fly - depending on total number of stages
-                        List<DocumentAttachment> multiFiles = dTemplateService
-                                .getDraftDocumentsForMultiStage(procId, eventId, docKey);
+                        List<DocumentAttachment> multiFiles = dTemplateService.getDraftDocumentsForMultiStage(procId, eventId, docKey);
                         attachments.addAll(multiFiles);
                     }
 
@@ -1537,25 +1538,24 @@ public class ProcurementEventService implements EventService {
                 } else {
                     // --- Old flow ---
                     log.debug("Single-stage or Two-stage, let's process and add all documents for the eventId: {}", eventId);
-                    Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
-                    filterTemplates.forEach(template -> {
-                        attachments.add(dTemplateService.getDraftDocument(procId, eventId,
-                                DocumentKey.fromString(template.getId()), isLastStage));
+                    templates.forEach(template -> {
+                        attachments.add(dTemplateService.getDraftDocument(procId, eventId, DocumentKey.fromString(template.getId()), isLastStage));
                     });
                 }
+
                 log.debug("Single-stage or Two-stage, processed all documents for the eventId: {}, number of documents: {}", eventId, attachments.size());
             } else {
                 // Get documents from Jaggaer
                 log.debug("Event already published, let's get all documents from Jaggaer for the eventId: {}", eventId);
+
                 List<Attachment> sellerAttachments = exportRfxResponse.getSellerAttachmentsList().getAttachment();
-                List<Attachment> filteredAttachments =
-                        isMultiStage ? sellerAttachments : filterAttachments(isLastStage, sellerAttachments);
-                Stream
-                        .concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
-                                filteredAttachments.stream())
-                        .forEach(doc -> attachments.add(DocumentAttachment
-                                .builder().fileName(doc.getFileName()).data(jaggaerService
-                                        .getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
+
+                Stream.concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
+                              sellerAttachments.stream())
+                    .forEach(doc -> attachments.add(
+                                 DocumentAttachment.builder()
+                                     .fileName(doc.getFileName())
+                                     .data(jaggaerService.getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
                                 .build()));
 
                 log.debug("Event already published, processed all documents from Jaggaer for the eventId: {}, number of documents: {}", eventId, attachments.size());
@@ -1565,20 +1565,6 @@ public class ProcurementEventService implements EventService {
         }
 
         return attachments;
-    }
-
-    private Collection<DocumentSummary> filterTemplates(boolean isStageTwoEvent,
-                                                        Collection<DocumentSummary> templates) {
-        return templates.stream()
-                .filter(isStageTwoEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
-                .toList();
-    }
-
-    private List<Attachment> filterAttachments(boolean isStageTwoEvent,
-                                               List<Attachment> attachments) {
-        return attachments.stream()
-                .filter(isStageTwoEvent ? IS_ATTACHMENT_4 : IS_ATTACHMENT_4.negate())
-                .toList();
     }
 
     /**
