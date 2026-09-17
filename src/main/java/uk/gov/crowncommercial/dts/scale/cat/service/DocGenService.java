@@ -141,10 +141,13 @@ public class DocGenService {
     private final StageService stageService;
     private final QuestionAndAnswerService questionAndAnswerService;
 
+    private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
+    private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 = template -> template.getTemplateUrl().contains(ATTACHMENT_4);
+
     /**
      * Trigger the generation and upload of all documents for a given event
      */
-    public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isLastStageEvent) {
+    public void generateAndUploadDocuments(final Integer projectId, final String eventId, final Boolean isLastStageEvent) {
         // Start by validating the event passed into us is good to use
         ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
 
@@ -171,8 +174,10 @@ public class DocGenService {
                         log.debug("Event {} does not have multi-stage data. Falling back to standard rendering.", procurementEvent.getEventID());
                     }
 
+                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates : filterTemplates(isLastStageEvent, docTemplates);
+
                     // Iterate and process templates using the correct generator
-                    for (DocumentTemplate template : docTemplates) {
+                    for (DocumentTemplate template : filteredDocTemplates) {
                         if (isMultiStage) {
                             // MULTI-STAGE GENERATOR ROUTE
                             try {
@@ -209,12 +214,16 @@ public class DocGenService {
         }
     }
 
+    private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent, Set<DocumentTemplate> templates) {
+        return templates.stream().filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate()).collect(Collectors.toSet());
+    }
+
     /**
      * Generate a given event's version of a document based on a supplied template
      */
     @SneakyThrows
     @Transactional
-    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isLastStageEvent, final boolean isPublish) {
+    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final Boolean isLastStageEvent, final boolean isPublish) {
         // Start by grabbing the template document we need to work against
         if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
             Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
