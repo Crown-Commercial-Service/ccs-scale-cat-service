@@ -91,6 +91,10 @@ public class ProcurementEventService implements EventService {
     private static final String ERR_MSG_FMT_EVENT_TYPE_INVALID_FOR_CA_LOT =
             "Assessment event type [%s] invalid for CA [%s], Lot [%s]";
 
+    private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
+    private static final Predicate<DocumentSummary> IS_TEMPLATE_4 = template -> template.getFileName().contains(ATTACHMENT_4);
+    private static final Predicate<Attachment> IS_ATTACHMENT_4 = template -> template.getFileName().contains(ATTACHMENT_4);
+
     private final UserProfileService userProfileService;
     private final CriteriaService criteriaService;
     private final OcdsConfig ocdsConfig;
@@ -1489,7 +1493,7 @@ public class ProcurementEventService implements EventService {
     @Transactional
     public List<DocumentAttachment> exportDocuments(final Integer procId,
                                                     final String eventId,
-                                                    final boolean isLastStage,
+                                                    final Boolean isLastStage,
                                                     final Boolean isMultiStage,
                                                     final Integer totalNumberOfStages,
                                                     final Integer currentStage,
@@ -1538,7 +1542,8 @@ public class ProcurementEventService implements EventService {
                 } else {
                     // --- Old flow ---
                     log.debug("Single-stage or Two-stage, let's process and add all documents for the eventId: {}", eventId);
-                    templates.forEach(template -> {
+                    Collection<DocumentSummary> filterTemplates = filterTemplates(isLastStage, templates);
+                    filterTemplates.forEach(template -> {
                         attachments.add(dTemplateService.getDraftDocument(procId, eventId, DocumentKey.fromString(template.getId()), isLastStage));
                     });
                 }
@@ -1549,13 +1554,14 @@ public class ProcurementEventService implements EventService {
                 log.debug("Event already published, let's get all documents from Jaggaer for the eventId: {}", eventId);
 
                 List<Attachment> sellerAttachments = exportRfxResponse.getSellerAttachmentsList().getAttachment();
+                List<Attachment> filteredAttachments = isMultiStage ? sellerAttachments : filterAttachments(isLastStage, sellerAttachments);
 
                 Stream.concat(exportRfxResponse.getBuyerAttachmentsList().getAttachment().stream(),
-                              sellerAttachments.stream())
-                    .forEach(doc -> attachments.add(
-                                 DocumentAttachment.builder()
-                                     .fileName(doc.getFileName())
-                                     .data(jaggaerService.getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
+                              filteredAttachments.stream())
+                        .forEach(doc -> attachments.add(
+                                     DocumentAttachment.builder()
+                                         .fileName(doc.getFileName())
+                                         .data(jaggaerService.getDocument(Integer.valueOf(doc.getFileId()), doc.getFileName()).getData())
                                 .build()));
 
                 log.debug("Event already published, processed all documents from Jaggaer for the eventId: {}, number of documents: {}", eventId, attachments.size());
@@ -1565,6 +1571,14 @@ public class ProcurementEventService implements EventService {
         }
 
         return attachments;
+    }
+
+    private Collection<DocumentSummary> filterTemplates(boolean isLastStage, Collection<DocumentSummary> templates) {
+        return templates.stream().filter(isLastStage ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate()).toList();
+    }
+
+    private List<Attachment> filterAttachments(boolean isLastStage, List<Attachment> attachments) {
+        return attachments.stream().filter(isLastStage ? IS_ATTACHMENT_4 : IS_ATTACHMENT_4.negate()).toList();
     }
 
     /**
