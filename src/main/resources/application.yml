@@ -42,6 +42,14 @@ caching:
   # Agreements to be cached
   agreements: RM1557.13,RM1043.8,RM6187,RM1557.14,RM1043.9
 
+# Search filters cache configuration
+search:
+  cache:
+    expiration-hours: 12
+    # Runs at the top of every hour, deletes records older than 24 hours
+    expiration:
+      schedule: 0 0 * * * *
+
 # Core Spring config
 spring:
   jpa:
