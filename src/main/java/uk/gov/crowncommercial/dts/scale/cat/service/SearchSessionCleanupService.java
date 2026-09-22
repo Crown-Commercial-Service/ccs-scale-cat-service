@@ -9,6 +9,9 @@ import uk.gov.crowncommercial.dts.scale.cat.repo.SearchFilterSessionRepository;
 
 import java.time.LocalDateTime;
 
+/**
+ * Service to run cron job every hour and clear search filter session for last 12 hours or rely on expirationHours value
+ */
 @Slf4j
 @Service
 public class SearchSessionCleanupService {
