@@ -131,7 +131,6 @@ public class DocGenService {
     private static final String AWARD_CRITERIA_QUESTION_GROUP = "award-criteria";
     private static final String CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP = "CoP";
 
-
     private final ApplicationContext applicationContext;
     private final ValidationService validationService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -143,13 +142,12 @@ public class DocGenService {
     private final QuestionAndAnswerService questionAndAnswerService;
 
     private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
-    private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 =
-            template -> template.getTemplateUrl().contains(ATTACHMENT_4);
+    private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 = template -> template.getTemplateUrl().contains(ATTACHMENT_4);
 
     /**
      * Trigger the generation and upload of all documents for a given event
      */
-    public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isLastStageEvent) {
+    public void generateAndUploadDocuments(final Integer projectId, final String eventId, final Boolean isLastStageEvent) {
         // Start by validating the event passed into us is good to use
         ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
 
@@ -176,8 +174,7 @@ public class DocGenService {
                         log.debug("Event {} does not have multi-stage data. Falling back to standard rendering.", procurementEvent.getEventID());
                     }
 
-                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates
-                            : filterTemplates(isLastStageEvent, docTemplates);
+                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates : filterTemplates(isLastStageEvent, docTemplates);
 
                     // Iterate and process templates using the correct generator
                     for (DocumentTemplate template : filteredDocTemplates) {
@@ -201,8 +198,7 @@ public class DocGenService {
                                     }
                                 }
                             } catch (Exception ex) {
-                                log.error("Error generating/uploading multi-stage document for event ID '{}'",
-                                        procurementEvent.getEventID(), ex);
+                                log.error("Error generating/uploading multi-stage document for event ID '{}'", procurementEvent.getEventID(), ex);
                             }
                         } else {
                             // LEGACY SINGLE-STAGE AND TWO-STAGE GENERATOR ROUTE
@@ -218,11 +214,8 @@ public class DocGenService {
         }
     }
 
-    private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent,
-                                                  Set<DocumentTemplate> templates) {
-        return templates.stream()
-                .filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
-                .collect(Collectors.toSet());
+    private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent, Set<DocumentTemplate> templates) {
+        return templates.stream().filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate()).collect(Collectors.toSet());
     }
 
     /**
@@ -230,7 +223,7 @@ public class DocGenService {
      */
     @SneakyThrows
     @Transactional
-    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isLastStageEvent, final boolean isPublish) {
+    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final Boolean isLastStageEvent, final boolean isPublish) {
         // Start by grabbing the template document we need to work against
         if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
             Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
