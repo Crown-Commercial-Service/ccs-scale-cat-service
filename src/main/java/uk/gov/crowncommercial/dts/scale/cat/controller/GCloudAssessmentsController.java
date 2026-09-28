@@ -282,21 +282,32 @@ public class GCloudAssessmentsController extends AbstractRestController {
                             } else {
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getCompaniesHouseNumber()) + ",");
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getRegisteredName()) + ",");
-                                final Optional<ContactInformation> contactInformation = supplier.getContactInformation().stream().findFirst();
+                                final Optional<ContactInformation> contactInformation = Optional.ofNullable(supplier.getContactInformation())
+                                        .stream()
+                                        .flatMap(Collection::stream)
+                                        .findFirst();
+                                final var digitalOutcomesAndSpecialistsContact = Optional.ofNullable(supplier.getFrameworkContactInformation())
+                                        .map(frameworkContactInformation -> frameworkContactInformation.getDigitalOutcomesAndSpecialists())
+                                        .orElse(null);
+                                final String contactName = Optional.ofNullable(digitalOutcomesAndSpecialistsContact)
+                                        .map(contact -> contact.getContactName())
+                                        .orElse("");
+                                final String email = Optional.ofNullable(digitalOutcomesAndSpecialistsContact)
+                                        .map(contact -> contact.getEmail())
+                                        .orElse("");
+                                final String phoneNumber = Optional.ofNullable(digitalOutcomesAndSpecialistsContact)
+                                        .map(contact -> contact.getPhoneNumber())
+                                        .orElse("");
                                 if (contactInformation.isPresent()) {
                                     writer.write(StringEscapeUtils.escapeCsv(contactInformation.get().getFullAddress()) + ",");
                                 } else {
                                     writer.write(",");
                                 }
                                 writer.write(StringEscapeUtils.escapeCsv(supplier.getDunsNumber()) + ",");
-                                if (contactInformation.isPresent()) {
-                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getUrl()).orElse("")) + ",");
-                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getContactName()).orElse("")) + ",");
-                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getEmail()).orElse("")) + ",");
-                                    writer.write(StringEscapeUtils.escapeCsv(Optional.ofNullable(contactInformation.get().getPhoneNumber()).orElse("")) + ",");
-                                } else {
-                                    writer.write(",,,,");
-                                }
+                                writer.write(StringEscapeUtils.escapeCsv(contactInformation.map(ContactInformation::getUrl).orElse("")) + ",");
+                                writer.write(StringEscapeUtils.escapeCsv(contactName) + ",");
+                                writer.write(StringEscapeUtils.escapeCsv(email) + ",");
+                                writer.write(StringEscapeUtils.escapeCsv(phoneNumber) + ",");
                             }
                             writer.write("\n");
                         }
