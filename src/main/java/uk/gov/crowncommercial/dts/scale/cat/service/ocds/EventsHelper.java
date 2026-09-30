@@ -7,6 +7,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +31,13 @@ public class EventsHelper {
     }
 
     /**
+     * Returns the first published event on a project
+     */
+    public static ProcurementStageEvent getLatestStageEvent(ProcurementProject pp) {
+        return getLatestStageEvent(pp, Comparator.comparing(ProcurementStageEvent::getStageNumber));
+    }
+
+    /**
      * Returns the latest published event on a project
      */
     public static ProcurementEvent getLastPublishedEvent(ProcurementProject pp) {
@@ -42,19 +51,25 @@ public class EventsHelper {
         return pp.getProcurementEvents().stream().filter(s -> null != s.getPublishDate()).min(comparator).orElse(null);
     }
 
+    /**
+     * Returns the first published stage event found on the project
+     */
+    public static ProcurementStageEvent getLatestStageEvent(ProcurementProject pp, Comparator<ProcurementStageEvent> comparator) {
+        return pp.getProcurementStageEvents().stream().filter(s -> null != s.getStageNumber()).max(comparator).orElse(null);
+    }
+
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
         return getLastPublishedEvent(pp);
     }
-    
+
     public static Pair<ProcurementEvent, ProcurementEvent> getFirstAndLastPublishedEvent(ProcurementProject pp) {
       if (pp.getProcurementEvents().size() > 1) {
           return Pair.of(EventsHelper.getFirstPublishedEvent(pp), EventsHelper.getLastPublishedEvent(pp));
       }
-        return Pair.of(EventsHelper.getFirstPublishedEvent(pp), null);
+      return Pair.of(EventsHelper.getFirstPublishedEvent(pp), null);
     }
 
-    public static String getData(String criteriaId, String groupId, String requirementId,
-        List<TemplateCriteria> criteria) {
+    public static String getData(String criteriaId, String groupId, String requirementId, List<TemplateCriteria> criteria) {
       Optional<TemplateCriteria> criterias =
           criteria.stream().filter(c -> c.getId().equalsIgnoreCase(criteriaId)).findAny();
         return criterias.map(templateCriteria -> getData(groupId, requirementId, templateCriteria.getRequirementGroups())).orElse(null);

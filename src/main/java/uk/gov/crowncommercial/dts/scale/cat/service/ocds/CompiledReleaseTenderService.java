@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.*;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.CompanyData;
 import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.ExportRfxResponse;
@@ -267,6 +269,9 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
     public MapperResponse populateCriteria(Record1 re, ProjectQuery pq) {
         if (re != null && pq != null && pq.getProject() != null) {
             Tender1 tender = OcdsHelper.getTender(re);
+
+            // firstly, check for non-multi-stage events
+
             ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
 
             if (pe != null && pe.getProcurementTemplatePayload() != null) {
@@ -274,8 +279,25 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
 
                 if (template != null && template.getCriteria() != null) {
                     List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
-
                     tender.setCriteria(result);
+                }
+            }
+
+            // then also check if there are any multi-stage events for this project
+
+            ProcurementStageEvent pse = EventsHelper.getLatestStageEvent(pq.getProject());
+
+            if (pse != null && pse.getProcurementTemplatePayload() != null) {
+                DataTemplate template = pse.getProcurementTemplatePayload();
+
+                if (template != null && template.getCriteria() != null) {
+                    List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+
+                    if (null != result && !result.isEmpty()) {
+                        // if we have any multi-stage criteria, then replace
+                        // any existing criteria with the multistage values
+                        tender.setCriteria(result);
+                    }
                 }
             }
         }
