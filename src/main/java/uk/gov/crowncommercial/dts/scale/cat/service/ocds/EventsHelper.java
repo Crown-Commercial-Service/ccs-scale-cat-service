@@ -31,10 +31,10 @@ public class EventsHelper {
     }
 
     /**
-     * Returns the first published event on a project
+     * Returns the stage events associated with the given eventId on the project
      */
-    public static ProcurementStageEvent getLatestStageEvent(ProcurementProject pp) {
-        return getLatestStageEvent(pp, Comparator.comparing(ProcurementStageEvent::getStageNumber));
+    public static List<ProcurementStageEvent> getStageEvents(ProcurementProject pp, String eventId) {
+        return getTheStageEvents(pp, eventId);
     }
 
     /**
@@ -52,10 +52,10 @@ public class EventsHelper {
     }
 
     /**
-     * Returns the first published stage event found on the project
+     * Returns the stage events associated with the given eventId on the project
      */
-    public static ProcurementStageEvent getLatestStageEvent(ProcurementProject pp, Comparator<ProcurementStageEvent> comparator) {
-        return pp.getProcurementStageEvents().stream().filter(s -> null != s.getStageNumber()).max(comparator).orElse(null);
+    public static List<ProcurementStageEvent> getTheStageEvents(ProcurementProject pp, String eventId) {
+        return pp.getProcurementStageEvents().stream().filter(s -> eventId.equals(s.getId())).collect(Collectors.toList());
     }
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
@@ -75,8 +75,7 @@ public class EventsHelper {
         return criterias.map(templateCriteria -> getData(groupId, requirementId, templateCriteria.getRequirementGroups())).orElse(null);
     }
 
-    private static String getData(String groupId, String requirementId,
-        Set<RequirementGroup> requirementGroups) {
+    private static String getData(String groupId, String requirementId, Set<RequirementGroup> requirementGroups) {
       for (RequirementGroup rg : requirementGroups) {
         if (isReqGroupMatch(rg, groupId)) {
           String result = getData(requirementId, rg.getOcds().getRequirements());
@@ -112,11 +111,19 @@ public class EventsHelper {
     }
 
     private static boolean isReqMatch(Requirement r, String requirementId) {
-      return r.getOcds().getId().equalsIgnoreCase(requirementId);
+        final boolean isEqual = r.getOcds().getId().equalsIgnoreCase(requirementId);
+        // note 'startsWith' is needed for multi-stage
+        final boolean startsWith = r.getOcds().getId().toLowerCase().startsWith(requirementId.toLowerCase() + "-");
+
+        return isEqual || startsWith;
     }
 
     private static boolean isReqGroupMatch(RequirementGroup rg, String groupId) {
-      return rg.getOcds().getId().equalsIgnoreCase(groupId)
-          && (null != rg.getOcds().getDescription());
+      final boolean isEqual = rg.getOcds().getId().equalsIgnoreCase(groupId);
+      // note 'startsWith' is needed for multi-stage
+      final boolean startsWith = rg.getOcds().getId().toLowerCase().startsWith(groupId.toLowerCase() + ".");
+      final boolean hasDescription = null != rg.getOcds().getDescription();
+
+      return (isEqual || startsWith) && hasDescription;
     }
 }

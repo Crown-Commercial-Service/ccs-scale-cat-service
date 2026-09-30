@@ -3,11 +3,13 @@ package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -20,8 +22,10 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.StageService;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,6 +40,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompiledReleaseTenderService extends AbstractOcdsService {
     private final AgreementsService agreementsService;
+    private final StageService stageService;
     private final OcdsConverter ocdsConverter;
     private final RetryableTendersDBDelegate tendersDBDelegate;
     private final QuestionAndAnswerService questionAndAnswerService;
@@ -266,40 +271,88 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
     /**
      * Functionality to populate criteria data for the project
      */
-    public MapperResponse populateCriteria(Record1 re, ProjectQuery pq) {
-        if (re != null && pq != null && pq.getProject() != null) {
-            Tender1 tender = OcdsHelper.getTender(re);
+    public MapperResponse populateCriteria(final Record1 re, final ProjectQuery pq) {
+        if (null == re || null == pq || null == pq.getProject()) {
+            return new MapperResponse(re);
+        }
 
-            // firstly, check for non-multi-stage events
+        final Tender1 tender = OcdsHelper.getTender(re);
 
-            ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
+        // firstly, check for non-multi-stage events
 
-            if (pe != null && pe.getProcurementTemplatePayload() != null) {
-                DataTemplate template = pe.getProcurementTemplatePayload();
+        final ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
 
-                if (template != null && template.getCriteria() != null) {
-                    List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
-                    tender.setCriteria(result);
-                }
+        if (null != pe && null != pe.getProcurementTemplatePayload()) {
+            final DataTemplate template = pe.getProcurementTemplatePayload();
+
+            if (null != template && null != template.getCriteria()) {
+                final List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+                tender.setCriteria(result);
             }
+        }
 
-            // then also check if there are any multi-stage events for this project
+        final String eventId = null != pe ? pe.getEventID() : null;
 
-            ProcurementStageEvent pse = EventsHelper.getLatestStageEvent(pq.getProject());
+        if (null == eventId) {
+            return new MapperResponse(re);
+        }
 
-            if (pse != null && pse.getProcurementTemplatePayload() != null) {
-                DataTemplate template = pse.getProcurementTemplatePayload();
+        // then also check if there are any multi-stage events for this project
 
-                if (template != null && template.getCriteria() != null) {
-                    List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+        var stagesRead = stageService.getStagesForEventId(eventId);
 
-                    if (null != result && !result.isEmpty()) {
-                        // if we have any multi-stage criteria, then replace
-                        // any existing criteria with the multistage values
-                        tender.setCriteria(result);
+        String firstEventId = null;
+
+        if (null != stagesRead && null != stagesRead.getStageEvents() && !stagesRead.getStageEvents().isEmpty()) {
+            //  get the eventId of the first event of the multi-stage project
+
+            do {
+                final StageEventRead stageEvent = stagesRead.getStageEvents().getFirst();
+
+                if (null != stageEvent && null != stageEvent.getStageNumber() && stageEvent.getStageNumber().equals(2)) {
+                    firstEventId = stageEvent.getPriorEventId();
+                    break;
+                }
+
+                stagesRead = stageService.getStagesForEventId(stageEvent.getPriorEventId());
+            } while (null != stagesRead);
+        }
+
+        if (null == firstEventId) {
+            firstEventId = eventId;
+        }
+
+        // firstEventId will be of the form:  ocds-pfhb7i-26432
+        // so we need to extract the component values
+        final String[] eventIdComponents = firstEventId.split("-");
+        final String ocdsAuthorityName = null != eventIdComponents && 3 == eventIdComponents.length ? eventIdComponents[0] : "";
+        final String ocidPrefix        = null != eventIdComponents && 3 == eventIdComponents.length ? eventIdComponents[1] : "";
+        final String actualEventId     = null != eventIdComponents && 3 == eventIdComponents.length ? eventIdComponents[2] : "";
+
+        final List<Criterion1> result = new ArrayList<>();
+
+        for (int thisStageNumber=1; thisStageNumber <= stagesRead.getNumberOfStages(); thisStageNumber++) {
+            final Optional<ProcurementStageEvent> optionalPse = tendersDBDelegate
+                .findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
+                    Integer.valueOf(actualEventId), thisStageNumber, ocdsAuthorityName, ocidPrefix);
+
+            if (optionalPse.isPresent()) {
+                final DataTemplate template = optionalPse.get().getProcurementTemplatePayload();
+
+                if (null != template && null != template.getCriteria()) {
+                    final List<Criterion1> criteriaList = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+
+                    if (null != criteriaList && !criteriaList.isEmpty()) {
+                        for (final Criterion1 entry : criteriaList) {
+                            result.add(entry);
+                        }
                     }
                 }
             }
+        }
+
+        if (!result.isEmpty()) {
+            tender.setCriteria(result);
         }
 
         return new MapperResponse(re);
