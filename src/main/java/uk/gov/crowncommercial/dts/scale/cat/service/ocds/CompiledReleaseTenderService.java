@@ -3,11 +3,14 @@ package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.jena.atlas.logging.Log;
 import org.springframework.stereotype.Service;
 
 import uk.gov.crowncommercial.dts.scale.cat.config.Constants;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.DataTemplate;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotDetail;
+import uk.gov.crowncommercial.dts.scale.cat.model.cas.generated.StageEventRead;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.OrganisationMapping;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
@@ -20,8 +23,11 @@ import uk.gov.crowncommercial.dts.scale.cat.model.jaggaer.Supplier;
 import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.QuestionAndAnswerService;
+import uk.gov.crowncommercial.dts.scale.cat.service.StageService;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,9 +42,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompiledReleaseTenderService extends AbstractOcdsService {
     private final AgreementsService agreementsService;
+    private final StageService stageService;
     private final OcdsConverter ocdsConverter;
     private final RetryableTendersDBDelegate tendersDBDelegate;
     private final QuestionAndAnswerService questionAndAnswerService;
+
+    private final RetryableTendersDBDelegate retryableTendersDBDelegate;     //  TODO - BM
 
     /**
      * Populate general tender related information regarding the project
@@ -266,40 +275,109 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
     /**
      * Functionality to populate criteria data for the project
      */
-    public MapperResponse populateCriteria(Record1 re, ProjectQuery pq) {
-        if (re != null && pq != null && pq.getProject() != null) {
-            Tender1 tender = OcdsHelper.getTender(re);
+    public MapperResponse populateCriteria(final Record1 re, final ProjectQuery pq) {
+        if (null == re || null == pq || null == pq.getProject()) {
+            return new MapperResponse(re);
+        }
 
-            // firstly, check for non-multi-stage events
+        final Tender1 tender = OcdsHelper.getTender(re);
 
-            ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
+        // firstly, check for non-multi-stage events
 
-            if (pe != null && pe.getProcurementTemplatePayload() != null) {
-                DataTemplate template = pe.getProcurementTemplatePayload();
+        //  TODO - BM      final ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(pq.getProject());
 
-                if (template != null && template.getCriteria() != null) {
-                    List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
-                    tender.setCriteria(result);
-                }
+        //  TODO - BM
+        final Optional<ProcurementEvent> optionalPe = retryableTendersDBDelegate
+                .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(26442, "ocds", "pfhb7i");
+        final ProcurementEvent pe = optionalPe.isPresent() ? optionalPe.get() : null;
+        //  TODO - BM
+
+        if (null != pe && null != pe.getProcurementTemplatePayload()) {
+            final DataTemplate template = pe.getProcurementTemplatePayload();
+
+            if (null != template && null != template.getCriteria()) {
+                final List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+                tender.setCriteria(result);
+            }
+        }
+
+        // then also check if there are any multi-stage events for this project
+
+        final String eventId = "ocds-pfhb7i-26442";    // TODO - BM     null != pe ? pe.getEventID() : null;
+
+        if (null == eventId) {
+            log.error("populateCriteria::no event id");     // TODO - BM
+            return new MapperResponse(re);
+        }
+
+        log.error("populateCriteria::1, eventId = " + eventId);    // TODO - BM
+
+        var stagesRead = stageService.getStagesForEventId(eventId);
+
+        log.error("populateCriteria::2, read stages data");    // TODO - BM
+
+        if (null == stagesRead || null == stagesRead.getStageEvents()) {
+            log.error("populateCriteria::no stages data found for eventId = " + eventId);  // TODO - BM
+            return new MapperResponse(re);
+        }
+
+        //  get the eventId of the first event of the multi-stage project
+        String firstEventId = null;
+
+        do {
+            final StageEventRead stageEvent = stagesRead.getStageEvents().getFirst();
+
+            if (stageEvent.getStageNumber().equals(2)) {
+                firstEventId = stageEvent.getPriorEventId();
+                break;
             }
 
-            // then also check if there are any multi-stage events for this project
+            stagesRead = stageService.getStagesForEventId(stageEvent.getPriorEventId());
+        } while (null != stagesRead);
 
-            ProcurementStageEvent pse = EventsHelper.getLatestStageEvent(pq.getProject());
+        if (null == firstEventId) {
+            log.error("populateCriteria::no fullEventId found for eventId = " + eventId);  // TODO - BM
+            return new MapperResponse(re);
+        }
 
-            if (pse != null && pse.getProcurementTemplatePayload() != null) {
-                DataTemplate template = pse.getProcurementTemplatePayload();
+        // firstEventId will be of the form:  ocds-pfhb7i-26432
+        // so we need to extract the component values
+        final String[] eventIdComponents = firstEventId.split("-");
+        final String ocdsAuthorityName = null != eventIdComponents && 3 == eventIdComponents.length ? eventIdComponents[0] : "";
+        final String ocidPrefix        = null != eventIdComponents && 3 == eventIdComponents.length ? eventIdComponents[1] : "";
+        final String actualEventId     = null != eventIdComponents && 3 == eventIdComponents.length ? eventIdComponents[2] : "";
 
-                if (template != null && template.getCriteria() != null) {
-                    List<Criterion1> result = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+        log.error("populateCriteria::3 actualEventId = " + actualEventId);
 
-                    if (null != result && !result.isEmpty()) {
-                        // if we have any multi-stage criteria, then replace
-                        // any existing criteria with the multistage values
-                        tender.setCriteria(result);
+        final List<Criterion1> result = new ArrayList<>();
+
+        for (int thisStage=1; thisStage <= stagesRead.getNumberOfStages(); thisStage++) {
+            final Optional<ProcurementStageEvent> optionalPse = retryableTendersDBDelegate
+                    .findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(Integer.valueOf(actualEventId), thisStage, ocdsAuthorityName, ocidPrefix);
+
+            if (optionalPse.isPresent()) {
+                log.error("populateCriteria::4, for eventId = " + actualEventId + ", got template payload");    // TODO - BM
+
+                final DataTemplate template = optionalPse.get().getProcurementTemplatePayload();
+
+                if (null != template && null != template.getCriteria()) {
+                    log.error("populateCriteria::5, got DataTemplate for eventId=" + actualEventId);            // TODO - BM
+
+                    final List<Criterion1> criteriaList = template.getCriteria().stream().map(ocdsConverter::convert).toList();
+
+                    if (null != criteriaList && !criteriaList.isEmpty()) {
+                        log.error("populateCriteria::6, got criteriaList, size=" + criteriaList.size());        // TODO - BM
+
+                        for (Criterion1 entry : criteriaList) {
+                            result.add(entry);
+                        }
+                        log.error("populateCriteria::7, added additional criteria");                            // TODO - BM
                     }
                 }
             }
+
+            log.error("populateCriteria::8, updating tender criteria");                                         // TODO - BM
+            tender.setCriteria(result);
         }
 
         return new MapperResponse(re);

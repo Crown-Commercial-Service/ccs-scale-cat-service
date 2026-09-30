@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -33,8 +34,8 @@ public class EventsHelper {
     /**
      * Returns the first published event on a project
      */
-    public static ProcurementStageEvent getLatestStageEvent(ProcurementProject pp) {
-        return getLatestStageEvent(pp, Comparator.comparing(ProcurementStageEvent::getStageNumber));
+    public static List<ProcurementStageEvent> getStageEvents(ProcurementProject pp, String eventId) {
+        return getTheStageEvents(pp, eventId);
     }
 
     /**
@@ -52,10 +53,10 @@ public class EventsHelper {
     }
 
     /**
-     * Returns the first published stage event found on the project
+     * Returns the stage event associated with the given stageNumber on the project
      */
-    public static ProcurementStageEvent getLatestStageEvent(ProcurementProject pp, Comparator<ProcurementStageEvent> comparator) {
-        return pp.getProcurementStageEvents().stream().filter(s -> null != s.getStageNumber()).max(comparator).orElse(null);
+    public static List<ProcurementStageEvent> getTheStageEvents(ProcurementProject pp, String eventId) {
+        return pp.getProcurementStageEvents().stream().filter(s -> eventId.equals(s.getId())).collect(Collectors.toList());
     }
 
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
