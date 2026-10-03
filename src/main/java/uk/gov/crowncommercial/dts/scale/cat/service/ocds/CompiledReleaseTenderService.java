@@ -288,7 +288,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
 
         //  TODO - BM
         final Optional<ProcurementEvent> optionalPe = retryableTendersDBDelegate
-                .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(26442, "ocds", "pfhb7i");
+                .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(27160, "ocds", "pfhb7i");
         final ProcurementEvent pe = optionalPe.isPresent() ? optionalPe.get() : null;
         //  TODO - BM
 
@@ -303,7 +303,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
 
         // then also check if there are any multi-stage events for this project
 
-        final String eventId = "ocds-pfhb7i-26442";    // TODO - BM     null != pe ? pe.getEventID() : null;
+        final String eventId = "ocds-pfhb7i-27160";    // TODO - BM     null != pe ? pe.getEventID() : null;
 
         if (null == eventId) {
             log.error("populateCriteria::no event id");     // TODO - BM
@@ -368,7 +368,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
                     if (null != criteriaList && !criteriaList.isEmpty()) {
                         log.error("populateCriteria::6, got criteriaList, size=" + criteriaList.size());        // TODO - BM
 
-                        for (Criterion1 entry : criteriaList) {
+                        for (final Criterion1 entry : criteriaList) {
                             result.add(entry);
                         }
                         log.error("populateCriteria::7, added additional criteria");                            // TODO - BM
