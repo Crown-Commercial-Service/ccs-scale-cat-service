@@ -331,6 +331,9 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
 
         final List<Criterion1> result = new ArrayList<>();
 
+        // add on the initial results from above (to get the Overall Weights section)
+        result.addAll(tender.getCriteria());
+
         for (int thisStageNumber=1; thisStageNumber <= stagesRead.getNumberOfStages(); thisStageNumber++) {
             final Optional<ProcurementStageEvent> optionalPse = tendersDBDelegate
                 .findProcurementStageEventByIdAndStageNumberAndOcdsAuthorityNameAndOcidPrefix(
