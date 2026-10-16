@@ -25,6 +25,6 @@ public class Application {
 
   // Forces server JVM to ignore its local operating system time
   @PostConstruct
-  public void init() { TimeZone.setDefault(TimeZone.getTimeZone("Europe/London")); }
+  public void init() { TimeZone.setDefault(TimeZone.getTimeZone("UTC")); }
 
 }
