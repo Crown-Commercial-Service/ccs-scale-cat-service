@@ -23,10 +23,8 @@ public class Application {
     SpringApplication.run(Application.class, args);
   }
 
-    @PostConstruct
-    public void init() {
-        // Forces server JVM to ignore its local operating system time
-        // and run entirely in pure UTC.
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-    }
+  // Forces server JVM to ignore its local operating system time
+  @PostConstruct
+  public void init() { TimeZone.setDefault(TimeZone.getTimeZone("Europe/London")); }
+
 }
