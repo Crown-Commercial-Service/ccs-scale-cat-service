@@ -1,4 +1,6 @@
-FROM maven:3.9.9-amazoncorretto-23 as build
+FROM amazoncorretto:26-alpine-jdk as build
+
+RUN apk add --no-cache maven
 
 RUN mkdir -p /tmp/build
 
