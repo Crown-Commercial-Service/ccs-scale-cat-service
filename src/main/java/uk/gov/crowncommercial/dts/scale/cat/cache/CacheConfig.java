@@ -5,6 +5,7 @@ import org.ehcache.config.builders.ExpiryPolicyBuilder;
 import org.ehcache.config.builders.ResourcePoolsBuilder;
 import org.ehcache.jsr107.Eh107Configuration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,7 @@ import java.time.Duration;
  * Cache setup and configuration for the application using Ehcache
  */
 @Configuration
+@EnableCaching
 public class CacheConfig {
     @Value("${caching.primary.cacheLength}")
     String primaryCacheLength;
