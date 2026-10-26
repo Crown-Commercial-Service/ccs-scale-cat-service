@@ -332,7 +332,13 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
         final List<Criterion1> result = new ArrayList<>();
 
         // add on the initial results from above (to get the Overall Weights section)
-        result.addAll(tender.getCriteria());
+        if (null != tender && null != tender.getCriteria() && !tender.getCriteria().isEmpty()) {
+            for (Criterion1 entry : tender.getCriteria()) {
+                if (null != entry) {
+                    result.add(entry);
+                }
+            }
+        }
 
         for (int thisStageNumber=1; thisStageNumber <= stagesRead.getNumberOfStages(); thisStageNumber++) {
             final Optional<ProcurementStageEvent> optionalPse = tendersDBDelegate
@@ -347,7 +353,9 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
 
                     if (null != criteriaList && !criteriaList.isEmpty()) {
                         for (final Criterion1 entry : criteriaList) {
-                            result.add(entry);
+                            if (null != entry) {
+                                result.add(entry);
+                            }
                         }
                     }
                 }
