@@ -28,4 +28,6 @@ public class Supplier {
   public Map<String, String> serviceCounts;
 
   public List<ContactInformation> contactInformation = new ArrayList<>();
+
+  public FrameworkContactInformation frameworkContactInformation;
 }
