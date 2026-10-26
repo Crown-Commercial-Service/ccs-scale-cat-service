@@ -1,35 +1,50 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
- * Jackson configuration
+ * Native Jackson 2 configuration without deprecated Spring wrappers.
  */
 @Configuration
 @Slf4j
 public class JacksonConfig {
 
   @Bean
-  public Jackson2ObjectMapperBuilderCustomizer configureJackson() {
-    log.debug("Configuring Jackson behaviour...");
+  @Primary
+  public ObjectMapper objectMapper() {
+    log.debug("Configuring Jackson 2 ObjectMapper via native JsonMapper builder...");
 
-    return jacksonObjectMapperBuilder -> {
-      jacksonObjectMapperBuilder.serializationInclusion(JsonInclude.Include.NON_NULL);
-      jacksonObjectMapperBuilder.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
-              DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE,
-              DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-      jacksonObjectMapperBuilder.propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE);
-      jacksonObjectMapperBuilder.visibility(PropertyAccessor.GETTER, Visibility.NONE);
+    return JsonMapper.builder()
+            // Register JavaTimeModule, Jdk8Module, ParameterNamesModule if present
+            .findAndAddModules()
 
-    };
+            // Property inclusion
+            .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+
+            // Features to disable
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .disable(
+                    DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE,
+                    DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+            )
+
+            // Naming strategy
+            .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)
+
+            // Visibility
+            .visibility(PropertyAccessor.GETTER, Visibility.NONE)
+
+            .build();
   }
 }
