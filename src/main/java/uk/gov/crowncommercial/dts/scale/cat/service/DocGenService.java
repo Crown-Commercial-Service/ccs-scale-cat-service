@@ -131,7 +131,6 @@ public class DocGenService {
     private static final String AWARD_CRITERIA_QUESTION_GROUP = "award-criteria";
     private static final String CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP = "CoP";
 
-
     private final ApplicationContext applicationContext;
     private final ValidationService validationService;
     private final RetryableTendersDBDelegate retryableTendersDBDelegate;
@@ -143,13 +142,12 @@ public class DocGenService {
     private final QuestionAndAnswerService questionAndAnswerService;
 
     private static final String ATTACHMENT_4 = "Attachment 4 Responses to Stage 2 assessment criteria";
-    private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 =
-            template -> template.getTemplateUrl().contains(ATTACHMENT_4);
+    private static final Predicate<DocumentTemplate> IS_TEMPLATE_4 = template -> template.getTemplateUrl().contains(ATTACHMENT_4);
 
     /**
      * Trigger the generation and upload of all documents for a given event
      */
-    public void generateAndUploadDocuments(final Integer projectId, final String eventId, boolean isLastStageEvent) {
+    public void generateAndUploadDocuments(final Integer projectId, final String eventId, final Boolean isLastStageEvent) {
         // Start by validating the event passed into us is good to use
         ProcurementEvent procurementEvent = validationService.validateProjectAndEventIds(projectId, eventId, null);
 
@@ -176,8 +174,7 @@ public class DocGenService {
                         log.debug("Event {} does not have multi-stage data. Falling back to standard rendering.", procurementEvent.getEventID());
                     }
 
-                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates
-                            : filterTemplates(isLastStageEvent, docTemplates);
+                    Set<DocumentTemplate> filteredDocTemplates = isMultiStage ? docTemplates : filterTemplates(isLastStageEvent, docTemplates);
 
                     // Iterate and process templates using the correct generator
                     for (DocumentTemplate template : filteredDocTemplates) {
@@ -201,8 +198,7 @@ public class DocGenService {
                                     }
                                 }
                             } catch (Exception ex) {
-                                log.error("Error generating/uploading multi-stage document for event ID '{}'",
-                                        procurementEvent.getEventID(), ex);
+                                log.error("Error generating/uploading multi-stage document for event ID '{}'", procurementEvent.getEventID(), ex);
                             }
                         } else {
                             // LEGACY SINGLE-STAGE AND TWO-STAGE GENERATOR ROUTE
@@ -218,11 +214,8 @@ public class DocGenService {
         }
     }
 
-    private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent,
-                                                  Set<DocumentTemplate> templates) {
-        return templates.stream()
-                .filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate())
-                .collect(Collectors.toSet());
+    private Set<DocumentTemplate> filterTemplates(boolean isLastStageEvent, Set<DocumentTemplate> templates) {
+        return templates.stream().filter(isLastStageEvent ? IS_TEMPLATE_4 : IS_TEMPLATE_4.negate()).collect(Collectors.toSet());
     }
 
     /**
@@ -230,7 +223,7 @@ public class DocGenService {
      */
     @SneakyThrows
     @Transactional
-    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final boolean isLastStageEvent, final boolean isPublish) {
+    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final Boolean isLastStageEvent, final boolean isPublish) {
         // Start by grabbing the template document we need to work against
         if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
             Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -1072,11 +1065,25 @@ public class DocGenService {
         Integer projectId = (Integer) stageData.get("projectId");
         String eventId = (String) stageData.get("eventId");
 
-        JsonNode sourceGroups = getSourceGroupsForCriterion2(objectMapper.readTree(payload));
-        if (sourceGroups == null || !sourceGroups.isArray()) {
+        JsonNode sourceGroupsNode = getSourceGroupsForCriterion2(objectMapper.readTree(payload));
+        if (sourceGroupsNode == null || !sourceGroupsNode.isArray()) {
             return nextOrder;
         }
+        // Convert the ArrayNode into a List so we can easily sort it
+        List<JsonNode> sourceGroups = new ArrayList<>();
+        sourceGroupsNode.forEach(sourceGroups::add);
 
+        // Sort by groupOrder (primary) and nonOCDS.order (secondary)
+        sourceGroups.sort((g1, g2) -> {
+            int go1 = getGroupOrder(g1);
+            int go2 = getGroupOrder(g2);
+
+            if (go1 != go2) {
+                return Integer.compare(go1, go2);
+            }
+            // If they are in the same group (or both have no group), fallback to original order
+            return Integer.compare(getNonOcdsOrder(g1), getNonOcdsOrder(g2));
+        });
         Map<String, String> sanitizedGroupNames = extractAndSanitizeGroupNames(sourceGroups, stageNum, projectId, eventId);
 
         Map<String, List<ObjectNode>> groupedNodes = groupRequirementsByName(sourceGroups, sanitizedGroupNames, stageNum);
@@ -1084,10 +1091,40 @@ public class DocGenService {
         return appendGroupsToTarget(groupedNodes, targetGroups, nextOrder, stageNum, totalStages, stageDesc);
     }
 
+    // Helper methods added to safely extract and sort by groupOrder and order
+    private int getGroupOrder(JsonNode group) {
+        JsonNode requirements = group.path(OCDS).path(REQUIREMENTS);
+
+        if (requirements.isArray()) {
+            // Loop through the questions to find the dropdown that holds the groupOrder
+            for (JsonNode req : requirements) {
+                if (SELECT_GROUP_NAME_TITLE.equals(req.path(OCDS).path(TITLE).asText())) {
+                    JsonNode groupOrderNode = req.path(NON_OCDS).path("groupOrder");
+
+                    if (!groupOrderNode.isMissingNode() && !groupOrderNode.isNull()) {
+                        int val = groupOrderNode.asInt(0);
+                        // If explicitly equals 0, push it to the back
+                        return val == 0 ? Integer.MAX_VALUE : val;
+                    }
+                }
+            }
+        }
+        // If not found, missing, or null, push to the end
+        return Integer.MAX_VALUE;
+    }
+
+    private int getNonOcdsOrder(JsonNode group) {
+        JsonNode orderNode = group.path(NON_OCDS).path(ORDER);
+        if (orderNode.isMissingNode() || orderNode.isNull()) {
+            return Integer.MAX_VALUE;
+        }
+        return orderNode.asInt(Integer.MAX_VALUE);
+    }
+
     // =========================================================================
     // SANITIZATION & HEURISTICS
     // =========================================================================
-    private Map<String, String> extractAndSanitizeGroupNames(JsonNode sourceGroups, int stageNum, Integer projectId, String eventId) {
+    private Map<String, String> extractAndSanitizeGroupNames(List<JsonNode> sourceGroups, int stageNum, Integer projectId, String eventId) {
 
         Map<String, String> groupNames = new HashMap<>();
 
@@ -1095,8 +1132,8 @@ public class DocGenService {
         List<String> copGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
         List<String> awardGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
 
-        int copIndex = 0;
-        int awardIndex = 0;
+        boolean usesQuestionGroupsCoP = usesQuestionsGroupNames(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
+        boolean usesQuestionGroupsAwardCriteria = usesQuestionsGroupNames(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
 
         for (JsonNode group : sourceGroups) {
             String groupId = group.path(OCDS).path(ID).asText();
@@ -1109,9 +1146,9 @@ public class DocGenService {
 
                 // Validate it against the database for this stage!
                 // If it exists in the DB, it's legitimate. If it doesn't, it's a ghost from a previous stage!
-                if (groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
+                if (usesQuestionGroupsCoP && groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
                     finalGroupName = jsonGroupName;
-                } else if (groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
+                } else if (usesQuestionGroupsAwardCriteria && groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
                     finalGroupName = jsonGroupName;
                 }
 
@@ -1171,7 +1208,7 @@ public class DocGenService {
     // =========================================================================
     // GROUPING & MAPPING
     // =========================================================================
-    private Map<String, List<ObjectNode>> groupRequirementsByName(JsonNode sourceGroups, Map<String, String> sanitizedNames, int stageNum) {
+    private Map<String, List<ObjectNode>> groupRequirementsByName(List<JsonNode> sourceGroups, Map<String, String> sanitizedNames, int stageNum) {
 
         Map<String, List<ObjectNode>> groupedNodes = new LinkedHashMap<>();
 
@@ -1367,6 +1404,29 @@ public class DocGenService {
             }
         }
         return new ArrayList<>(orderedGroups.values());
+    }
+
+    private boolean usesQuestionsGroupNames(Integer projectId, String eventId, int stageNumber, String groupType) {
+        QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(projectId, eventId);
+
+        if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+            return false;
+        }
+
+        final String useQuestionGroupFullPrefix = groupType + "-stage-" + stageNumber + "-use-question-groups";
+
+        boolean usesQuestionGroups = false;
+
+        for (QandA responseData: response.getQandA()) {
+              if (responseData.getQuestion().equals(useQuestionGroupFullPrefix)) {
+                  if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                      usesQuestionGroups = Boolean.valueOf(responseData.getAnswer());
+                      break;
+                  }
+              }
+        }
+
+        return usesQuestionGroups;
     }
 
     private boolean containsIgnoreCase(List<String> validDbNames, String jsonName) {

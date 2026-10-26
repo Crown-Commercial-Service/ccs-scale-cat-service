@@ -17,6 +17,11 @@ import uk.gov.crowncommercial.dts.scale.cat.config.JaggaerAPIConfig;
 import uk.gov.crowncommercial.dts.scale.cat.config.OAuth2Config;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudAssessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.GCloudResult;
+import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Supplier;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.ContactInformation;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.FrameworkContact;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.FrameworkContactInformation;
+import uk.gov.crowncommercial.dts.scale.cat.model.dmp.SupplierDetail;
 import uk.gov.crowncommercial.dts.scale.cat.service.AgreementsService;
 import uk.gov.crowncommercial.dts.scale.cat.service.DMPService;
 import uk.gov.crowncommercial.dts.scale.cat.service.ca.AssessmentService;
@@ -24,7 +29,10 @@ import uk.gov.crowncommercial.dts.scale.cat.service.ca.GCloudAssessmentService;
 import uk.gov.crowncommercial.dts.scale.cat.utils.TendersAPIModelUtils;
 
 import java.util.ArrayList;
+import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -60,7 +68,7 @@ public class GCloudAssessmentsControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-    
+
     @MockitoBean
     private LockProvider lockProvider;
 
@@ -136,6 +144,66 @@ public class GCloudAssessmentsControllerTest {
                 .andDo(print()).andExpect(status().isOk());
 
         verify(assessmentService, times(1)).deleteGcloudAssessment(ASSESSMENT_ID);
+    }
+
+    @Test
+    void exportDosAssessment_UsesDigitalOutcomesAndSpecialistsFrameworkContactDetails() throws Exception {
+        final String supplierId = "GB-COH-12345678";
+
+        GCloudAssessment assessment = new GCloudAssessment();
+        assessment.setAssessmentId(ASSESSMENT_ID);
+        assessment.setResultsSummary("1 result found");
+
+        Supplier resultSupplier = new Supplier();
+        resultSupplier.setId(supplierId);
+
+        GCloudResult result = new GCloudResult();
+        result.setSupplier(resultSupplier);
+        assessment.setResults(List.of(result));
+
+        ContactInformation legacyContactInformation = new ContactInformation();
+        legacyContactInformation.setAddress1("1 Legacy Road");
+        legacyContactInformation.setCity("London");
+        legacyContactInformation.setPostcode("SW1A 1AA");
+        legacyContactInformation.setUrl("https://legacy.example.com");
+        legacyContactInformation.setContactName("Legacy Contact");
+        legacyContactInformation.setEmail("legacy@example.com");
+        legacyContactInformation.setPhoneNumber("07000000000");
+
+        FrameworkContact digitalOutcomesAndSpecialistsContact = new FrameworkContact();
+        digitalOutcomesAndSpecialistsContact.setContactName("Framework Contact");
+        digitalOutcomesAndSpecialistsContact.setEmail("framework@example.com");
+        digitalOutcomesAndSpecialistsContact.setPhoneNumber("07123456789");
+
+        FrameworkContactInformation frameworkContactInformation = new FrameworkContactInformation();
+        frameworkContactInformation.setDigitalOutcomesAndSpecialists(digitalOutcomesAndSpecialistsContact);
+
+        uk.gov.crowncommercial.dts.scale.cat.model.dmp.Supplier dmpSupplier =
+                new uk.gov.crowncommercial.dts.scale.cat.model.dmp.Supplier();
+        dmpSupplier.setCompaniesHouseNumber("12345678");
+        dmpSupplier.setRegisteredName("Framework Registered Name");
+        dmpSupplier.setDunsNumber("123456789");
+        dmpSupplier.setContactInformation(List.of(legacyContactInformation));
+        dmpSupplier.setFrameworkContactInformation(frameworkContactInformation);
+
+        SupplierDetail supplierDetail = new SupplierDetail();
+        supplierDetail.setSuppliers(dmpSupplier);
+
+        when(assessmentService.getGcloudAssessment(ASSESSMENT_ID)).thenReturn(assessment);
+        when(dmpService.getSupplierDetails(supplierId)).thenReturn(supplierDetail);
+
+        mockMvc
+                .perform(get(ASSESSMENTS_PATH + "/{assessmentID}/export/dos", ASSESSMENT_ID)
+                        .with(validJwtReqPostProcessor))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Contact name,Contact Email,Contact phone number")))
+                .andExpect(content().string(containsString("Framework Contact,framework@example.com,07123456789")))
+                .andExpect(content().string(not(containsString("Legacy Contact"))))
+                .andExpect(content().string(not(containsString("legacy@example.com"))))
+                .andExpect(content().string(not(containsString("07000000000"))));
+
+        verify(dmpService, times(1)).getSupplierDetails(supplierId);
     }
 
 

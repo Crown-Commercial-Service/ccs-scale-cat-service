@@ -390,7 +390,7 @@ public class EventsController extends AbstractRestController {
   public StringValueResponse generateEventDocs(
           @PathVariable("procID") final Integer projectId,
           @PathVariable("eventID") final String eventId,
-          @RequestParam(defaultValue = "false") boolean isLastStageEvent,
+          @RequestParam(defaultValue = "false") Boolean isLastStageEvent,
           final JwtAuthenticationToken authentication) {
     // Firstly validate the user auth
     String principal = getPrincipalFromJwt(authentication);
@@ -407,9 +407,11 @@ public class EventsController extends AbstractRestController {
    */
   @PutMapping("/{eventID}/publish")
   @TrackExecutionTime
-  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId,
-                                          @RequestParam(defaultValue = "false") boolean isLastStageEvent,
-                                          @RequestBody @Valid final PublishDates publishDates, final JwtAuthenticationToken authentication) {
+  public StringValueResponse publishEvent(@PathVariable("procID") final Integer procId,
+                                          @PathVariable("eventID") final String eventId,
+                                          @RequestParam(defaultValue = "false") Boolean isLastStageEvent,
+                                          @RequestBody @Valid final PublishDates publishDates,
+                                          final JwtAuthenticationToken authentication) {
     // Firstly validate the user auth
     String principal = getPrincipalFromJwt(authentication);
     log.info("publishEvent invoked on behalf of principal: {}", principal);
@@ -453,7 +455,7 @@ public class EventsController extends AbstractRestController {
   public ResponseEntity<StreamingResponseBody> exportDocuments(
       @PathVariable("procID") final Integer procId,
       @PathVariable("eventID") final String eventId,
-      @RequestParam boolean isLastStage,
+      @RequestParam final Boolean isLastStage,
       @RequestParam final Boolean isMultiStage,
       @RequestParam final Integer totalNumberOfStages,
       @RequestParam final Integer currentStage,
@@ -467,6 +469,11 @@ public class EventsController extends AbstractRestController {
     // list of attachments for download
     List<DocumentAttachment> exportDocuments =
         procurementEventService.exportDocuments(procId, eventId, isLastStage, isMultiStage, totalNumberOfStages, currentStage, principal);
+
+    if(exportDocuments == null || exportDocuments.isEmpty()) {
+        log.error("Document export failed either on S3 or from DocGenService or Jaggaer, check log for ProcurementEventService for more details");
+        return ResponseEntity.notFound().build();
+    }
 
     StreamingResponseBody streamResponseBody = out -> {
       final ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream());

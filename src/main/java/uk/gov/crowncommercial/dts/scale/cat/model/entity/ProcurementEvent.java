@@ -154,6 +154,10 @@ public class ProcurementEvent {
       return ocdsAuthorityName + "-" + ocidPrefix + "-" + id;
     }
 
+    public ProcurementProject getProject() {
+        return project;
+    }
+
     public DataTemplate getProcurementTemplatePayload() {
       DataTemplate templateModel = null;
 

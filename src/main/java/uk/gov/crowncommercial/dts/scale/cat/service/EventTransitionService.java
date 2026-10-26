@@ -69,6 +69,11 @@ public class EventTransitionService {
 
       DashboardStatus dashboardStatus = getDashboardStatus(rfxSetting, existingEvent);
 
+      if (DashboardStatus.COMPLETE.equals(dashboardStatus)) {
+          // event is already complete
+          return;
+      }
+
       if (DashboardStatus.IN_PROGRESS.equals(dashboardStatus)) {
         updateDbEvent(existingEvent, principal, COMPLETE_STATUS);
         return;
