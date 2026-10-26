@@ -20,19 +20,19 @@
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
         <swagger-parser.version>2.1.48</swagger-parser.version>
-        <guava.version>33.6.0-jre</guava.version>
+        <guava.version>33.7.2-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>2.21.1</hibernate-types.version>
         <modelmapper.version>3.2.8</modelmapper.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <simple-odf.version>0.9.0</simple-odf.version>
-        <jena-core.version>5.6.0</jena-core.version>
+        <jena-core.version>6.2.0</jena-core.version>
         <commons-io.version>2.22.0</commons-io.version>
         <aws-java-sdk-s3.version>2.57.2</aws-java-sdk-s3.version>
-        <tika-core.version>3.3.1</tika-core.version>
+        <tika-core.version>4.1.0</tika-core.version>
         <java-cfenv-boot.version>3.5.1</java-cfenv-boot.version>
-        <notifications-java-client.version>6.0.1-RELEASE</notifications-java-client.version>
-        <poi-ooxml.version>5.5.1</poi-ooxml.version>
+        <notifications-java-client.version>6.2.1-RELEASE</notifications-java-client.version>
+        <poi-ooxml.version>6.0.0</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
         <snakeyaml.version>2.7</snakeyaml.version>
         <spring-security.version>6.5.11</spring-security.version>
@@ -56,7 +56,7 @@
         <spring.version>6.5.10</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.16.0</compiler.version>
-        <cucumber.version>7.34.8</cucumber.version>
+        <cucumber.version>8.0.4</cucumber.version>
         <h2.version>2.5.252</h2.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
