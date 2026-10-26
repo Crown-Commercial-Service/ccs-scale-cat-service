@@ -10,7 +10,7 @@ RUN mvn clean install
 RUN mvn package
 
 # Use an official Corretto runtime as a base image
-FROM amazoncorretto:23-alpine-jdk
+FROM amazoncorretto:26-alpine-jdk
 
 # Set the working directory inside the container and install curl and needed fonts
 WORKDIR /app
