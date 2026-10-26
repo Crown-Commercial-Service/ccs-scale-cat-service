@@ -1132,6 +1132,9 @@ public class DocGenService {
         List<String> copGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
         List<String> awardGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
 
+        boolean usesQuestionGroupsCoP = usesQuestionsGroupNames(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
+        boolean usesQuestionGroupsAwardCriteria = usesQuestionsGroupNames(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
+
         for (JsonNode group : sourceGroups) {
             String groupId = group.path(OCDS).path(ID).asText();
             if (GROUP_0.equals(groupId)) continue;
@@ -1143,9 +1146,9 @@ public class DocGenService {
 
                 // Validate it against the database for this stage!
                 // If it exists in the DB, it's legitimate. If it doesn't, it's a ghost from a previous stage!
-                if (groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
+                if (usesQuestionGroupsCoP && groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
                     finalGroupName = jsonGroupName;
-                } else if (groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
+                } else if (usesQuestionGroupsAwardCriteria && groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
                     finalGroupName = jsonGroupName;
                 }
 
@@ -1401,6 +1404,29 @@ public class DocGenService {
             }
         }
         return new ArrayList<>(orderedGroups.values());
+    }
+
+    private boolean usesQuestionsGroupNames(Integer projectId, String eventId, int stageNumber, String groupType) {
+        QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(projectId, eventId);
+
+        if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+            return false;
+        }
+
+        final String useQuestionGroupFullPrefix = groupType + "-stage-" + stageNumber + "-use-question-groups";
+
+        boolean usesQuestionGroups = false;
+
+        for (QandA responseData: response.getQandA()) {
+              if (responseData.getQuestion().equals(useQuestionGroupFullPrefix)) {
+                  if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                      usesQuestionGroups = Boolean.valueOf(responseData.getAnswer());
+                      break;
+                  }
+              }
+        }
+
+        return usesQuestionGroups;
     }
 
     private boolean containsIgnoreCase(List<String> validDbNames, String jsonName) {
