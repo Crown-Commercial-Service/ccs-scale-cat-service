@@ -18,12 +18,15 @@ management:
     health:
       probes:
         enabled: true
-  info:
-    env:
-      enabled: true
+      indicator:
+        elasticsearch:
+          enabled: false
   health:
     elasticsearch:
       enabled: false
+  info:
+    env:
+      enabled: true
 
 # Logging config
 logging:

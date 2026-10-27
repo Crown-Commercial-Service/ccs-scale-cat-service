@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.TimeZone;
 
 @SpringBootApplication(excludeName = {
+        "org.springframework.boot.actuate.autoconfigure.elasticsearch.ElasticsearchRestClientHealthContributorAutoConfiguration",
         "org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration",
         "org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchDataAutoConfiguration"
 })
