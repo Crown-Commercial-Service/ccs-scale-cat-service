@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class FeignJacksonConfig {
     @Bean
     public Decoder feignDecoder(ObjectMapper objectMapper) {
-        // Uses your Jackson 2 ObjectMapper directly
+        // Uses the Jackson 2 ObjectMapper directly
         return new OptionalDecoder(new JacksonDecoder(objectMapper));
     }
 }
