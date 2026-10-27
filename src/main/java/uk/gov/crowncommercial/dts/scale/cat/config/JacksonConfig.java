@@ -1,7 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,10 +34,11 @@ public class JacksonConfig {
                 .addModule(new ParameterNamesModule())    // Handles constructors without @JsonCreator
                 .findAndAddModules()
 
-                .defaultPropertyInclusion(JsonInclude.Value.construct(
-                        JsonInclude.Include.NON_NULL,
-                        JsonInclude.Include.NON_NULL
-                ))
+                // NOTE: Exclude nulls config has been removed, as it appears it can't have worked previously - leaving commented out config here though just incase for the future
+                //.defaultPropertyInclusion(JsonInclude.Value.construct(
+                //        JsonInclude.Include.NON_NULL,
+                //        JsonInclude.Include.NON_NULL
+                //))
 
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 .disable(
