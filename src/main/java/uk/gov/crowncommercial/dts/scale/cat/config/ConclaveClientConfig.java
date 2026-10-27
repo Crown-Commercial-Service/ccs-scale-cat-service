@@ -27,8 +27,7 @@ public class ConclaveClientConfig {
   private final ConclaveAPIConfig conclaveAPIConfig;
 
   @Bean("conclaveWrapperAPIClient")
-  public WebClient conclaveWrapperAPIClient(
-      final OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient conclaveWrapperAPIClient(final OAuth2AuthorizedClientManager authorizedClientManager, final com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
 
     SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
     sslContextFactory.setExcludeProtocols("TLSv1.3");
@@ -40,14 +39,22 @@ public class ConclaveClientConfig {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
     log.info("Setting up conclave wrapper API Client with baseUrl {}", conclaveAPIConfig.getBaseUrl());
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(conclaveAPIConfig.getBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
-        .defaultHeader("x-api-key", conclaveAPIConfig.getApiKey()).build();
+    return WebClient.builder()
+            .clientConnector(jettyHttpClientConnector)
+            .baseUrl(conclaveAPIConfig.getBaseUrl())
+            .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+            .defaultHeader("x-api-key", conclaveAPIConfig.getApiKey())
+            .codecs(configurer -> {
+              configurer.defaultCodecs().jackson2JsonDecoder(
+                      new org.springframework.http.codec.json.Jackson2JsonDecoder(objectMapper));
+              configurer.defaultCodecs().jackson2JsonEncoder(
+                      new org.springframework.http.codec.json.Jackson2JsonEncoder(objectMapper));
+            })
+            .build();
   }
 
   @Bean("conclaveIdentitiesAPIClient")
-  public WebClient conclaveIdentitiesAPIClient(
-      final OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient conclaveIdentitiesAPIClient(final OAuth2AuthorizedClientManager authorizedClientManager, final com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
 
     SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
     sslContextFactory.setExcludeProtocols("TLSv1.3");
@@ -59,9 +66,17 @@ public class ConclaveClientConfig {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
     log.info("Setting up conclave Identities API Client with baseUrl {}", conclaveAPIConfig.getIdentitiesBaseUrl());
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(conclaveAPIConfig.getIdentitiesBaseUrl()).defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
-        .defaultHeader("x-api-key", conclaveAPIConfig.getIdentitiesApiKey()).build();
+    return WebClient.builder()
+            .clientConnector(jettyHttpClientConnector)
+            .baseUrl(conclaveAPIConfig.getIdentitiesBaseUrl())
+            .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+            .defaultHeader("x-api-key", conclaveAPIConfig.getIdentitiesApiKey())
+            .codecs(configurer -> {
+              configurer.defaultCodecs().jackson2JsonDecoder(
+                      new org.springframework.http.codec.json.Jackson2JsonDecoder(objectMapper));
+              configurer.defaultCodecs().jackson2JsonEncoder(
+                      new org.springframework.http.codec.json.Jackson2JsonEncoder(objectMapper));
+            })
+            .build();
   }
-
 }
