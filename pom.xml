@@ -60,6 +60,7 @@
         <h2.version>2.5.252</h2.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
+        <jackson.version>2.22.4</jackson.version>
     </properties>
 
     <dependencyManagement>
@@ -81,6 +82,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-junit</artifactId>
@@ -142,6 +148,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>${spring-boot.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>tools.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>tools.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

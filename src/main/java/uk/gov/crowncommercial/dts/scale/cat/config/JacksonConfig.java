@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,26 +25,26 @@ public class JacksonConfig {
   @Bean
   @Primary
   public ObjectMapper objectMapper() {
-    log.debug("Configuring Jackson 2 ObjectMapper via native JsonMapper builder...");
+    log.debug("Configuring Jackson 2 ObjectMapper...");
 
     return JsonMapper.builder()
-            // Register JavaTimeModule, Jdk8Module, ParameterNamesModule if present
+            // Explicitly register parameter names & java time modules
+            .addModule(new ParameterNamesModule())
+            .addModule(new JavaTimeModule())
             .findAndAddModules()
 
-            // Property inclusion
-            .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .defaultPropertyInclusion(JsonInclude.Value.construct(
+                    JsonInclude.Include.NON_NULL,
+                    JsonInclude.Include.NON_NULL
+            ))
 
-            // Features to disable
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .disable(
                     DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE,
                     DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
             )
 
-            // Naming strategy
             .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)
-
-            // Visibility
             .visibility(PropertyAccessor.GETTER, Visibility.NONE)
 
             .build();
