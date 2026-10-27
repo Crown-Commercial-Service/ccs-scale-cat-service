@@ -61,6 +61,7 @@
         <commons-lang3.version>3.21.0</commons-lang3.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
         <jackson.version>2.22.4</jackson.version>
+        <feign-jackson.version>13.17</feign-jackson.version>
     </properties>
 
     <dependencyManagement>
@@ -82,6 +83,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-jackson</artifactId>
+            <version>${feign-jackson.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-parameter-names</artifactId>

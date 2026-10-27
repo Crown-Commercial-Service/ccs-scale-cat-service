@@ -47,7 +47,7 @@ public class JacksonConfig {
                 )
 
                 .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)
-                .visibility(PropertyAccessor.GETTER, Visibility.NONE)
+                .visibility(PropertyAccessor.GETTER, Visibility.PUBLIC_ONLY) // Public only so elements are not suppressed
 
                 .build();
     }
