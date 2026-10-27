@@ -21,6 +21,9 @@ management:
   info:
     env:
       enabled: true
+  health:
+    elasticsearch:
+      enabled: false
 
 # Logging config
 logging:
