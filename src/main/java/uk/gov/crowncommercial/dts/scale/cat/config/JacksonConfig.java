@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import lombok.extern.slf4j.Slf4j;
@@ -22,31 +23,32 @@ import org.springframework.context.annotation.Primary;
 @Slf4j
 public class JacksonConfig {
 
-  @Bean
-  @Primary
-  public ObjectMapper objectMapper() {
-    log.debug("Configuring Jackson 2 ObjectMapper...");
+    @Bean
+    @Primary
+    public ObjectMapper objectMapper() {
+        log.debug("Configuring Jackson 2 ObjectMapper...");
 
-    return JsonMapper.builder()
-            // Explicitly register parameter names & java time modules
-            .addModule(new ParameterNamesModule())
-            .addModule(new JavaTimeModule())
-            .findAndAddModules()
+        return JsonMapper.builder()
+                // Core Java 8+ modules
+                .addModule(new Jdk8Module())              // Handles java.util.Optional
+                .addModule(new JavaTimeModule())          // Handles Instant, LocalDate, etc.
+                .addModule(new ParameterNamesModule())    // Handles constructors without @JsonCreator
+                .findAndAddModules()
 
-            .defaultPropertyInclusion(JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL,
-                    JsonInclude.Include.NON_NULL
-            ))
+                .defaultPropertyInclusion(JsonInclude.Value.construct(
+                        JsonInclude.Include.NON_NULL,
+                        JsonInclude.Include.NON_NULL
+                ))
 
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-            .disable(
-                    DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE,
-                    DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
-            )
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(
+                        DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE,
+                        DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+                )
 
-            .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)
-            .visibility(PropertyAccessor.GETTER, Visibility.NONE)
+                .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)
+                .visibility(PropertyAccessor.GETTER, Visibility.NONE)
 
-            .build();
-  }
+                .build();
+    }
 }

@@ -1,6 +1,6 @@
 package uk.gov.crowncommercial.dts.scale.cat.model.entity;
 
-import com.vladmihalcea.hibernate.type.json.JsonType;
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
