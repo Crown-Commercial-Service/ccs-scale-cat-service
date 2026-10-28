@@ -16,9 +16,9 @@
     <description>SCALE CaT (Tenders) API</description>
 
     <properties>
-        <java.version>26</java.version>
-        <maven.compiler.source>26</maven.compiler.source>
-        <maven.compiler.target>26</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <swagger-parser.version>2.1.48</swagger-parser.version>
         <guava.version>33.7.2-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
@@ -810,7 +810,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${compiler.version}</version>
                 <configuration>
-                    <release>26</release>
+                    <release>25</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

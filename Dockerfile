@@ -1,4 +1,4 @@
-FROM maven:3.9.9-amazoncorretto-23 as build
+FROM maven:3.9.9-amazoncorretto-25 as build
 
 RUN mkdir -p /tmp/build
 
@@ -10,7 +10,7 @@ RUN mvn clean install
 RUN mvn package
 
 # Use an official Corretto runtime as a base image
-FROM amazoncorretto:26-alpine-jdk
+FROM amazoncorretto:25-alpine-jdk
 
 # Set the working directory inside the container and install curl and needed fonts
 WORKDIR /app
