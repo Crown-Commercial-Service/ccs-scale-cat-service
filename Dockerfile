@@ -1,4 +1,9 @@
-FROM maven:3.9.9-amazoncorretto-25 as build
+FROM amazoncorretto:25-alpine-jdk as build
+
+# Copy Maven directly without triggering apk's OpenJDK dependency
+COPY --from=maven:3.9.9-amazoncorretto-23 /usr/share/maven /usr/share/maven
+RUN ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+ENV MAVEN_HOME=/usr/share/maven
 
 RUN mkdir -p /tmp/build
 
