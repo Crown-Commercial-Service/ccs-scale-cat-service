@@ -18,6 +18,12 @@ management:
     health:
       probes:
         enabled: true
+      indicator:
+        elasticsearch:
+          enabled: false
+  health:
+    elasticsearch:
+      enabled: false
   info:
     env:
       enabled: true

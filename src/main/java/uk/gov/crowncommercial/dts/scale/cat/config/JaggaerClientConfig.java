@@ -126,9 +126,8 @@ public class JaggaerClientConfig {
   }
 
   @Bean("jaggaerWebClient")
-  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
-    var oauth2Client =
-        new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager, final com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+    var oauth2Client = new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
     oauth2Client.setDefaultClientRegistrationId("jaggaer");
 
     SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
@@ -145,16 +144,24 @@ public class JaggaerClientConfig {
       }
     };
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
-    
+
     httpClient.setIdleTimeout(Duration.ofSeconds(jaggaerAPIConfig.getTimeoutDuration()).toMillis());
 
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .filter(buildResponseHeaderFilterFunction()).baseUrl(jaggaerAPIConfig.getBaseUrl())
-        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE).defaultHeader(ACCEPT_CHARSET, UTF_8.name())
-        .apply(oauth2Client.oauth2Configuration())
-        .codecs(
-            configurer -> configurer.defaultCodecs().maxInMemorySize(documentConfig.getMaxSize()))
-        .build();
+    return WebClient.builder()
+            .clientConnector(jettyHttpClientConnector)
+            .filter(buildResponseHeaderFilterFunction())
+            .baseUrl(jaggaerAPIConfig.getBaseUrl())
+            .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+            .defaultHeader(ACCEPT_CHARSET, UTF_8.name())
+            .apply(oauth2Client.oauth2Configuration())
+            .codecs(configurer -> {
+              configurer.defaultCodecs().maxInMemorySize(documentConfig.getMaxSize());
+              configurer.defaultCodecs().jackson2JsonDecoder(
+                      new org.springframework.http.codec.json.Jackson2JsonDecoder(objectMapper));
+              configurer.defaultCodecs().jackson2JsonEncoder(
+                      new org.springframework.http.codec.json.Jackson2JsonEncoder(objectMapper));
+            })
+            .build();
   }
 
   /**
