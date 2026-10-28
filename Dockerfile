@@ -1,9 +1,4 @@
-FROM amazoncorretto:25-alpine-jdk as build
-
-# Copy Maven directly without triggering apk's OpenJDK dependency
-COPY --from=maven:3.9.9-amazoncorretto-23 /usr/share/maven /usr/share/maven
-RUN ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
-ENV MAVEN_HOME=/usr/share/maven
+FROM maven:3.9.9-amazoncorretto-23 as build
 
 RUN mkdir -p /tmp/build
 
@@ -15,7 +10,7 @@ RUN mvn clean install
 RUN mvn package
 
 # Use an official Corretto runtime as a base image
-FROM amazoncorretto:25-alpine-jdk
+FROM amazoncorretto:26-alpine-jdk
 
 # Set the working directory inside the container and install curl and needed fonts
 WORKDIR /app
