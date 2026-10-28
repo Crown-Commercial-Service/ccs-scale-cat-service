@@ -30,7 +30,7 @@
         <commons-io.version>2.22.0</commons-io.version>
         <aws-java-sdk-s3.version>2.57.2</aws-java-sdk-s3.version>
         <tika-core.version>4.1.0</tika-core.version>
-        <java-cfenv-boot.version>3.5.1</java-cfenv-boot.version>
+        <java-cfenv-boot.version>3.5.3</java-cfenv-boot.version>
         <notifications-java-client.version>6.2.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>6.0.0</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
