@@ -27,7 +27,7 @@ public class DocumentUploadClientConfig {
   private final DocumentUploadAPIConfig documentUploadAPIConfig;
 
   @Bean("docUploadSvcUploadWebclient")
-  public WebClient uploadWebClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient uploadWebClient(final OAuth2AuthorizedClientManager authorizedClientManager, final com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
 
     SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
     sslContextFactory.setExcludeProtocols("TLSv1.3");
@@ -39,14 +39,22 @@ public class DocumentUploadClientConfig {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
     log.info("Setting up DocUpload API Client with UploadBaseUrl {}", documentUploadAPIConfig.getUploadBaseUrl());
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(documentUploadAPIConfig.getUploadBaseUrl())
-        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
-        .defaultHeader("x-api-key", documentUploadAPIConfig.getApiKey()).build();
+    return WebClient.builder()
+            .clientConnector(jettyHttpClientConnector)
+            .baseUrl(documentUploadAPIConfig.getUploadBaseUrl())
+            .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+            .defaultHeader("x-api-key", documentUploadAPIConfig.getApiKey())
+            .codecs(configurer -> {
+              configurer.defaultCodecs().jackson2JsonDecoder(
+                      new org.springframework.http.codec.json.Jackson2JsonDecoder(objectMapper));
+              configurer.defaultCodecs().jackson2JsonEncoder(
+                      new org.springframework.http.codec.json.Jackson2JsonEncoder(objectMapper));
+            })
+            .build();
   }
 
   @Bean("docUploadSvcGetWebclient")
-  public WebClient getWebClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient getWebClient(final OAuth2AuthorizedClientManager authorizedClientManager,final com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
 
     SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
     sslContextFactory.setExcludeProtocols("TLSv1.3");
@@ -58,10 +66,17 @@ public class DocumentUploadClientConfig {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
     log.info("Setting up DocUpload API Client with GetBaseUrl {}", documentUploadAPIConfig.getGetBaseUrl());
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(documentUploadAPIConfig.getGetBaseUrl())
-        .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
-        .defaultHeader("x-api-key", documentUploadAPIConfig.getApiKey()).build();
+    return WebClient.builder()
+            .clientConnector(jettyHttpClientConnector)
+            .baseUrl(documentUploadAPIConfig.getGetBaseUrl())
+            .defaultHeader(ACCEPT, APPLICATION_JSON_VALUE)
+            .defaultHeader("x-api-key", documentUploadAPIConfig.getApiKey())
+            .codecs(configurer -> {
+              configurer.defaultCodecs().jackson2JsonDecoder(
+                      new org.springframework.http.codec.json.Jackson2JsonDecoder(objectMapper));
+              configurer.defaultCodecs().jackson2JsonEncoder(
+                      new org.springframework.http.codec.json.Jackson2JsonEncoder(objectMapper));
+            })
+            .build();
   }
-
 }
