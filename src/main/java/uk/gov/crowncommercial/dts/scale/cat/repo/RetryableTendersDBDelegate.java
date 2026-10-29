@@ -627,14 +627,14 @@ public class RetryableTendersDBDelegate {
 
         final List<StageEventEntity> stageEvents = stageData.get().getStageEvents();
 
-        final StageEventEntity firstStageEvent = stageEvents.stream().filter(event -> 1 == event.getStageNumber()).findFirst().orElse(null);
+        final StageEventEntity firstStageEvent = stageEvents.stream().filter(event -> 2 == event.getStageNumber()).findFirst().orElse(null);
 
         if (null == firstStageEvent) {
             // no idea, so let's go with what we have
             return extractIdFromEventId(eventId);
         }
 
-        String value = firstStageEvent.getEventId();
+        String value = firstStageEvent.getPriorEventId();
 
         try {
             Integer responseEventId = Integer.valueOf(value);

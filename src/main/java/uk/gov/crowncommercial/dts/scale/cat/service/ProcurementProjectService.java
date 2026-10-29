@@ -770,7 +770,7 @@ public class ProcurementProjectService {
           Optional.ofNullable(dbEvent.getAssessmentId()));
 
           eventSummary.setTenderPeriod(getTenderPeriod(dbEvent.getPublishDate(),dbEvent.getCloseDate()));
-          
+
           // Set cancellation reasons if they exist
           if (dbEvent.getCancellationReason() != null) {
             eventSummary.setCancellationReason(dbEvent.getCancellationReason());
@@ -778,8 +778,6 @@ public class ProcurementProjectService {
           if (dbEvent.getCancellationReasonDetail() != null) {
             eventSummary.setCancellationReasonDetail(dbEvent.getCancellationReasonDetail());
           }
-
-
     } else {
       log.trace("Get Rfx from Jaggaer: {}", dbEvent.getExternalEventId());
       try {

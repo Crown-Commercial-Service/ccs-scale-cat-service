@@ -695,6 +695,8 @@ public class CriteriaService {
     // we are in multi-stage
     //
 
+    final List<ProcurementStageEvent> stageEventsToUpdate = new ArrayList<>();
+
     for (int currentStageNumber = 1; currentStageNumber <= stagesRead.getNumberOfStages(); currentStageNumber++) {
         // grab the stage-specific data
         ProcurementStageEvent procurementEventForStage = retryableTendersDBDelegate
@@ -717,7 +719,17 @@ public class CriteriaService {
             procurementEventForStage.setStageNumber(currentStageNumber);
             procurementEventForStage.setProcurementTemplatePayload(dataTemplate);
 
-            retryableTendersDBDelegate.save(procurementEventForStage);
+            stageEventsToUpdate.add(procurementEventForStage);
+        }
+    }
+
+    if (!stageEventsToUpdate.isEmpty()) {
+        for (final ProcurementStageEvent entry : stageEventsToUpdate) {
+            try {
+                retryableTendersDBDelegate.save(entry);
+            } catch (final Exception ex) {
+                log.error("createGroupOrderFieldsInTheJsonTemplatePayloadForBidPack failed to update event: " + entry.getEventID());
+            }
         }
     }
   }
