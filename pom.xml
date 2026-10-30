@@ -62,6 +62,7 @@
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
         <jackson.version>2.22.4</jackson.version>
         <feign-jackson.version>13.17</feign-jackson.version>
+        <jackson3.version>3.2.4</jackson3.version>
     </properties>
 
     <dependencyManagement>
@@ -85,6 +86,15 @@
                 <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- For the sake of OpenSearch, also force consistency in Jackson 3 -->
+            <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson3.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
