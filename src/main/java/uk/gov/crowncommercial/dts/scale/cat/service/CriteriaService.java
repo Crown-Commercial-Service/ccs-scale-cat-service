@@ -642,9 +642,20 @@ public class CriteriaService {
                 Integer.valueOf(eventOCID.getInternalId()), entry.getStageNumber(), eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
 
         if (procurementStageEvent.isPresent()) {
-            procurementStageEvent.get().setStageDescription(entry.getStageName());
+            if (null == procurementStageEvent.get().getStageDescription() && null == entry.getStageName()) {
+                continue;
+            }
 
-            retryableTendersDBDelegate.save(procurementStageEvent.get());
+            if (null != entry.getStageName() && !entry.getStageName().equals(procurementStageEvent.get().getStageDescription())) {
+                procurementStageEvent.get().setStageDescription(entry.getStageName());
+
+                try {
+                    retryableTendersDBDelegate.save(procurementStageEvent.get());
+                } catch (final Exception ex) {
+                    // since this is just a courtesy method, it is not an issue if this fails
+                    log.error("failed to update stage names for eventId: " + eventId + ", error: " + ex.getMessage());
+                }
+            }
         }
     }
   }
