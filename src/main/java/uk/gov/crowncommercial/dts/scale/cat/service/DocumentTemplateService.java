@@ -143,7 +143,7 @@ public class DocumentTemplateService {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
-    var draftDocument = docGenService.generateDocument(event, documentTemplate, isStageTwoEvent, Boolean.FALSE);
+    var draftDocument = docGenService.generateDocument(procId, eventId, event, documentTemplate, isStageTwoEvent, Boolean.FALSE);
     var fileName = getFileName(event, documentKey);
 
     return DocumentAttachment.builder().data(draftDocument.toByteArray())
