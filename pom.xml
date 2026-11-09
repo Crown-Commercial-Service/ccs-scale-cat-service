@@ -20,7 +20,7 @@
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
         <swagger-parser.version>2.1.48</swagger-parser.version>
-        <guava.version>33.7.2-jre</guava.version>
+        <guava.version>33.8.0-jre</guava.version>
         <openapi-generator.version>5.2.1</openapi-generator.version>
         <hibernate-types.version>3.16.0</hibernate-types.version>
         <modelmapper.version>3.2.8</modelmapper.version>
@@ -28,7 +28,7 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>6.2.0</jena-core.version>
         <commons-io.version>2.22.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.57.3</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.57.9</aws-java-sdk-s3.version>
         <tika-core.version>4.2.0</tika-core.version>
         <java-cfenv-boot.version>4.0.2</java-cfenv-boot.version>
         <notifications-java-client.version>6.2.1-RELEASE</notifications-java-client.version>
@@ -37,8 +37,8 @@
         <snakeyaml.version>2.7</snakeyaml.version>
         <spring-security.version>7.1.2</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
-        <rollbar.version>2.3.1</rollbar.version>
-        <jsoup.version>1.23.2</jsoup.version>
+        <rollbar.version>2.4.0</rollbar.version>
+        <jsoup.version>1.24.1</jsoup.version>
         <hibernate.version>7.4.14.Final</hibernate.version>
         <junitapi.version>6.1.3</junitapi.version>
         <opensearch.version>3.1.4</opensearch.version>
@@ -46,7 +46,7 @@
         <spring-boot.version>4.1.2</spring-boot.version>
         <jose.version>0.9.7</jose.version>
         <jsonpath.version>3.0.0</jsonpath.version>
-        <logback.version>1.6.5</logback.version>
+        <logback.version>1.6.6</logback.version>
         <feignclient.version>5.0.4</feignclient.version>
         <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.13</retry.version>
