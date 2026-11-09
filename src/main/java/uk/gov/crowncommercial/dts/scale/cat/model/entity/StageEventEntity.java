@@ -47,4 +47,8 @@ public class StageEventEntity {
   public Integer getStageNumber() {
       return stageNumber;
   }
+
+  public String getPriorEventId() {
+      return priorEventId;
+  }
 }
