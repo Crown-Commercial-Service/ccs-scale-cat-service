@@ -13,6 +13,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+
+import org.apache.jena.atlas.logging.Log;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
@@ -426,14 +428,22 @@ public class JaggaerService {
   }
 
   public Message getMessage(final String messageId) {
+    log.error("***BM-getMessage***, messageId = " + messageId);   // TODO - BM
+
     final var messagesUrl = jaggaerAPIConfig.getGetMessage().get(ENDPOINT);
-    log.info("Start calling Jaggaer API to get message, Message Id: {}", messageId);
+    log.error("***BM-getMessage***, Start calling Jaggaer API to get message, Message Id: {}", messageId);
     final var messageResponse = ofNullable(jaggaerWebClient.get().uri(messagesUrl, messageId, MESSAGE_PARAMS).retrieve()
             .bodyToMono(Message.class)
             .block(ofSeconds(jaggaerAPIConfig.getTimeoutDuration())))
             .orElseThrow(() -> new JaggaerApplicationException(INTERNAL_SERVER_ERROR.value(),
                     "Unexpected error retrieving messages"));
-    log.info("Finish calling Jaggaer API to get message, Message Id: {}", messageId);
+    log.error("***BM-getMessage***, Finish calling Jaggaer API to get message, Message Id: {}", messageId);
+    if (null != messageResponse) {
+        log.error("***BM-getMessage, messageResponse-subject = " + messageResponse.subject);
+        log.error("***BM-getMessage, messageResponse-body = " + messageResponse.body);
+    } else {
+        log.error("***BM-getMessage, messageResponse is null");
+    }
     return messageResponse;
   }
   
