@@ -14,8 +14,8 @@ public class Message {
   Sender sender;
   OffsetDateTime sendDate;
   SenderUser senderUser;
-  String subject;
-  String body;
+  public String subject;
+  public String body;
   @JsonProperty("object")
   MessageObject messageObject;
   Integer folderId;
@@ -29,7 +29,6 @@ public class Message {
   MessageCategory category;
 
 }
-
 
 @Value
 @Builder
