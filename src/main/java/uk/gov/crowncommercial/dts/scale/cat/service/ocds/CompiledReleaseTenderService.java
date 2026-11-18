@@ -332,7 +332,7 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
         final List<Criterion1> result = new ArrayList<>();
 
         // add on the initial results from above (to get the Overall Weights section)
-        if (null != tender.getCriteria()) {
+        if (null != tender && null != tender.getCriteria() && !tender.getCriteria().isEmpty()) {
             for (Criterion1 entry : tender.getCriteria()) {
                 if (null != entry) {
                     result.add(entry);

@@ -202,7 +202,7 @@ public class DocGenService {
                             }
                         } else {
                             // LEGACY SINGLE-STAGE AND TWO-STAGE GENERATOR ROUTE
-                            ByteArrayOutputStream document = generateDocument(procurementEvent, template, isLastStageEvent, Boolean.TRUE);
+                            ByteArrayOutputStream document = generateDocument(projectId, eventId, procurementEvent, template, isLastStageEvent, Boolean.TRUE);
 
                             if (document != null) {
                                 uploadProforma(procurementEvent, document, template);
@@ -223,7 +223,7 @@ public class DocGenService {
      */
     @SneakyThrows
     @Transactional
-    public ByteArrayOutputStream generateDocument(final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final Boolean isLastStageEvent, final boolean isPublish) {
+    public ByteArrayOutputStream generateDocument(final Integer projectId, final String eventId, final ProcurementEvent procurementEvent, final DocumentTemplate documentTemplate, final Boolean isLastStageEvent, final boolean isPublish) {
         // Start by grabbing the template document we need to work against
         if (documentTemplate != null && documentTemplate.getTemplateUrl() != null && !documentTemplate.getTemplateUrl().isEmpty() && documentTemplate.getDocumentTemplateSources() != null) {
             Resource templateResource = documentTemplateResourceService.getResource(documentTemplate.getTemplateUrl());
@@ -238,7 +238,13 @@ public class DocGenService {
                     try {
                         if (templateSource.getTargetType() == TargetType.TABLE_GROUP) {
                             String eventData = isLastStageEvent ? getStage1EventData(procurementEvent) : procurementEvent.getProcurementTemplatePayloadRaw();
-                            tableGroupGenerator.fillTableData(eventData, templateSource, textODT);
+
+                            // for single-stage/two-stage, the stageNumber is zero
+                            final int stageNumber = 0;
+                            boolean usesQuestionGroupsCoP = usesQuestionsGroupNames(projectId, eventId, stageNumber, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
+                            boolean usesQuestionGroupsAwardCriteria = usesQuestionsGroupNames(projectId, eventId, stageNumber, AWARD_CRITERIA_QUESTION_GROUP);
+
+                            tableGroupGenerator.fillTableData(eventData, templateSource, textODT, usesQuestionGroupsCoP, usesQuestionGroupsAwardCriteria);
                         } else {
                             List<String> dataReplacement = getDataReplacement(procurementEvent, templateSource, requestCache);
                             replacePlaceholder(templateSource, dataReplacement, textODT, procurementEvent.getPublishDate() == null ? isPublish : Boolean.TRUE);
@@ -1132,6 +1138,9 @@ public class DocGenService {
         List<String> copGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
         List<String> awardGroupsFromDb = fetchGroupNamesFromQuestionAndAnswerTable(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
 
+        boolean usesQuestionGroupsCoP = usesQuestionsGroupNames(projectId, eventId, stageNum, CONDITIONS_OF_PARTICIPATION_QUESTION_GROUP);
+        boolean usesQuestionGroupsAwardCriteria = usesQuestionsGroupNames(projectId, eventId, stageNum, AWARD_CRITERIA_QUESTION_GROUP);
+
         for (JsonNode group : sourceGroups) {
             String groupId = group.path(OCDS).path(ID).asText();
             if (GROUP_0.equals(groupId)) continue;
@@ -1143,9 +1152,9 @@ public class DocGenService {
 
                 // Validate it against the database for this stage!
                 // If it exists in the DB, it's legitimate. If it doesn't, it's a ghost from a previous stage!
-                if (groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
+                if (usesQuestionGroupsCoP && groupId.startsWith("Group 1") && containsIgnoreCase(copGroupsFromDb, jsonGroupName)) {
                     finalGroupName = jsonGroupName;
-                } else if (groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
+                } else if (usesQuestionGroupsAwardCriteria && groupId.startsWith("Group 2") && containsIgnoreCase(awardGroupsFromDb, jsonGroupName)) {
                     finalGroupName = jsonGroupName;
                 }
 
@@ -1401,6 +1410,29 @@ public class DocGenService {
             }
         }
         return new ArrayList<>(orderedGroups.values());
+    }
+
+    private boolean usesQuestionsGroupNames(Integer projectId, String eventId, int stageNumber, String groupType) {
+        QandAWithProjectDetails response = questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(projectId, eventId);
+
+        if (null == response || null == response.getQandA() || response.getQandA().isEmpty()) {
+            return false;
+        }
+
+        final String useQuestionGroupFullPrefix = groupType + "-stage-" + stageNumber + "-use-question-groups";
+
+        boolean usesQuestionGroups = false;
+
+        for (QandA responseData: response.getQandA()) {
+              if (responseData.getQuestion().equals(useQuestionGroupFullPrefix)) {
+                  if (null != responseData.getAnswer() && !responseData.getAnswer().isBlank()) {
+                      usesQuestionGroups = Boolean.valueOf(responseData.getAnswer());
+                      break;
+                  }
+              }
+        }
+
+        return usesQuestionGroups;
     }
 
     private boolean containsIgnoreCase(List<String> validDbNames, String jsonName) {

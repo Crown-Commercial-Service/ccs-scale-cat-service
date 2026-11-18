@@ -61,7 +61,7 @@ public class TableGroupGenerator {
 
     private final ObjectMapper objectMapper;
 
-    public void fillTableData(String eventData, DocumentTemplateSource templateSource, TextDocument textODT) {
+    public void fillTableData(String eventData, DocumentTemplateSource templateSource, TextDocument textODT, boolean usesQuestionGroupsCoP, boolean usesQuestionGroupsAwardCriteria) {
         if (!StringUtils.hasText(eventData) || templateSource == null || textODT == null) {
             return;
         }
@@ -79,7 +79,13 @@ public class TableGroupGenerator {
             return;
         }
 
-        LinkedHashMap<String, GroupBucket> grouped = groupRequirementGroups(requirementGroups);
+        final boolean useQuestionGroups = switch (tableName.toUpperCase(Locale.UK)) {
+            case COND_OF_PART -> usesQuestionGroupsCoP;
+            case AWARD_CRITERIA -> usesQuestionGroupsAwardCriteria;
+            default -> true;
+        };
+
+        LinkedHashMap<String, GroupBucket> grouped = groupRequirementGroups(requirementGroups, useQuestionGroups);
 
         sortGroupedTableData(grouped);
 
@@ -129,7 +135,7 @@ public class TableGroupGenerator {
                 .toList();
     }
 
-    private LinkedHashMap<String, GroupBucket> groupRequirementGroups(List<Map<String, Object>> requirementGroups) {
+    private LinkedHashMap<String, GroupBucket> groupRequirementGroups(List<Map<String, Object>> requirementGroups, boolean useQuestionGroups) {
         LinkedHashMap<String, GroupBucket> grouped = new LinkedHashMap<>();
 
         for (Map<String, Object> rgMap : requirementGroups) {
@@ -139,7 +145,7 @@ public class TableGroupGenerator {
             String key;
             String displayName;
 
-            if (StringUtils.hasText(selectedGroupName) && groupOrder != null && groupOrder > 0) {
+            if (useQuestionGroups && StringUtils.hasText(selectedGroupName) && groupOrder != null && groupOrder > 0) {
                 key = "named::" + norm(selectedGroupName);
                 displayName = selectedGroupName.trim();
             } else {

@@ -18,6 +18,12 @@ management:
     health:
       probes:
         enabled: true
+      indicator:
+        elasticsearch:
+          enabled: false
+  health:
+    elasticsearch:
+      enabled: false
   info:
     env:
       enabled: true
@@ -71,6 +77,8 @@ spring:
     multipart:
       max-file-size: 300MB
       max-request-size: 300MB
+  jackson:
+    time-zone: UTC
 
 # Error pathing config
 server:

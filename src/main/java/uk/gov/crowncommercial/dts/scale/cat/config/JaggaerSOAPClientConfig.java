@@ -35,7 +35,7 @@ public class JaggaerSOAPClientConfig {
   private final JaggaerAPIConfig apiConfig;
 
   @Bean("jaggaerSOAPWebClient")
-  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager) {
+  public WebClient webClient(final OAuth2AuthorizedClientManager authorizedClientManager, final com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
 
     SslContextFactory.Client sslContextFactory = new SslContextFactory.Client(true);
     sslContextFactory.setExcludeProtocols("TLSv1.3");
@@ -47,12 +47,21 @@ public class JaggaerSOAPClientConfig {
     ClientHttpConnector jettyHttpClientConnector = new JettyClientHttpConnector(httpClient);
 
     var authHeader =
-        "Basic " + Base64.getEncoder().encodeToString((clientId + ':' + clientSecret).getBytes());
+            "Basic " + Base64.getEncoder().encodeToString((clientId + ':' + clientSecret).getBytes());
 
-    return WebClient.builder().clientConnector(jettyHttpClientConnector)
-        .baseUrl(apiConfig.getBaseUrl()).defaultHeader(ACCEPT, MediaType.APPLICATION_XML_VALUE)
-        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
-        .defaultHeader(HttpHeaders.AUTHORIZATION, authHeader).build();
+    return WebClient.builder()
+            .clientConnector(jettyHttpClientConnector)
+            .baseUrl(apiConfig.getBaseUrl())
+            .defaultHeader(ACCEPT, MediaType.APPLICATION_XML_VALUE)
+            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
+            .defaultHeader(HttpHeaders.AUTHORIZATION, authHeader)
+            .codecs(configurer -> {
+              configurer.defaultCodecs().jackson2JsonDecoder(
+                      new org.springframework.http.codec.json.Jackson2JsonDecoder(objectMapper));
+              configurer.defaultCodecs().jackson2JsonEncoder(
+                      new org.springframework.http.codec.json.Jackson2JsonEncoder(objectMapper));
+            })
+            .build();
   }
 
 }
