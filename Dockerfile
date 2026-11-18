@@ -1,16 +1,19 @@
-FROM maven:3.9.9-amazoncorretto-23 as build
+FROM amazoncorretto:27-alpine-jdk AS build
 
-RUN mkdir -p /tmp/build
+ARG MAVEN_VERSION=3.9.9
+RUN apk add --no-cache curl tar fontconfig ttf-dejavu && \
+    fc-cache -f && \
+    curl -fsSL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+    | tar -xz -C /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn
 
 WORKDIR /tmp/build
-
 COPY . /tmp/build
 
-RUN mvn clean install
-RUN mvn package
+RUN mvn clean package
 
 # Use an official Corretto runtime as a base image
-FROM amazoncorretto:23-alpine-jdk
+FROM amazoncorretto:27-alpine-jdk
 
 # Set the working directory inside the container and install curl and needed fonts
 WORKDIR /app

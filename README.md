@@ -14,7 +14,7 @@ The project is implemented as a Spring Boot 3 web application, implemented using
 
 The core technologies for the project are:
 
-* Java 23
+* Java 27
 * [Spring Boot][]
 * [Spring Security][]
 * [Ehcache][] for caching

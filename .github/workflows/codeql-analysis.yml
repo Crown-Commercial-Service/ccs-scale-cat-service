@@ -66,7 +66,7 @@ jobs:
     - uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
-        java-version: '23'
+        java-version: '27'
     - run: mvn compile
     
     - name: Perform CodeQL Analysis
