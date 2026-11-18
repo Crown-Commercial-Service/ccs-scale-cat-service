@@ -60,7 +60,7 @@
         <h2.version>2.5.252</h2.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
-        <jackson.version>2.22.4</jackson.version>
+        <jackson.version>2.23.0</jackson.version>
         <feign-jackson.version>13.18</feign-jackson.version>
         <jackson3.version>3.2.4</jackson3.version>
     </properties>
