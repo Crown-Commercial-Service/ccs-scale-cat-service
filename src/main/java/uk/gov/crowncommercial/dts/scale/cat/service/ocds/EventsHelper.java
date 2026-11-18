@@ -7,6 +7,8 @@ import uk.gov.crowncommercial.dts.scale.cat.model.agreements.RequirementGroup;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.TemplateCriteria;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementEvent;
 import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementProject;
+import uk.gov.crowncommercial.dts.scale.cat.model.entity.ProcurementStageEvent;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +31,13 @@ public class EventsHelper {
     }
 
     /**
+     * Returns the stage events associated with the given eventId on the project
+     */
+    public static List<ProcurementStageEvent> getStageEvents(ProcurementProject pp, String eventId) {
+        return getTheStageEvents(pp, eventId);
+    }
+
+    /**
      * Returns the latest published event on a project
      */
     public static ProcurementEvent getLastPublishedEvent(ProcurementProject pp) {
@@ -42,26 +51,31 @@ public class EventsHelper {
         return pp.getProcurementEvents().stream().filter(s -> null != s.getPublishDate()).min(comparator).orElse(null);
     }
 
+    /**
+     * Returns the stage events associated with the given eventId on the project
+     */
+    public static List<ProcurementStageEvent> getTheStageEvents(ProcurementProject pp, String eventId) {
+        return pp.getProcurementStageEvents().stream().filter(s -> eventId.equals(s.getId())).collect(Collectors.toList());
+    }
+
     public static ProcurementEvent getAwardEvent(ProcurementProject pp) {
         return getLastPublishedEvent(pp);
     }
-    
+
     public static Pair<ProcurementEvent, ProcurementEvent> getFirstAndLastPublishedEvent(ProcurementProject pp) {
       if (pp.getProcurementEvents().size() > 1) {
           return Pair.of(EventsHelper.getFirstPublishedEvent(pp), EventsHelper.getLastPublishedEvent(pp));
       }
-        return Pair.of(EventsHelper.getFirstPublishedEvent(pp), null);
+      return Pair.of(EventsHelper.getFirstPublishedEvent(pp), null);
     }
 
-    public static String getData(String criteriaId, String groupId, String requirementId,
-        List<TemplateCriteria> criteria) {
+    public static String getData(String criteriaId, String groupId, String requirementId, List<TemplateCriteria> criteria) {
       Optional<TemplateCriteria> criterias =
           criteria.stream().filter(c -> c.getId().equalsIgnoreCase(criteriaId)).findAny();
         return criterias.map(templateCriteria -> getData(groupId, requirementId, templateCriteria.getRequirementGroups())).orElse(null);
     }
 
-    private static String getData(String groupId, String requirementId,
-        Set<RequirementGroup> requirementGroups) {
+    private static String getData(String groupId, String requirementId, Set<RequirementGroup> requirementGroups) {
       for (RequirementGroup rg : requirementGroups) {
         if (isReqGroupMatch(rg, groupId)) {
           String result = getData(requirementId, rg.getOcds().getRequirements());
@@ -97,11 +111,19 @@ public class EventsHelper {
     }
 
     private static boolean isReqMatch(Requirement r, String requirementId) {
-      return r.getOcds().getId().equalsIgnoreCase(requirementId);
+        final boolean isEqual = r.getOcds().getId().equalsIgnoreCase(requirementId);
+        // note 'startsWith' is needed for multi-stage
+        final boolean startsWith = r.getOcds().getId().toLowerCase().startsWith(requirementId.toLowerCase() + "-");
+
+        return isEqual || startsWith;
     }
 
     private static boolean isReqGroupMatch(RequirementGroup rg, String groupId) {
-      return rg.getOcds().getId().equalsIgnoreCase(groupId)
-          && (null != rg.getOcds().getDescription());
+      final boolean isEqual = rg.getOcds().getId().equalsIgnoreCase(groupId);
+      // note 'startsWith' is needed for multi-stage
+      final boolean startsWith = rg.getOcds().getId().toLowerCase().startsWith(groupId.toLowerCase() + ".");
+      final boolean hasDescription = null != rg.getOcds().getDescription();
+
+      return (isEqual || startsWith) && hasDescription;
     }
 }

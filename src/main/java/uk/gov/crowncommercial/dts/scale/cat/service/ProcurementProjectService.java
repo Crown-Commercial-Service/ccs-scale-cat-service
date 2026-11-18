@@ -734,6 +734,11 @@ public class ProcurementProjectService {
     var projectPackageSummary = new ProjectPackageSummary();
     var agreementNo = mapping.getProject().getCaNumber();
     var dbEvent = getCurrentEvent(mapping.getProject());
+
+    if (null == dbEvent) {
+        return Optional.empty();
+    }
+
     // TODO make single call instead of 2
     try {
       log.trace("Get agreement and lots: " + agreementNo);
@@ -933,8 +938,10 @@ public class ProcurementProjectService {
       return event.get();
     }
 
-    // If we have gotten this far it couldn't find an event, so throw an error
-    throw new UnhandledEdgeCaseException("Could not find current event for project " + project.getId());
+    // If we have gotten this far it couldn't find an event
+    log.warn("Could not find current event for project " + project.getId());
+
+    return null;
   }
 
 

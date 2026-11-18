@@ -59,6 +59,7 @@ public class OAuth2Config {
         .requestMatchers("/assessments/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/suppliers/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/stages/**").hasAnyAuthority(CAT_ROLES)
+        .requestMatchers("/tenders/search-sessions/**").hasAnyAuthority(CAT_ROLES)
         .requestMatchers("/tenders/users/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/tenders/orgs/**").hasAnyAuthority(LD_AND_CAT_ROLES)
         .requestMatchers("/digitalRole/**").hasAnyAuthority(CAT_ROLES)

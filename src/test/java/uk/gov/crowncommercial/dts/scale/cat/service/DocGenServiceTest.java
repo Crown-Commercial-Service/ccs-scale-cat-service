@@ -6,20 +6,34 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandA;
+import uk.gov.crowncommercial.dts.scale.cat.model.generated.QandAWithProjectDetails;
+import uk.gov.crowncommercial.dts.scale.cat.repo.RetryableTendersDBDelegate;
 
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class DocGenServiceTest {
 
     @InjectMocks
     private DocGenService docGenService;
+
+    @Mock
+    private QuestionAndAnswerService questionAndAnswerService;
+
+    @Mock
+    private StageService stageService;
+
+    @Mock
+    private RetryableTendersDBDelegate retryableTendersDBDelegate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -28,6 +42,23 @@ class DocGenServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(docGenService, "objectMapper", new ObjectMapper());
+    }
+
+    // Helper to mock the DB response so the hybrid validation logic passes
+    private void mockDbQuestionGroups(Integer projectId, String eventId, Map<String, String> dbEntries) {
+        QandAWithProjectDetails response = new QandAWithProjectDetails();
+        List<QandA> qandas = new ArrayList<>();
+        if (dbEntries != null) {
+            for (Map.Entry<String, String> entry : dbEntries.entrySet()) {
+                QandA q = new QandA();
+                q.setQuestion(entry.getKey());
+                q.setAnswer(entry.getValue());
+                qandas.add(q);
+            }
+        }
+        response.setQandA(qandas);
+        lenient().when(questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(projectId, eventId))
+                .thenReturn(response);
     }
 
     @Test
@@ -98,14 +129,21 @@ class DocGenServiceTest {
         stage1.put("stageNumber", 1);
         stage1.put("totalStages", 2);
         stage1.put("stageDescription", "Description for Stage 1");
+        stage1.put("projectId", 1);
+        stage1.put("eventId", "event1");
 
         Map<String, Object> stage2 = new HashMap<>();
         stage2.put("payload", stage2Payload);
         stage2.put("stageNumber", 2);
         stage2.put("totalStages", 2);
         stage2.put("stageDescription", "Description for Stage 2");
+        stage2.put("projectId", 1);
+        stage2.put("eventId", "event1");
 
         List<Map<String, Object>> stageDataList = Arrays.asList(stage1, stage2);
+
+        // Ensure default DB mock behaviour avoids NullPointerExceptions
+        mockDbQuestionGroups(1, "event1", Collections.emptyMap());
 
         String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
 
@@ -135,22 +173,18 @@ class DocGenServiceTest {
 
     @Test
     void mergeStageJsonPayloads_WhenInputIsNull_ReturnsEmptyString() {
-
         String result = docGenService.mergeStageJsonPayloads(null);
         assertThat(result).isEmpty();
     }
 
     @Test
     void mergeStageJsonPayloads_WhenInputIsEmpty_ReturnsEmptyString() {
-
         String result = docGenService.mergeStageJsonPayloads(Collections.emptyList());
-
         assertThat(result).isEmpty();
     }
 
     @Test
     void mergeStageJsonPayloads_WhenCriterion2IsMissing_ReturnsBaseJsonUnmodified() throws Exception {
-        // JSON payload missing "Criterion 2"
         String payload = """
             { "criteria": [ { "id": "Criterion 1", "requirementGroups": [] } ] }
             """;
@@ -164,7 +198,6 @@ class DocGenServiceTest {
 
     @Test
     void mergeStageJsonPayloads_WhenQuestionTextIsEmpty_SkipsGroupEntirely() throws Exception {
-        // Group 1 has an empty value ("") for its question option
         String payload = """
             {
               "criteria": [{
@@ -178,18 +211,18 @@ class DocGenServiceTest {
             """;
         List<Map<String, Object>> stageDataList = List.of(createStageMap(payload, 1, "Stage 1", 1));
 
+        mockDbQuestionGroups(1, "event1", Collections.emptyMap());
+
         String result = docGenService.mergeStageJsonPayloads(stageDataList);
 
         JsonNode root = objectMapper.readTree(result);
         JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
 
-        // Question was empty, the filtering logic should strip it out completely
         assertThat(requirementGroups.isEmpty()).isTrue();
     }
 
     @Test
     void mergeStageJsonPayloads_WhenGroupIdIsUnrecognized_SkipsGroupEntirely() throws Exception {
-        // Group ID is "Group 99", which is not something we are interested, negative tests
         String payload = """
             {
               "criteria": [{
@@ -203,12 +236,13 @@ class DocGenServiceTest {
             """;
         List<Map<String, Object>> stageDataList = List.of(createStageMap(payload, 1, "Stage 1", 1));
 
+        mockDbQuestionGroups(1, "event1", Collections.emptyMap());
+
         String result = docGenService.mergeStageJsonPayloads(stageDataList);
 
         JsonNode root = objectMapper.readTree(result);
         JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
 
-        // Unrecognized groups don't get a stageAdjustedId, so they are not added
         assertThat(requirementGroups.isEmpty()).isTrue();
     }
 
@@ -231,6 +265,8 @@ class DocGenServiceTest {
                 createStageMap(basePayload, 1, "Discovery Phase", 2),
                 createStageMap(basePayload, 2, "Alpha Phase", 2)
         );
+
+        mockDbQuestionGroups(1, "event1", Collections.emptyMap());
 
         String result = docGenService.mergeStageJsonPayloads(stageDataList);
 
@@ -268,6 +304,186 @@ class DocGenServiceTest {
         assertThat(foundStageDesc).as("STAGE_DESCRIPTION virtual tag was injected correctly").isTrue();
     }
 
+    @Test
+    void mergeStageJsonPayloadsSkipsGroupZeroEntirely() throws Exception {
+        String payload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [{ 
+                  "OCDS": { "id": "Group 0", "requirements": [{ 
+                    "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{ "value": "Valid", "select": true }] } 
+                  }] }
+                }]
+              }]
+            }
+            """;
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(payload, 1, "Stage 1", 1));
+
+        String result = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        JsonNode root = objectMapper.readTree(result);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertThat(requirementGroups.isEmpty()).isTrue();
+    }
+
+    @Test
+    void mergeStageJsonPayloads_SuccessfullyGroupsByDropdownNameAndInjectsVirtualTagsOnce() throws Exception {
+
+        String complexPayload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [
+                  { 
+                    "OCDS": { "id": "Group 2.1", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Q1 Text"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Business Requirement"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Q2 Text"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Pricing"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.3", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Q3 Text"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Business Requirement"}] } }
+                    ]}
+                  }
+                ]
+              }]
+            }
+            """;
+
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(complexPayload, 1, "Alpha Phase", 1));
+
+        // Mock DB so the hybrid logic validates these group names!
+        Map<String, String> dbMock = new HashMap<>();
+        dbMock.put("award-criteria-Stage-1-question-group-0", "Business Requirement");
+        dbMock.put("award-criteria-Stage-1-question-group-1", "Pricing");
+        mockDbQuestionGroups(1, "event1", dbMock);
+
+        String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        assertNotNull(resultJson);
+        JsonNode root = objectMapper.readTree(resultJson);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertEquals(3, requirementGroups.size(), "Should keep 3 groups but sort them sequentially by name.");
+
+        assertEquals("Group 2.1", requirementGroups.get(0).at("/OCDS/id").asText());
+        assertEquals("Group 2.2", requirementGroups.get(1).at("/OCDS/id").asText(), "Group 2.3 should be moved to sit next to Group 2.1");
+
+        assertEquals("Group 2.3", requirementGroups.get(2).at("/OCDS/id").asText());
+
+        JsonNode group1Reqs = requirementGroups.get(0).at("/OCDS/requirements");
+        assertEquals(5, group1Reqs.size(), "Should have 2 original questions + 3 virtual tags");
+        assertEquals("CURRENT_STAGE", group1Reqs.get(2).at("/OCDS/id").asText());
+    }
+
+    @Test
+    void mergeStageJsonPayloadsAppliesSiblingHeuristicClearsGhostState() throws Exception {
+
+        String ghostStatePayload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [
+                  { 
+                    "OCDS": { "id": "Group 2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Base Question"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "Business Requirement"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.1", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Clone Q1"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "(no group)"}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Clone Q2"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "(no group)"}] } }
+                    ]}
+                  }
+                ]
+              }]
+            }
+            """;
+
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(ghostStatePayload, 2, "Beta Phase", 2));
+
+        // Empty DB Mock means "Business Requirement" is invalidated as ghost data!
+        mockDbQuestionGroups(1, "event1", Collections.emptyMap());
+
+        String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        JsonNode root = objectMapper.readTree(resultJson);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertEquals(3, requirementGroups.size(), "Should retain 3 distinct groups");
+
+        for (JsonNode group : requirementGroups) {
+            JsonNode mergedReqs = group.at("/OCDS/requirements");
+            for (JsonNode req : mergedReqs) {
+                if ("Select group name".equals(req.at("/OCDS/title").asText())) {
+                    String sanitizedValue = req.at("/nonOCDS/options/0/value").asText();
+                    assertEquals("(no group)", sanitizedValue, "The ghost state group name MUST be overwritten with (no group) on all groups");
+                }
+            }
+        }
+    }
+
+    @Test
+    void mergeStageJsonPayloadsInterceptsBlankMapsToNoGroup() throws Exception {
+
+        String blankDropdownPayload = """
+            {
+              "criteria": [{
+                "id": "Criterion 2",
+                "requirementGroups": [
+                  { 
+                    "OCDS": { "id": "Group 2.1", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Valid Q1"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": ""}] } }
+                    ]}
+                  },
+                  { 
+                    "OCDS": { "id": "Group 2.2", "requirements": [
+                        { "OCDS": { "id": "Question 1", "title": "Enter your question" }, "nonOCDS": { "options": [{"value": "Valid Q2"}] } },
+                        { "OCDS": { "id": "Question 2", "title": "Select group name" }, "nonOCDS": { "options": [{"value": "null"}] } }
+                    ]}
+                  }
+                ]
+              }]
+            }
+            """;
+
+        List<Map<String, Object>> stageDataList = List.of(createStageMap(blankDropdownPayload, 1, "Alpha Phase", 1));
+        mockDbQuestionGroups(1, "event1", Collections.emptyMap());
+
+        String resultJson = docGenService.mergeStageJsonPayloads(stageDataList);
+
+        JsonNode root = objectMapper.readTree(resultJson);
+        JsonNode requirementGroups = root.at("/criteria/0/requirementGroups");
+
+        assertEquals(2, requirementGroups.size(), "Should retain 2 distinct groups");
+
+        for (JsonNode group : requirementGroups) {
+            JsonNode mergedReqs = group.at("/OCDS/requirements");
+            for (JsonNode req : mergedReqs) {
+                if ("Select group name".equals(req.at("/OCDS/title").asText())) {
+                    String sanitizedValue = req.at("/nonOCDS/options/0/value").asText();
+                    assertEquals("(no group)", sanitizedValue, "Blank and null values must be explicitly mapped to '(no group)'");
+                }
+            }
+        }
+    }
 
     private Map<String, Object> createStageMap(String payload, int num, String desc, int total) {
         Map<String, Object> map = new HashMap<>();
@@ -275,6 +491,8 @@ class DocGenServiceTest {
         map.put("stageNumber", num);
         map.put("stageDescription", desc);
         map.put("totalStages", total);
+        map.put("projectId", 1);
+        map.put("eventId", "event1");
         return map;
     }
 }

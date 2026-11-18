@@ -216,4 +216,52 @@ public class DigitalRoleServiceTest {
 
     verify(digitalRoleRepository, times(1)).deleteAllById(anyList());
   }
+
+    @Test
+    void testDeleteDigitalRoleWithProjectIdAndEventIdWhenRecordsExistReturnsDeletedCount() {
+
+        final String projectId = "12345";
+        final String eventId = "ocds-pfhb7i-25306";
+        final long expectedDeletedCount = 3L;
+
+        when(digitalRoleRepository.deleteByProjectIdAndEventId(projectId, eventId))
+                .thenReturn(expectedDeletedCount);
+
+        long actualDeletedCount = underTest.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId);
+
+        assertEquals(expectedDeletedCount, actualDeletedCount, "Should return the exact number of deleted records");
+        verify(digitalRoleRepository, times(1)).deleteByProjectIdAndEventId(projectId, eventId);
+    }
+
+    @Test
+    void testDeleteDigitalRoleWithProjectIdAndEventIdWhenNoRecordsExistReturnsZero() {
+
+        final String projectId = "99999";
+        final String eventId = "non-existent-event";
+
+        when(digitalRoleRepository.deleteByProjectIdAndEventId(projectId, eventId))
+                .thenReturn(0L);
+
+        long actualDeletedCount = underTest.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId);
+
+        assertEquals(0L, actualDeletedCount, "Should return 0 when no records match the criteria");
+        verify(digitalRoleRepository, times(1)).deleteByProjectIdAndEventId(projectId, eventId);
+    }
+
+    @Test
+    void testDeleteDigitalRoleWithProjectIdAndEventIdWhenDatabaseFailsThrowsException() {
+
+        final String projectId = "12345";
+        final String eventId = "ocds-pfhb7i-25306";
+
+        when(digitalRoleRepository.deleteByProjectIdAndEventId(projectId, eventId))
+                .thenThrow(new RuntimeException("Database connection failed"));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            underTest.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId);
+        });
+
+        assertEquals("Database connection failed", exception.getMessage());
+        verify(digitalRoleRepository, times(1)).deleteByProjectIdAndEventId(projectId, eventId);
+    }
 }

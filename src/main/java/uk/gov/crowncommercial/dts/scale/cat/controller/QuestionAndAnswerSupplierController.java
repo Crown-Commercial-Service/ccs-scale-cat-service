@@ -30,10 +30,10 @@ public class QuestionAndAnswerSupplierController extends AbstractRestController 
 
   @GetMapping
   @TrackExecutionTime
-  public ResponseEntity<QandAWithProjectDetails> getQuestionAdnAnswers(
+  public ResponseEntity<QandAWithProjectDetails> getQuestionAndAnswers(
       @PathVariable("proc-id") final Integer procId,
       @PathVariable("event-id") final String eventId) {
-    log.info("getQuestionAdnAnswersForSupplier invoked");
+    log.info("getQuestionAndAnswersForSupplier invoked");
     return ResponseEntity
         .ok(questionAndAnswerService.getQuestionAndAnswerForSupplierByEvent(procId, eventId));
   }

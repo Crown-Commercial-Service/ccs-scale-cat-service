@@ -105,4 +105,19 @@ public class DigitalRoleController extends AbstractRestController {
             })
         .orElse(ResponseEntity.notFound().build());
   }
+
+    @DeleteMapping("/{projectId}/{eventId}")
+    @TrackExecutionTime
+    public ResponseEntity<Void> deleteByProjectIdAndEventId(
+            @PathVariable final String projectId,
+            @PathVariable final String eventId) {
+
+        log.debug("Attempting to delete digital roles for projectId: {} and eventId: {}", projectId, eventId);
+
+        final long deletedCount = digitalRoleService.deleteDigitalRoleWithProjectIdAndEventId(projectId, eventId);
+
+        return deletedCount > 0
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
+    }
 }

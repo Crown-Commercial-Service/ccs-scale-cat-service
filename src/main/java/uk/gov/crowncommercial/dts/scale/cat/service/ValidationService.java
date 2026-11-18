@@ -54,6 +54,8 @@ public class ValidationService {
   private static final String COP_GROUP_ID = "Group 1";
   private static final String AWARD_CRITERIA_GROUP_ID = "Group 2";
   private static final String ASSESSMENT_CRITERIA_CRITERION_ID = "Criterion 2";
+  private static final int MAX_ASSESSMENT_QUESTIONS = 20;
+  private static final int MAX_QUESTION_ITERATIONS = 250;
 
   private final RetryableTendersDBDelegate retryableTendersDBDelegate;
   private final AssessmentService assessmentService;
@@ -64,6 +66,7 @@ public class ValidationService {
    *
    * @param projectId
    * @param eventId
+   * @param stageNumber
    * @return procurement event entity
    */
   public ProcurementEvent validateProjectAndEventIds(final Integer projectId, final String eventId, final Integer stageNumber) {
@@ -213,26 +216,36 @@ public class ValidationService {
 
             RequirementGroup awardCriteriaStageRequirementGroup = null;
             RequirementGroup copStageRequirementGroup = null;
-            int count = 1;
+            int questionCount = 1;
+            int iterationCount = 1;
 
             do {
-                awardCriteriaStageRequirementGroup = extractStageRequirementGroup(AWARD_CRITERIA_GROUP_ID + "." + count, procurementStageEventDataTemplate);
+                awardCriteriaStageRequirementGroup = extractStageRequirementGroup(AWARD_CRITERIA_GROUP_ID + "." + iterationCount, procurementStageEventDataTemplate);
 
                 if (null != awardCriteriaStageRequirementGroup) {
                     criterion2RequirementGroups.add(awardCriteriaStageRequirementGroup);
                     updated = true;
                 }
 
-                copStageRequirementGroup = extractStageRequirementGroup(COP_GROUP_ID + "." + count, procurementStageEventDataTemplate);
+                copStageRequirementGroup = extractStageRequirementGroup(COP_GROUP_ID + "." + iterationCount, procurementStageEventDataTemplate);
 
                 if (null != copStageRequirementGroup) {
                     criterion2RequirementGroups.add(copStageRequirementGroup);
                     updated = true;
                 }
 
-                count++;
+                // we used to be able to exit if awardCriteriaStageRequirementGroup and copStageRequirementGroup were both null,
+                // however since we can now also delete answers, we may now have 'missing' groups (ie no match on a
+                // given group index (eg 1.4 or 2.2)).  Therefore we could have additional data available after any
+                // 'missing' group, so we need to check up to the maximum possible number of questions.
+                if (null != awardCriteriaStageRequirementGroup || null != copStageRequirementGroup) {
+                    // but only count the questions we actually have
+                    questionCount++;
+                }
 
-            } while (null != awardCriteriaStageRequirementGroup || null != copStageRequirementGroup);
+                iterationCount++;
+
+            } while (questionCount <= MAX_ASSESSMENT_QUESTIONS && iterationCount < MAX_QUESTION_ITERATIONS);
         }
 
         if (updated) {

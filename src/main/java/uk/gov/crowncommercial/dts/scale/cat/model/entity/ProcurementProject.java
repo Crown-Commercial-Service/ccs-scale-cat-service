@@ -29,6 +29,10 @@ public class ProcurementProject {
   @OneToMany(fetch = FetchType.EAGER, mappedBy = "project")
   Set<ProcurementEvent> procurementEvents;
 
+  @ToString.Exclude
+  @OneToMany(fetch = FetchType.EAGER, mappedBy = "project")
+  Set<ProcurementStageEvent> procurementStageEvents;
+
   @Column(name = "commercial_agreement_number")
   String caNumber;
 

@@ -28,22 +28,22 @@
         <simple-odf.version>0.9.0</simple-odf.version>
         <jena-core.version>5.6.0</jena-core.version>
         <commons-io.version>2.22.0</commons-io.version>
-        <aws-java-sdk-s3.version>2.47.5</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>2.54.17</aws-java-sdk-s3.version>
         <tika-core.version>3.3.1</tika-core.version>
         <java-cfenv-boot.version>3.5.1</java-cfenv-boot.version>
         <notifications-java-client.version>6.0.1-RELEASE</notifications-java-client.version>
         <poi-ooxml.version>5.5.1</poi-ooxml.version>
         <xerces.xercesimpl.version>2.12.2</xerces.xercesimpl.version>
-        <snakeyaml.version>2.6</snakeyaml.version>
+        <snakeyaml.version>2.7</snakeyaml.version>
         <spring-security.version>6.5.11</spring-security.version>
         <hsql.version>2.7.4</hsql.version>
-        <rollbar.version>2.3.0</rollbar.version>
-        <jsoup.version>1.22.2</jsoup.version>
-        <hibernate.version>6.6.53.Final</hibernate.version>
+        <rollbar.version>2.3.1</rollbar.version>
+        <jsoup.version>1.23.2</jsoup.version>
+        <hibernate.version>6.6.54.Final</hibernate.version>
         <junitapi.version>6.1.2</junitapi.version>
         <opensearch.version>2.0.6</opensearch.version>
-        <shedlock.version>7.7.0</shedlock.version>
-        <spring-boot.version>3.5.15</spring-boot.version>
+        <shedlock.version>7.10.1</shedlock.version>
+        <spring-boot.version>3.5.16</spring-boot.version>
         <jose.version>0.9.6</jose.version>
         <jsonpath.version>3.0.0</jsonpath.version>
         <logback.version>1.5.38</logback.version>
@@ -51,14 +51,34 @@
         <ehcache.version>3.12.0</ehcache.version>
         <retry.version>2.0.13</retry.version>
         <jetty-reactive.version>4.1.5</jetty-reactive.version>
-        <postgres.version>42.7.13</postgres.version>
-        <lombok.version>1.18.46</lombok.version>
+        <postgres.version>42.7.14</postgres.version>
+        <lombok.version>1.18.48</lombok.version>
         <spring.version>6.5.10</spring.version>
         <maven-replacer.version>1.5.3</maven-replacer.version>
         <compiler.version>3.15.0</compiler.version>
-        <cucumber.version>7.34.4</cucumber.version>
-        <h2.version>2.4.240</h2.version>
+        <cucumber.version>7.34.8</cucumber.version>
+        <h2.version>2.5.250</h2.version>
+        <commons-lang3.version>3.20.0</commons-lang3.version>
+        <commons-beanutils.version>1.11.0</commons-beanutils.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Force upgrade to fix CVE-2025-48924 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <!-- Force upgrade to fix CVE-2025-48734 -->
+            <dependency>
+                <groupId>commons-beanutils</groupId>
+                <artifactId>commons-beanutils</artifactId>
+                <version>${commons-beanutils.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -270,6 +290,10 @@
                 <exclusion>
                     <artifactId>slf4j-reload4j</artifactId>
                     <groupId>org.slf4j</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -675,6 +699,37 @@
                             <generateApis>false</generateApis>
                             <generateModelTests>false</generateModelTests>
                             <!-- qas package is Question & Answer Service -->
+                            <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.cas.generated</modelPackage>
+                            <skipValidateSpec>false</skipValidateSpec>
+                            <strictSpec>true</strictSpec>
+                            <importMappings>Error=uk.gov.crowncommercial.dts.scale.cat.model.ApiError</importMappings>
+                            <verbose>false</verbose>
+                            <configOptions>
+                                <sourceFolder>src/gen/java/main</sourceFolder>
+                                <useBeanValidation>true</useBeanValidation>
+                                <performBeanValidation>true</performBeanValidation>
+                                <dateLibrary>java8</dateLibrary>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                                <openApiNullable>false</openApiNullable>
+                                <useOptional>true</useOptional>
+                                <useJakartaEe>true</useJakartaEe>
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <discriminatorCaseSensitive>false</discriminatorCaseSensitive>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>sas-service-api</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>https://raw.githubusercontent.com/Crown-Commercial-Service/ccs-scale-api-definitions/master/sas/sas-service.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <generateModels>true</generateModels>
+                            <generateSupportingFiles>false</generateSupportingFiles>
+                            <generateApis>false</generateApis>
+                            <generateModelTests>false</generateModelTests>
                             <modelPackage>uk.gov.crowncommercial.dts.scale.cat.model.cas.generated</modelPackage>
                             <skipValidateSpec>false</skipValidateSpec>
                             <strictSpec>true</strictSpec>

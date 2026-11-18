@@ -139,7 +139,7 @@ public class DocumentTemplateService {
    * @return a document attachment containing the generated draft document
    */
   public DocumentAttachment getDraftDocument(final Integer procId, final String eventId,
-      final DocumentKey documentKey, final boolean isStageTwoEvent) {
+      final DocumentKey documentKey, final Boolean isStageTwoEvent) {
 
     var event = validationService.validateProjectAndEventIds(procId, eventId, null);
     var documentTemplate = findDocumentTemplate(event, documentKey);
