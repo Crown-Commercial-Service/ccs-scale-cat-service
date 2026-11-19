@@ -210,6 +210,30 @@ public class EventsController extends AbstractRestController {
       }
   }
 
+  @PutMapping("/{eventID}/testing/{testingValue}")
+  @TrackExecutionTime
+  public String updateIsTestOnlyFlag(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, @PathVariable("testingValue") final String testingValue, @RequestBody JsonNode unused, final JwtAuthenticationToken authentication) {
+      try {
+          var principal = getPrincipalFromJwt(authentication);
+          log.info("PUT event invoked by principal: {}", principal);
+
+          log.info("Received testingValue: {}", testingValue);
+
+          Boolean newTestingFlagValue = null == testingValue ? null : "true".equalsIgnoreCase(testingValue) ? Boolean.TRUE : null;
+
+          boolean status = procurementEventService.updateIsTestOnlyFlag(procId, eventId, newTestingFlagValue);
+
+          if (status) {
+            return "OK";
+          } else {
+            return "NOT_FOUND";
+          }
+      } catch (Exception ex) {
+          log.error("Failed to updateIsTestOnlyFlag. error: {}", ex.getMessage(), ex);
+          throw ex;
+      }
+  }
+
   @GetMapping("/{eventID}/review")
   @TrackExecutionTime
   public EventDetail getEventReview(@PathVariable("procID") final Integer procId, @PathVariable("eventID") final String eventId, final JwtAuthenticationToken authentication) {

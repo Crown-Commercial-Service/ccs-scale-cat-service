@@ -44,6 +44,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.javacrumbs.shedlock.core.LockProvider;
 import uk.gov.crowncommercial.dts.scale.cat.config.ApplicationFlagsConfig;
@@ -779,5 +780,33 @@ class EventsControllerTest {
     verify(questionAndAnswerService).deleteSpecificAnswersForGivenQuestion(PRINCIPAL, PROC_PROJECT_ID, EVENT_ID, question, List.of("group2"));
 
     verifyNoMoreInteractions(questionAndAnswerService);
+  }
+
+  @Test
+  void shouldUpdateIsTestOnlyFlagToTrue() throws Exception {
+    Boolean newFlagValue = Boolean.TRUE;
+    when(procurementEventService.updateIsTestOnlyFlag(PROC_PROJECT_ID, EVENT_ID, newFlagValue)).thenReturn(true);
+
+    mockMvc
+        .perform(put(EVENTS_PATH + "/{eventID}/testing/{testingValue}", PROC_PROJECT_ID, EVENT_ID, "TRUE")
+                 .with(validJwtReqPostProcessor)
+                 .accept(APPLICATION_JSON)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .content((String)"{}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldUpdateIsTestOnlyFlagToNull() throws Exception {
+    Boolean newFlagValue = null;
+    when(procurementEventService.updateIsTestOnlyFlag(PROC_PROJECT_ID, EVENT_ID, newFlagValue)).thenReturn(true);
+
+    mockMvc
+        .perform(put(EVENTS_PATH + "/{eventID}/testing/{testingValue}", PROC_PROJECT_ID, EVENT_ID, "FALSE")
+                 .with(validJwtReqPostProcessor)
+                 .accept(APPLICATION_JSON)
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .content((String)"{}"))
+        .andExpect(status().isOk());
   }
 }

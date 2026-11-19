@@ -146,6 +146,9 @@ public class ProcurementEvent {
     @OneToMany(mappedBy = "procurementEvent", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     Set<DocumentUpload> documentUploads;
 
+    @Column(name = "is_test_only")
+    Boolean isTestOnly;
+
     public Integer getId() {
         return id;
     }

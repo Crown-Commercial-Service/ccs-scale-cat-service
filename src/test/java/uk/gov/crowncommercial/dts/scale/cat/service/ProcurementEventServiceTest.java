@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import uk.gov.crowncommercial.dts.scale.cat.config.*;
 import uk.gov.crowncommercial.dts.scale.cat.exception.JaggaerApplicationException;
 import uk.gov.crowncommercial.dts.scale.cat.mapper.ProcurementEventMapper;
+import uk.gov.crowncommercial.dts.scale.cat.model.OCID;
 import uk.gov.crowncommercial.dts.scale.cat.model.agreements.LotEventType;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.Assessment;
 import uk.gov.crowncommercial.dts.scale.cat.model.capability.generated.DimensionRequirement;
@@ -2010,6 +2011,30 @@ class ProcurementEventServiceTest {
         .getAttachmentInfoList().get(0).getAttachmentName());
     assertEquals("SAMPLETOKEN", supplierAttachmentResponseList.get(0).getParameterInfoList().get(0)
         .getAttachmentInfoList().get(0).getSecureToken());
+  }
+
+  @Test
+  void shouldUpdateIsTestOnlyFlagToTrue() throws Exception {
+      when(validationService.validateEventId(PROC_EVENT_ID)).thenReturn(OCID.fromString(PROC_EVENT_ID));
+      when(procurementEventRepo.updateIsTestOnly(2, OCDS_AUTH_NAME, OCID_PREFIX, Boolean.TRUE)).thenReturn(1);
+
+      boolean response = procurementEventService.updateIsTestOnlyFlag(PROC_PROJECT_ID, PROC_EVENT_ID, Boolean.TRUE);
+      assertEquals(true, response);
+
+      verify(validationService).validateEventId(PROC_EVENT_ID);
+      verify(procurementEventRepo).updateIsTestOnly(2, OCDS_AUTH_NAME, OCID_PREFIX, Boolean.TRUE);
+  }
+
+  @Test
+  void shouldUpdateIsTestOnlyFlagToNull() throws Exception {
+    when(validationService.validateEventId(PROC_EVENT_ID)).thenReturn(OCID.fromString(PROC_EVENT_ID));
+    when(procurementEventRepo.updateIsTestOnly(2, OCDS_AUTH_NAME, OCID_PREFIX, null)).thenReturn(1);
+
+    boolean response = procurementEventService.updateIsTestOnlyFlag(PROC_PROJECT_ID, PROC_EVENT_ID, null);
+    assertEquals(true, response);
+
+    verify(validationService).validateEventId(PROC_EVENT_ID);
+    verify(procurementEventRepo).updateIsTestOnly(2, OCDS_AUTH_NAME, OCID_PREFIX, null);
   }
 
   private OffersList getOfferList() {

@@ -567,7 +567,30 @@ public class ProcurementEventService implements EventService {
         if (updateSuccess) {
             log.debug("Validated eventId successfully and saved payload");
         } else {
-            log.debug("Failed to validate eventId and saved payload");
+            log.error("Failed to validate eventId and saved payload");
+        }
+
+        return updateSuccess;
+    }
+
+    /**
+     * Updates the 'isTestOnly' flag based on the given ID's
+     *
+     * @param projectId
+     * @param eventId
+     * @return the converted Tender object
+     */
+    public boolean updateIsTestOnlyFlag(final Integer projectId, final String eventId, final Boolean newFlagValue) {
+        log.debug("updateIsTestOnlyFlag - about to validate eventId");
+
+        var eventOCID = validationService.validateEventId(eventId);
+
+        boolean updateSuccess = retryableTendersDBDelegate.updateIsTestOnly(Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(),eventOCID.getPublisherPrefix(), newFlagValue);
+
+        if (updateSuccess) {
+            log.debug("Successfully called updateIsTestOnlyFlag");
+        } else {
+            log.error("Failed to updateIsTestOnlyFlag");
         }
 
         return updateSuccess;
