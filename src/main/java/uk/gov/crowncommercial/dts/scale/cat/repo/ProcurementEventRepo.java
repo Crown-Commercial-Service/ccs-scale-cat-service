@@ -29,9 +29,19 @@ public interface ProcurementEventRepo extends JpaRepository<ProcurementEvent, In
   """)
   int updateTemplatePayload(@Param("eventIdKey") Integer eventIdKey, @Param("ocdsAuthorityName") String ocdsAuthorityName, @Param("ocidPrefix") String ocidPrefix, @Param("payload") String payload);
 
+  @Modifying
+  @Query("""
+    update ProcurementEvent e
+       set e.isTestOnly = :newFlagValue
+     where e.id = :eventIdKey
+       and e.ocdsAuthorityName = :ocdsAuthorityName
+       and e.ocidPrefix = :ocidPrefix
+  """)
+  int updateIsTestOnly(@Param("eventIdKey") Integer eventIdKey, @Param("ocdsAuthorityName") String ocdsAuthorityName, @Param("ocidPrefix") String ocidPrefix, @Param("newFlagValue") Boolean newFlagValue);
+
   Set<ProcurementEvent> findByProjectId(Integer projectId);
 
-    Set<ProcurementEvent> findByProjectIdAndEventType(Integer projectId, String eventType);
+  Set<ProcurementEvent> findByProjectIdAndEventType(Integer projectId, String eventType);
 
   @Query("select e from ProcurementEvent e where e.publishDate is not null and (:agreementId IS NULL OR e.project.caNumber = :agreementId) order by e.updatedAt desc")
   Set<ProcurementEvent> findPublishedEventsByAgreementId(String agreementId);

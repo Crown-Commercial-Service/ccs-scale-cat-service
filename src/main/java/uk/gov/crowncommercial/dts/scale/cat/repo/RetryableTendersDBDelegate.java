@@ -118,10 +118,17 @@ public class RetryableTendersDBDelegate {
     return procurementEventRepo.findByProjectId(projectId);
   }
 
-    @TendersRetryable
-    public Set<ProcurementEvent> findMultistageProcurementEventsByProjectId(final Integer projectId) {
-        return procurementEventRepo.findByProjectIdAndEventType(projectId, MULTI_STAGE_EVENT_TYPE);
-    }
+  @TendersRetryable
+  public Set<ProcurementEvent> findMultistageProcurementEventsByProjectId(final Integer projectId) {
+    return procurementEventRepo.findByProjectIdAndEventType(projectId, MULTI_STAGE_EVENT_TYPE);
+  }
+
+  @TendersRetryable
+  @Transactional
+  public boolean updateIsTestOnly(Integer eventIdKey, String ocdsAuthorityName, String ocidPrefix, Boolean newFlagValue) {
+    int updated = procurementEventRepo.updateIsTestOnly(eventIdKey, ocdsAuthorityName, ocidPrefix, newFlagValue);
+    return updated > 0;
+  }
 
   @TendersRetryable
   public ProcurementStageEvent save(final ProcurementStageEvent procurementevent) {
