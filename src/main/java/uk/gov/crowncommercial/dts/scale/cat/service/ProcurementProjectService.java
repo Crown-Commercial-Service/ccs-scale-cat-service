@@ -127,6 +127,7 @@ public class ProcurementProjectService {
   private final ModelMapper modelMapper;
   private final JaggaerService jaggaerService;
   private final AgreementsService agreementsService;
+  private final ValidationService validationService;
 
   private final ElasticsearchOperations elasticsearchOperations;
   private final S3Client tendersS3Client;
@@ -1140,6 +1141,11 @@ public class ProcurementProjectService {
   private List<ProjectPublicSearchSummary> convertResultsFromCache(List<ProcurementEventSearch> results) {
     // Just convert, no deduplication needed since it's handled before pagination
     return results.stream().map(object -> {
+      var eventOCID = validationService.validateEventId(object.getEventId());
+      Optional<ProcurementEvent> event = retryableTendersDBDelegate
+          .findProcurementEventByIdAndOcdsAuthorityNameAndOcidPrefix(
+              Integer.valueOf(eventOCID.getInternalId()), eventOCID.getAuthority(), eventOCID.getPublisherPrefix());
+
       ProjectPublicSearchSummary summary = new ProjectPublicSearchSummary();
       summary.setProjectId(object.getProjectId());
       summary.setProjectName(object.getProjectName());
@@ -1157,6 +1163,7 @@ public class ProcurementProjectService {
       summary.setEventId(object.getEventId());
       summary.setEventName(object.getEventName());
       summary.setEventType(object.getEventType());
+      summary.setIsTestOnly(null == event || !event.isPresent() ? null : event.get().getIsTestOnly());
       return summary;
     }).toList();
   }

@@ -51,6 +51,4 @@ public class ProcurementEventSearch {
     String description;
     @JsonProperty("lastUpdated")
     Long lastUpdated;
-    @JsonProperty("isTestOnly")
-    Boolean isTestOnly;
 }
