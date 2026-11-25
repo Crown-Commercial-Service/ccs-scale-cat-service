@@ -9,7 +9,6 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.cache.CacheManager;
 import javax.cache.Caching;
 import javax.cache.spi.CachingProvider;
 import java.time.Duration;
@@ -36,9 +35,9 @@ public class CacheConfig {
      * Initialise the caches we want to use based on life configuration settings
      */
     @Bean
-    public CacheManager ehCacheManager() {
+    public org.springframework.cache.CacheManager ehCacheManager() {
         CachingProvider provider = Caching.getCachingProvider();
-        CacheManager cacheManager = provider.getCacheManager();
+        javax.cache.CacheManager cacheManager = provider.getCacheManager();
 
         javax.cache.configuration.Configuration<Object, Object> primaryCacheConfig = getCacheConfigForSpecifiedLifespan(primaryCacheLength, primaryCacheSize);
         javax.cache.configuration.Configuration<Object, Object> longCacheConfig = getCacheConfigForSpecifiedLifespan(longCacheLength, longCacheSize);
@@ -50,7 +49,7 @@ public class CacheConfig {
         cacheManager.createCache("conclaveCache", primaryCacheConfig);
         cacheManager.createCache("qAndACache", primaryCacheConfig);
 
-        return cacheManager;
+        return new org.springframework.cache.jcache.JCacheCacheManager(cacheManager);
     }
 
     /**
