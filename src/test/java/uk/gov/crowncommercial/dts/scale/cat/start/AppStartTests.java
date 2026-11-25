@@ -28,7 +28,7 @@ import uk.gov.service.notify.NotificationClient;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles("test")
-@SpringBootTest
+@SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=none")
 @AutoConfigureMockMvc
 public class AppStartTests {
     @Autowired
