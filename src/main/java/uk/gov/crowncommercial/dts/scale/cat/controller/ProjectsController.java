@@ -115,6 +115,7 @@ public class ProjectsController extends AbstractRestController {
                                    @RequestParam(name = "group", required = false, defaultValue = "summary") final String group,
                                    final JwtAuthenticationToken authentication) {
     var principal = null != authentication ? getPrincipalFromJwt(authentication) : "";
+    log.error("TESTING in getProject");    // TODO - BM
     return projectPackageService.getProjectPackage(procId, principal, OcdsSections.getSection(group));
   }
 
