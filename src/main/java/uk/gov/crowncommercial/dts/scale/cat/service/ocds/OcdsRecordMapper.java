@@ -1,6 +1,8 @@
 package uk.gov.crowncommercial.dts.scale.cat.service.ocds;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 import uk.gov.crowncommercial.dts.scale.cat.model.generated.Record1;
@@ -14,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Looks to map OCDS question and answer data to fixed data structs for Project Detail fetches
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OcdsRecordMapper  implements InitializingBean {
@@ -29,6 +32,10 @@ public class OcdsRecordMapper  implements InitializingBean {
      * This is the core method run when the mapper is used
      */
     public Record1 populate(ProjectQuery query, Record1 record){
+        if (null == record) {
+            log.error("populate - is null");    // TODO - BM
+            return new Record1();
+        }
         // Worth noting this is not the appropriate way to use CompletableFutures so we should look to refactor this when possible
         Record1 result = record;
         List<CompletableFuture> cfs = new ArrayList<>();
@@ -36,13 +43,19 @@ public class OcdsRecordMapper  implements InitializingBean {
         // For each section of the requested query object, run all relevant mappings dictated by the handlers config
         if (query != null && query.getSections() != null && !query.getSections().isEmpty()) {
             for (String section : query.getSections()) {
+                log.error("populate - getting handler: " + section);    // TODO - BM
+
                 ProjectRecordHandler handler = handlers.get(section);
 
                 if (handler != null) {
                     MapperResponse response = handler.apply(query, result);
+
+                    log.error("populate - have response");    // TODO - BM
+
                     result = response.getRecord();
 
                     if (response.getCompletableFuture() != null) {
+                        log.error("populate - adding response");    // TODO - BM
                         cfs.add(response.getCompletableFuture());
                     }
                 }
@@ -52,8 +65,16 @@ public class OcdsRecordMapper  implements InitializingBean {
         if(!cfs.isEmpty()) {
             // Wait for any aync requests to complete before we move on
             CompletableFuture[] sdf = cfs.toArray(new CompletableFuture[0]);
-            CompletableFuture.allOf(sdf).join();
+            try {
+                CompletableFuture.allOf(sdf).join();
+            } catch (final Exception ex) {
+                log.error("populate - join failed, ex=" + ex.getMessage());    // TODO - BM
+            }
+        } else {
+            log.error("populate - cfs is empty");    // TODO - BM
         }
+
+        log.error("populate - done");    // TODO - BM
 
         return result;
     }

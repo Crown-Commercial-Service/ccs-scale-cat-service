@@ -24,20 +24,16 @@ public class NonOCDSProjectService {
      * Sets release information on a given project package based on details of the first published event attached to the project
      */
     public void populateCancelled(ProjectPackage pp, ProcurementProject procurementProject) {
-        log.error("TESTING in populateCancelled - 1");    // TODO - BM
         // First, grab the first published event on the project, if any
         ProcurementEvent pe = EventsHelper.getFirstPublishedEvent(procurementProject);
-        log.error("TESTING in populateCancelled - 2");    // TODO - BM
 
         if (pe != null && pe.getCloseDate() != null && pe.getTenderStatus() != null && pe.getTenderStatus().equalsIgnoreCase(Constants.EVENT_STATE_CANCELLED)) {
             // We have found a cancelled event attached to the project - so use it to populate release information in the package
-            log.error("TESTING in populateCancelled - 3");    // TODO - BM
             NonOCDSRelease release = new NonOCDSRelease()
                     .tender(new NonOCDSTender()
                             .cancellationDate(OffsetDateTime.ofInstant(pe.getCloseDate(), ZoneId.systemDefault())));
 
             pp.setNonOCDS(release);
         }
-        log.error("TESTING in populateCancelled - 4");    // TODO - BM
     }
 }
