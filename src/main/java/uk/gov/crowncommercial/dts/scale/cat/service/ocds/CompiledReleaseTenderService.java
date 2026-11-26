@@ -86,21 +86,26 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
     @SneakyThrows
     private void populateStatusAndPeriod(Tender1 tender, ProcurementProject pp, ProjectQuery pq) {
         if (pp != null && pq != null && tender != null) {
-            ProcurementEvent pe = EventsHelper.getLastPublishedEvent(pp);
-            ExportRfxResponse exportRfxResponse = getLatestRFXWithSuppliers(pq);
+            try {
+                ProcurementEvent pe = EventsHelper.getLastPublishedEvent(pp);
+                ExportRfxResponse exportRfxResponse = getLatestRFXWithSuppliers(pq);
 
-            ExportRfxResponse firstRfxResponse = getFirstRFXWithSuppliers(pq);
+                ExportRfxResponse firstRfxResponse = getFirstRFXWithSuppliers(pq);
 
-            if (exportRfxResponse != null && exportRfxResponse.getRfxSetting() != null && pe != null) {
-                TenderStatus status = EventStatusHelper.getStatus(exportRfxResponse.getRfxSetting(), pe);
+                if (exportRfxResponse != null && exportRfxResponse.getRfxSetting() != null && pe != null) {
+                    TenderStatus status = EventStatusHelper.getStatus(exportRfxResponse.getRfxSetting(), pe);
 
-                if (status != null) {
-                    tender.setStatus(status);
+                    if (status != null) {
+                        tender.setStatus(status);
+                    }
+
+                    if (firstRfxResponse != null && firstRfxResponse.getRfxSetting() != null) {
+                        tender.setTenderPeriod(getTenderPeriod(firstRfxResponse.getRfxSetting()));
+                    }
                 }
-
-                if (firstRfxResponse != null && firstRfxResponse.getRfxSetting() != null) {
-                    tender.setTenderPeriod(getTenderPeriod(firstRfxResponse.getRfxSetting()));
-                }
+            } catch (final Exception ex) {
+                log.error("CompiledReleaseTenderService::populateStatusAndPeriod failed, ex = " + ex.getMessage());
+                rollbar.error("CompiledReleaseTenderService::populateStatusAndPeriod failed", ex);
             }
         }
     }
