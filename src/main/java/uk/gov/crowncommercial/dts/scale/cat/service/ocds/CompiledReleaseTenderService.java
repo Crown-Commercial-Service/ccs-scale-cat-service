@@ -105,7 +105,6 @@ public class CompiledReleaseTenderService extends AbstractOcdsService {
                 }
             } catch (final Exception ex) {
                 log.error("CompiledReleaseTenderService::populateStatusAndPeriod failed, ex = " + ex.getMessage());
-                rollbar.error("CompiledReleaseTenderService::populateStatusAndPeriod failed", ex);
             }
         }
     }
